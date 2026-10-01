@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-01T22:56:30+08:00",
+ "generatedAt": "2026-10-02T00:02:29+08:00",
  "generatedBy": "plan_deep_read.py",
  "policy": {
   "perCategoryMin": 2,
@@ -26,9 +26,9 @@
   ]
  },
  "totals": {
-  "corpus": 526,
+  "corpus": 536,
   "alreadyEnriched": 19,
-  "candidates": 507,
+  "candidates": 517,
   "skimmed": 47,
   "selected": 103,
   "categories": 13
@@ -43,7 +43,7 @@
   "coding": {
    "quota": 10,
    "picked": 10,
-   "candidates": 16,
+   "candidates": 18,
    "categoryWeight": 1.0
   },
   "course": {
@@ -67,19 +67,19 @@
   "generative": {
    "quota": 9,
    "picked": 9,
-   "candidates": 33,
+   "candidates": 34,
    "categoryWeight": 0.85
   },
   "job": {
    "quota": 6,
    "picked": 6,
-   "candidates": 23,
+   "candidates": 25,
    "categoryWeight": 0.5
   },
   "multimodal": {
    "quota": 10,
    "picked": 10,
-   "candidates": 47,
+   "candidates": 48,
    "categoryWeight": 1.0
   },
   "paper": {
@@ -91,19 +91,19 @@
   "posttraining": {
    "quota": 10,
    "picked": 10,
-   "candidates": 66,
+   "candidates": 67,
    "categoryWeight": 1.0
   },
   "rl": {
    "quota": 9,
    "picked": 9,
-   "candidates": 15,
+   "candidates": 17,
    "categoryWeight": 0.9
   },
   "trend": {
    "quota": 6,
    "picked": 6,
-   "candidates": 38,
+   "candidates": 39,
    "categoryWeight": 0.45
   },
   "worldmodel": {
@@ -709,6 +709,24 @@
    }
   },
   {
+   "id": "9df435ae8e492471",
+   "title": "SpatialCORE: Confidence-Aware Grounded Spatial Reasoning in Large Vision--Language Models",
+   "category": "posttraining",
+   "channel": "hf_papers",
+   "relevanceScore": 70.4,
+   "depthScore": 71.68,
+   "url": "https://huggingface.co/papers/2609.38716",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 31.680000000000003,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "9ae4c993750e49a5",
    "title": "Do Better Goal Representations Improve Goal-Conditioned Reinforcement Learning?",
    "category": "rl",
@@ -847,24 +865,6 @@
     "relevance": 29.340000000000003,
     "content": 18.0,
     "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "7b43d7b16cc9a324",
-   "title": "walkinglabs/hands-on-modern-rl - 🚀 An open-source, hands-on curriculum bridging the gap from basic RL concepts to LLM alignment, RLVR, and advanced Agentic systems.",
-   "category": "posttraining",
-   "channel": "github",
-   "relevanceScore": 81.0,
-   "depthScore": 69.07,
-   "url": "https://github.com/walkinglabs/hands-on-modern-rl",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 36.45,
-    "content": 2.6199999999999997,
-    "code": 8.0,
     "peer": 0.0,
     "trust": 7.000000000000001,
     "material": 15.0
@@ -1063,6 +1063,24 @@
     "relevance": 33.705000000000005,
     "content": 1.68,
     "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "d81df02863d8fdbc",
+   "title": "TERRA: Terrain-Aware Reconstruction, Retargeting and Control for Musculoskeletal Locomotion",
+   "category": "rl",
+   "channel": "hf_papers",
+   "relevanceScore": 62.0,
+   "depthScore": 65.18,
+   "url": "https://huggingface.co/papers/2609.38653",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 27.900000000000002,
+    "content": 18.0,
+    "code": 0.0,
     "peer": 0.0,
     "trust": 7.000000000000001,
     "material": 15.0
@@ -1339,6 +1357,24 @@
    }
   },
   {
+   "id": "339e14c8a8d485e8",
+   "title": "SeLMRoute: Probabilistic Semantic Evidence for Large Language Model Routing",
+   "category": "rl",
+   "channel": "hf_papers",
+   "relevanceScore": 49.9,
+   "depthScore": 59.96,
+   "url": "https://huggingface.co/papers/2609.34736",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.455,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "fb8063dfdeda93d7",
    "title": "Herschel: Continuous Optimization of Production LLM Inference through On-Demand Profiling",
    "category": "engineering",
@@ -1566,42 +1602,6 @@
    "scoreBreakdown": {
     "relevance": 23.94,
     "content": 3.3400000000000003,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "53344f20223a19bc",
-   "title": "The Lenfest Institute grows landmark program with expanded OpenAI support",
-   "category": "rl",
-   "channel": "openai_rss",
-   "relevanceScore": 53.0,
-   "depthScore": 47.16,
-   "url": "https://openai.com/index/lenfest-ai-collaborative-expansion",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 23.85,
-    "content": 3.28,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "03bb131a7ca0f08b",
-   "title": "How we will do better for Australia",
-   "category": "rl",
-   "channel": "openai_rss",
-   "relevanceScore": 52.8,
-   "depthScore": 46.98,
-   "url": "https://openai.com/index/how-we-will-do-better-for-australia",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 23.759999999999998,
-    "content": 3.18,
     "code": 0.0,
     "peer": 0.0,
     "trust": 7.000000000000001,

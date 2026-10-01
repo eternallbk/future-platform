@@ -298,8 +298,23 @@ if (-not $SkipAgent) {
                 $agentSw = [System.Diagnostics.Stopwatch]::StartNew()
                 # The prompt goes in on stdin; output is captured, echoed, and logged
                 # as UTF-8 (never via Tee-Object, which would write UTF-16).
-                $agentOut = $task | & $dshExe headless --json '-' 2>&1 | Out-String
-                $agentExit = $LASTEXITCODE
+                #
+                # $ErrorActionPreference is lowered for this call. With 'Stop',
+                # Windows PowerShell 5.1 turns ANY native stderr line into a
+                # terminating error, so a harmless Node notice such as
+                # "ExperimentalWarning: stripTypeScriptTypes is an experimental
+                # feature" was caught by the block below and reported as
+                # "layer 2 threw, skipped" - even though the agent had completed
+                # successfully and written all of its output. The exit code is the
+                # only reliable signal here.
+                $prevEap = $ErrorActionPreference
+                $ErrorActionPreference = 'Continue'
+                try {
+                    $agentOut = $task | & $dshExe headless --json '-' 2>&1 | Out-String
+                    $agentExit = $LASTEXITCODE
+                } finally {
+                    $ErrorActionPreference = $prevEap
+                }
                 $agentSw.Stop()
                 if ($agentOut) {
                     Write-Host $agentOut.TrimEnd()

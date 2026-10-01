@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-10-01T21:07:43+08:00",
+ "generatedAt": "2026-10-02T00:17:34+08:00",
  "source": "seed+daily",
- "count": 20,
+ "count": 37,
  "formulas": [
   {
    "id": "f-attention",
@@ -1140,6 +1140,985 @@
     {
      "title": "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
      "url": "https://nowcoder.com/discuss/933796596888662016"
+    }
+   ]
+  },
+  {
+   "id": "f-ost-rank-invariant-gating",
+   "name": "OST 门控的保序性与排序不变性",
+   "category": "foundation",
+   "glyph": "β",
+   "tags": [
+    "attention",
+    "softmax",
+    "rank-invariance"
+   ],
+   "latex": "\\alpha_i = \\frac{\\exp(\\beta z_i)}{\\sum_j \\exp(\\beta z_j)}, \\qquad \\beta > 0 \\;\\Longrightarrow\\; \\operatorname*{arg\\,max}_i \\alpha_i = \\operatorname*{arg\\,max}_i z_i",
+   "html": "<code>α_i = exp(β·z_i) / Σ_j exp(β·z_j)，且 β &gt; 0 时 argmax_i α_i = argmax_i z_i</code>",
+   "symbols": [
+    [
+     "z_i",
+     "第 i 个位置的注意力 logit（门控前的原始分数）"
+    ],
+    [
+     "β",
+     "逆温度系数，由合成情绪指标转换而来（β = 1/T）"
+    ],
+    [
+     "α_i",
+     "门控后第 i 个位置归一化得到的注意力权重"
+    ],
+    [
+     "argmax",
+     "取得最大值的下标，即最受关注的那个 token"
+    ]
+   ],
+   "derivation": [
+    "设 β > 0，映射 u ↦ exp(βu) 在实数域上严格单调递增，故 z_i ≥ z_j ⇔ exp(βz_i) ≥ exp(βz_j)。",
+    "softmax 对每个元素施加同一个严格递增函数 exp(·) 后除以同一个正数配分函数 Z = Σ_j exp(βz_j)，不改变元素间的相对大小。",
+    "OST 剩余步骤（阈值剪枝、重归一化）同样是逐元素单调映射与除以正常数的组合，保持保序性。",
+    "因此整条门控链复合后仍保序，α 的最大值下标与 z 的最大值下标相同。"
+   ],
+   "analogy": "像同一批人按身高排队后统一换单位：数字变大变小，队首那个人不会换。",
+   "pitfalls": [
+    "β 必须为正：若允许 β < 0，exp(βu) 变成单调递减，会把排序完全颠倒。",
+    "保序不等于分布不变：份额（权重数值）会被显著改变，只是次序不变。",
+    "阈值剪枝会改变参与竞争的元素集合，论证其排序不变性时必须算上随后的重归一化步骤。",
+    "该结论只针对「哪个 token 排第一」；它不排除门控改变权重数值从而影响下游层聚合结果的可能性。"
+   ],
+   "code": "import numpy as np\n\n\ndef ost_gate(z, beta, prune_threshold=0.0):\n    \"\"\"OST 门控：逆温度缩放 -> softmax -> 阈值剪枝 -> 重归一化。\"\"\"\n    z = np.asarray(z, dtype=float)\n    assert beta > 0, '逆温度必须为正，否则排序会被颠倒'\n    e = np.exp(beta * z - beta * z.max())\n    alpha = e / e.sum()\n    kept = alpha >= prune_threshold\n    if not kept.any():\n        kept = np.zeros_like(alpha, dtype=bool)\n        kept[int(alpha.argmax())] = True\n    alpha = np.where(kept, alpha, 0.0)\n    return alpha / alpha.sum()\n\n\nz = np.array([0.2, 3.1, -1.4, 2.0, 0.7])\nfor beta in (0.25, 1.0, 4.0):\n    a = ost_gate(z, beta, prune_threshold=0.02)\n    print(f'beta={beta:>5}  argmax={a.argmax()}  argmax(z)={z.argmax()}  weights={np.round(a, 4)}')",
+   "sources": [
+    {
+     "title": "One Signal Theory - A Conceptual Architecture for Context Management in Large Language Models via Synthetic Affective Signal Modulation of Attention (DOI)",
+     "url": "https://doi.org/10.5281/zenodo.23068062"
+    },
+    {
+     "title": "One Signal Theory - A Conceptual Architecture for Context Management in Large Language Models via Synthetic Affective Signal Modulation of Attention (DOI, 关联记录)",
+     "url": "https://doi.org/10.5281/zenodo.23068063"
+    }
+   ]
+  },
+  {
+   "id": "f-pdr-fsr-metrics",
+   "name": "逐位准确率 PDR 与整串读数准确率 FSR",
+   "category": "multimodal",
+   "glyph": "Σ",
+   "tags": [
+    "multimodal",
+    "evaluation",
+    "ocr",
+    "metric"
+   ],
+   "latex": "\\mathrm{PDR}=\\frac{1}{N}\\sum_{i=1}^{N}\\frac{c_i}{L_i},\\qquad \\mathrm{FSR}=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}\\!\\left[c_i=L_i\\right]",
+   "html": "<code>PDR = mean(c_i / L_i) ; FSR = mean(c_i == L_i)</code>",
+   "symbols": [
+    [
+     "N",
+     "参与评测的表图数量"
+    ],
+    [
+     "L_i",
+     "第 i 张图的真值读数位数（分母）"
+    ],
+    [
+     "c_i",
+     "第 i 张图中被读对的位数"
+    ],
+    [
+     "c_i/L_i",
+     "第 i 张图的逐位正确率"
+    ],
+    [
+     "\\mathbb{1}[·]",
+     "指示函数，括号内条件成立取 1，否则取 0"
+    ],
+    [
+     "PDR",
+     "逐位识别准确率，本文 Gemini 为 98.10%"
+    ],
+    [
+     "FSR",
+     "整串读数准确率，本文 Gemini 为 93.85%"
+    ]
+   ],
+   "derivation": [
+    "每张数码表图有 L_i 位数字，识别器输出一条完整读数。",
+    "把预测读数与真值读数按位对齐，统计读对的位数 c_i。",
+    "PDR 先在单图上算比例 c_i/L_i，再对 N 张图求平均，衡量单字识别能力。",
+    "FSR 只在整条读数全对（c_i=L_i）时计 1，再求平均，衡量读数能否直接使用。",
+    "由于 FSR 的条件更严格，同一模型的 FSR 恒不高于 PDR。"
+   ],
+   "analogy": "像默写电话号码：PDR 是逐位算对的百分比，FSR 是整串号码一字不差写对的百分比；一位写错，逐位分数只掉一点，整串分数直接归零。",
+   "pitfalls": [
+    "PDR 与 FSR 不能相互替代：PDR 高不代表读数可直接使用，错一位整条即作废。",
+    "逐位对齐依赖位数约定，小数点、前导零是否计入会影响分母 L_i。",
+    "摘要中 98.10% (?=0.36%) 与 93.85% (?=1.29%) 的偏差符号在采集文本里显示为问号，是标准差还是标准误需核对原文。",
+    "只在全部距离上取平均会掩盖远距离性能下降，应按距离分层报告。"
+   ],
+   "code": "def pdr_fsr(preds, gts):\n    # preds / gts：等长的读数字符串列表，例如 ['12.34', '12.35']\n    assert all(len(p) == len(g) for p, g in zip(preds, gts))\n    n = len(gts)\n    pdr = sum(sum(pc == gc for pc, gc in zip(p, g)) / len(g)\n              for p, g in zip(preds, gts)) / n\n    fsr = sum(p == g for p, g in zip(preds, gts)) / n\n    return pdr, fsr\n\npdr, fsr = pdr_fsr(['12.34', '12.3S'], ['12.34', '12.35'])\nprint('PDR=%.4f, FSR=%.4f' % (pdr, fsr))  # PDR=0.9000, FSR=0.5000",
+   "sources": [
+    {
+     "title": "Leveraging vision language models for digit recognition on digital measuring devices: a comparative analysis",
+     "url": "https://doi.org/10.11591/eei.v15i5.11769"
+    }
+   ]
+  },
+  {
+   "id": "f-coach-first-failure",
+   "name": "首个失败子任务定位",
+   "category": "worldmodel",
+   "glyph": "k*",
+   "tags": [
+    "world-model",
+    "diagnosis",
+    "skill-composition"
+   ],
+   "latex": "k^{*} = \\min \\{\\, k \\in \\{1,\\dots,K\\} : J_{k} = 0 \\,\\}",
+   "html": "<code>k* = min{ k in 1..K : J_k = 0 }</code>",
+   "symbols": [
+    [
+     "K",
+     "任务分解后的子任务个数"
+    ],
+    [
+     "J_k",
+     "第 k 个子任务被进度判定器判为完成（1）或未完成（0）"
+    ],
+    [
+     "k*",
+     "第一个未完成子任务的序号，即诊断结果"
+    ]
+   ],
+   "derivation": [
+    "把长程任务分解为 K 个可复用技能子任务，按执行顺序编号 1..K。",
+    "在世界模型中展开执行，进度判定器对每个子任务给出 J_k ∈ {0,1}。",
+    "取第一个 J_k = 0 的序号作为 k*，即失败起点；若全部为 1 则无失败，返回空。"
+   ],
+   "analogy": "像检查流水线上第一台亮红灯的机器，后面的问题多半是它引起的，先修它而不是全线停机。",
+   "pitfalls": [
+    "世界模型的判定误差会让 k* 偏移，需用想象与实机的相关性作为可信度证据。",
+    "定义需要约定 J_k 全为 1（无失败）时 k* 的取值，否则聚合统计会出现空值。",
+    "若任务不是严格顺序执行，取「第一个」失败的语义会不稳定。"
+   ],
+   "code": "def first_failure(J):\n    for k, j in enumerate(J, start=1):\n        if j == 0:\n            return k\n    return None\n\nJ = [1, 1, 0, 0]\nprint(first_failure(J))\n",
+   "sources": [
+    {
+     "title": "RoboCoach: World Models as Active Coaches for Compositional Robot Skills",
+     "url": "https://huggingface.co/papers/2609.39685"
+    }
+   ]
+  },
+  {
+   "id": "f-coach-failure-aggregation",
+   "name": "失败记录聚合与子任务优先级",
+   "category": "worldmodel",
+   "glyph": "c_k",
+   "tags": [
+    "data-selection",
+    "self-improvement",
+    "diagnosis"
+   ],
+   "latex": "c_{k} = \\sum_{i=1}^{N} \\mathbf{1}\\!\\left[\\, k^{*}_{i} = k \\,\\right]",
+   "html": "<code>c_k = sum_i 1[ k*_i == k ]</code>",
+   "symbols": [
+    [
+     "N",
+     "被记录的任务尝试次数"
+    ],
+    [
+     "k*_i",
+     "第 i 次尝试诊断出的首个失败子任务序号"
+    ],
+    [
+     "c_k",
+     "第 k 个子任务被判为失败起点的次数，作为示教采集与专家更新的优先级"
+    ]
+   ],
+   "derivation": [
+    "对每次想象执行记录诊断结果 k*_i。",
+    "对全部 N 次尝试按子任务做计数，得到 c_k。",
+    "按 c_k 排序，决定哪些子任务需要补采示教、哪些专家适配器需要更新。"
+   ],
+   "analogy": "像把一堆病假条按科室分类，哪个科室条子最多就先给哪个科室加人手。",
+   "pitfalls": [
+    "只统计首个失败会低估排在后面的子任务，其真实短板可能被掩盖。",
+    "不同子任务出现频率不同，绝对计数 c_k 需要按出现频次归一化后再比较。",
+    "计数随模型更新而变化，需反复重跑闭环而不是一次性统计。"
+   ],
+   "code": "from collections import Counter\n\nrecords = [2, 2, 3, 2, 1, 3]\nc = Counter(records)\nfor k in sorted(c):\n    print('subtask', k, 'failures', c[k])\n",
+   "sources": [
+    {
+     "title": "RoboCoach: World Models as Active Coaches for Compositional Robot Skills",
+     "url": "https://arxiv.org/abs/2609.39685"
+    }
+   ]
+  },
+  {
+   "id": "f-ratio-token-penalty",
+   "name": "Token 专属惩罚对打分（logits）的修正",
+   "category": "posttraining",
+   "glyph": "λ",
+   "tags": [
+    "quantization",
+    "reasoning",
+    "inference"
+   ],
+   "latex": "\\tilde{z}_t = z_t - \\lambda_t, \\quad \\lambda_t = \\mathrm{TSPD}\\big(\\Delta_t(f, q)\\big)",
+   "html": "<code>tilde_z[t] = z[t] - lambda[t]</code>",
+   "symbols": [
+    [
+     "z_t",
+     "量化模型在位置 t 的原始打分（logits）"
+    ],
+    [
+     "λ_t",
+     "该 token 的专属惩罚强度"
+    ],
+    [
+     "Δ_t(f, q)",
+     "全精度模型 f 与量化模型 q 在该 token 上的行为差异，由 QRBA 测得"
+    ],
+    [
+     "tilde z_t",
+     "施加惩罚后的打分，供解码使用"
+    ]
+   ],
+   "derivation": [
+    "让全精度模型 f 与量化模型 q 跑同一段推理，得到逐步的行为差异序列 Δ_t（QRBA）。",
+    "差异显著偏大的位置被判为量化诱发的过度思考 token。",
+    "以全精度输出为引导，为每个这样的 token 求出一个专属惩罚强度 λ_t（TSPD），过程中不更新任何参数。",
+    "解码时从该位置的打分中减去 λ_t，压低过度思考 token 被选中的概率。",
+    "效果：相对量化基线，CoT 长度最多减少 51.3%，精度最多提升 9.8 点。"
+   ],
+   "analogy": "像给每个容易跑题的步骤单独设一个提醒力度：先照着标准答案找出分叉处，再按分叉大小决定提醒多用力，而不是整段推理一律打断。",
+   "pitfalls": [
+    "惩罚过强会连同必要的推理步一起压掉，反而降低精度。",
+    "λ_t 依赖全精度模型提供的引导信号，部署时未必能同时加载全精度权重。",
+    "换模型、换量化位宽或换配置都需要重新标定，惩罚不具备通用性。",
+    "本公式是按采集摘要口径的示意重建，原文的具体惩罚形式与施加位置需查原文核实。"
+   ],
+   "code": "import torch\nimport torch.nn.functional as F\n\n\ndef ratio_penalty(logits_f, logits_q, scale=1.0):\n    # logits_f / logits_q: [T, V]，全精度与量化模型在同一条轨迹上的打分\n    # 1) QRBA：逐步比较两个模型的输出分布，得到行为差异序列\n    log_p_f = F.log_softmax(logits_f, dim=-1)\n    log_p_q = F.log_softmax(logits_q, dim=-1)\n    p_f = log_p_f.exp()\n    delta = (p_f * (log_p_f - log_p_q)).sum(-1)   # [T] 每步的分布差异\n    # 2) 差异明显偏大的位置判为过度思考 token\n    flag = delta > delta.mean()\n    # 3) TSPD：按差异大小给出 token 专属惩罚，不更新任何参数\n    lam = torch.where(flag, scale * delta, torch.zeros_like(delta))\n    # 4) 解码前，从该位置被选中 token 的打分中减去惩罚\n    chosen = logits_q.argmax(-1)\n    adjusted = logits_q.clone()\n    adjusted[torch.arange(adjusted.size(0)), chosen] -= lam\n    return adjusted, lam\n\n\nlogits_f = torch.randn(8, 100)\nlogits_q = logits_f + 0.3 * torch.randn(8, 100)\nadjusted, lam = ratio_penalty(logits_f, logits_q)\nprint(lam.round(decimals=3))\n",
+   "sources": [
+    {
+     "title": "RATIO: Reasoning Analysis and Token-level Inference Optimization for Quantized Reasoning Models（arXiv:2609.39801v1）",
+     "url": "https://arxiv.org/abs/2609.39801v1"
+    }
+   ]
+  },
+  {
+   "id": "f-fe-disclosure-did",
+   "name": "双层固定效应双重差分（结构化披露率）",
+   "category": "engineering",
+   "glyph": "β",
+   "tags": [
+    "policy-evaluation",
+    "panel-data",
+    "did"
+   ],
+   "latex": "D_{it} = \\beta\\,(G_i \\times P_t) + \\alpha_i + \\gamma_t + \\varepsilon_{it}",
+   "html": "<code>D_it = β·(G_i × P_t) + α_i + γ_t + ε_it</code>",
+   "symbols": [
+    [
+     "D_{it}",
+     "模型 i 在月份 t 的结构化披露指数"
+    ],
+    [
+     "G_i",
+     "通用模型代理组指示，0 或 1"
+    ],
+    [
+     "P_t",
+     "义务生效后时期指示，0 或 1"
+    ],
+    [
+     "\\beta",
+     "双重差分系数，论文估计为 8.7 个百分点"
+    ],
+    [
+     "\\alpha_i",
+     "组织固定效应，吸收提供方固有差异"
+    ],
+    [
+     "\\gamma_t",
+     "日历月固定效应，吸收共同时间冲击"
+    ],
+    [
+     "\\varepsilon_{it}",
+     "残差项"
+    ]
+   ],
+   "derivation": [
+    "对每条模型-月份观测编码七项披露指标，求和或取均值得到被解释变量 D 的取值。",
+    "构造两个 0/1 指示：G 表示是否属于通用模型代理组，P 表示是否处于义务生效之后的时期。",
+    "交互项 G×P 刻画通用模型组在生效后、相对于窄任务组的额外披露变化。",
+    "加入组织固定效应与日历月固定效应，分别吸收不随时间变化的提供方差异和所有模型共同经历的时间趋势。",
+    "对面板做最小二乘估计得到 β，再用国家与组织类别控制替换组织固定效应做稳健性检验。"
+   ],
+   "analogy": "像两个班换教材：只看重点班涨分说明不了问题，要看重点班涨幅减去普通班涨幅才是教材的净效果；固定效应相当于先把两班原本的水平差异和当次考试的难度差扣掉。",
+   "pitfalls": [
+    "处理组由自定的透明通用模型代理标准划分，不等于法条定义，可能误分类。",
+    "摘要在此处截断，事后观测数量有限，平行趋势假设难以充分检验。",
+    "把组织固定效应换为国家与组织类别控制后，估计变小且与零不可区分，说明结论对设定敏感。",
+    "披露变多只说明文档更完整，不等于模型开发实践或安全性改变。"
+   ],
+   "code": "import numpy as np\n\nrng = np.random.default_rng(0)\nn_org, n_month = 120, 24\nrows = []\nfor i in range(n_org):\n    gpai = i % 2                        # 1 = 通用模型代理组\n    org_fe = rng.normal(0, 0.4)\n    for t in range(n_month):\n        post = 1 if t >= 12 else 0      # 义务生效前后\n        y = 0.30 + org_fe + 0.05 * t + 0.087 * gpai * post + rng.normal(0, 0.3)\n        rows.append((i, t, gpai, post, y))\n\ndata = np.array(rows)\ny, G, P = data[:, 4], data[:, 2], data[:, 3]\nD_org = np.eye(n_org)[data[:, 0].astype(int)]\nD_month = np.eye(n_month)[data[:, 1].astype(int)]\nX = np.column_stack([G * P, D_org[:, 1:], D_month[:, 1:]])\n\nbeta, *_ = np.linalg.lstsq(X, y, rcond=None)\nprint('DID 估计（百分点）:', round(beta[0] * 100, 2))  # 约 8.7",
+   "sources": [
+    {
+     "title": "Regulating the Frontier: Model-Level Evidence from the EU AI Act",
+     "url": "https://doi.org/10.17613/8rga5-9wc04"
+    }
+   ]
+  },
+  {
+   "id": "f-hhl-complexity",
+   "name": "HHL 量子线性求解器的复杂度标度",
+   "category": "engineering",
+   "glyph": "κ",
+   "tags": [
+    "quantum-computing",
+    "linear-system",
+    "complexity"
+   ],
+   "latex": "\\mathcal{O}\\!\\left(\\frac{\\kappa^2 \\log N}{\\varepsilon}\\right)",
+   "html": "<code>O(κ² · log N / ε)</code>",
+   "symbols": [
+    [
+     "A",
+     "N×N 稀疏非奇异矩阵，来自 CFD 的 PDE 离散化"
+    ],
+    [
+     "b",
+     "右端项，其归一化量子态需可高效制备"
+    ],
+    [
+     "x",
+     "待求解向量，满足 A x = b"
+    ],
+    [
+     "N",
+     "线性系统的维度"
+    ],
+    [
+     "κ",
+     "A 的条件数，是复杂度的主导因子"
+    ],
+    [
+     "ε",
+     "目标精度"
+    ]
+   ],
+   "derivation": [
+    "把 CFD 离散化后的 PDE 写成线性系统 A x = b，并要求 A 稀疏、可高效做哈密顿量模拟。",
+    "把 b 归一化并制备成量子态，这一步的态制备开销在复杂度中被单独列出。",
+    "对该态做相位估计得到 A 的特征值，再用受控旋转把特征值倒数写进 ancilla 的幅度。",
+    "逆相位估计后测量 ancilla，成功后主寄存器近似正比于 A^{-1} b，读出即近似解。",
+    "整体按 O(κ² log N / ε) 计：对 N 是对数级加速，但被 κ 的二次项与 1/ε 压制。"
+   ],
+   "analogy": "像用一把会自动按特征值调音的音叉解方程：调好音之后一次覆盖所有特征方向，但你必须先摸清这把音叉的音准范围（条件数）。",
+   "pitfalls": [
+    "κ 很大时二次依赖会吃掉 log N 的收益，网格越细条件数通常越差。",
+    "稠密或无法稀疏访问的 A 不能直接套用这条复杂度。",
+    "态制备与读出常需后选择或幅度放大，实际开销容易被忽略。",
+    "输出是量子态幅度，只能采样估计，无法像经典求解器那样直接拿到完整解向量。",
+    "该标度只属于 HHL 一类 QLSA，不能推广到 QSVT、QLBM 或变分法等其他框架。"
+   ],
+   "code": "import numpy as np\n\n\ndef hhl_query_cost(N: int, kappa: float, eps: float) -> float:\n    # HHL 复杂度量级：O(kappa^2 * log N / eps)\n    return (kappa ** 2) * np.log2(N) / eps\n\n\nN, eps = 512, 1e-2\nfor kappa in (10.0, 100.0, 1000.0):\n    print(kappa, round(hhl_query_cost(N, kappa, eps), 1))\n\n# 网格越细，离散拉普拉斯算子条件数越大\nfor n in (32, 64, 128):\n    main = 2.0 * np.ones(n)\n    off = -1.0 * np.ones(n - 1)\n    A = np.diag(main) + np.diag(off, 1) + np.diag(off, -1)\n    print(n, round(float(np.linalg.cond(A)), 1))\n",
+   "sources": [
+    {
+     "title": "Quantum Algorithms for Computational Fluid Dynamics (arXiv:2609.39962v1)",
+     "url": "https://arxiv.org/abs/2609.39962v1"
+    }
+   ]
+  },
+  {
+   "id": "f-qsvt-block-encoding",
+   "name": "量子奇异值变换：用多项式作用于被块编码的矩阵",
+   "category": "foundation",
+   "glyph": "P",
+   "tags": [
+    "quantum-computing",
+    "qsvt",
+    "block-encoding"
+   ],
+   "latex": "U_{\\phi} = \\sum_{\\ell} \\phi_{\\ell}\\, U^{\\ell}",
+   "html": "<code>U_φ = Σ_ℓ φ_ℓ · U^ℓ</code>",
+   "symbols": [
+    [
+     "U",
+     "块编码算子，其定义子空间上携带待变换矩阵的奇异值"
+    ],
+    [
+     "φ_ℓ",
+     "可调相位序列，决定最终被实现的多项式"
+    ],
+    [
+     "P",
+     "目标多项式，作用于矩阵的奇异值"
+    ],
+    [
+     "σ_i",
+     "被编码矩阵的奇异值"
+    ]
+   ],
+   "derivation": [
+    "若矩阵被块编码进酉算子 U，则 U 在定义子空间上的作用相当于奇异值的旋转。",
+    "交替施加 U 与 U† 并按相位序列加权，得到形式为相位加权幂次和 U_φ。",
+    "U_φ 在定义子空间上的作用正是把每个奇异值映射为同一多项式在该点的取值。",
+    "于是求逆、滤波等操作都等价于挑选合适的多项式，而线路长度由多项式次数决定。"
+   ],
+   "analogy": "像一台可编程滤镜给矩阵的每个奇异值单独调亮度：把旋钮写成一组相位参数，就能指定该压的压、该反的反。",
+   "pitfalls": [
+    "只能实现多项式，非多项式函数必须分段近似，次数随之膨胀。",
+    "相位序列与多项式的奇偶性、实部虚部强耦合，算错会静默得到另一个多项式。",
+    "块编码线路本身常被当作给定，其制备代价可能才是主导开销。",
+    "这里只给出通用形式，本条摘要并未给出该综述所用的具体多项式或复杂度界。"
+   ],
+   "code": "import torch\n\n\ndef qsvt_polynomial(sigma: torch.Tensor, phis: torch.Tensor) -> torch.Tensor:\n    # Chebyshev 递推：T0=1, T1=sigma, T(k+1)=2*sigma*Tk - T(k-1)\n    t_prev, t_cur = torch.ones_like(sigma), sigma.clone()\n    out = phis[0] * t_prev + phis[1] * t_cur\n    for k in range(2, len(phis)):\n        t_prev, t_cur = t_cur, 2 * sigma * t_cur - t_prev\n        out = out + phis[k] * t_cur\n    return out\n\n\nsigma = torch.linspace(-1, 1, 9, dtype=torch.float64)\nphis = torch.zeros(5, dtype=torch.float64)\nphis[0], phis[2] = 1.0, -1.0\napprox = qsvt_polynomial(sigma, phis)\nexact = 1 - (2 * sigma ** 2 - 1)\nprint(torch.allclose(approx, exact))\n",
+   "sources": [
+    {
+     "title": "Quantum Algorithms for Computational Fluid Dynamics (arXiv:2609.39962v1)",
+     "url": "https://arxiv.org/abs/2609.39962v1"
+    }
+   ]
+  },
+  {
+   "id": "f-option-critic-update",
+   "name": "option-critic 的 intra-option 策略梯度",
+   "category": "rl",
+   "glyph": "∇",
+   "tags": [
+    "hierarchical-rl",
+    "option-critic",
+    "policy-gradient"
+   ],
+   "latex": "\\frac{\\partial J}{\\partial\\theta}=\\mathbb{E}_{s,\\omega,a}\\Big[\\frac{\\partial\\log\\pi_{\\theta}(a\\mid s,\\omega)}{\\partial\\theta}\\,Q_{\\Omega}(s,\\omega,a)\\Big]",
+   "html": "<code>grad = log pi_theta(a|s,omega) * Q_Omega(s,omega,a)</code>",
+   "symbols": [
+    [
+     "J",
+     "期望回报目标"
+    ],
+    [
+     "\\theta",
+     "intra-option 策略参数"
+    ],
+    [
+     "\\omega",
+     "当前高层 option（治疗策略）"
+    ],
+    [
+     "a",
+     "低层动作，可因子化为 a_k"
+    ],
+    [
+     "Q_{\\Omega}",
+     "option 价值函数"
+    ],
+    [
+     "\\pi_{\\theta}",
+     "option 内策略"
+    ]
+   ],
+   "derivation": [
+    "把策略梯度定理从「单层动作」推广到「以 option 为条件的动作」，似然项写成 log π_θ(a|s,ω)。",
+    "用 option 价值 Q_Ω(s,ω,a) 取代普通动作价值，评价的是在 option 内部执行该动作的长期收益。",
+    "实际训练时用采样的单步估计替代期望，并对 Q_Ω 使用自举目标以降低方差。",
+    "FAHOC 进一步把 π_θ(a|s,ω) 分解为疾病与干预子策略的乘积，使每个因子只在自己的子动作空间上更新。"
+   ],
+   "analogy": "像球队里主教练定战术（option）、球员执行具体跑位（intra-option 动作）：每个跑位的价值要用它在整套战术里的贡献来衡量，而不是单独看这一次跑位漂不漂亮。",
+   "pitfalls": [
+    "误用普通 Q(s,a) 代替 option 价值，会丢掉跨时间尺度的信用分配。",
+    "把终止函数梯度漏掉，option 会永不切换或频繁抖动。",
+    "对 log 概率与优势项的量纲不做归一，梯度尺度会随分层而爆炸。"
+   ],
+   "code": "import torch\nimport torch.nn as nn\n\n\nclass IntraOptionPolicy(nn.Module):\n    def __init__(self, state_dim, n_options, n_actions):\n        super().__init__()\n        self.n_options = n_options\n        self.head = nn.Linear(state_dim, n_options * n_actions)\n        self.n_actions = n_actions\n\n    def forward(self, state):\n        logits = self.head(state).view(-1, self.n_options, self.n_actions)\n        return torch.distributions.Categorical(logits=logits)\n\n\ndef intra_option_loss(dist, option, action, option_value, mask=None):\n    logits = dist.logits\n    if mask is not None:\n        # mask 为 0 的动作概率置零后重新归一化\n        logits = logits.masked_fill(mask == 0, float('-inf'))\n    dist = torch.distributions.Categorical(logits=logits)\n    logp = dist.log_prob(action)\n    return -(logp * option_value.detach()).mean()",
+   "sources": [
+    {
+     "title": "arXiv:2609.39911v1 Patient-Centered Treatment Planning for Chronic Multimorbidity",
+     "url": "https://arxiv.org/abs/2609.39911v1"
+    }
+   ]
+  },
+  {
+   "id": "f-pref-constrained-return",
+   "name": "偏好约束下的回报与最优性保证",
+   "category": "rl",
+   "glyph": "V",
+   "tags": [
+    "constrained-rl",
+    "preference",
+    "healthcare"
+   ],
+   "latex": "V^{\\ast}_{\\text{coop}}(s)=\\max_{\\pi}\\ \\mathbb{E}_{\\pi}\\Big[\\sum_{t=0}^{\\infty}\\gamma^{t}r_{t}\\Big]\\ \\ \\text{s.t.}\\ \\ a_{t}\\in\\mathcal{A}_{\\text{pref}}(s_{t})",
+   "html": "<code>V_coop*(s) = max_pi E[sum gamma^t r_t] s.t. a_t in A_pref(s_t)</code>",
+   "symbols": [
+    [
+     "V^{\\ast}_{\\text{coop}}",
+     "合作患者可达到的最优期望健康结果"
+    ],
+    [
+     "\\gamma",
+     "折扣因子"
+    ],
+    [
+     "r_t",
+     "当期健康收益"
+    ],
+    [
+     "\\mathcal{A}_{\\text{pref}}(s)",
+     "状态 s 下符合患者偏好的可行动作集"
+    ],
+    [
+     "\\pi",
+     "分层策略（高层 option + 低层因子化策略）"
+    ]
+   ],
+   "derivation": [
+    "把患者偏好表述为状态相关的可行动作集 A_pref(s)，而不是奖励中的惩罚项。",
+    "合作患者的可行集包含非合作患者的可行集，因此其可行策略集合更大。",
+    "在更大的可行集上取最大，目标值不会下降——这给出 V*_coop ≥ V*_non 的单调性保证。",
+    "因子化把联合 Q 近似为各子分量之和，其近似误差由各分量的估计误差共同界定，因此误差有界。"
+   ],
+   "analogy": "像两个求职者投简历：一个人可以投所有岗位，另一个只能投本地岗位；可投范围更大的人，最优 offer 至少不会更差。",
+   "pitfalls": [
+    "若把偏好当软惩罚，策略仍可能选到不可执行动作，保证失效。",
+    "可行集若随时间漂移而估计滞后，约束会不满足。",
+    "因子化 Q 的误差上界只在分解假设成立时有效，跨因子强耦合会破坏它。"
+   ],
+   "code": "import numpy as np\n\n\ndef masked_softmax(logits, mask):\n    logits = np.asarray(logits, dtype=float)\n    mask = np.asarray(mask, dtype=float)\n    z = np.where(mask > 0, logits, -np.inf)\n    z = z - np.max(z)\n    e = np.exp(z) * (mask > 0)\n    total = e.sum()\n    if total <= 0:\n        raise ValueError('可行动作集为空，偏好约束不可满足')\n    return e / total\n\n\ndef preference_feasible(state_pref, need_coop):\n    # state_pref: 每个动作要求的合作度; need_coop: 患者实际合作度\n    return (state_pref <= need_coop).astype(float)\n\n\nif __name__ == '__main__':\n    logits = [1.0, 2.0, 0.5]\n    mask = preference_feasible([0.2, 0.9, 0.4], 0.5)\n    print(mask, masked_softmax(logits, mask))",
+   "sources": [
+    {
+     "title": "arXiv:2609.39911v1 Patient-Centered Treatment Planning for Chronic Multimorbidity",
+     "url": "https://arxiv.org/abs/2609.39911v1"
+    }
+   ]
+  },
+  {
+   "id": "f-case-agentic-rl",
+   "name": "Agentic RL 的组内相对优势裁剪目标",
+   "category": "agent",
+   "glyph": "∇",
+   "tags": [
+    "agent",
+    "rl",
+    "policy-gradient"
+   ],
+   "latex": "\\mathcal{L}_{\\mathrm{RL}}(\\theta)=-\\mathbb{E}_{q\\sim\\mathcal{D}}\\Big[\\frac{1}{G}\\sum_{i=1}^{G}\\frac{1}{|o_i|}\\sum_{t=1}^{|o_i|}\\min\\big(\\rho_{i,t}\\hat{A}_i,\\ \\mathrm{clip}(\\rho_{i,t},1-\\epsilon,1+\\epsilon)\\hat{A}_i\\big)\\Big]+\\beta\\,\\mathrm{KL}(\\pi_\\theta\\,\\|\\,\\pi_{\\mathrm{ref}})",
+   "html": "<code>L_RL(θ) = −E_q[ (1/G) Σ_i (1/|o_i|) Σ_t min(ρ_{i,t}·Â_i, clip(ρ_{i,t}, 1−ε, 1+ε)·Â_i) ] + β·KL(π_θ ‖ π_ref)</code>",
+   "symbols": [
+    [
+     "ρ_{i,t}",
+     "新旧策略在第 i 条轨迹第 t 步的似然比 π_θ/π_old"
+    ],
+    [
+     "Â_i",
+     "第 i 条轨迹的组内相对优势 (R_i − 组均值)/(组标准差 + δ)"
+    ],
+    [
+     "G",
+     "同一问题在环境中采样的轨迹条数"
+    ],
+    [
+     "ε",
+     "似然比的裁剪范围"
+    ],
+    [
+     "β",
+     "KL 惩罚系数"
+    ],
+    [
+     "R_i",
+     "第 i 条轨迹的回报，可含答案正确性与 rubric 反馈分"
+    ]
+   ],
+   "derivation": [
+    "把临床问答写成策略 π_θ 在患者环境里采样工具调用与结论轨迹 o 的过程。",
+    "对同一问题采样 G 条轨迹，按答案正确性与 rubric 分数得到回报 R_i。",
+    "用组内均值与标准差把 R_i 归一化为相对优势 Â_i，省掉额外的价值网络基线。",
+    "用似然比 ρ 构造裁剪代理目标，并加 KL 项把策略约束在参考策略附近。",
+    "最小化 L_RL 即最大化该目标；on-policy 蒸馏项可作为额外加权项并入同一损失。"
+   ],
+   "analogy": "同一个病例让同一位医生独立看 G 次，谁比同伴的平均表现好就奖励谁，而不看绝对分数；这样就不需要另请一位专门打分的老师网络。",
+   "pitfalls": [
+    "整组全对或全错时组内标准差接近 0，优势会被放大，需要加 δ 或丢弃该组",
+    "长度归一化的方式会明显改变长轨迹与短轨迹的相对权重",
+    "KL 约束的参考策略通常是冻结的 SFT 起点，不要与当前策略混淆",
+    "把 rubric 分数与正确性不加权直接相加，可能让模型学会讨好评分器"
+   ],
+   "code": "import torch\n\n\ndef group_relative_advantage(rewards: torch.Tensor, delta: float = 1e-4) -> torch.Tensor:\n    # rewards: [G]，同一问题下 G 条轨迹的回报（正确性 + rubric 分数）\n    return (rewards - rewards.mean()) / (rewards.std() + delta)\n\n\ndef agentic_rl_loss(logp_new, logp_old, rewards, eps=0.2, beta=0.01, logp_ref=None):\n    adv = group_relative_advantage(rewards).unsqueeze(-1)      # [G, 1]\n    ratio = torch.exp(logp_new - logp_old)                     # [G, T]\n    unclipped = ratio * adv\n    clipped = ratio.clamp(1 - eps, 1 + eps) * adv\n    pg = -torch.min(unclipped, clipped).mean()\n    if logp_ref is None:\n        return pg\n    kl = (logp_new - logp_ref).mean()                          # 单样本 KL 估计\n    return pg + beta * kl",
+   "sources": [
+    {
+     "title": "From Given to Gathered Evidence: Agentic Learning for Longitudinal Medical Reasoning",
+     "url": "https://arxiv.org/abs/2609.39566v1"
+    }
+   ]
+  },
+  {
+   "id": "f-case-onpolicy-distill",
+   "name": "特权 on-policy 自蒸馏目标",
+   "category": "posttraining",
+   "glyph": "→",
+   "tags": [
+    "distillation",
+    "on-policy",
+    "post-training"
+   ],
+   "latex": "\\mathcal{L}_{\\mathrm{distill}}(\\theta)=\\mathbb{E}_{q\\sim\\mathcal{D}}\\,\\mathbb{E}_{o\\sim\\pi_\\theta(\\cdot\\mid q)}\\Big[\\frac{1}{|o|}\\sum_{t=1}^{|o|}\\mathrm{KL}\\big(p_{\\mathrm{priv}}(\\cdot\\mid q,o_{<t},c_{\\mathrm{priv}})\\,\\|\\,p_\\theta(\\cdot\\mid q,o_{<t})\\big)\\Big]",
+   "html": "<code>L_distill(θ) = E_q E_{o~π_θ}[ (1/|o|) Σ_t KL( p_priv(·|q, o_&lt;t, c_priv) ‖ p_θ(·|q, o_&lt;t) ) ]</code>",
+   "symbols": [
+    [
+     "o ∼ π_θ",
+     "轨迹由学生策略自己在环境中产生，保证 on-policy"
+    ],
+    [
+     "p_priv",
+     "可见特权信息 c_priv 的教师分布"
+    ],
+    [
+     "c_priv",
+     "特权信息，例如标准答案或前沿模型的额外推理"
+    ],
+    [
+     "p_θ",
+     "学生策略的下一 token 分布"
+    ],
+    [
+     "KL",
+     "前向 KL，让学生覆盖教师的高概率模式"
+    ]
+   ],
+   "derivation": [
+    "学生先在患者环境中自主采样轨迹 o，使训练分布与部署分布一致。",
+    "教师在同一前缀上额外访问特权信息，给出更可靠的下一 token 分布。",
+    "在学生的这些前缀上最小化教师与学生的逐 token 前向 KL。",
+    "把该损失与 RL 目标加权相加，既保留探索到的策略，又吸收教师的证据到结论推理。"
+   ],
+   "analogy": "学生先自己写一遍解题步骤，老师拿着答案只在他写下的每一步上纠正下一步该怎么想，而不是直接给一份标准解答让他背。",
+   "pitfalls": [
+    "轨迹必须来自学生自己的分布，用教师轨迹就退化成普通 SFT",
+    "前向 KL 倾向于覆盖教师的多峰模式，反向 KL 会收敛到单峰，两者行为不同",
+    "特权信息只能在训练期使用，推理时泄漏即为作弊",
+    "与 RL 损失加权时系数需调节，蒸馏权重过大将压制 RL 的探索"
+   ],
+   "code": "import torch\nimport torch.nn.functional as F\n\n\ndef on_policy_distill_loss(logits_student, logits_teacher, mask):\n    # logits_*: [B, T, V]；轨迹 token 由学生策略自身采样得到\n    log_p_s = F.log_softmax(logits_student, dim=-1)\n    p_t = F.softmax(logits_teacher, dim=-1)                    # 教师可见特权信息\n    kl = (p_t * (torch.log(p_t + 1e-9) - log_p_s)).sum(dim=-1)  # [B, T]\n    return (kl * mask).sum() / mask.sum().clamp_min(1.0)",
+   "sources": [
+    {
+     "title": "From Given to Gathered Evidence: Agentic Learning for Longitudinal Medical Reasoning",
+     "url": "https://arxiv.org/abs/2609.39566v1"
+    }
+   ]
+  },
+  {
+   "id": "f-kv-cache-footprint",
+   "name": "KV Cache 显存占用估算",
+   "category": "engineering",
+   "glyph": "M",
+   "tags": [
+    "inference",
+    "kv-cache",
+    "memory",
+    "serving"
+   ],
+   "latex": "M_{kv} = 2 \\cdot L \\cdot n_{kv} \\cdot d_{h} \\cdot s \\cdot b \\cdot p",
+   "html": "<code>M_kv = 2 · L · n_kv · d_h · s · b · p</code>",
+   "symbols": [
+    [
+     "M_{kv}",
+     "KV Cache 显存总量（字节）"
+    ],
+    [
+     "2",
+     "K 与 V 两份张量"
+    ],
+    [
+     "L",
+     "Transformer 层数"
+    ],
+    [
+     "n_{kv}",
+     "键值注意力头数（GQA/MQA 下小于查询头数）"
+    ],
+    [
+     "d_{h}",
+     "每个注意力头的维度"
+    ],
+    [
+     "s",
+     "序列长度（含提示与已生成部分）"
+    ],
+    [
+     "b",
+     "并发序列数（批量大小）"
+    ],
+    [
+     "p",
+     "每个元素的字节数（FP16 为 2，FP8 为 1）"
+    ]
+   ],
+   "derivation": [
+    "单层单个 Token 的键与值各是一个 n_{kv} × d_h 的向量，故元素数为 2 · n_{kv} · d_h。",
+    "序列长度为 s 时，单层单条序列的元素数放大为 2 · n_{kv} · d_h · s。",
+    "叠加 L 层得到单条序列全部缓存元素数 2 · L · n_{kv} · d_h · s。",
+    "并发 b 条序列同时驻留时再乘 b，最后乘每元素字节数 p 得到显存总量。"
+   ],
+   "analogy": "像给每位同时办公的同事配一个文件柜：柜子层数相当于层数，每层抽屉数相当于头数，抽屉里放的历史页数相当于序列长度，同事人数相当于并发批量，纸张厚度相当于精度。任意一项变大，需要的柜子空间都线性变大。",
+   "pitfalls": [
+    "GQA/MQA 下键值头数小于查询头数，误用查询头数会把显存估算放大若干倍",
+    "忘记乘 2，只算了 K 或只算了 V",
+    "漏掉并发批量 b，把单序列占用当成整机占用",
+    "忽略精度 p：FP16 与 FP8 相差一倍，直接影响可并发序列数",
+    "把该式当精确值：分页分配的块内碎片、未用满的块会让实际占用高于估算"
+   ],
+   "code": "def kv_cache_bytes(num_layers, num_kv_heads, head_dim, seq_len, batch, bytes_per_elem=2):\n    # 单条序列单层：K 和 V 各 num_kv_heads * head_dim 个元素\n    per_token_per_layer = 2 * num_kv_heads * head_dim\n    total_elems = per_token_per_layer * num_layers * seq_len * batch\n    return total_elems * bytes_per_elem\n\n# 例：32 层、8 个键值头、头维度 128、4096 上下文、并发 16、FP16\nmb = kv_cache_bytes(32, 8, 128, 4096, 16) / 1024 ** 2\nprint(f'{mb:.1f} MiB')  # 约 8192.0 MiB\n\n# 换成 FP8 缓存，占用减半，可支撑的并发批量翻倍\nmb_fp8 = kv_cache_bytes(32, 8, 128, 4096, 16, bytes_per_elem=1) / 1024 ** 2\nprint(f'{mb_fp8:.1f} MiB')  # 约 4096.0 MiB",
+   "sources": [
+    {
+     "title": "vllm-project/vllm - A high-throughput and memory-efficient inference and serving engine for LLMs",
+     "url": "https://github.com/vllm-project/vllm"
+    }
+   ]
+  },
+  {
+   "id": "f-roofline-kernel-utilization",
+   "name": "Roofline 耗时下界与硬件利用率",
+   "category": "engineering",
+   "glyph": "U",
+   "tags": [
+    "roofline",
+    "kernel",
+    "utilization",
+    "gemm",
+    "performance"
+   ],
+   "latex": "T=\\max\\!\\left(\\frac{\\mathrm{FLOPs}}{\\pi},\\ \\frac{\\mathrm{Bytes}}{\\beta}\\right),\\qquad U=\\frac{\\mathrm{FLOPS}_{\\text{实测}}}{\\pi}",
+   "html": "<code>T = max(FLOPs/π, Bytes/β) ; U = 实测 FLOPS / π</code>",
+   "symbols": [
+    [
+     "\\pi",
+     "芯片峰值算力（FLOPS/s）"
+    ],
+    [
+     "\\beta",
+     "显存带宽（Bytes/s）"
+    ],
+    [
+     "\\mathrm{FLOPs}",
+     "该算子需要的浮点运算次数"
+    ],
+    [
+     "\\mathrm{Bytes}",
+     "该算子需要搬运的字节数"
+    ],
+    [
+     "T",
+     "理论最短耗时，取计算与访存两个下界中的较大者"
+    ],
+    [
+     "U",
+     "硬件利用率，摘要称写算子的目标是把约 20% 提到 95% 以上"
+    ]
+   ],
+   "derivation": [
+    "算子要么受算力限制，要么受带宽限制，分别给出两个耗时下界 FLOPs/π 与 Bytes/β。",
+    "真实耗时不可能低于两者中较大的那个，于是有 T = max(FLOPs/π, Bytes/β)。",
+    "两者的比值 FLOPs/Bytes 称为算术强度；强度高于拐点时受算力限制，低于拐点时受带宽限制。",
+    "硬件利用率定义为实测每秒浮点运算数除以峰值算力，摘要用它刻画算子优化空间（约 20% → 95%+）。"
+   ],
+   "analogy": "像工厂出货由最慢的工序决定：算力是机床加工速度，带宽是传送带送料速度，哪一步先卡住，整条线就按那一步的节拍走。",
+   "pitfalls": [
+    "只看峰值算力而不看算术强度，会误判瓶颈在计算还是访存。",
+    "理论 FLOPS 是理想峰值，实际受频率、占用率影响，利用率分母口径必须一致。",
+    "摘要中的 20% 与 95% 是报道性的整体说法，未给出具体算子、输入规模与测试环境。",
+    "Roofline 给出的是下界，缓存命中、数据复用与指令调度会让真实耗时高于该下界。"
+   ],
+   "code": "def roofline(flops, nbytes, peak_flops, bandwidth):\n    \"\"\"返回计算下界、访存下界、理论最短耗时与瓶颈类型。\"\"\"\n    t_compute = flops / peak_flops\n    t_memory = nbytes / bandwidth\n    bottleneck = 'compute' if t_compute >= t_memory else 'memory'\n    return t_compute, t_memory, max(t_compute, t_memory), bottleneck\n\n\ndef utilization(measured_flops_per_s, peak_flops):\n    return measured_flops_per_s / peak_flops\n\n\n# 例：GEMM 2*M*N*K 次浮点运算，读写 (M*K + K*N + M*N) 个 FP16 元素\nM = N = K = 4096\nt_c, t_m, t_bound, why = roofline(2 * M * N * K, 2 * (M * K + K * N + M * N) * 2,\n                                  peak_flops=1.0e15, bandwidth=3.0e12)\nprint(round(t_c, 6), round(t_m, 6), why)       # 访存受限时 why == 'memory'\nprint('利用率示例:', round(utilization(2.0e14, 1.0e15), 2))  # 0.2 -> 20%",
+   "sources": [
+    {
+     "title": "DeepSeek 开源算子工具大礼包，联手华为昇腾，手撕 CUDA 绑定！",
+     "url": "https://leiphone.com/category/yanxishe/UUIfK7eeFE9Ws1JI.html"
+    }
+   ]
+  },
+  {
+   "id": "f-qspr-inverse-design",
+   "name": "结构-性质预测与逆向设计目标",
+   "category": "generative",
+   "glyph": "x*",
+   "tags": [
+    "inverse-design",
+    "structure-property",
+    "materials",
+    "optimization"
+   ],
+   "latex": "\\hat{p}=f_{\\theta}\\!\\left(D(x)\\right),\\qquad x^{\\star}=\\arg\\max_{x\\in\\mathcal{X}}\\; U\\!\\left(f_{\\theta}(D(x))\\right)\\ \\ \\text{s.t.}\\ \\ g_{j}(x)\\le 0",
+   "html": "<code>p_hat = f_theta(D(x)) ; x* = argmax_x U(f_theta(D(x))) s.t. g_j(x) &lt;= 0</code>",
+   "symbols": [
+    [
+     "x",
+     "候选化学结构或聚合物表示"
+    ],
+    [
+     "D(x)",
+     "结构描述符/表示，综述按「数据基础与表示策略」讨论"
+    ],
+    [
+     "f_{\\theta}",
+     "性质预测模型，学习结构-性质-加工关系"
+    ],
+    [
+     "\\hat{p}",
+     "预测的材料性质"
+    ],
+    [
+     "U(\\cdot)",
+     "设计目标效用，通常是多个目标性质的加权或打分"
+    ],
+    [
+     "g_{j}(x)\\le 0",
+     "物理约束与可制造性约束，综述强调物理约束与可解释性"
+    ],
+    [
+     "x^{\\star}",
+     "逆向设计给出的候选结构"
+    ]
+   ],
+   "derivation": [
+    "先用实验、模拟与文献数据训练结构到性质的映射 f_θ，输入是描述符 D(x)。",
+    "正向使用：给定结构 x，预测性质 p̂，用于大规模虚拟筛选替代昂贵的量子化学计算。",
+    "逆向使用：把预测模型当成可微或可搜索的目标函数，在结构空间里最大化效用 U。",
+    "加入物理与可制造性约束 g_j(x) ≤ 0，避免搜到化学上不合理或无法合成的结构。",
+    "候选结构再回到实验或高精度模拟验证，形成「预测—设计—验证」闭环。"
+   ],
+   "analogy": "像配一副合脚的鞋：先学会脚型到尺码的对应关系（正向预测），再反过来给定想要的舒适度去挑鞋型（逆向设计），最后还得受限于材料与工艺能不能做出来（约束）。",
+   "pitfalls": [
+    "正向预测精度高不代表逆向设计可用：优化器会主动钻到模型误差最大的区域。",
+    "摘要被截断，综述对表示方法差异与适用边界的结论未能读到，U 与 g_j 的具体形式属通用写法。",
+    "多目标性质之间常相互冲突，需要显式权衡而不是单一加权和。",
+    "缺少物理约束时容易生成无法合成或违反热力学规律的结构。"
+   ],
+   "code": "import torch\n\ndef inverse_design(f_theta, encode, x0, steps=200, lr=0.05):\n    \"\"\"对连续松弛的结构表示做梯度上升, 最大化预测效用 U(f_theta(D(x))).\"\"\"\n    x = x0.clone().requires_grad_(True)\n    opt = torch.optim.Adam([x], lr=lr)\n    for _ in range(steps):\n        opt.zero_grad()\n        p_hat = f_theta(encode(x))     # 正向: 结构 -> 性质\n        loss = -p_hat.mean()           # 逆向: 最大化目标性质\n        loss.backward()\n        opt.step()\n    return x.detach()\n\n# 约束 g_j(x) <= 0 通常以惩罚项或投影的方式加进 loss/更新步骤",
+   "sources": [
+    {
+     "title": "Polymer informatics: A review of ai-driven structure-property modeling and material design",
+     "url": "https://doi.org/10.13374/j.issn2095-9389.2026.01.24.001"
+    }
+   ]
+  },
+  {
+   "id": "f-activation-probe-score",
+   "name": "激活探针的线性打分",
+   "category": "foundation",
+   "glyph": "σ",
+   "tags": [
+    "probing",
+    "linear-classifier",
+    "ranking"
+   ],
+   "latex": "s(x)=\\sigma\\!\\left(w^{\\top}\\,\\mathrm{pool}\\!\\left(h_{\\theta}(x)\\right)+b\\right)",
+   "html": "<code>s(x) = sigmoid( w · pool( h_θ(x) ) + b )</code>",
+   "symbols": [
+    [
+     "x",
+     "一个候选关系（一对序列或一条待检验的数学陈述）"
+    ],
+    [
+     "h_θ(x)",
+     "冻结的预训练模型给出的激活或表示，θ 不参与训练"
+    ],
+    [
+     "pool(·)",
+     "把序列位置的表示聚合成一个定长向量的池化操作"
+    ],
+    [
+     "w, b",
+     "在激活上训练的线性分类器权重与偏置，只有它们是可学参数"
+    ],
+    [
+     "σ",
+     "sigmoid，把分数压到 0 到 1，用于排序候选关系"
+    ],
+    [
+     "s(x)",
+     "探针分数，越高越可能是有价值的关系"
+    ]
+   ],
+   "derivation": [
+    "把预训练模型的参数 θ 冻住，对候选关系 x 做一次前向，取出内部表示 h_θ(x)。",
+    "用池化把变长表示压成一个定长向量 z = pool(h_θ(x))，作为候选的特征。",
+    "用已知成立（或已知有价值）的关系对当正例训练线性分类器，得到 w、b。",
+    "对全部候选对计算 s(x)，按分数从高到低排序，取头部交给后续过滤与验证。"
+   ],
+   "analogy": "像不改变水温，只在水里插一支温度计：探针不改变模型里已有的知识，只是把已经存在的信号读成一个可比较的分数。",
+   "pitfalls": [
+    "把探针分数当成关系成立的证据：它只反映与训练标签的相关性。",
+    "正例太少或类别极不平衡时，排序头部会被多数类或噪声主导。",
+    "池化方式、层位选择不同，分数几乎不可比，换层必须重训探针。",
+    "训练标签如果来自同一批数据筛选，容易把数据集偏置当成模型知识。"
+   ],
+   "code": "import numpy as np\nfrom sklearn.linear_model import LogisticRegression\n\nrng = np.random.default_rng(0)\nd = 64  # 表示维度\n\ndef make_data(n, w_star, noise=0.9):\n    z = rng.standard_normal((n, d))\n    logits = z @ w_star + noise * rng.standard_normal(n)\n    y = (logits > 0).astype(int)\n    return z, y\n\n# 用少量已知关系训练探针，w_true 代表表示中真实存在的结构方向\nw_true = rng.standard_normal(d)\nw_true /= np.linalg.norm(w_true)\nZ_tr, y_tr = make_data(600, w_true, noise=1.4)\nprobe = LogisticRegression(max_iter=1000).fit(Z_tr, y_tr)\n\ndef score_pairs(probe, Za, Zb):\n    # 候选关系的特征 = 两个对象的表示之差\n    return probe.predict_proba(Za - Zb)[:, 1]\n\nZ_va, y_va = make_data(400, w_true, noise=0.8)\nscores = score_pairs(probe, Z_va, rng.standard_normal((len(Z_va), d)))\norder = np.argsort(-scores)\n\n# 排序价值：只要头部命中率明显高于总体基率，探针就有筛选价值\nfor k in (50, 100, 200):\n    print(k, y_va[order[:k]].mean().round(3), 'base', y_va.mean().round(3))",
+   "sources": [
+    {
+     "title": "LANTERN (hf_papers)",
+     "url": "https://huggingface.co/papers/2609.32264"
+    },
+    {
+     "title": "LANTERN (arXiv)",
+     "url": "https://arxiv.org/abs/2609.32264"
+    }
+   ]
+  },
+  {
+   "id": "f-sft-crossentropy",
+   "name": "监督微调（SFT）的交叉熵目标",
+   "category": "posttraining",
+   "glyph": "L",
+   "tags": [
+    "sft",
+    "cross-entropy",
+    "fine-tuning",
+    "post-training"
+   ],
+   "latex": "\\mathcal{L}_{\\mathrm{SFT}}(\\theta)=-\\sum_{t=1}^{T}\\log \\pi_{\\theta}\\!\\left(y_{t}\\mid x,\\,y_{<t}\\right)",
+   "html": "<code>L_SFT = -Σ_t log π_θ(y_t | x, y_&lt;t)</code>",
+   "symbols": [
+    [
+     "x",
+     "提示或指令（示范数据的输入部分）"
+    ],
+    [
+     "y_{<t}",
+     "目标回答里第 t 步之前的 token"
+    ],
+    [
+     "y_{t}",
+     "第 t 步的目标 token（来自示范数据）"
+    ],
+    [
+     "T",
+     "目标回答的长度"
+    ],
+    [
+     "\\pi_{\\theta}",
+     "待微调的语言模型；只对回答部分计算损失"
+    ]
+   ],
+   "derivation": [
+    "把示范数据写成 (x, y) 对，模型按自回归方式预测回答的每个 token。",
+    "对第 t 步取模型给出的条件概率 π_θ(y_t | x, y_<t)，越接近 1 越好。",
+    "取负对数把最大化概率转成最小化损失，并对全部 T 步求和。",
+    "对参数求梯度即可把模型输出分布推向示范答案；通常只在回答 token 上计算，不计算提示部分。"
+   ],
+   "analogy": "像照着字帖临摹：每一步都告诉你下一个字应该写什么，写错就扣分，练到能自己接着写下去。",
+   "pitfalls": [
+    "把提示 token 也算进损失会稀释监督信号，是常见实现错误。",
+    "只做 SFT 容易学到示范数据的表面格式，不一定提升推理正确率，后续常需偏好优化或可验证奖励。",
+    "在紧接 SFT 的强化学习里，过拟合 SFT 会压缩策略探索空间。",
+    "该公式是通用后训练基础式，不是本条仓库简介的内容，列入 selfCheck.uncertain。"
+   ],
+   "code": "import torch\nimport torch.nn.functional as F\n\ndef sft_loss(logits, labels, ignore_index=-100):\n    \"\"\"logits: [B, T, V]; labels: [B, T]，提示部分置为 ignore_index。\"\"\"\n    return F.cross_entropy(\n        logits[:, :-1, :].reshape(-1, logits.size(-1)),\n        labels[:, 1:].reshape(-1),\n        ignore_index=ignore_index,\n    )\n\nB, T, V = 2, 8, 100\nlogits = torch.randn(B, T, V, requires_grad=True)\nlabels = torch.randint(0, V, (B, T))\nlabels[:, :3] = -100          # 前 3 个位置是提示, 不计算损失\nprint(float(sft_loss(logits, labels)))",
+   "sources": [
+    {
+     "title": "mbzuai-oryx/Awesome-LLM-Post-training - Awesome Reasoning LLM Tutorial/Survey/Guide",
+     "url": "https://github.com/mbzuai-oryx/Awesome-LLM-Post-training"
     }
    ]
   }

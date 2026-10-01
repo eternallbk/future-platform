@@ -233,6 +233,12 @@ python scripts\merge_registry.py
 node scripts\verify-web.mjs
 $env:WEB_ROOT="$PWD\dist"; node scripts\verify-web.mjs --port 8792   # 验证发布产物
 
+# 布局溢出审计：用无头浏览器测量 scrollWidth > clientWidth，找出被 overflow 隐藏的错位
+# （岗位面板那次「缩窄 + 错位」就是这类问题：内容比容器宽，又被 overflow-x:hidden 裁剪，
+#   肉眼看截图不一定能发现）
+node scripts\audit-layout.mjs
+node scripts\audit-layout.mjs --width 1100,1440,1680 --routes dashboard,jobs,knowledge
+
 # 重建学习路线 / 公式库（内容在脚本里，改完重新生成即可）
 python scripts\build_learning_kb.py
 python scripts\seed_formulas.py
@@ -275,6 +281,15 @@ powershell -ExecutionPolicy Bypass -File scripts\publish-github-pages.ps1
 > 会记入 `state/collector-state.json` 的 `blockedIds` / `blockedTitleKeys`，
 > 采集器在**导入阶段**和**重建索引阶段**各查一次。少了任何一道，下架的条目
 > 都会在下一轮 20:00 自动复活（这个坑真实发生过：库从 554 反弹回 763）。
+
+> **布局类 bug 用 `audit-layout.mjs` 量，不要靠看截图。** 这个仓库里已经出现过
+> 三次同类问题，全都被 `overflow-x: hidden` 悄悄裁掉、肉眼很难确认：
+> 1. 岗位面板 `.mini-item`：`pay` 字段最长 200+ 字符，在无宽度约束的 flex 行里
+>    把整列撑爆 → 改为 `grid` + `minmax(0,1fr)` + 两行截断 + tooltip 全文。
+> 2. 左栏状态条溢出 40px、顶栏按钮溢出 24px：根因都是 **flex 子项默认
+>    `min-width: auto`（等于内容宽度）导致无法收缩**。只加 `overflow: hidden`
+>    只会裁剪，必须同时给子项 `min-width: 0`。
+> 3. `#app` 溢出 4px：容器没有显式宽度，被内容撑大。
 
 **可选一：让 GitHub 渠道更快**。设置 `GITHUB_TOKEN` 可把搜索配额从 10 次/分钟提到 30 次/分钟：
 
