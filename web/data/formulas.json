@@ -1,0 +1,1147 @@
+{
+ "generatedAt": "2026-10-01T21:07:43+08:00",
+ "source": "seed+daily",
+ "count": 20,
+ "formulas": [
+  {
+   "id": "f-attention",
+   "name": "缩放点积注意力 (Scaled Dot-Product Attention)",
+   "category": "foundation",
+   "glyph": "A",
+   "tags": [
+    "transformer",
+    "attention",
+    "mha"
+   ],
+   "latex": "\\mathrm{Attention}(Q,K,V) = \\mathrm{softmax}\\left(\\frac{QK^\\top}{\\sqrt{d_k}}\\right)V",
+   "symbols": [
+    [
+     "Q ∈ ℝ^{n×d_k}",
+     "查询矩阵：n 个 token 各自「想找什么」"
+    ],
+    [
+     "K ∈ ℝ^{m×d_k}",
+     "键矩阵：m 个位置「能提供什么」"
+    ],
+    [
+     "V ∈ ℝ^{m×d_v}",
+     "值矩阵：真正被加权求和的内容"
+    ],
+    [
+     "√d_k",
+     "缩放因子，防止点积随维度增大而方差爆炸、softmax 进入饱和区"
+    ]
+   ],
+   "derivation": [
+    "假设 Q、K 各维独立、均值 0、方差 1，则点积 q·k 的方差为 d_k，量级随维度线性增长。",
+    "把 logits 除以 √d_k，方差回到 1 量级，softmax 的梯度不会因饱和而消失。",
+    "对每一行做 softmax 得到行随机矩阵，再右乘 V 得到上下文向量。",
+    "多头：把 d_model 拆成 h 份并行做上式，再拼接并过 W^O —— 让不同子空间学不同的对齐关系。"
+   ],
+   "analogy": "像查字典：Q 是你要查的词，K 是每个词条的索引，点积衡量「匹配度」，softmax 把匹配度变成抽取比例，V 是你真正抄下来的释义。除以 √d_k 相当于把音量调到合适档位——太大会削波（饱和），太小听不见（梯度平坦）。",
+   "code": "import math, torch, torch.nn as nn\n\nclass MHA(nn.Module):\n    def __init__(self, d_model=512, n_head=8):\n        super().__init__()\n        assert d_model % n_head == 0\n        self.h, self.dk = n_head, d_model // n_head\n        self.qkv = nn.Linear(d_model, 3 * d_model)\n        self.proj = nn.Linear(d_model, d_model)\n\n    def forward(self, x, causal=True):\n        B, T, C = x.shape\n        q, k, v = self.qkv(x).chunk(3, dim=-1)\n        # (B, h, T, dk)\n        q, k, v = (t.view(B, T, self.h, self.dk).transpose(1, 2) for t in (q, k, v))\n        att = q @ k.transpose(-2, -1) / math.sqrt(self.dk)\n        if causal:\n            mask = torch.triu(torch.ones(T, T, dtype=torch.bool, device=x.device), 1)\n            att = att.masked_fill(mask, float(\"-inf\"))\n        att = att.softmax(-1)\n        out = (att @ v).transpose(1, 2).reshape(B, T, C)\n        return self.proj(out)",
+   "pitfalls": [
+    "忘了 mask 要在 softmax 之前使用 -inf，而不是置 0。",
+    "缩放用 √d_k 而不是 √d_model；d_k = d_model / h。",
+    "softmax 前若不减最大值，fp16 下容易溢出（面试常问「数值稳定」）。"
+   ],
+   "sources": [
+    {
+     "title": "Attention Is All You Need",
+     "url": "https://arxiv.org/abs/1706.03762"
+    }
+   ]
+  },
+  {
+   "id": "f-dpo",
+   "name": "DPO 直接偏好优化损失",
+   "category": "posttraining",
+   "glyph": "D",
+   "tags": [
+    "dpo",
+    "alignment",
+    "rlhf"
+   ],
+   "symbols": [
+    [
+     "π_θ",
+     "当前策略（正在训练的语言模型）"
+    ],
+    [
+     "π_ref",
+     "参考策略（SFT 模型，冻结）"
+    ],
+    [
+     "y_w / y_l",
+     "偏好数据中的 chosen / rejected 回答"
+    ],
+    [
+     "β",
+     "KL 约束强度：越大越贴合参考模型，越小越敢优化"
+    ]
+   ],
+   "derivation": [
+    "从带 KL 约束的 RLHF 目标出发：max_π E[r(x,y)] − β·KL(π ‖ π_ref)。",
+    "该目标的最优解有闭式形式：π*(y|x) ∝ π_ref(y|x)·exp(r(x,y)/β)。",
+    "反解得 r(x,y) = β·log(π*(y|x)/π_ref(y|x)) + β·log Z(x)，而配分项 Z(x) 与 y 无关，在 Bradley-Terry 成对比较中会抵消。",
+    "把隐式奖励代回偏好似然，即得上式——不再需要单独训练奖励模型，也不需要在线采样。"
+   ],
+   "analogy": "像老师批改作文：参考模型（π_ref）是学生的原有水平，DPO 不直接给分数，而是\"相较原来的你，这篇进步了多少\"——chosen 进步幅度大于 rejected 就增大它的概率。β 决定你多信任老师的评分标准：β 大则保守，只敢小幅调整。",
+   "code": "import torch.nn.functional as F\n\ndef dpo_loss(policy_chosen_logp, policy_rejected_logp,\n             ref_chosen_logp, ref_rejected_logp, beta=0.1):\n    \"\"\"所有 logp 都是「整段回答的对数概率之和」。\"\"\"\n    pi_logratios  = policy_chosen_logp - policy_rejected_logp\n    ref_logratios = ref_chosen_logp  - ref_rejected_logp\n    logits = beta * (pi_logratios - ref_logratios)\n    losses = -F.logsigmoid(logits)\n    # 隐式奖励，便于监控：β·(log π_θ − log π_ref)\n    chosen_reward   = beta * (policy_chosen_logp   - ref_chosen_logp).detach()\n    rejected_reward = beta * (policy_rejected_logp - ref_rejected_logp).detach()\n    return losses.mean(), chosen_reward.mean(), rejected_reward.mean()",
+   "pitfalls": [
+    "logp 必须在 completion 的 token 上求平均或求和，且要屏蔽 prompt 部分。",
+    "π_ref 必须真正冻结；忘记 eval() / no_grad 会导致参考模型漂移。",
+    "β 与学习率耦合：β 很小的时候学习率要相应调低，否则训练不稳。"
+   ],
+   "sources": [
+    {
+     "title": "Direct Preference Optimization",
+     "url": "https://arxiv.org/abs/2305.18290"
+    }
+   ],
+   "latex": "\\mathcal{L}_{\\mathrm{DPO}} = -\\mathbb{E}_{(x, y_w, y_l)}\\left[\\log \\sigma\\left(\\beta \\log \\frac{\\pi_\\theta(y_w \\mid x)}{\\pi_{\\mathrm{ref}}(y_w \\mid x)} - \\beta \\log \\frac{\\pi_\\theta(y_l \\mid x)}{\\pi_{\\mathrm{ref}}(y_l \\mid x)}\\right)\\right]"
+  },
+  {
+   "id": "f-grpo",
+   "name": "GRPO 组相对优势",
+   "category": "rl",
+   "glyph": "G",
+   "tags": [
+    "grpo",
+    "rlhf",
+    "advantage"
+   ],
+   "symbols": [
+    [
+     "G",
+     "同一 prompt 采样出的回答条数（组大小）"
+    ],
+    [
+     "r_i",
+     "第 i 条回答的奖励（规则校验或奖励模型）"
+    ],
+    [
+     "A_i",
+     "组内归一化优势，替代 PPO 的 critic"
+    ],
+    [
+     "ρ_i",
+     "重要性比 π_θ/π_old，用于离线多次更新"
+    ],
+    [
+     "ε",
+     "clip 范围，限制单步策略偏移"
+    ]
+   ],
+   "derivation": [
+    "PPO 需要 value network 估计 baseline，显存与训练成本翻倍。",
+    "GRPO 改用「同一问题采样一组回答」的组内均值作为 baseline：A_i = (r_i − mean)/std。",
+    "baseline 与 r_i 相关，因此方差不增；同时完全省掉 critic 网络。",
+    "配合 clip 的重要性采样目标，可对同一批数据做多轮更新，提升样本效率。"
+   ],
+   "analogy": "同一道题让 G 个同学各写一份，不给绝对分，只看\"你比这组的平均水平高多少\"。这样不需要一个单独的老师（critic）来预估绝对分数线，成本更低，也天然抑制了奖励量纲带来的抖动。std 归一化相当于把不同题目的难度差异抹平。",
+   "code": "import torch\n\ndef grpo_advantage(rewards: torch.Tensor) -> torch.Tensor:\n    \"\"\"rewards: (G,) 同一 prompt 下 G 条回答的奖励。\n    返回组内标准化优势。G=1 时退化为 0，需在采样端保证 G>=4。\"\"\"\n    mean = rewards.mean()\n    std = rewards.std(unbiased=False) + 1e-4   # 防止除零\n    return (rewards - mean) / std\n\ndef grpo_loss(logp, logp_old, advantages, clip_eps=0.2):\n    ratio = torch.exp(logp - logp_old)          # ρ_i\n    unclipped = ratio * advantages\n    clipped = torch.clamp(ratio, 1 - clip_eps, 1 + clip_eps) * advantages\n    return -torch.min(unclipped, clipped).mean()",
+   "pitfalls": [
+    "组内 std 为 0（所有回答奖励相同）时优势全为 0，该样本对梯度无贡献，需要过滤。",
+    "重要性比要用 token 级 logp 之和，注意与 KL 惩罚项的配合。",
+    "G 太小时 baseline 噪声大；工程上常见 G = 4~16。"
+   ],
+   "sources": [
+    {
+     "title": "DeepSeekMath (GRPO)",
+     "url": "https://arxiv.org/abs/2402.03300"
+    }
+   ],
+   "latex": "A_i = \\frac{r_i - \\mathrm{mean}(r_1, \\ldots, r_G)}{\\mathrm{std}(r_1, \\ldots, r_G)}\\qquad \\mathcal{J} = \\mathbb{E}\\left[\\frac{1}{G}\\sum_{i=1}^{G}\\min\\left(\\rho_i A_i,\\ \\mathrm{clip}(\\rho_i, 1-\\epsilon, 1+\\epsilon) A_i\\right)\\right]"
+  },
+  {
+   "id": "f-ddpm",
+   "name": "DDPM 简化训练目标",
+   "category": "generative",
+   "glyph": "ε",
+   "tags": [
+    "diffusion",
+    "ddpm",
+    "generative"
+   ],
+   "symbols": [
+    [
+     "x_0",
+     "干净样本（图像 / 潜变量 / 视频帧）"
+    ],
+    [
+     "ε ~ N(0, I)",
+     "当步注入的高斯噪声"
+    ],
+    [
+     "ᾱ_t = Π α_s",
+     "累积保留系数，决定第 t 步保留多少信号"
+    ],
+    [
+     "ε_θ",
+     "噪声预测网络（通常为 U-Net 或 DiT）"
+    ]
+   ],
+   "derivation": [
+    "前向过程 q(x_t|x_0) 可重参数化为一步采样：x_t = √ᾱ_t·x_0 + √(1−ᾱ_t)·ε。",
+    "对变分下界逐项化简，去掉与 θ 无关的项，剩下的 KL 项在高斯假设下等价于预测噪声的 MSE。",
+    "再丢掉随时间变化的时间权重，得到更简单、实际效果更好的 L_simple。",
+    "采样时迭代 x_{t−1} = 1/√α_t (x_t − (1−α_t)/√(1−ᾱ_t)·ε_θ(x_t,t)) + σ_t z，即逐步去噪。"
+   ],
+   "analogy": "像把一张照片反复复印到只剩噪点（前向），再训练一个\"去噪师傅\"看着模糊程度（时间步 t）把噪点擦掉（反向）。训练时不需要真的走完全部 1000 步——用闭式公式直接跳到任意模糊程度，让师傅每次只负责一步，任务简单且可并行。",
+   "code": "import torch\n\ndef q_sample(x0, t, alphas_bar):\n    \"\"\"闭式加噪：一步得到任意时刻的 x_t\"\"\"\n    a = alphas_bar[t].view(-1, 1, 1, 1)\n    eps = torch.randn_like(x0)\n    return a.sqrt() * x0 + (1 - a).sqrt() * eps, eps\n\ndef train_step(model, x0, alphas_bar):\n    t = torch.randint(0, len(alphas_bar), (x0.shape[0],), device=x0.device)\n    x_t, eps = q_sample(x0, t, alphas_bar)\n    eps_pred = model(x_t, t)                    # 预测注入的噪声\n    return torch.nn.functional.mse_loss(eps_pred, eps)",
+   "pitfalls": [
+    "ᾱ_t 的数值要预先算好并放到正确 device/dtype，fp16 下容易精度不足。",
+    "采样步数与训练步数可以不一致（DDIM / 蒸馏加速就是利用这点）。",
+    "和 score matching 的联系常被追问：ε_θ ≈ −√(1−ᾱ_t)·∇log p(x_t)。"
+   ],
+   "sources": [
+    {
+     "title": "Denoising Diffusion Probabilistic Models",
+     "url": "https://arxiv.org/abs/2006.11239"
+    }
+   ],
+   "latex": "\\mathcal{L}_{\\mathrm{simple}} = \\mathbb{E}_{t, x_0, \\epsilon}\\left[\\left\\| \\epsilon - \\epsilon_\\theta\\left(\\sqrt{\\bar{\\alpha}_t}\\, x_0 + \\sqrt{1-\\bar{\\alpha}_t}\\, \\epsilon,\\ t\\right) \\right\\|^2\\right]"
+  },
+  {
+   "id": "f-rope",
+   "name": "RoPE 旋转位置编码",
+   "category": "foundation",
+   "glyph": "R",
+   "tags": [
+    "rope",
+    "position",
+    "llm"
+   ],
+   "symbols": [
+    [
+     "R_{Θ,m}",
+     "按位置 m 构造的分块旋转矩阵"
+    ],
+    [
+     "Θ = {θ_i = 10000^{-2i/d}}",
+     "每个维度对的旋转基频"
+    ],
+    [
+     "m − n",
+     "注意力只依赖相对距离，内积形式保持不变"
+    ]
+   ],
+   "derivation": [
+    "把 d 维向量两两分组，每组视为复平面上的一个数。",
+    "位置 m 的编码就是把每个复数乘以 e^{i·m·θ_i}，即按不同频率旋转。",
+    "两个向量分别旋转后做内积，旋转角相减，结果只依赖 m−n —— 天然编码相对位置。",
+    "外推：NTK-aware / YaRN 通过缩放基频 θ 让模型在训练长度之外依然可用。"
+   ],
+   "analogy": "像钟表：每个维度对是一只走速不同的指针，位置就是各指针的角度组合。比较两个位置时，只有\"角度差\"有意义，因此绝对位置被自动转成相对距离。调整基频相当于换一套齿轮比，让同一只表还能读出更长的时段（长度外推）。",
+   "code": "import torch\n\ndef rope(x, position, base=10000.0):\n    \"\"\"x: (B, T, H, D)，D 为偶数。原地实现省略，便于阅读。\"\"\"\n    D = x.shape[-1]\n    i = torch.arange(0, D, 2, device=x.device, dtype=torch.float32)\n    theta = base ** (-i / D)                      # (D/2,)\n    ang = position.float().unsqueeze(-1) * theta  # (T, D/2)\n    cos, sin = ang.cos(), ang.sin()\n    x1, x2 = x[..., 0::2], x[..., 1::2]           # 复数实部/虚部\n    return torch.stack([x1 * cos - x2 * sin,\n                        x1 * sin + x2 * cos], dim=-1).flatten(-2)",
+   "pitfalls": [
+    "缓存 KV 时 RoPE 必须按绝对位置施加，不能用相对偏移直接套。",
+    "d 必须为偶数；奇数维要补齐或换用 ALiBi。",
+    "sin/cos 缓存的 dtype 与精度会影响长上下文表现。"
+   ],
+   "sources": [
+    {
+     "title": "RoFormer: Enhanced Transformer with Rotary Position Embedding",
+     "url": "https://arxiv.org/abs/2104.09864"
+    }
+   ],
+   "latex": "f(x, m) = R_{\\Theta, m} x \\quad \\Longrightarrow \\quad \\langle f(q, m), f(k, n) \\rangle = g(q, k, m - n)"
+  },
+  {
+   "id": "f-clip",
+   "name": "CLIP 对比损失 (InfoNCE)",
+   "category": "multimodal",
+   "glyph": "C",
+   "tags": [
+    "clip",
+    "contrastive",
+    "multimodal"
+   ],
+   "symbols": [
+    [
+     "s_ij = ⟨I_i, T_j⟩",
+     "第 i 张图与第 j 条文本的归一化相似度"
+    ],
+    [
+     "τ",
+     "可学习温度，控制分布的锐度"
+    ],
+    [
+     "N",
+     "batch 内的图-文对数量，负样本即其余 2N−1 条"
+    ]
+   ],
+   "derivation": [
+    "对一个 batch 内的 N 对图-文，构造 N×N 的相似度矩阵，对角线为正样本。",
+    "按行做 softmax 得到「图 → 文」的检索分布，按列做 softmax 得到「文 → 图」的分布。",
+    "两个方向的交叉熵之和即为对称 InfoNCE 损失。",
+    "温度 τ 越小，模型越关注最难的负样本，但训练越不稳定；CLIP 把 τ 设为可学习参数。"
+   ],
+   "analogy": "像把 N 个人和 N 把钥匙混在一起，让模型学会\"只把自己的钥匙配给自己的锁\"。batch 里其他 N−1 把锁都是干扰项（负样本），batch 越大干扰越多，学到的表示越细致——这也解释了 CLIP 依赖超大 batch 的原因。",
+   "code": "import torch, torch.nn.functional as F\n\ndef clip_loss(img_emb, txt_emb, logit_scale):\n    \"\"\"img_emb / txt_emb: (N, D) 已经各自做过线性投影，未归一化。\"\"\"\n    img = F.normalize(img_emb, dim=-1)\n    txt = F.normalize(txt_emb, dim=-1)\n    logits = logit_scale.exp() * img @ txt.t()          # (N, N)\n    labels = torch.arange(len(img), device=img.device)  # 对角线为正样本\n    l_i = F.cross_entropy(logits, labels)                # 图→文\n    l_t = F.cross_entropy(logits.t(), labels)            # 文→图\n    return (l_i + l_t) / 2",
+   "pitfalls": [
+    "务必先 L2 归一化，否则相似度尺度失控。",
+    "logit_scale 需要 clamp 上限，否则温度塌缩导致 NaN。",
+    "跨卡训练时负样本要 all-gather，否则 batch 语义被破坏（常见追问点）。"
+   ],
+   "sources": [
+    {
+     "title": "CLIP",
+     "url": "https://arxiv.org/abs/2103.00020"
+    }
+   ],
+   "latex": "\\mathcal{L} = -\\frac{1}{2N}\\left[\\sum_{i=1}^{N} \\log \\frac{\\exp(s_{ii}/\\tau)}{\\sum_{j=1}^{N} \\exp(s_{ij}/\\tau)} + \\sum_{i=1}^{N} \\log \\frac{\\exp(s_{ii}/\\tau)}{\\sum_{j=1}^{N} \\exp(s_{ji}/\\tau)}\\right]"
+  },
+  {
+   "id": "f-causal-distill",
+   "name": "因果证据蒸馏的干预效应 (Causal Intervention Effect for Distillation)",
+   "category": "multimodal",
+   "glyph": "Σ",
+   "tags": [
+    "distillation",
+    "causal",
+    "multimodal",
+    "kl"
+   ],
+   "latex": "\\mathrm{CE}(e \\mid x) = D_{\\mathrm{KL}}\\left( p_T(y \\mid x) \\,\\|\\, p_T(y \\mid x_{\\setminus e}) \\right)",
+   "html": "<code>CE(e | x) = D_KL( p_T(y | x) ‖ p_T(y | x∖e) )</code>",
+   "symbols": [
+    [
+     "x",
+     "多模态上下文（图像/视频 + 文本 prompt）"
+    ],
+    [
+     "e",
+     "被干预的候选证据 token 片段"
+    ],
+    [
+     "x∖e",
+     "保持结构、只移除证据 e 后的上下文"
+    ],
+    [
+     "p_T",
+     "教师 LVLM 的输出分布"
+    ],
+    [
+     "D_KL",
+     "两个输出分布的 KL 散度，衡量证据 e 的因果影响大小"
+    ]
+   ],
+   "derivation": [
+    "只对齐 p_T(y|x) 会让学生学到「和老师一样的答案」，但学不到「老师依赖了哪段上下文证据」。",
+    "做保持结构的干预：保留或移除某段证据 e，得到 x 与 x∖e 两个输入，避免破坏长度/位置等混淆因素。",
+    "教师在这两个输入上输出分布的 KL 散度，就是 e 对结论的因果影响大小——MCD 用它识别并验证因果证据。",
+    "蒸馏目标从匹配单点输出，改为让学生在「证据保留/移除」两种情况下重现教师的响应模式。"
+   ],
+   "analogy": "像调音师找关键旋钮：把某个旋钮拧一下，如果声音大变，说明它关键。只记住「最终音色」的人学不会调音；记住「拧哪个会变」的人才掌握了这台设备。",
+   "pitfalls": [
+    "把 KL 变化直接等同于因果：高相关但非因果的片段被移除也会改变输出，必须靠保持结构的干预控制混淆。",
+    "干预若不保持上下文结构，学生学到的其实是「输入被破坏」而不是「证据被移除」。",
+    "证据分组粒度选错会把证据切碎，因果效应被稀释，甚至被文本连贯性变化掩盖。"
+   ],
+   "code": "import torch\nimport torch.nn.functional as F\n\n\ndef causal_effect(teacher_logits_full, teacher_logits_masked, tau=1.0):\n    \"\"\"x=完整上下文, x_minus_e=移除证据后（保持 token 结构）。\"\"\"\n    p_full = F.softmax(teacher_logits_full / tau, dim=-1)\n    p_masked = F.softmax(teacher_logits_masked / tau, dim=-1)\n    return F.kl_div(p_masked.log(), p_full, reduction='batchmean')\n\n\n# 蒸馏：让学生重现教师的「证据效应」，而不只是复述答案\nloss = F.kl_div(student_masked_logp, teacher_full_prob, reduction='batchmean') \\\n     + lam * F.mse_loss(student_effect, teacher_effect.detach())\n",
+   "sources": [
+    {
+     "title": "MCD: Causal Distillation of Multimodal In-Context Learning in Large Vision-Language Models",
+     "url": "https://arxiv.org/abs/2609.39920v1"
+    }
+   ]
+  },
+  {
+   "id": "f-scapo-credit",
+   "name": "半事实稳定性加权的 token 优势 (Semifactual-Stability Reweighted Token Advantage)",
+   "category": "posttraining",
+   "glyph": "S",
+   "tags": [
+    "grpo",
+    "rlvr",
+    "credit-assignment",
+    "advantage"
+   ],
+   "latex": "A'_{i,t} = A_i \\cdot \\bigl(1 - \\lambda\\,(1 - \\hat{s}_{i,t})\\bigr)_{+}, \\qquad \\hat{s}_{i,t} = \\mathrm{norm}\\bigl(1 - \\lvert p_\\theta(y_t \\mid x) - p_\\theta(y_t \\mid \\tilde{x}) \\rvert\\bigr)",
+   "html": "<code>A'<sub>i,t</sub> = A<sub>i</sub> · (1 − λ(1 − ŝ<sub>i,t</sub>))<sub>+</sub>,  ŝ<sub>i,t</sub> = norm(1 − |p<sub>θ</sub>(y<sub>t</sub>|x) − p<sub>θ</sub>(y<sub>t</sub>|x̃)|)</code>",
+   "symbols": [
+    [
+     "A_i",
+     "GRPO 的答案级组相对优势（同一回答内所有 token 共享）"
+    ],
+    [
+     "x̃",
+     "半事实提示：保持底层问题与答案，只改无关措辞"
+    ],
+    [
+     "|p(y_t|x) − p(y_t|x̃)|",
+     "token t 在干预下的概率漂移，越大越不稳定"
+    ],
+    [
+     "ŝ_{i,t}",
+     "归一化稳定性，漂移越小越接近 1"
+    ],
+    [
+     "λ",
+     "早期训练中对不稳定 token 的降权强度"
+    ],
+    [
+     "(·)_+",
+     "截断到非负：稳定 token 的系数封顶为 1，不获得额外奖励"
+    ]
+   ],
+   "derivation": [
+    "GRPO 用组内归一化得到答案级优势 A_i，并把它广播给回答里的每个 token。",
+    "若模型依据题面里的无关特征答对，这份虚假依赖也会随 A_i 被一起强化。",
+    "构造半事实提示 x̃：问题与答案不变、只改无关措辞，测量每个 token 的概率漂移。",
+    "把漂移归一化成稳定性 ŝ，对不稳定 token 按 (1−λ(1−ŝ))_+ 缩放优势；ŝ=1 时系数为 1，不额外加分。",
+    "论文另证：解码时抑制高漂移 token 候选即可提升准确率，且无需更新任何权重。"
+   ],
+   "analogy": "像老师改小组作业：组内总分（答案级优势）平均到每个人头上，但那个只靠抄题面措辞得分的人，这次要单独把他的分数压下来——而不是给「措辞怎么变都不动」的人加分。",
+   "pitfalls": [
+    "把稳定性当正奖励会鼓励模型输出对所有输入都不敏感的「死板」答案，因此只能降权不能加分。",
+    "只在早期训练降权是设计选择：后期不稳定 token 可能正是需要探索的部分。",
+    "半事实提示必须保证答案不变，否则测到的是任务难度而不是虚假依赖。"
+   ],
+   "code": "import torch\n\n\ndef scapo_advantage(grpo_adv, drift, lam=0.5):\n    \"\"\"grpo_adv: [B] 组相对优势; drift: [B, T] 半事实干预下的 token 概率漂移。\"\"\"\n    stability = 1.0 - drift / (drift.amax(dim=-1, keepdim=True) + 1e-8)   # 归一化\n    scale = (1.0 - lam * (1.0 - stability)).clamp(min=0.0)               # 稳定不加分\n    return grpo_adv.unsqueeze(-1) * scale\n",
+   "sources": [
+    {
+     "title": "Semifactual Credit-Augmented Policy Optimization",
+     "url": "https://arxiv.org/abs/2609.40360v1"
+    }
+   ]
+  },
+  {
+   "id": "f-fenchel-tilt",
+   "name": "Fenchel 倾斜的分布修正权重 (Fenchel-Tilted Distribution-Correction Weights)",
+   "category": "generative",
+   "glyph": "T",
+   "tags": [
+    "fenchel",
+    "diffusion",
+    "flow-matching",
+    "importance-weighting"
+   ],
+   "latex": "p^{\\star}(x) \\propto p_{\\text{base}}(x)\\, e^{\\,r(x)/\\lambda}, \\qquad w(x) = \\frac{e^{\\,r(x)/\\lambda}}{\\mathbb{E}_{p_{\\text{base}}}\\left[e^{\\,r/\\lambda}\\right]}",
+   "html": "<code>p*(x) ∝ p_base(x) · e^(r(x)/λ),   w(x) = e^(r(x)/λ) / E_pbase[e^(r/λ)]</code>",
+   "symbols": [
+    [
+     "p_base",
+     "预训练生成模型的采样分布"
+    ],
+    [
+     "r(x)",
+     "由效用函数经 Fenchel 对偶得到的有效奖励"
+    ],
+    [
+     "λ",
+     "温度/正则强度，由所选 f-散度惩罚的形式决定"
+    ],
+    [
+     "w(x)",
+     "冻结后用于重要性加权去噪/flow matching 的密度比权重"
+    ],
+    [
+     "f*",
+     "效用函数的 Fenchel 共轭，决定奖励如何映射为权重"
+    ]
+   ],
+   "derivation": [
+    "目标是把预训练生成模型适配到任意效用函数 u(x) 定义的目标分布，而不是只做期望奖励最大化。",
+    "直接在采样轨迹上做反向传播代价高；先把「优化效用」与「拟合生成模型」解耦。",
+    "用 Fenchel 对偶把「最大化效用 − f-散度惩罚」转成对偶问题，解出有效奖励 r 与密度比权重 w。",
+    "冻结 w，只用一次重要性加权的去噪/flow matching 拟合目标分布；对凹效用函数可证明该加权拟合复现最优目标分布。"
+   ],
+   "analogy": "像调音台而不是重录：不重新演奏，只把各轨音量按一张一次算好的比例表调一遍，成品就换了风格；比例表算完就锁死。",
+   "pitfalls": [
+    "若只支持期望奖励最大化，就丢掉了约束满足、多样性等一般效用——Fenchel 形式的价值正在于覆盖更广的效用类。",
+    "λ 太小会让分布过度倾斜到奖励尖峰，生成多样性骤降；λ 太大则几乎不改变分布。",
+    "权重冻结后若继续更新模型却不重估权重，重要性加权会与当前模型失配。"
+   ],
+   "code": "import torch\n\n\ndef fenchel_weights(reward, lam=1.0):\n    \"\"\"在预训练样本上算一次密度比权重，然后冻结（detach）。\"\"\"\n    w = torch.exp(reward / lam)\n    return w / w.mean()\n\n\n# 一次重要性加权 flow matching：不对采样轨迹反传\nloss = (w.detach() * ((v_theta(x_t, t) - v_target) ** 2).mean(dim=-1)).mean()\n",
+   "sources": [
+    {
+     "title": "Fenchel Tilting: Weighted Correction for Efficient Finetuning of Generative Models",
+     "url": "https://arxiv.org/abs/2609.40030v1"
+    }
+   ]
+  },
+  {
+   "id": "f-wush-transform",
+   "name": "基于二阶统计的数据自适应量化变换 (Second-Order Data-Adaptive Transform for Quantization)",
+   "category": "engineering",
+   "glyph": "W",
+   "tags": [
+    "quantization",
+    "kv-cache",
+    "inference",
+    "sglang"
+   ],
+   "latex": "\\min_{T}\\ \\mathbb{E}\\left\\| XW - Q(TX)\\,Q(T^{-\\top}W) \\right\\|_F^{2}, \\qquad T \\text{ built from } \\Sigma_X=\\mathbb{E}[XX^{\\top}],\\ \\Sigma_W=\\mathbb{E}[WW^{\\top}]",
+   "html": "<code>min_T E‖ XW − Q(TX)·Q(T<sup>−⊤</sup>W) ‖<sub>F</sub><sup>2</sup>,  T 由 Σ<sub>X</sub>=E[XX<sup>⊤</sup>], Σ<sub>W</sub>=E[WW<sup>⊤</sup>] 构造</code>",
+   "symbols": [
+    [
+     "X, W",
+     "矩阵乘法的两个因子（KV cache 场景下即待量化因子与投影权重）"
+    ],
+    [
+     "T",
+     "数据自适应可逆变换，由两侧二阶统计量构造"
+    ],
+    [
+     "Σ_X, Σ_W",
+     "两个因子的二阶统计（协方差），由校准数据估计"
+    ],
+    [
+     "Q(·)",
+     "低位量化器（如按百分位裁剪的仿射量化 QuEST INT）"
+    ],
+    [
+     "T^{−⊤}",
+     "逆变换的转置，保证 (TX)·(T^{−⊤}W) 与原乘积在数值上还原"
+    ]
+   ],
+   "derivation": [
+    "KV cache 的显存与带宽随上下文长度与 batch 增长，低比特量化是最直接的缓解手段。",
+    "量化误差取决于待量化张量的动态范围；只按单侧统计做缩放会忽略另一侧因子的分布。",
+    "WUSH 用矩阵乘法两侧因子的二阶统计构造可逆变换 T，把数值能量在两侧重新分配，让量化格点更贴合分布。",
+    "WUSH-KV 用校准数据分别构造 key 与 value 的变换：value 变换折进模型权重，key 变换在 RoPE 之后施加。",
+    "与裁剪量化器 QuEST INT 配合时，论文在温和假设下证明该变换近最优；集成进 SGLang 后 2-bit 端到端不劣于 OSCAR。"
+   ],
+   "analogy": "像把一摞长短不一的行李先按形状重排（可逆变换）再统一压缩，比直接乱塞省空间；落地后按原样摆回，行李一件不少。",
+   "pitfalls": [
+    "变换必须可逆且成对施加，只变换一侧就会改变矩阵乘积的语义。",
+    "key 变换必须在 RoPE 之后施加，否则位置编码的旋转会破坏变换所依赖的统计假设。",
+    "校准数据分布与线上分布不一致时，二阶统计失配会让变换收益明显缩水。"
+   ],
+   "code": "import torch\n\n\ndef wush_transforms(X, W, eps=1e-5):\n    \"\"\"示意：分别用两个因子的二阶统计做白化，成对施加以保持乘积不变。\"\"\"\n    def whiten(S):\n        d, V = torch.linalg.eigh(S + eps * torch.eye(S.shape[0], device=S.device))\n        return V @ torch.diag(d.rsqrt()) @ V.t()\n\n    Sx = X.t() @ X / max(X.shape[0] - 1, 1)      # [d_in, d_in]\n    Sw = W @ W.t() / max(W.shape[1] - 1, 1)      # [d_out, d_out]\n    Tx, Tw = whiten(Sx), whiten(Sw)\n    # X @ W == (Tx @ X) @ (Tw.inverse() @ W)  -> 成对量化后再还原\n    return Tx, torch.linalg.inv(Tw)\n",
+   "sources": [
+    {
+     "title": "WUSH-KV: KV Cache Quantization with Data-Adaptive Transforms",
+     "url": "https://huggingface.co/papers/2609.38121"
+    }
+   ]
+  },
+  {
+   "id": "f-loop-scaling",
+   "name": "循环 MoE 的联合缩放律 (Joint Scaling Law for Looped Mixture-of-Experts)",
+   "category": "foundation",
+   "glyph": "L",
+   "tags": [
+    "scaling-law",
+    "moe",
+    "recurrence",
+    "foundation"
+   ],
+   "latex": "L(N, D, r, s) = E + A\\,N_{\\mathrm{eff}}^{-\\alpha} + B\\,D^{-\\beta}, \\qquad N_{\\mathrm{eff}} = N \\cdot g(r, s),\\ \\ 0 < g \\le g_{\\max}(s)",
+   "html": "<code>L(N, D, r, s) = E + A·N<sub>eff</sub><sup>−α</sup> + B·D<sup>−β</sup>,   N<sub>eff</sub> = N · g(r, s),  0 &lt; g ≤ g<sub>max</sub>(s)</code>",
+   "symbols": [
+    [
+     "L",
+     "held-out loss"
+    ],
+    [
+     "N",
+     "模型总参数量"
+    ],
+    [
+     "D",
+     "训练 token 数"
+    ],
+    [
+     "r",
+     "循环次数（recurrence），固定参数下增加计算深度"
+    ],
+    [
+     "s",
+     "MoE 稀疏度/激活比例"
+    ],
+    [
+     "N_eff",
+     "有效参数量，由有界、以稀疏度为条件的循环映射 g(r,s) 给出"
+    ],
+    [
+     "E, A, B, α, β",
+     "与标准缩放律一致的常数项与指数项"
+    ]
+   ],
+   "derivation": [
+    "循环与 MoE 稀疏是两条互补的扩展轴：前者固定参数增加计算深度，后者固定激活计算扩大总容量。",
+    "已有缩放律只单独建模其中一条，无法预测两者叠加后的 loss。",
+    "引入有界、以稀疏度为条件的循环映射 g(r,s)，刻画循环带来的有效参数增益以及稀疏度如何抬高这个增益。",
+    "当 r=1 或 s 取稠密极限时，g→0，公式退回标准稠密/MoE 缩放律，保证与既有结论自洽。"
+   ],
+   "analogy": "像给团队排班：给定预算，加人（专家数）和让现有的人加班轮次（循环）都能提产出，但加班收益有上限，而且人越多时「多干几轮」的边际收益越高——这张表就是排班指南。",
+   "pitfalls": [
+    "循环增益有上界：无限制增加循环次数不会线性降低 loss。",
+    "稀疏度会抬高循环增益的上界，但稀疏本身带来容量与路由代价，不能只看 loss。",
+    "这是拟合型经验定律，外推到训练 token 规模或模型规模之外需谨慎。"
+   ],
+   "code": "import numpy as np\n\n\ndef looped_moe_loss(N, D, r, s, E, A, alpha, B, beta, gmax=2.0, k=1.0):\n    \"\"\"g(r, s) 为有界、以稀疏度为条件的循环映射（此处为示意形式）。\"\"\"\n    g = gmax * (1.0 - np.exp(-k * (r - 1.0))) * s   # r=1 时 g=0 -> 退回标准缩放律\n    N_eff = N * (1.0 + g)\n    return E + A * N_eff ** (-alpha) + B * D ** (-beta)\n\n\n# 用法：先在多个 (N, D, r, s) 观测点上拟合常数，再在算力/显存约束下外推选配置\n",
+   "sources": [
+    {
+     "title": "Scaling Laws for Looped Mixture of Experts",
+     "url": "https://huggingface.co/papers/2609.40316"
+    }
+   ]
+  },
+  {
+   "id": "f-cbf-shield",
+   "name": "多连杆安全滤波的控制屏障条件 (Control Barrier Condition for Multi-Link Shielding)",
+   "category": "worldmodel",
+   "glyph": "h",
+   "tags": [
+    "cbf",
+    "safety",
+    "vla",
+    "embodied",
+    "real-time"
+   ],
+   "latex": "\\dot{h}(x,u) + \\alpha\\, h(x) \\ge 0, \\qquad h(x) = \\lVert c_{\\text{link}}(q) - c_{\\text{obs}} \\rVert - \\left(r_{\\text{link}} + r_{\\text{obs}}\\right)",
+   "html": "<code>ḣ(x,u) + α·h(x) ≥ 0,   h(x) = ‖c_link(q) − c_obs‖ − (r_link + r_obs)</code>",
+   "symbols": [
+    [
+     "x",
+     "机械臂状态（关节角与速度）"
+    ],
+    [
+     "u",
+     "策略给出的指令动作/速度"
+    ],
+    [
+     "h(x)",
+     "屏障函数：连杆与危险椭球之间的带符号距离，h ≥ 0 表示安全"
+    ],
+    [
+     "c_link, c_obs",
+     "连杆与危险椭球的中心"
+    ],
+    [
+     "r_link, r_obs",
+     "连杆与椭球的等效半径"
+    ],
+    [
+     "α > 0",
+     "收敛速率：越大越早开始避让，但动作更保守"
+    ]
+   ],
+   "derivation": [
+    "只用任务成功率无法保证「没有撞到无关物体」，因此需要在运行时约束指令动作，而不是重训策略。",
+    "用五个椭球覆盖夹爪、腕、前臂，取其中 h 最小者代表整条手臂的屏障，覆盖范围超过只守末端执行器。",
+    "危险物用 RGB-D 在 reset 时拟合一个 keep-out 椭球，再用稀疏光流把椭球中心随危险物平移，避免每步重新检测或重拟合。",
+    "每条指令动作必须满足 ḣ + αh ≥ 0；不满足时在最小改动下投影到满足条件的动作集合上——这就是运行时「滤波」（shield）。"
+   ],
+   "analogy": "像给车装自动紧急制动：它不改变你的目的地，只在你即将追尾时替你轻踩一脚刹车。五个椭球相当于把「车头」换成「整条机械臂」。",
+   "pitfalls": [
+    "只守末端执行器会漏掉手臂中段的碰撞；消融显示守护连杆带来额外保护。",
+    "把危险椭球冻结在 reset 时刻会明显丢失保护，必须用光流跟随。",
+    "α 选大虽更安全，但会限制任务动作；选小则避让不及时。"
+   ],
+   "code": "import numpy as np\n\n\ndef shield(u, h, grad_h, alpha=2.0):\n    \"\"\"h: 屏障值(>=0 安全); grad_h: dh/dx(与 u 同维); 返回最小改动的安全动作。\"\"\"\n    hdot = float(grad_h @ u)\n    if hdot + alpha * h >= 0.0:\n        return u                       # 已满足屏障条件，原样执行\n    # 投影到 {u : grad_h·u >= -alpha*h} 上（最小欧氏改动）\n    return u - (hdot + alpha * h) / (grad_h @ grad_h + 1e-8) * grad_h\n",
+   "sources": [
+    {
+     "title": "Multi-Link Safety Filtering for VLA Policies Around Moving Hazards",
+     "url": "https://arxiv.org/abs/2609.40007v1"
+    }
+   ]
+  },
+  {
+   "id": "f-moe-shared-expert",
+   "name": "共享专家混合层与 SwiGLU 专家（Shared-Expert MoE Layer with SwiGLU Experts）",
+   "category": "multimodal",
+   "glyph": "Σ",
+   "tags": [
+    "moe",
+    "swiglu",
+    "shared-expert",
+    "gating"
+   ],
+   "latex": "\\mathrm{MoE}(x) = x + \\sum_{s=1}^{N_s} \\mathrm{SwiGLU}_s(x) + \\sum_{i \\in \\mathcal{T}(x)} g_i(x)\\,\\mathrm{SwiGLU}_i(x),\\quad g_i(x)=\\frac{\\exp(e_i^{\\top} x)}{\\sum_{j\\in\\mathcal{T}(x)}\\exp(e_j^{\\top} x)},\\quad \\mathrm{SwiGLU}(x)=W_2\\big(\\mathrm{Swish}(W_1x)\\odot W_3x\\big)",
+   "html": "<code>MoE(x) = x + Σ_s SwiGLU_s(x) + Σ_{i∈TopK(x)} g_i(x)·SwiGLU_i(x)，其中 g 只在选中的 top-k 上 softmax，SwiGLU(x)=W2(Swish(W1x)⊙W3x)</code>",
+   "symbols": [
+    [
+     "x",
+     "该层输入表征（一个 token 的隐藏向量），shape 记为 [B, T, d]；摘要未给具体维度"
+    ],
+    [
+     "N_s",
+     "共享专家数量，其输出对所有 token 恒定参与；摘要未给取值"
+    ],
+    [
+     "T(x)",
+     "由门控为 token x 选出的 top-k 路由专家集合"
+    ],
+    [
+     "g_i(x)",
+     "路由专家 i 的门控权重，只在 T(x) 内归一化，∑_{i∈T(x)} g_i(x) = 1"
+    ],
+    [
+     "SwiGLU_i",
+     "第 i 个专家前馈网络，内部为 W1/W3 双投影 + Swish 门控 + W2 输出投影"
+    ],
+    [
+     "σ(·)",
+     "Sigmoid 函数，SwiGLU 中 Swish(z)=z·σ(z) 的门控因子"
+    ]
+   ],
+   "derivation": [
+    "动机：单一 FFN 难以同时承载多个上游音频编码器的异构表征，于是用多个专家并行替代单个 FFN。",
+    "稀疏路由：用 top-k 门控让每个 token 只激活少数路由专家，把参数量与计算量解耦。",
+    "补共享专家：全稀疏路由会把跨域共性也打散，于是加一组对所有 token 都激活的共享专家承载共性知识。",
+    "换成 SwiGLU：用门控线性单元增强单个专家的表达力，配合共享专家使各编码器表征更容易解耦。",
+    "残差相加：把输入 x、共享专家之和与加权路由专家之和相加，得到该层输出。"
+   ],
+   "analogy": "像科室里既有几位「全科医生」对所有病人都接诊，又有专科医生由分诊台按病情叫号；SwiGLU 相当于每位医生先自己筛一遍信息再下结论，而不是把所有信息一股脑塞进一个判断。",
+   "pitfalls": [
+    "把共享专家也算进 top-k 路由竞争：共享专家不参与门控，恒定激活。",
+    "认为门控权重对「所有专家」求和为 1：实际只对选中的 top-k 归一化。",
+    "把 SwiGLU 当普通 ReLU-FFN：它有两个并行线性投影，其中一个过 Swish 后逐元素门控另一个。",
+    "把摘要里的「解耦编码器网络」理解为各编码器完全独立训练：摘要说的是融合时的结构设计。"
+   ],
+   "code": "import torch, torch.nn as nn, torch.nn.functional as F\n\nclass SwiGLU(nn.Module):\n    \"\"\"SwiGLU 专家：W2(Swish(W1x) * W3x)\"\"\"\n    def __init__(self, d, hidden):\n        super().__init__()\n        self.w1 = nn.Linear(d, hidden, bias=False)\n        self.w3 = nn.Linear(d, hidden, bias=False)\n        self.w2 = nn.Linear(hidden, d, bias=False)\n\n    def forward(self, x):\n        return self.w2(F.silu(self.w1(x)) * self.w3(x))\n\nclass SharedExpertMoE(nn.Module):\n    \"\"\"共享专家恒激活 + top-k 路由专家，相加后残差回加。\"\"\"\n    def __init__(self, d, hidden, n_routed=4, n_shared=1, top_k=2):\n        super().__init__()\n        self.top_k = top_k\n        self.router = nn.Linear(d, n_routed, bias=False)\n        self.routed = nn.ModuleList([SwiGLU(d, hidden) for _ in range(n_routed)])\n        self.shared = nn.ModuleList([SwiGLU(d, hidden) for _ in range(n_shared)])\n\n    def forward(self, x):                      # x: [B, T, d]\n        out = x\n        for e in self.shared:                  # 共享专家：所有 token 都走\n            out = out + e(x)\n        logits = self.router(x)                # [B, T, n_routed]\n        w, idx = logits.topk(self.top_k, dim=-1)\n        w = w.softmax(dim=-1)                  # 只在选中的 top-k 上归一化\n        for k in range(self.top_k):            # 逐 slot 聚合（工程上用 scatter/gather）\n            wk = w[..., k:k + 1]               # [B, T, 1]\n            ik = idx[..., k]                   # [B, T]\n            for i, e in enumerate(self.routed):\n                m = (ik == i).unsqueeze(-1).float()   # 命中第 i 个专家的 token\n                out = out + m * wk * e(x)\n        return out\n\nmoe = SharedExpertMoE(d=64, hidden=128)\nprint(moe(torch.randn(2, 5, 64)).shape)   # torch.Size([2, 5, 64])",
+   "sources": [
+    {
+     "title": "UniAE-MoE: A Unified Audio Encoder via Mixture of Experts",
+     "url": "https://arxiv.org/abs/2609.39199v1"
+    }
+   ]
+  },
+  {
+   "id": "f-pairwise-auroc-matrix",
+   "name": "成对排序矩阵与经验 AUROC（Pairwise-Ordering Matrix and Empirical AUROC）",
+   "category": "multimodal",
+   "glyph": "≻",
+   "tags": [
+    "auroc",
+    "pairwise-ranking",
+    "wilcoxon-mann-whitney",
+    "class-imbalance"
+   ],
+   "latex": "M_{k,(i,j)} = \\mathbb{1}\\left[s_k(x_i^{+}) > s_k(x_j^{-})\\right],\\quad i \\in \\mathcal{P},\\; j \\in \\mathcal{N}",
+   "html": "<code>AUROC_k = (1/(|P|*|N|)) * sum_{i in P} sum_{j in N} 1[s_k(x_i^+) > s_k(x_j^-)]</code>",
+   "symbols": [
+    [
+     "k",
+     "候选提示的编号（矩阵的列索引），每个候选对应一列"
+    ],
+    [
+     "i, j",
+     "正样本索引与负样本索引，一个 (i,j) 就是一个评估行（pair）"
+    ],
+    [
+     "P, N",
+     "正样本集合与负样本集合，大小分别为 |P|、|N|（摘要未给具体数值）"
+    ],
+    [
+     "s_k(x)",
+     "候选提示 k 让 MLLM 对输入 x 输出的分数（排序用的标量），摘要未说明是否做了归一化"
+    ],
+    [
+     "\\mathbb{1}[·]",
+     "指示函数，括号内条件成立取 1、否则取 0（tie 的处理摘要未说明）"
+    ],
+    [
+     "M_{k,(i,j)}",
+     "排名感知评分矩阵的第 (i,j) 行、第 k 列元素，取值 0/1"
+    ],
+    [
+     "\\mathrm{AUROC}_k",
+     "候选 k 的经验 AUROC，等于第 k 列的平均值，量纲为概率∈[0,1]"
+    ]
+   ],
+   "derivation": [
+    "问题：临床数据严重类别不平衡，accuracy 驱动的提示进化会把「猜多数类」的候选选出来，而这种模型在临床上无用。",
+    "换指标：AUROC 无阈值、只要求把正样本排在负样本之前，并且对类别比例不变，正是想要的排序口径。",
+    "换数据组织：把评分矩阵的每一行从「一个实例是否答对」改成「一个 (正,负) 实例对里正样本是否得分更高」，格值记为 0/1。",
+    "得结论：对这样的 0/1 行取列均值，恰好等于「正样本得分高于配对负样本」的比例，也就是经验 AUROC（Wilcoxon-Mann-Whitney / Mann-Whitney U 统计量的均值形式）。",
+    "接回搜索：这个列均值同时充当 Pareto 支配判据、反思 LM 的逐例反馈口径与最终候选选择口径，因此不需要额外的模型调用或代理损失。"
+   ],
+   "analogy": "像用两两对局取代「答对题数」来排选手名次：不管题目难易与人数比例，只看每一场对局里谁赢，胜率就是实力排名。",
+   "pitfalls": [
+    "把「列均值」当成普通平均就丢掉了关键：它之所以是 AUROC，前提是行已经换成 (正,负) 对，直接对实例正确率矩阵按对分组取均值，与真正的 pairwise 矩阵并不等价。",
+    "tie 的处理：指示函数只给 1/0，分数打平时标准做法按 0.5 计分，否则经验 AUROC 会系统性偏低；论文如何定义 tie 需要核实原文。",
+    "计算与采样成本：配对数 |P|×|N| 随数据量平方增长，工程上通常固定负样本采样量或分批做无偏估计，但摘要未说明具体实现。",
+    "AUROC 只衡量排序、不衡量校准：AUROC 高不代表概率可信，用它的阈值直接做临床决策仍需要另行校准。"
+   ],
+   "code": "import torch\n\ndef ranking_aware_scores(logits, labels):\n    \"\"\"logits/labels: [n_instances]; 返回每个候选一列的排序矩阵与列均值(AUROC)。\n    这里演示单候选的情形，与摘要的 Wilcoxon-Mann-Whitney 恒等式一致。\"\"\"\n    pos = logits[labels == 1]\n    neg = logits[labels == 0]\n    # 成对排序矩阵 M[i, j] = 1[pos_i 得分 > neg_j 得分]\n    M = (pos[:, None] > neg[None, :]).float()\n    # 列均值即经验 AUROC\n    empirical_auroc = M.mean().item()\n    # 等价的向量化写法：U / (n_pos * n_neg)\n    u_statistic = M.sum().item()\n    assert abs(empirical_auroc - u_statistic / (pos.numel() * neg.numel())) < 1e-6\n    return M, empirical_auroc\n\nif __name__ == \"__main__\":\n    logits = torch.tensor([2.0, 0.1, 0.3, -1.0, 1.5, 3.0])  # 模型打分（第 3 个正样本分数偏低）\n    labels = torch.tensor([1, 0, 1, 0, 0, 1])              # 正负标签\n    M, auroc = ranking_aware_scores(logits, labels)\n    print(M)\n    print(\"empirical AUROC =\", round(auroc, 4), \"| shape:\", tuple(M.shape))",
+   "sources": [
+    {
+     "title": "Ranking-Aware Prompt Optimization for Multimodal Clinical Diagnosis",
+     "url": "https://arxiv.org/abs/2609.40361v1"
+    }
+   ]
+  },
+  {
+   "id": "f-masked-flow-matching",
+   "name": "掩码流匹配损失（Masked Flow-Matching Loss）",
+   "category": "worldmodel",
+   "glyph": "v",
+   "tags": [
+    "flow-matching",
+    "masked-modeling",
+    "world-model",
+    "video-action"
+   ],
+   "latex": "\\mathcal{L}(\\theta)=\\mathbb{E}_{t\\sim\\mathcal{U}[0,1],\\,x_0\\sim p_{\\mathrm{data}},\\,\\epsilon\\sim\\mathcal{N}(0,I),\\,m\\sim\\mathcal{M}}\\Big[\\big\\|\\,m\\odot\\big(v_\\theta(x_t,t)-u_t\\big)\\big\\|_2^2\\Big],\\quad x_t=(1-t)x_0+t\\epsilon,\\;\\;u_t=\\epsilon-x_0",
+   "symbols": [
+    [
+     "x_0",
+     "干净潜序列，由 action views 与观测经同一 video VAE 编码得到；形状 [B, C, T, H, W]（维度细节待核实）"
+    ],
+    [
+     "\\epsilon",
+     "标准高斯噪声，形状同 x_0"
+    ],
+    [
+     "t",
+     "连续时间步，t∈[0,1]；本式约定 t=0 为干净、t=1 为纯噪声"
+    ],
+    [
+     "x_t",
+     "插值后的带噪潜序列，形状同 x_0"
+    ],
+    [
+     "u_t",
+     "条件流匹配的目标速度场 \\epsilon - x_0；本式等价于标准写作 x_1-x_0 的形式，符号只差一个时间方向约定"
+    ],
+    [
+     "v_\\theta",
+     "扩散 Transformer 预测的速度场，(x_t, t, 条件) → 同形状张量"
+    ],
+    [
+     "m",
+     "掩码张量（0/1），在序列维/帧维上指示哪些位置被破坏；二值形式对应只在 corrupted 位置算损失"
+    ],
+    [
+     "\\mathcal{M}",
+     "掩码采样分布，决定被破坏的是未来观测、过去动作还是两者（本文任务切换的来源；精确采样策略待核实）"
+    ],
+    [
+     "\\odot",
+     "逐元素相乘（Hadamard 积）"
+    ]
+   ],
+   "derivation": [
+    "观察与动作序列形状不同、维度与语义随本体变化，先用共享 video VAE 把它们统一编码成同构的潜序列 x_0（action views 是动作侧输入）。",
+    "取标准高斯噪声 \\epsilon 与随机时间 t，按直线插值 x_t=(1-t)x_0+t\\epsilon 造出带噪样本。",
+    "对这条直线路径求导得到目标速度场 u_t=\\epsilon-x_0，令网络回归该速度即可学到从噪声到数据的常微分方程。",
+    "为覆盖三种动力学任务，引入掩码 m 只在被破坏的位置计算速度误差：m\\odot(v_\\theta-u_t)，可见位置不产生梯度。",
+    "推理时选择不同掩码（掩未来 / 掩过去动作 / 两者都掩）即可用同一网络分别做前向动力学、逆向动力学与联合观测-动作生成。"
+   ],
+   "analogy": "像修一张被贴了不干胶的照片：只要求你把被贴住的地方补成原样（可见部分不算分）。换一批贴纸位置，就相当于换成练「补未来」或「补动作」，模型却始终是同一个。",
+   "pitfalls": [
+    "把掩码理解成 attention mask：这里的 m 是逐位置的损失权重，不改变注意力可见性。",
+    "两者混谈：flow matching 与 diffusion 的噪声调度不同，别把 u_t=\\epsilon-x_0 与 DDPM 的 \\epsilon-prediction 混为一谈。",
+    "以为一个模型能同时生成三种任务就代表共享了全部权重：摘要只说共享 video VAE 与 DiT，是否另有任务相关条件未说明。",
+    "用像素级重建损失的成功反推物理可执行性：摘要未给出关节级精度或力控指标，闭环成功率才是它报告的指标。"
+   ],
+   "code": "import torch, torch.nn as nn\n\nLATENT, VIEWS = 4, 4\n\nclass VideoVAE(nn.Module):\n    \"\"\"占位：观测与 action views 共享的 video autoencoder。\"\"\"\n    def encode(self, x):\n        return x  # x: [B, VIEWS*3, T, H, W] -> z: [B, C, T, H, W]\n\nclass DiT(nn.Module):\n    \"\"\"占位：与观测共享的 diffusion transformer，预测速度场。\"\"\"\n    def __init__(self, ch):\n        super().__init__()\n        self.net = nn.Sequential(nn.Conv3d(ch, ch, 1), nn.SiLU(), nn.Conv3d(ch, ch, 1))\n\n    def forward(self, x_t, t, cond):\n        return self.net(x_t)\n\nvae, dit = VideoVAE(), DiT(VIEWS * 3)\n\n# 掩码决定任务：True = 被破坏(算损失), False = 可见(条件)\nMASK = {\n    'forward_dynamics': lambda B, T: torch.zeros(B, T, dtype=torch.bool).index_fill_(1, torch.arange(T // 2, T), True),\n    'inverse_dynamics': lambda B, T: torch.ones(B, T, dtype=torch.bool).index_fill_(1, torch.arange(0, T // 2), False),\n    'joint_generation': lambda B, T: torch.ones(B, T, dtype=torch.bool),\n}\n\ndef masked_flow_matching_step(views, cond, task='forward_dynamics', seed=0):\n    \"\"\"views: [B, VIEWS*3, T, H, W] 观测与 action views 拼成的序列。\"\"\"\n    g = torch.Generator().manual_seed(seed)\n    x0 = vae.encode(views)\n    B, C, T = x0.shape[0], x0.shape[1], x0.shape[2]\n    eps = torch.randn(x0.shape, generator=g)\n    t = torch.rand(B, 1, 1, 1, 1, generator=g)\n    m = MASK[task](B, T).to(x0.dtype).view(B, 1, T, 1, 1)  # 逐帧 0/1 掩码\n    x_t = (1 - t) * x0 + t * eps   # t=0 干净, t=1 纯噪声\n    u_t = eps - x0                 # 目标速度场\n    v = dit(x_t, t, cond)          # 预测速度场\n    return ((m * (v - u_t)) ** 2).sum() / m.sum().clamp(min=1.0)\n\nloss = masked_flow_matching_step(torch.randn(2, VIEWS * 3, 8, 32, 32), None)\nloss.backward()\nprint(loss.item(), '| grad ok:', dit.net[0].weight.grad is not None)\n",
+   "sources": [
+    {
+     "title": "Dream4ACT: A Shared Visual Action Interface for Multi-Embodiment Video-Action Modeling",
+     "url": "https://arxiv.org/abs/2609.40153v1"
+    }
+   ]
+  },
+  {
+   "id": "f-meanflow-onestep",
+   "name": "平均速度场恒等式与一步采样（Mean Flow Identity and One-Step Sampling）",
+   "category": "posttraining",
+   "glyph": "𝔼",
+   "tags": [
+    "flow-matching",
+    "one-step",
+    "voice-conversion"
+   ],
+   "latex": "u(x_t, t) = \\mathbb{E}\\!\\left[\\, x_1 - x_0 \\mid x_t \\,\\right], \\qquad x_1 \\approx x_0 + u(x_0, 0)",
+   "html": "<code>u(x_t, t) = E[ x_1 - x_0 | x_t ],  x_1 ≈ x_0 + u(x_0, 0)</code>",
+   "symbols": [
+    [
+     "x_0",
+     "起点状态（可理解为源语音的内容/声学表示或噪声起点），形状 [B, D] 或 [B, T, D]"
+    ],
+    [
+     "x_1",
+     "终点状态（目标说话人语音表示），与 x_0 同形状"
+    ],
+    [
+     "x_t",
+     "t ∈ [0,1] 处的插值状态，常用线性路径 x_t = (1-t)x_0 + t x_1"
+    ],
+    [
+     "u(x_t, t)",
+     "从 t 到 1 的平均速度场，由网络预测，形状同 x"
+    ],
+    [
+     "𝔼[· | x_t]",
+     "在给定 x_t 的条件下对所有数据对 (x_0, x_1) 求期望"
+    ]
+   ],
+   "derivation": [
+    "flow matching 用连续归一化流把先验推向数据，轨迹由瞬时速度 v = dx/dt 决定，但采样需要多步数值积分。",
+    "为了少步生成，定义从 t 到终点 1 的平均速度 u(x_t,t)，它等于该区间上瞬时速度的平均（对时间做积分再除以 1-t）。",
+    "把 u 的定义代入轨迹表达式可得到恒等式 u(x_t,t) = E[x_1 - x_0 | x_t]，于是平均速度能直接用数据对回归训练，无需展开中间步。",
+    "推理时取 t = 0，用 x_1 ≈ x_0 + u(x_0, 0) 完成一步生成；训练中还需估计与瞬时速度/时间导数相关的项来正确约束 u（本文具体做法摘要未给出）。"
+   ],
+   "analogy": "问路而不是自己走：不问每个路口该怎么拐（瞬时速度），而是问「从这儿到终点整体朝哪走」（平均速度），一次就能抵达。",
+   "pitfalls": [
+    "把 u(x_t,t) 当成瞬时速度 v(x_t,t) 使用，导致采样步数与公式不匹配。",
+    "忘记 u 是 t→1 区间上的平均量，t=0 处的一步近似在目标分布复杂时误差最大。",
+    "误以为一步生成一定比多步质量差：本文报告感知质量反而更高，但评测设置需回原文确认。",
+    "混淆 x_0 与 x_1 的角色（源语音/噪声起点 vs 目标说话人语音），导致重建与蒸馏损失的方向写反。"
+   ],
+   "code": "import torch\nimport torch.nn as nn\n\nclass MeanFlowNet(nn.Module):\n    \"\"\"预测平均速度场 u(x_t, t)，输出与输入同形状。\"\"\"\n    def __init__(self, dim=64, hidden=128):\n        super().__init__()\n        self.net = nn.Sequential(\n            nn.Linear(dim + 1, hidden), nn.SiLU(),\n            nn.Linear(hidden, hidden), nn.SiLU(),\n            nn.Linear(hidden, dim),\n        )\n\n    def forward(self, x_t, t):                 # x_t: [B, D], t: [B] in [0, 1]\n        return self.net(torch.cat([x_t, t[:, None]], dim=-1))\n\ndef mean_flow_loss(model, x0, x1):\n    \"\"\"回归 u(x_t, t) -> x_1 - x_0 的蒙特卡洛估计。\"\"\"\n    t = torch.rand(x0.size(0), device=x0.device)\n    x_t = (1 - t)[:, None] * x0 + t[:, None] * x1\n    target = x1 - x0\n    return ((model(x_t, t) - target) ** 2).mean()\n\n@torch.no_grad()\ndef one_step_sample(model, x0):\n    \"\"\"一步采样：x_1 ~= x_0 + u(x_0, 0)。\"\"\"\n    t0 = torch.zeros(x0.size(0), device=x0.device)\n    return x0 + model(x0, t0)\n\nif __name__ == \"__main__\":\n    dim, B = 64, 8\n    model = MeanFlowNet(dim)\n    x0, x1 = torch.randn(B, dim), torch.randn(B, dim)\n    loss = mean_flow_loss(model, x0, x1)\n    out = one_step_sample(model, x0)\n    print(loss.item(), out.shape)",
+   "sources": [
+    {
+     "title": "MeanVoiceFlow2: Joint Optimization of Mean Flow and Content Encoder for Fast One-Step Zero-Shot Voice Conversion",
+     "url": "https://arxiv.org/abs/2609.40087v1"
+    },
+    {
+     "title": "MeanVoiceFlow2 audio samples",
+     "url": "https://www.kecl.ntt.co.jp/people/kaneko.takuhiro/projects/meanvoiceflow2/"
+    }
+   ]
+  },
+  {
+   "id": "f-agent-task-success",
+   "name": "任务成功率与人工介入率（Task Success Rate & Human Intervention Rate）",
+   "category": "agent",
+   "glyph": "Σ",
+   "tags": [
+    "agent",
+    "evaluation",
+    "success-rate",
+    "human-in-the-loop"
+   ],
+   "latex": "SR = \\frac{1}{N}\\sum_{i=1}^{N} \\mathbb{1}[\\,C_i \\land A_i\\,], \\qquad HIR = \\frac{1}{N}\\sum_{i=1}^{N} \\mathbb{1}[\\,H_i\\,]",
+   "html": "<code>SR = (1/N) * Σ 1[C_i ∧ A_i];  HIR = (1/N) * Σ 1[H_i]</code>",
+   "symbols": [
+    [
+     "SR",
+     "任务成功率，取值 [0,1]，无量纲"
+    ],
+    [
+     "HIR",
+     "人工介入率，取值 [0,1]，无量纲"
+    ],
+    [
+     "N",
+     "被评估的代表性研究任务总数（摘要未给出具体数值）"
+    ],
+    [
+     "C_i",
+     "第 i 条任务完成（task completion）的布尔指示"
+    ],
+    [
+     "A_i",
+     "第 i 条任务输出准确（output accuracy）的布尔指示"
+    ],
+    [
+     "H_i",
+     "第 i 条任务需要人类专家介入的布尔指示"
+    ],
+    [
+     "\\mathbb{1}[\\cdot]",
+     "指示函数：条件成立取 1，否则取 0"
+    ],
+    [
+     "\\land",
+     "逻辑与：完成且准确才计入成功率分子"
+    ]
+   ],
+   "derivation": [
+    "摘要明确验收只看三件事：任务完成、输出准确、是否需要人工介入，因此把每条任务压成可判定的布尔向量 (C_i, A_i, H_i)。",
+    "成功率只统计「既完成又准确」的任务，用逻辑与 C_i ∧ A_i 同时约束两个条件，避免「跑完但算错」被当成成功。",
+    "对 N 条任务取指示函数均值得到 SR；把指示函数换成 H_i 再取均值，就得到人工介入率 HIR。",
+    "两项一起看才有意义：SR 高而 HIR 也高，说明智能体能跑通却仍离不开专家兜底，离「自动执行常规仿真设置与结果提取」还有距离。"
+   ],
+   "analogy": "像驾考：SR 是「一次通过且没压线的比例」，HIR 是「需要教练踩副刹的比例」；通过率再高，教练仍频繁踩刹车，就说明还不能单独上路。",
+   "pitfalls": [
+    "把「完成」和「准确」拆成两个独立数字汇报，而不是取交集成 SR——口径不同结论可能反过来。",
+    "忽略 H_i 与 C_i 的相关性：人在介入后把任务做成了，C_i 仍可能为 1，会虚高 SR；摘要未说明是否剔除介入样本。",
+    "分母 N 的口径（是否包含超时/放弃任务）没有定义，跨系统比较前必须对齐。",
+    "误以为 HIR 越低越好：有场景下专家介入本身就是设计好的门控，而不是缺陷。"
+   ],
+   "code": "from typing import Any\n\n\ndef evaluate(results: list[dict[str, Any]]) -> dict[str, float]:\n    \"\"\"results: 每条任务的三项验收结果（摘要口径：完成/准确/是否需人工介入）。\"\"\"\n    n = len(results)\n    if n == 0:\n        return {\"SR\": float(\"nan\"), \"HIR\": float(\"nan\")}\n    sr = sum(1 for r in results if r[\"completed\"] and r[\"accurate\"]) / n\n    hir = sum(1 for r in results if r[\"human_intervention\"]) / n\n    return {\"SR\": sr, \"HIR\": hir}\n\n\ntasks = [\n    {\"completed\": True, \"accurate\": True, \"human_intervention\": False},\n    {\"completed\": True, \"accurate\": False, \"human_intervention\": True},\n    {\"completed\": True, \"accurate\": True, \"human_intervention\": True},\n]\nprint(evaluate(tasks))  # {'SR': 0.6666666666666666, 'HIR': 0.6666666666666666}\n",
+   "sources": [
+    {
+     "title": "Skill-Based AI Agents for Power-System Studies",
+     "url": "https://arxiv.org/abs/2609.40272v1"
+    }
+   ]
+  },
+  {
+   "id": "f-unitary-recurrence",
+   "name": "酉递归更新（Unitary Recurrence）",
+   "category": "rl",
+   "glyph": "⊙",
+   "tags": [
+    "unitary-rnn",
+    "complex-valued",
+    "recurrence",
+    "memory"
+   ],
+   "latex": "h_t = u \\odot h_{t-1} + v \\odot \\tanh(W x_t + b), \\qquad |u_i| = 1, \\quad h_t \\in \\mathbb{C}^{n}",
+   "html": "<code>h_t = u ⊙ h_{t-1} + v ⊙ tanh(W x_t + b),  |u_i| = 1</code>",
+   "symbols": [
+    [
+     "h_t",
+     "t 时刻的复数隐状态，形状 (n,)，取值于 ℂ^n"
+    ],
+    [
+     "x_t",
+     "t 时刻的观测/输入特征，形状 (d,)"
+    ],
+    [
+     "u",
+     "复数递推系数向量，形状 (n,)，约束逐元素 |u_i|=1（模长保持）"
+    ],
+    [
+     "v",
+     "复数输入增益向量，形状 (n,)，控制新信息写入强度"
+    ],
+    [
+     "W, b",
+     "输入到隐状态的复数仿射变换参数，W 形状 (n,d)"
+    ],
+    [
+     "⊙",
+     "逐元素复数乘法（Hadamard 积），不是矩阵乘"
+    ],
+    [
+     "tanh",
+     "逐元素非线性，产生要写入的新信息"
+    ]
+   ],
+   "derivation": [
+    "普通 RNN 做 h_t = W h_{t-1} + U x_t，梯度沿时间要连乘 W；谱半径偏离 1 就消失或爆炸。",
+    "把矩阵乘 W 换成逐元素乘 u（对角化），梯度连乘变成 ∏ u_i，每个通道的模长可独立控制。",
+    "再把 h 与 u 放到复数域并约束 |u_i|=1，于是 |∏ u_i|=1，模长沿时间完全保持，信息不随步数衰减。",
+    "模长保持项只负责搬运旧信息，新信息由 v ⊙ tanh(W x_t + b) 写入，两项相加得到酉递归更新。",
+    "更一般的形式是酉矩阵递推 h_t = U h_{t-1} + V·tanh(...)，U^H U = I；对角 u 是其中参数最省的特例。"
+   ],
+   "analogy": "像一条无损传送带：旧货（隐状态）原样送到下一站，新货由 tanh 那一项加上去；实值 RNN 的传送带每站都掉一部分货，走几十站就什么都不剩。",
+   "pitfalls": [
+    "|u|=1 只保证不衰减、不爆炸，不保证「记住了有用信息」；记忆内容还取决于相位如何旋转以及写入门控。",
+    "复数张量要么用 complex dtype、要么拆成实部虚部两组，参数量与显存约为实值同维度的两倍，收益不是免费的。",
+    "别直接对 u 做无约束梯度下降再期望 |u|=1；通常要参数化成 u = e^{iω} 或每步投影回单位圆。",
+    "⊙ 是逐元素乘而非矩阵乘：对角酉表达力有限，不能把它当成完整 uRNN 的通用形式。"
+   ],
+   "code": "import torch\n\n\ndef unitary_recurrence(x, h, omega, v, W, b):\n    \"\"\"x: (B, T, d) 实数观测; h: (B, n) 复数隐状态初值.\n    omega: (n,) 相位参数; u = exp(i*omega) 自动满足 |u| = 1.\n    v: (n,) complex 增益; W: (n, d) 实数; b: (n,) 实数.\n    返回 (B, T, n) 的复数隐状态序列.\"\"\"\n    u = torch.polar(torch.ones_like(omega), omega)          # (n,) complex, |u|=1\n    gate = torch.tanh(x @ W.t() + b)                        # (B, T, n) real\n    outs = []\n    for t in range(x.size(1)):\n        h = u * h + v * gate[:, t]                          # 逐元素复数乘 + 写入\n        outs.append(h)\n    return torch.stack(outs, dim=1)                         # (B, T, n) complex",
+   "sources": [
+    {
+     "title": "Reinforcement Learning with Complex (valued) Memories",
+     "url": "https://arxiv.org/abs/2609.38598v1"
+    },
+    {
+     "title": "qurl (官方代码仓库)",
+     "url": "https://github.com/Sathya98/qurl"
+    }
+   ]
+  },
+  {
+   "id": "f-consumer-lag-drain",
+   "name": "堆积排空时间 (Backlog Drain Time)",
+   "category": "engineering",
+   "glyph": "∑",
+   "tags": [
+    "kafka",
+    "consumer-lag",
+    "capacity-planning",
+    "backlog"
+   ],
+   "latex": "T_{\\mathrm{drain}} = \\frac{B_0}{R - A}, \\quad R > A",
+   "html": "<code>T_drain = B0 / (R − A)，仅当 R &gt; A</code>",
+   "symbols": [
+    [
+     "B_0",
+     "初始堆积消息数（当前 LAG 总量）"
+    ],
+    [
+     "R",
+     "消费者组当前消费速率（条/秒）"
+    ],
+    [
+     "A",
+     "消息到达速率（条/秒），即生产者写入速率"
+    ],
+    [
+     "T_{\\mathrm{drain}}",
+     "把 B_0 排空所需时间（秒）；R ≤ A 时不存在有限解"
+    ]
+   ],
+   "derivation": [
+    "把堆积看成水位：单位时间净减少量 = 消费速率 R 减去到达速率 A。",
+    "初始水位是 B_0，在 R、A 近似稳定的假设下按净速率线性下降。",
+    "令 B_0 − (R−A)·T = 0，解出 T = B_0/(R−A)。",
+    "若 R ≤ A，水位不降反升，必须先扩容消费者或对生产端限流，让 R 真正大于 A。"
+   ],
+   "analogy": "水池一边进水一边放水：只有放水比进水快，水位才会下降；问「多久排空」就是初始水量除以净流出速度。",
+   "pitfalls": [
+    "把总 LAG 当 B_0，却忽略 R 会随下游变慢、重试放大而下降，估出的排空时间过于乐观。",
+    "只用消费者数估 R：消费者数超过分区数后 R 不再线性增长，min(C, Np) 才是并行度上限。",
+    "忽略 A 的变化：上游回补或大促时 A 可能突然翻倍，原本 R > A 的结论会失效。"
+   ],
+   "code": "def drain_seconds(backlog, rate, arrival):\n    \"\"\"backlog: 当前 LAG 总量; rate: 消费速率 msg/s; arrival: 到达速率 msg/s.\"\"\"\n    if rate <= arrival:\n        return None  # 永远排不空，必须先扩容或限流\n    return backlog / (rate - arrival)\n\n# 例：LAG 120 万，消费 8000/s，到达 5000/s -> 400 秒排空\nprint(drain_seconds(1_200_000, 8000, 5000))\n",
+   "sources": [
+    {
+     "title": "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
+     "url": "https://nowcoder.com/discuss/933796596888662016"
+    }
+   ]
+  },
+  {
+   "id": "f-partition-parallelism",
+   "name": "有效并行度与分区倾斜 (Effective Parallelism & Partition Skew)",
+   "category": "engineering",
+   "glyph": "∥",
+   "tags": [
+    "kafka",
+    "partition",
+    "parallelism",
+    "skew",
+    "capacity-planning"
+   ],
+   "latex": "P_{\\mathrm{eff}}=\\min(C,\\,N_p),\\qquad \\mathrm{skew}=\\frac{\\max_p L_p}{\\frac{1}{N_p}\\sum_{p=1}^{N_p} L_p}",
+   "html": "<code>P_eff = min(C, Np)；skew = max LAG / mean LAG</code>",
+   "symbols": [
+    [
+     "C",
+     "消费者组内实例数"
+    ],
+    [
+     "N_p",
+     "主题分区数"
+    ],
+    [
+     "L_p",
+     "第 p 个分区当前的 LAG"
+    ],
+    [
+     "P_{\\mathrm{eff}}",
+     "有效并行度：同时被消费的分区数上限"
+    ],
+    [
+     "\\mathrm{skew}",
+     "倾斜度：最大分区 LAG 与平均 LAG 的比值，1 表示均匀"
+    ]
+   ],
+   "derivation": [
+    "Kafka 保证同一分区在同一时刻只被组内一个消费者消费，因此并行消费的分区数不超过消费者数。",
+    "并行度也不可能超过分区总数，两个上限取最小，得到 P_eff = min(C, Np)。",
+    "并行度够但仍堆积，往往是分区之间不均衡：某个 key 的消息全落在一个分区。",
+    "用最大分区 LAG 除以平均 LAG 得到 skew，把「有没有热分区」变成一个可比较的数。"
+   ],
+   "analogy": "超市只开 N 个收银台，收银员再多也只有 N 个能同时结账；某条队排得特别长，说明顾客没被均匀分到各队，加人不如重新分流。",
+   "pitfalls": [
+    "只看消费者数就认定「已扩容」：超过分区数的实例只是空转，还可能因 rebalance 拖慢整体。",
+    "把 skew 当绝对值：它是相对平均值的倍数，LAG 整体很小时高 skew 未必需要处理。",
+    "为打散热分区而随意加分区：同 key 的顺序性会被破坏，消费者端若有顺序假设需同步评估。"
+   ],
+   "code": "def parallelism(consumers, partitions):\n    return min(consumers, partitions)\n\n\ndef partition_skew(lags):\n    \"\"\"lags: 每个分区的当前 LAG 列表.\"\"\"\n    if not lags or sum(lags) == 0:\n        return 0.0\n    mean = sum(lags) / len(lags)\n    return max(lags) / mean if mean else 0.0\n\nlags = [9000, 120, 150, 8000, 130]\nprint(parallelism(8, 5), partition_skew(lags))  # 5, 4.17 -> 有热分区\n",
+   "sources": [
+    {
+     "title": "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
+     "url": "https://nowcoder.com/discuss/933796596888662016"
+    }
+   ]
+  }
+ ]
+}

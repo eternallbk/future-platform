@@ -1,0 +1,3028 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Future 求职学习工作台 — 每日联网调研采集器（确定性层）
+================================================================================
+Why this file exists
+  A daily workbench needs a *boring*, dependable half: something that runs at
+  20:00 Asia/Shanghai, hits public endpoints, normalizes, de-duplicates, scores
+  and stores — with no LLM in the loop, no third-party packages, and no single
+  channel able to break the run. The creative half (summarising, formula
+  breakdowns, concept explanations) is a separate, optional Agent pass driven by
+  scripts/daily-agent.md.
+
+Pipeline
+  load config -> fan out over channels (thread pool, per-channel timeout+retry)
+  -> normalize -> classify -> score -> dedupe (id / canonical url / title / simhash)
+  -> merge into state -> atomically write digest + index + manifest + logs
+
+Reliability rules (why the code looks the way it does)
+  * A dead endpoint must not mean a dead channel. Every fixed channel tries its
+    primary URL first and then the verified alternatives in `FALLBACKS`, in
+    order, and logs which source actually served the data. `CHANNEL_SPECS[..]
+    ["backup"]` mirrors those ids so the run log and web/data/sources.json tell
+    the reader that a channel has a second home.
+  * A channel that is CONFIRMED impossible (bot challenge, login wall, retired
+    API, robots.txt) is listed in `DISABLED_CHANNELS` together with the evidence
+    that killed it. The runner then records `status: "blocked"` plus a
+    `riskNote` instead of re-hammering the host on every run. The collector
+    function stays in place, so re-enabling is a one-line change; `--only id`
+    still runs a blocked channel on purpose, for re-testing.
+  * `parse_error` is deliberately a different status from `empty`: "the host
+    answered and we could not read it" is a bug on our side, "the host answered
+    with nothing" is not. Neither can abort the run.
+
+What it deliberately does NOT do
+  * No scraping of login-walled sites (Xiaohongshu, BOSS Zhipin, Lagou,
+    Shixiseng). Those are handled by a human export -> import flow; see
+    `manualChannels` in web/data/sources.json and the `inbox` channel.
+  * No ignoring robots.txt. Reddit sits in DISABLED_CHANNELS purely because
+    https://www.reddit.com/robots.txt answers `User-agent: * / Disallow: /` —
+    even though its .rss feed is technically reachable.
+  * No fabrication. Summaries come only from the source payload
+    (title / abstract / README / description). If there is no source URL the
+    item is dropped.
+
+Usage
+  python scripts/collect.py                  # full run, writes web/data
+  python scripts/collect.py --only arxiv,hn  # subset, for debugging
+  python scripts/collect.py --limit 20       # cap per channel
+  python scripts/collect.py --dry-run        # print only, write nothing
+  python scripts/collect.py --probe          # reachability table only, writes nothing
+  python scripts/collect.py --init-config    # write a config template
+  python scripts/collect.py -v               # per-item trace
+
+Outputs (all under web/data, all UTF-8 without BOM)
+  digest/YYYY-MM-DD.json   digest/today.json   items/index.json   items.json
+  manifest.json            logs/runs.json      sources.json       state/collector-state.json
+"""
+from __future__ import annotations
+
+import argparse
+import concurrent.futures as futures
+import hashlib
+import html
+import json
+import os
+import random
+import re
+import socket
+import ssl
+import sys
+import time
+import traceback
+import urllib.error
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+COLLECTOR_VERSION = "1.1.0"
+CST = timezone(timedelta(hours=8))          # Asia/Shanghai has no DST
+UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/126.0 Safari/537.36 FutureWorkbench/1.0 "
+      "(+personal academic research; contact: local)")
+
+ROOT = Path(__file__).resolve().parent.parent
+CONFIG_PATH = ROOT / "config" / "collector.config.json"
+DATA_DIR = ROOT / "web" / "data"
+LOGS_DIR = DATA_DIR / "logs"
+DIGEST_DIR = DATA_DIR / "digest"
+INDEX_DIR = DATA_DIR / "items"
+STATE_PATH = DATA_DIR / "state" / "collector-state.json"
+RUNS_PATH = LOGS_DIR / "runs.json"
+
+
+def now_cst() -> datetime:
+    return datetime.now(CST)
+
+
+def iso(dt: datetime) -> str:
+    return dt.astimezone(CST).isoformat(timespec="seconds")
+
+
+def date_key(dt: datetime) -> str:
+    return dt.astimezone(CST).strftime("%Y-%m-%d")
+
+
+# ============================================================================
+# 1. TAXONOMY — mirrors the front-end CATEGORIES; keywords are tunable in config
+# ============================================================================
+DEFAULT_CATEGORIES = {
+    "multimodal": {
+        "zh": "多模态算法", "en": "Multimodal", "weight": 1.00,
+        "desc": "视觉-语言对齐、VLM 架构、跨模态检索与生成、多模态评测。",
+        "goal": "每日捕获多模态大模型的新架构、对齐方法与评测基准进展。",
+        "keywords": ["multimodal", "multi-modal", "vision-language", "vlm", "mllm", "lvlm",
+                     "clip", "blip", "llava", "qwen-vl", "internvl", "video-llm", "image-text",
+                     "visual instruction", "cross-modal", "audio-visual", "omni-modal",
+                     "segment anything", "visual tokenizer", "多模态", "视觉语言", "图文"],
+        "arxiv": ["cs.CV", "cs.CL", "cs.MM"]},
+    "posttraining": {
+        "zh": "后训练", "en": "Post-training", "weight": 1.00,
+        "desc": "SFT、RLHF、DPO/GRPO、RLVR、拒绝采样、蒸馏与偏好优化。",
+        "goal": "跟踪后训练算法迭代与工程 trick，沉淀可复现的配方。",
+        "keywords": ["post-training", "post training", "sft", "instruction tuning", "rlhf",
+                     "dpo", "ipo", "kto", "orpo", "grpo", "rlvr", "reward model",
+                     "preference optimization", "rejection sampling", "distillation",
+                     "self-play", "verifier", "process reward", "reasoning model",
+                     "后训练", "指令微调", "偏好优化", "蒸馏"],
+        "arxiv": ["cs.CL", "cs.LG", "cs.AI"]},
+    "worldmodel": {
+        "zh": "世界模型", "en": "World Model", "weight": 0.95,
+        "desc": "基于模型的强化学习、视频世界模型、VLA、3DGS/NeRF 场景表示。",
+        "goal": "跟踪世界模型与具身智能的建模与评测路线。",
+        "keywords": ["world model", "world-model", "model-based rl", "dreamer", "genie",
+                     "vla", "vision-language-action", "embodied", "robot learning", "sim2real",
+                     "3d gaussian", "gaussian splatting", "nerf", "neural radiance",
+                     "interactive environment", "latent dynamics", "world simulator",
+                     "世界模型", "具身", "机器人"],
+        "arxiv": ["cs.LG", "cs.RO", "cs.CV", "cs.AI"]},
+    "generative": {
+        "zh": "生成式模型", "en": "Generative", "weight": 0.95,
+        "desc": "Diffusion、Flow Matching、自回归生成、视频/3D 生成。",
+        "goal": "掌握生成建模范式的原理演进与采样加速技术。",
+        "keywords": ["diffusion", "flow matching", "rectified flow", "consistency model",
+                     "ddpm", "ddim", "text-to-image", "text-to-video", "video generation",
+                     "image generation", "autoregressive generation", "3d generation",
+                     "dit", "adaln", "生成式", "扩散模型", "视频生成"],
+        "arxiv": ["cs.CV", "cs.LG"]},
+    "rl": {
+        "zh": "强化学习", "en": "Reinforcement Learning", "weight": 0.85,
+        "desc": "PPO/GAE、GRPO、离线 RL、探索与信用分配。",
+        "goal": "打牢 RL 数学基础，并连接到 LLM 后训练实践。",
+        "keywords": ["reinforcement learning", "ppo", "gae", "actor-critic", "q-learning",
+                     "offline rl", "exploration", "credit assignment", "mcts", "bandit",
+                     "policy gradient", "强化学习", "策略梯度"],
+        "arxiv": ["cs.LG", "cs.AI"]},
+    "agent": {
+        "zh": "Agent 理论与实践", "en": "Agents", "weight": 0.90,
+        "desc": "工具调用、规划、记忆、多智能体协作、Agent 评测与安全。",
+        "goal": "理解 Agent 系统设计模式并动手实现最小可用体。",
+        "keywords": ["agent", "agentic", "tool use", "tool calling", "function calling",
+                     "multi-agent", "planning", "memory", "react", "reflexion", "workflow",
+                     "computer use", "browser agent", "agent benchmark", "mcp",
+                     "agent 框架", "智能体"],
+        "arxiv": ["cs.AI", "cs.CL", "cs.SE"]},
+    "engineering": {
+        "zh": "工程与系统", "en": "Engineering", "weight": 0.70,
+        "desc": "分布式训练、显存优化、推理加速、量化、CUDA 与并行策略。",
+        "goal": "把算法想法落到可训练、可推理的工程实现上。",
+        "keywords": ["inference", "serving", "vllm", "sglang", "quantization", "kv cache",
+                     "flash attention", "distributed training", "fsdp", "deepspeed",
+                     "megatron", "cuda", "tensorrt", "throughput", "latency",
+                     "推理加速", "分布式训练", "显存"],
+        "arxiv": ["cs.DC", "cs.LG"]},
+    "foundation": {
+        "zh": "基础理论", "en": "Foundations", "weight": 0.60,
+        "desc": "线性代数、概率统计、优化、Transformer 与深度学习原理。",
+        "goal": "补齐面试八股背后的第一性原理。",
+        "keywords": ["transformer", "attention", "position encoding", "rope", "alibi",
+                     "normalization", "rmsnorm", "layernorm", "optimizer", "scaling law",
+                     "generalization", "theory", "architecture", "基础", "理论", "缩放定律"],
+        "arxiv": ["cs.LG", "stat.ML"]},
+    "job": {
+        "zh": "岗位与招聘", "en": "Jobs & Hiring", "weight": 0.62,
+        "desc": "实时招聘信息、岗位 JD、面试流程、薪资带宽与投递节奏。",
+        "goal": "每日刷新在招岗位与投递窗口，不漏机会。",
+        "keywords": ["招聘", "实习", "算法工程师", "校招", "社招", "jd", "intern",
+                     "internship", "hiring", "recruit", "opening", "career", "岗位"],
+        "arxiv": []},
+    "coding": {
+        "zh": "面试手撕题", "en": "Coding Interviews", "weight": 0.95,
+        "desc": "手写注意力、损失函数、采样、经典算法与数据结构。",
+        "goal": "形成高频手撕题的肌肉记忆与讲解话术。",
+        "keywords": ["leetcode", "手撕", "面经", "算法题", "cracking", "interview question",
+                     "system design", "coding interview", "八股", "笔试"],
+        "arxiv": []},
+    "exam": {
+        "zh": "笔试场景题", "en": "Written Exams", "weight": 0.75,
+        "desc": "概率题、场景设计题、工程权衡题、选择题考点。",
+        "goal": "覆盖笔试与面试中的开放场景题。",
+        "keywords": ["笔试", "场景题", "概率题", "选择题", "written test", "oa", "quiz"],
+        "arxiv": []},
+    "paper": {
+        "zh": "论文与前沿", "en": "Papers", "weight": 0.90,
+        "desc": "arXiv 新论文、CCF-A 顶会论文、技术报告与综述。",
+        "goal": "按方向过滤高相关新论文并给出可读摘要。",
+        "keywords": ["paper", "arxiv", "preprint", "survey", "benchmark", "state-of-the-art",
+                     "论文", "综述", "顶会"],
+        "arxiv": ["cs.CV", "cs.CL", "cs.LG"]},
+    "course": {
+        "zh": "课程与仓库", "en": "Courses & Repos", "weight": 0.70,
+        "desc": "系统课程、开源仓库、教程与学习资源。",
+        "goal": "维护固定仓库与课程的进度更新。",
+        "keywords": ["tutorial", "course", "awesome", "handbook", "cookbook", "guide",
+                     "implementation", "from scratch", "教程", "课程", "仓库"],
+        "arxiv": []},
+    "trend": {
+        "zh": "技术演进与趋势", "en": "Trends", "weight": 0.65,
+        "desc": "技术路线演进、行业讨论、社区热点与方法论。",
+        "goal": "把零散信息串成可讲述的技术演进叙事。",
+        "keywords": ["roadmap", "trend", "state of", "review", "opinion", "discussion",
+                     "趋势", "演进", "复盘", "讨论"],
+        "arxiv": []},
+}
+
+# ============================================================================
+# 2. CHANNEL REGISTRY — tier drives scoring weight and run priority
+# ============================================================================
+CHANNEL_SPECS = {
+    "arxiv":          {"tier": "P0", "mode": "api",    "timeout": 30, "retries": 2, "backup": []},
+    "hf_papers":      {"tier": "P0", "mode": "api",    "timeout": 30, "retries": 2, "backup": ["hf_blog_rss"]},
+    "hf_models":      {"tier": "P1", "mode": "api",    "timeout": 25, "retries": 1, "backup": []},
+    "github":         {"tier": "P0", "mode": "api",    "timeout": 30, "retries": 2, "backup": ["gh_trending"]},
+    "gh_trending":    {"tier": "P1", "mode": "html",   "timeout": 25, "retries": 1, "backup": ["github_rest_search"]},
+    "openreview":     {"tier": "P0", "mode": "api",    "timeout": 30, "retries": 2, "backup": ["s2"]},
+    "s2":             {"tier": "P1", "mode": "api",    "timeout": 30, "retries": 1, "backup": ["openalex", "crossref"]},
+    "hn":             {"tier": "P1", "mode": "api",    "timeout": 25, "retries": 2, "backup": []},
+    "reddit":         {"tier": "P2", "mode": "rss",    "timeout": 25, "retries": 1, "backup": []},
+    "hf_blog_rss":    {"tier": "P2", "mode": "rss",    "timeout": 25, "retries": 1, "backup": []},
+    "openai_rss":     {"tier": "P2", "mode": "rss",    "timeout": 25, "retries": 1, "backup": []},
+    "machineheart":   {"tier": "P1", "mode": "rss",    "timeout": 20, "retries": 1, "backup": ["leiphone"]},
+    "leiphone":       {"tier": "P1", "mode": "rss",    "timeout": 25, "retries": 1, "backup": ["qbitai"]},
+    "qbitai":         {"tier": "P1", "mode": "rss",    "timeout": 20, "retries": 1, "backup": ["leiphone"]},
+    "rsshub":         {"tier": "P2", "mode": "rss",    "timeout": 25, "retries": 1, "backup": ["zhihu"]},
+    "nowcoder":       {"tier": "P1", "mode": "html",   "timeout": 25, "retries": 1, "backup": []},
+    # zhihu: DISABLED.
+    #
+    # The only reachable feed is a general hot list (mirror rss.injahow.cn), and a
+    # general hot list has nothing to do with algorithm internships. Audit of 41
+    # ingested items: film reviews, a phone review, a fraud news story and an
+    # entertainment question were keyword-classified into posttraining / rl /
+    # foundation, i.e. it was actively polluting the technical categories.
+    # The targeted alternative is `nowcoder` (面经/招聘) plus the official blogs.
+    # To fetch specific Zhihu questions instead, ingest their URLs by hand into
+    # web/data/inbox/ - that keeps the signal and drops the firehose.
+    "zhihu":          {"tier": "P2", "mode": "rss",    "timeout": 25, "retries": 1,
+                       "backup": [], "disabled": True},
+    # Human-in-the-loop import for login-walled channels.
+    #
+    # Disabled by default on purpose: login-channel collection is paused for now
+    # (the reader will provide exports later). This channel never touches the
+    # network either way - it only reads LOCAL files from web/data/inbox/ - but
+    # keeping it off means a daily run does not imply any login-channel work is
+    # happening, which is the honest default.
+    # Re-enable per run:  python scripts/collect.py --only inbox
+    # Re-enable permanently: "enableInbox": true in config/collector.config.json
+    "inbox":          {"tier": "P0", "mode": "local",  "timeout": 5,  "retries": 0,
+                       "backup": [], "disabled": True},
+    "jobs_bytedance": {"tier": "P0", "mode": "api",    "timeout": 30, "retries": 2, "backup": []},
+    "jobs_tencent":   {"tier": "P0", "mode": "api",    "timeout": 30, "retries": 2, "backup": []},
+    "jobs_alibaba":   {"tier": "P1", "mode": "api",    "timeout": 30, "retries": 1, "backup": []},
+    "jobs_zhipu":     {"tier": "P2", "mode": "html",   "timeout": 25, "retries": 1, "backup": []},
+    "jobs_moonshot":  {"tier": "P2", "mode": "html",   "timeout": 25, "retries": 1, "backup": []},
+    "jobs_deepseek":  {"tier": "P2", "mode": "html",   "timeout": 25, "retries": 1, "backup": ["moka_high_flyer"]},
+    "jobs_minimax":   {"tier": "P2", "mode": "html",   "timeout": 25, "retries": 1, "backup": []},
+    "jobs_shailab":   {"tier": "P2", "mode": "html",   "timeout": 25, "retries": 1, "backup": []},
+    # login-walled: never scraped automatically
+    "xiaohongshu":    {"tier": "P2", "mode": "manual", "timeout": 0,  "retries": 0, "backup": [], "auth": True},
+    "boss":           {"tier": "P1", "mode": "manual", "timeout": 0,  "retries": 0, "backup": [], "auth": True},
+    "lagou":          {"tier": "P2", "mode": "manual", "timeout": 0,  "retries": 0, "backup": [], "auth": True},
+    "shixiseng":      {"tier": "P2", "mode": "manual", "timeout": 0,  "retries": 0, "backup": [], "auth": True},
+}
+
+# Channels that are CONFIRMED impossible from a script. Every reason below was
+# observed with a real request (see research/channel_probe.json and
+# scripts/probe-channels.py). The runner records them as `status: "blocked"`
+# with the matching `riskNote` and does NOT spend a request on them; the
+# collector functions are kept so re-enabling is one line. `--only <id>` still
+# runs a disabled channel on purpose, because re-testing is how we notice that
+# an upstream situation changed.
+DISABLED_CHANNELS = {
+    "openreview":
+        "Bot challenge: api2 AND api1 /notes both answer 200 text/html "
+        "'Verifying your browser | OpenReview' (earlier runs saw 403 "
+        "ChallengeRequiredError). Only a browser can pass it; arXiv + s2 cover papers.",
+    "reddit":
+        "robots.txt: https://www.reddit.com/robots.txt is 'User-agent: * / Disallow: /', "
+        "so we do not scrape it even though <sub>/top/.rss answers 200. No substitute "
+        "either: lobste.rs has the same blanket Disallow. HN already covers the signal.",
+    "machineheart":
+        "Feed retired: /rss and /feed both answer 200 text/html (机器之心·数据服务 landing "
+        "page) instead of RSS, /rss/articles is 404, and the only reachable RSSHub mirror "
+        "404s on /jiqizhixin/daily. Replaced by the `leiphone` channel (雷锋网 AI feed).",
+    "rsshub":
+        "Every public instance is down or blocking: rsshub.app 403 Cloudflare challenge, "
+        "rsshub.rssforever.com 503, rsshub.ktachibana.party 404/503, rsshub.pseudoyu.com TLS "
+        "error; the single reachable mirror (rss.injahow.cn) serves only /zhihu/hotlist and "
+        "/solidot, and the zhihu route is already consumed by the fixed `zhihu` channel.",
+    "jobs_bytedance":
+        "Edge/WAF blocks scripted clients: GET /api/v1/search/job/posts answers 200 with the "
+        "HTML page 字节跳动猎头平台, POST with the documented JSON body answers 405 (0 bytes), "
+        "POST with a trailing slash answers 307, /referral/api/... is 404. The JS bundle "
+        "confirms the path is right, so this is the edge, not our request. Needs a browser.",
+    "jobs_alibaba":
+        "Anti-bot gated: the real API is POST https://talent.alibaba.com/position/search "
+        "(GET -> 405, POST without CSRF -> 403). With the page's own XSRF-TOKEN replayed as "
+        "?_csrf= it answers 200 but {\"success\":true,\"datas\":null,\"totalCount\":0} for "
+        "every payload shape, and /searchCondition/list returns searchItems=null: the backend "
+        "wants a token only the baxia browser script can mint. Needs a browser.",
+    "jobs_zhipu":
+        "No machine-readable listing: zhipuai.cn/joinus (200, 783KB) server-renders job "
+        "*categories* (算法/校招 labels) but no per-job data, exposes no ATS host, and none of "
+        "its 15 Next.js chunks reference a job API. Needs a browser or a human import.",
+    "jobs_moonshot":
+        "No machine-readable listing: www.moonshot.cn/careers (200, 95KB) contains zero job "
+        "keywords and now delegates to careers.kimi.com, which is an 11.6KB JS shell with no "
+        "embedded data (/jobs and /positions are 404) and no job API in its chunks.",
+    "jobs_minimax":
+        "No machine-readable listing: minimaxi.com/careers embeds a Feishu ATSX portal "
+        "(vrfi1sk8a0.jobs.feishu.cn). Its index page carries no job data, its API answers 405 "
+        "like ByteDance's (same ATSX edge), and minimaxi.com/robots.txt disallows /api/. "
+        "Needs a browser or a human import.",
+    "jobs_shailab":
+        "No machine-readable listing: /joinus, /joinus/social and /joinus/campus return the "
+        "same 70KB marketing page with no job rows; the openings are fetched by JS and no "
+        "ATS/API endpoint is referenced. Needs a browser or a human import.",
+}
+
+CHANNEL_NAMES = {
+    "arxiv": "arXiv 论文", "hf_papers": "HF 每日论文", "hf_models": "HF 模型",
+    "github": "GitHub 搜索", "gh_trending": "GitHub 趋势", "openreview": "OpenReview",
+    "s2": "Semantic Scholar", "hn": "Hacker News", "reddit": "Reddit",
+    "machineheart": "机器之心", "qbitai": "量子位", "leiphone": "雷锋网 AI", "hf_blog_rss": "HF Blog",
+    "openai_rss": "OpenAI News", "rsshub": "RSSHub", "nowcoder": "牛客网", "zhihu": "知乎热榜",
+    "jobs_bytedance": "字节招聘", "jobs_tencent": "腾讯招聘", "jobs_alibaba": "阿里招聘",
+    "jobs_zhipu": "智谱招聘", "jobs_moonshot": "月之暗面", "jobs_deepseek": "DeepSeek",
+    "jobs_minimax": "MiniMax", "jobs_shailab": "上海 AI Lab",
+    "inbox": "人工导入",
+    "xiaohongshu": "小红书", "boss": "BOSS直聘", "lagou": "拉勾", "shixiseng": "实习僧",
+}
+
+MANUAL_ONLY = {cid for cid, s in CHANNEL_SPECS.items() if s.get("auth") or s["mode"] == "manual"}
+
+# Hosts we expect to see in the knowledge base. Anything else is not rejected
+# (a legitimate new source may appear) but is reported in the daily proposals
+# file so a mis-parsed page cannot silently pollute the corpus unnoticed.
+# Mirrors the list in scripts/selfcheck.py on purpose: the collector proposes,
+# the self-check verifies, and a human decides.
+KNOWN_HOSTS = {
+    "arxiv.org", "export.arxiv.org", "huggingface.co", "github.com", "githubusercontent.com",
+    "api.github.com", "openreview.net", "api2.openreview.net", "semanticscholar.org",
+    "api.semanticscholar.org", "openalex.org", "api.openalex.org", "crossref.org",
+    "doi.org", "news.ycombinator.com", "reddit.com", "jiqizhixin.com", "qbitai.com",
+    "leiphone.com", "infoq.cn", "openai.com", "deepmind.google", "blog.google",
+    "microsoft.com", "nvidia.com", "anthropic.com", "rsshub.app", "rss.injahow.cn",
+    "nowcoder.com", "zhihu.com", "v2ex.com", "aclanthology.org", "paperswithcode.com",
+    "papers.cool", "alphaxiv.org", "leetcode.cn", "leetcode.com", "codeforces.com",
+    "jobs.bytedance.com", "careers.tencent.com", "talent.alibaba.com", "zhipuai.cn",
+    "moonshot.cn", "kimi.com", "deepseek.com", "talent.deepseek.com", "minimaxi.com",
+    "shlab.org.cn", "sensetime.com", "youtube.com", "bilibili.com", "twitter.com", "x.com",
+}
+
+DEFAULT_CONFIG = {
+    "collectorVersion": COLLECTOR_VERSION,
+    "targetDate": "2027-04-01",
+    "targetLabel": "目标投递窗口（2027 届春招）",
+    "interests": {"multimodal": 1.0, "posttraining": 1.0, "worldmodel": 0.95,
+                  "generative": 0.9, "rl": 0.8, "agent": 0.85},
+    "http": {"userAgent": UA, "defaultTimeout": 25, "maxRetries": 2,
+             "backoffBase": 1.6, "jitter": 0.35, "delayBetween": 0.4},
+    "limits": {"perChannel": 30, "maxNewPerRun": 400},
+    "scoring": {"freshnessHalfLifeDays": 7.0,
+                "sourceTierWeight": {"P0": 1.0, "P1": 0.85, "P2": 0.7},
+                "qualityBoost": 8.0, "minRelevance": 12.0},
+    "dedupe": {"simhashBits": 64, "hammingThreshold": 3},
+    "arxiv": {"queryTerms": [], "maxPerQuery": 25, "lookbackDays": 10},
+    "github": {"queries": [], "minStars": 40, "lookbackDays": 30},
+    "categories": {},
+    "retention": {"archiveAfterDays": 90, "keepDayFiles": 400},
+}
+
+
+# ============================================================================
+# 3. UTILITIES
+# ============================================================================
+def safe_print(text: str = "") -> None:
+    """Print without ever raising UnicodeEncodeError.
+
+    WHY: the collector prints Chinese channel names and item titles, and a
+    Windows console is still often GBK. A crashing `print` in the --dry-run /
+    --probe path would turn a successful run into exit code 1.
+    """
+    try:
+        print(text, flush=True)
+    except UnicodeEncodeError:                           # pragma: no cover - legacy consoles
+        enc = sys.stdout.encoding or "ascii"
+        try:
+            sys.stdout.write(str(text).encode(enc, "replace").decode(enc, "replace") + "\n")
+            sys.stdout.flush()
+        except Exception:
+            pass
+
+
+class Logger:
+    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+        self.lines: list = []
+
+    def __call__(self, msg: str, level: str = "info") -> None:
+        prefix = {"info": "  ", "ok": "[ok] ", "warn": "[!] ", "err": "[x] ", "step": "== "}.get(level, "  ")
+        line = f"[{now_cst().strftime('%H:%M:%S')}] {prefix}{msg}"
+        self.lines.append(line)
+        try:
+            print(line, flush=True)
+        except UnicodeEncodeError:                       # pragma: no cover - legacy consoles
+            print(line.encode("utf-8", "replace").decode("ascii", "replace"), flush=True)
+
+    def detail(self, msg: str) -> None:
+        if self.verbose:
+            self("  " + msg)
+
+
+def js_literal_decode(lit: str) -> str:
+    """Decode the body of a JS single-quoted string literal into real text.
+
+    WHY: talent.deepseek.com inlines its job catalogue as
+    `JSON.parse('{"crawledAt":...}')`; the literal uses \\' and \\" escapes that
+    json.loads() cannot read on its own.
+    """
+    simple = {"n": "\n", "t": "\t", "r": "\r", "b": "\b", "f": "\f",
+              "'": "'", '"': '"', "\\": "\\", "/": "/"}
+    out, i = [], 0
+    while i < len(lit):
+        c = lit[i]
+        if c == "\\" and i + 1 < len(lit):
+            nxt = lit[i + 1]
+            if nxt == "u":
+                out.append(lit[i:i + 6])
+                i += 6
+                continue
+            out.append(simple.get(nxt, nxt))
+            i += 2
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def first_of(row: dict, keys, default=""):
+    """First non-empty value among `keys` — how one normalizer serves many APIs.
+
+    WHY: Tencent returns RecruitPostName/PostURL while ByteDance returns
+    title/url. Looking up a fixed key list is what silently turned a working
+    Tencent feed into an 'empty' channel before.
+    """
+    for k in keys:
+        val = (row or {}).get(k)
+        if val not in (None, "", [], {}):
+            return val
+    return default
+
+
+def http_get(url, *, timeout=25, headers=None, accept=None, cfg=None, log=None,
+             retries=2, data=None, method="GET"):
+    """HTTP with exponential backoff + jitter. Returns (status, bytes, content_type)."""
+    cfg = cfg or {}
+    http_cfg = cfg.get("http") or DEFAULT_CONFIG["http"]
+    hdrs = {
+        "User-Agent": http_cfg.get("userAgent", UA),
+        "Accept": accept or "application/json, text/html;q=0.9, application/xml;q=0.8, */*;q=0.7",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "Cache-Control": "no-cache",
+    }
+    if headers:
+        hdrs.update(headers)
+
+    ctx = ssl.create_default_context()
+    last_err = None
+    for attempt in range(max(1, retries + 1)):
+        try:
+            req = urllib.request.Request(url, headers=hdrs, data=data, method=method)
+            with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
+                body = resp.read()
+                if resp.headers.get("Content-Encoding") == "gzip":
+                    import gzip
+                    body = gzip.decompress(body)
+                return resp.status, body, resp.headers.get("Content-Type", "")
+        except urllib.error.HTTPError as e:
+            last_err = e
+            if e.code in (403, 408, 425, 429, 500, 502, 503, 504) and attempt < retries:
+                pass
+            else:
+                raise
+        except (urllib.error.URLError, socket.timeout, ssl.SSLError, ConnectionError, OSError) as e:
+            last_err = e
+            if attempt >= retries:
+                break
+        base = float(http_cfg.get("backoffBase", 1.6))
+        jitter = float(http_cfg.get("jitter", 0.35))
+        delay = (base ** attempt) + random.uniform(0, jitter * (base ** attempt))
+        if log:
+            log(f"retry {attempt + 1}/{retries} in {delay:.1f}s ({type(last_err).__name__})", "warn")
+        time.sleep(delay)
+    raise last_err if last_err else RuntimeError("request failed")
+
+
+def http_json(url, **kw):
+    _status, body, _ct = http_get(url, **kw)
+    return json.loads(body.decode("utf-8", "replace"))
+
+
+def strip_html(s) -> str:
+    if not s:
+        return ""
+    s = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", str(s))
+    s = re.sub(r"(?s)<[^>]+>", " ", s)
+    return re.sub(r"\s+", " ", html.unescape(s)).strip()
+
+
+def clean_text(s, limit: int = 1200) -> str:
+    if s is None:
+        return ""
+    return re.sub(r"\s+", " ", strip_html(s)).strip()[:limit]
+
+
+def parse_ts(value):
+    if value in (None, "", 0, "0"):
+        return None
+    if isinstance(value, (int, float)):
+        ts = float(value)
+        if ts > 1e12:
+            ts /= 1000.0
+        try:
+            return datetime.fromtimestamp(ts, tz=timezone.utc).astimezone(CST)
+        except (OverflowError, OSError, ValueError):
+            return None
+    s = str(value).strip()
+    if not s:
+        return None
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"   # Z means UTC, not +20:00
+    cn = re.match(r"^(\d{4})年(\d{1,2})月(\d{1,2})日", s)          # 腾讯招聘 LastUpdateTime
+    if cn:
+        try:
+            return datetime(int(cn.group(1)), int(cn.group(2)), int(cn.group(3)), tzinfo=CST)
+        except ValueError:
+            pass
+    try:
+        dt = datetime.fromisoformat(s)
+        return dt.astimezone(CST) if dt.tzinfo else dt.replace(tzinfo=CST)
+    except ValueError:
+        pass
+    for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%Y/%m/%d",
+                "%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S"):
+        try:
+            dt = datetime.strptime(s, fmt)
+            return dt.astimezone(CST) if dt.tzinfo else dt.replace(tzinfo=CST)
+        except ValueError:
+            continue
+    return None
+
+
+TRACKING_PARAMS = re.compile(
+    r"^(utm_|spm|ref$|ref_|from$|source$|share_|share$|scene$|src$|fbclid|gclid|"
+    r"mc_cid|mc_eid|_hsenc|_hsmi|yclid|abbucket|ivk_sa|s_r$|share_token|"
+    r"loginfrom|_t$|hmsr|hmpl|hmcu|hmkw|hmci|weibo_id|timestamp$)", re.I)
+
+
+def canonical_url(u: str) -> str:
+    if not u:
+        return ""
+    u = str(u).strip()
+    if u.startswith("//"):
+        u = "https:" + u
+    try:
+        parts = urllib.parse.urlsplit(u)
+    except ValueError:
+        return u
+    if not parts.netloc:
+        return ""
+    query = [(k, v) for k, v in urllib.parse.parse_qsl(parts.query, keep_blank_values=False)
+             if not TRACKING_PARAMS.match(k)]
+    path = re.sub(r"(arxiv\.org/(?:abs|pdf)/\d{4}\.\d{4,5})v\d+", r"\1", parts.path.rstrip("/") or "/")
+    if path.endswith(".pdf"):
+        path = path[:-4]
+    return urllib.parse.urlunsplit(
+        (parts.scheme or "https", parts.netloc.lower().replace("www.", ""), path,
+         urllib.parse.urlencode(query), ""))
+
+
+def norm_title(t: str) -> str:
+    if not t:
+        return ""
+    t = strip_html(t).lower()
+    t = re.sub(r"[\s\u3000]+", " ", t)
+    return re.sub(r"[^\w\u4e00-\u9fff ]+", "", t).strip()
+
+
+def sha1(s: str) -> str:
+    return hashlib.sha1(str(s).encode("utf-8", "replace")).hexdigest()
+
+
+def stable_id(source: str, external: str) -> str:
+    return sha1(f"{source}::{external}")[:16]
+
+
+def title_key(t: str) -> str:
+    n = norm_title(t)
+    return sha1(n)[:16] if n else ""
+
+
+_TOKEN_RE = re.compile(r"[a-z0-9]+|[\u4e00-\u9fff]")
+
+
+def simhash(text: str, bits: int = 64) -> int:
+    tokens = _TOKEN_RE.findall((text or "").lower())
+    if not tokens:
+        return 0
+    grams = [" ".join(tokens[i:i + 3]) for i in range(max(1, len(tokens) - 2))]
+    vec = [0] * bits
+    for g in grams:
+        h = int(hashlib.md5(g.encode("utf-8", "replace")).hexdigest(), 16)
+        for i in range(bits):
+            vec[i] += 1 if (h >> i) & 1 else -1
+    out = 0
+    for i in range(bits):
+        if vec[i] > 0:
+            out |= (1 << i)
+    return out
+
+
+def hamming(a: int, b: int) -> int:
+    return bin(a ^ b).count("1")
+
+
+# ============================================================================
+# 4. CHANNEL COLLECTORS — each returns a list of raw dicts; raising is allowed
+#    (the runner isolates failures per channel).
+# ============================================================================
+ARXIV_NS = {"a": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
+
+
+def _arxiv_default_terms(cfg):
+    """Build OR-queries from the most distinctive english keywords per category."""
+    terms = []
+    for cid, c in cfg["categories"].items():
+        kws = [k for k in c.get("keywords", [])
+               if len(k) > 3 and re.match(r"^[a-z0-9][a-z0-9\- ]*$", k)][:3]
+        if kws:
+            terms.append(" OR ".join(f'all:"{k}"' for k in kws))
+    return terms[:6]
+
+
+def collect_arxiv(cfg, log, limit):
+    out = []
+    acfg = cfg.get("arxiv", {})
+    terms = acfg.get("queryTerms") or _arxiv_default_terms(cfg)
+    max_q = int(acfg.get("maxPerQuery") or limit or 25)
+    cutoff = now_cst() - timedelta(days=int(acfg.get("lookbackDays", 10)))
+    for term in terms:
+        url = ("http://export.arxiv.org/api/query?search_query=" +
+               urllib.parse.quote(term, safe="") +
+               f"&start=0&max_results={max_q}&sortBy=submittedDate&sortOrder=descending")
+        try:
+            _s, body, _ct = http_get(url, timeout=CHANNEL_SPECS["arxiv"]["timeout"],
+                                     retries=CHANNEL_SPECS["arxiv"]["retries"], cfg=cfg, log=log,
+                                     accept="application/atom+xml, application/xml;q=0.9, */*;q=0.8")
+            root = ET.fromstring(body)
+        except Exception as e:
+            log(f"arxiv query failed ({term[:40]}): {e}", "warn")
+            continue
+        got = 0
+        for entry in root.findall("a:entry", ARXIV_NS):
+            title = clean_text(entry.findtext("a:title", "", ARXIV_NS), 400)
+            link = (entry.findtext("a:id", "", ARXIV_NS) or "").strip()
+            if not title or not link:
+                continue
+            published = parse_ts(entry.findtext("a:published", "", ARXIV_NS))
+            updated = parse_ts(entry.findtext("a:updated", "", ARXIV_NS))
+            if published and published < cutoff:
+                continue
+            summary = clean_text(entry.findtext("a:summary", "", ARXIV_NS), 1800)
+            cats = [c.attrib.get("term", "") for c in entry.findall("a:category", ARXIV_NS)]
+            prim = entry.find("arxiv:primary_category", ARXIV_NS)
+            primary = prim.attrib.get("term", "") if prim is not None else (cats[0] if cats else "")
+            comment = clean_text(entry.findtext("arxiv:comment", "", ARXIV_NS), 240)
+            out.append({
+                "sourceId": "arxiv", "channel": "arxiv",
+                "externalId": link.rsplit("/", 1)[-1],
+                "title": title, "summary": summary,
+                "url": link.replace("http://", "https://"),
+                "publishedAt": iso(published or updated or now_cst()),
+                "authors": [clean_text(a.findtext("a:name", "", ARXIV_NS), 60)
+                            for a in entry.findall("a:author", ARXIV_NS)][:12],
+                "tags": ([primary] if primary else []) + cats[:4],
+                "venue": (comment.split(".")[0][:60] if comment else "arXiv"),
+                "peerReviewed": False,
+                "codeAvailable": bool(re.search(r"github|code|open-?source", summary, re.I)),
+                "lang": "en",
+            })
+            got += 1
+        log.detail(f"arxiv '{term[:36]}' -> {got}")
+        time.sleep(float((cfg.get("http") or {}).get("delayBetween", 0.4)))
+    return out
+
+
+def collect_hf_papers(cfg, log, limit):
+    out = []
+    data = http_json("https://huggingface.co/api/daily_papers?limit=%d" % min(max(limit, 10) * 2, 100),
+                     cfg=cfg, log=log, retries=2)
+    for row in data if isinstance(data, list) else []:
+        p = row.get("paper") or row
+        title = clean_text(p.get("title", ""), 400)
+        if not title:
+            continue
+        pid = str(p.get("id") or title_key(title))
+        up = int(p.get("upvotes") or row.get("upvotes") or 0)
+        out.append({
+            "sourceId": "hf_papers", "channel": "hf_papers", "externalId": pid,
+            "title": title, "summary": clean_text(p.get("summary", ""), 1800),
+            "url": f"https://huggingface.co/papers/{pid}",
+            "canonicalUrl": (f"https://arxiv.org/abs/{pid}"
+                             if re.match(r"^\d{4}\.\d{4,5}$", pid) else None),
+            "publishedAt": iso(parse_ts(p.get("publishedAt") or row.get("publishedAt")) or now_cst()),
+            "authors": [a.get("name", "") for a in (p.get("authors") or [])][:12],
+            "upvotes": up, "qualitySignals": {"upvotes": up}, "lang": "en",
+        })
+    return out
+
+
+def collect_hf_models(cfg, log, limit):
+    """HuggingFace model releases, with a popularity floor.
+
+    Why the floor: without it this channel was the single largest source of junk
+    in the library. A corpus audit found 80 low-value cards from here - random
+    community uploads such as `BabyLM-community/babylm-multimodal-baseline-git`
+    (score 31) and several duplicate `...-MLX` / `...-NVF` re-uploads of the same
+    uncensored model. They are technically "models" but carry no signal about the
+    field. A downloads/likes threshold keeps the models people actually use.
+
+    Only models that clear BOTH a download floor and a like floor, or are very
+    recent and already popular, are accepted.
+    """
+    out = []
+    qcfg = cfg.get("hfModels") or {}
+    min_downloads = int(qcfg.get("minDownloads", 2000))
+    min_likes = int(qcfg.get("minLikes", 15))
+    dropped = 0
+
+    for term in ["vision-language", "multimodal", "text-to-video", "world-model",
+                 "video-generation", "vision-language-action"]:
+        url = ("https://huggingface.co/api/models?search=" + urllib.parse.quote(term) +
+               "&sort=downloads&direction=-1&limit=%d" % min(max(10, limit), 25) +
+               "&full=false&config=false")
+        try:
+            data = http_json(url, cfg=cfg, log=log, retries=1)
+        except Exception as e:
+            log(f"hf models '{term}' failed: {e}", "warn")
+            continue
+        for m in data if isinstance(data, list) else []:
+            mid = m.get("modelId") or m.get("id")
+            if not mid:
+                continue
+            dl = int(m.get("downloads") or 0)
+            likes = int(m.get("likes") or 0)
+            if dl < min_downloads and likes < min_likes:
+                dropped += 1
+                continue
+            out.append({
+                "sourceId": "hf_models", "channel": "hf_models", "externalId": mid,
+                "title": mid,
+                # State the numbers so the reader can judge, and so the relevance
+                # scorer has real text to work with instead of a bare identifier.
+                "summary": (f"HuggingFace 模型 {mid}：下载 {dl}、点赞 {likes}。"
+                            f"搜索词「{term}」。标签：{', '.join((m.get('tags') or [])[:6]) or '无'}。"
+                            f"模型页含用法与权重，适合作为复现或微调的起点。"),
+                "url": f"https://huggingface.co/{mid}",
+                "publishedAt": iso(parse_ts(m.get("lastModified") or m.get("createdAt")) or now_cst()),
+                "tags": ((m.get("tags") or [])[:10] + [term]),
+                "qualitySignals": {"downloads": dl, "likes": likes},
+                "codeAvailable": True,      # a model repo is deployable material
+                "lang": "en",
+            })
+        time.sleep(0.3)
+    if dropped:
+        log(f"  hf_models: dropped {dropped} models below the popularity floor "
+            f"(downloads<{min_downloads} and likes<{min_likes})", "warn")
+    return out
+
+
+def collect_github(cfg, log, limit):
+    out = []
+    gcfg = cfg.get("github", {})
+    queries = gcfg.get("queries") or [
+        "multimodal llm", "vision language model", "post-training llm", "rlhf dpo grpo",
+        "world model reinforcement learning", "diffusion video generation",
+        "llm agent framework", "llm inference engine",
+    ]
+    min_stars = int(gcfg.get("minStars", 40))
+    since = (now_cst() - timedelta(days=int(gcfg.get("lookbackDays", 30)))).strftime("%Y-%m-%d")
+    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    for q in queries[:8]:
+        url = ("https://api.github.com/search/repositories?q=" +
+               urllib.parse.quote(f"{q} stars:>{min_stars} pushed:>{since}") +
+               "&sort=stars&order=desc&per_page=%d" % min(max(5, limit), 20))
+        try:
+            data = http_json(url, headers=headers, cfg=cfg, log=log,
+                             retries=CHANNEL_SPECS["github"]["retries"],
+                             timeout=CHANNEL_SPECS["github"]["timeout"])
+        except Exception as e:
+            log(f"github '{q}' failed: {e}", "warn")
+            continue
+        for r in (data.get("items") or []) if isinstance(data, dict) else []:
+            name = r.get("full_name")
+            if not name:
+                continue
+            desc = clean_text(r.get("description") or "", 600)
+            stars = r.get("stargazers_count", 0)
+            out.append({
+                "sourceId": "github", "channel": "github", "externalId": name,
+                "title": f"{name} - {desc}".strip(" -"),
+                "summary": desc, "url": r.get("html_url"),
+                "publishedAt": iso(parse_ts(r.get("pushed_at") or r.get("created_at")) or now_cst()),
+                "authors": [(r.get("owner") or {}).get("login", "")],
+                "tags": (r.get("topics") or [])[:8] + ([r.get("language")] if r.get("language") else []),
+                "stars": stars,
+                "qualitySignals": {"stars": stars, "forks": r.get("forks_count", 0), "codeAvailable": True},
+                "codeAvailable": True, "lang": "en",
+            })
+        # unauthenticated GitHub search is limited to 10 requests/minute
+        time.sleep(1.0 if token else 6.5)
+    return out
+
+
+def _gh_trending_from_html(text: str, limit: int):
+    """Parse the trending page by CARD, because the markup carries many attributes.
+
+    WHY the regex changed: GitHub now renders
+      <h2 class="h3 lh-condensed">
+        <a data-hydro-click="..." data-hydro-click-hmac="..." href="/owner/repo" ...>
+    i.e. `href` is no longer the first attribute of the anchor, so the previous
+    pattern `<h2 class="h3 lh-condensed">\\s*<a href="/...` matched 0 of 17 cards
+    while the request itself was a perfectly healthy 200. Verified 2026-10-01:
+    the card regex below matches 17/17 cards, and all 17 also expose a
+    description, a total star count, a "stars today" count and a language.
+    """
+    out = []
+    card_re = re.compile(r'<article class="Box-row">(.*?)</article>', re.S)
+    repo_re = re.compile(r'<h2 class="h3 lh-condensed">\s*<a[^>]*?href="/([^"]+)"')
+    desc_re = re.compile(r'<p class="col-9 color-fg-muted my-1[^"]*">\s*(.*?)\s*</p>', re.S)
+    stars_re = re.compile(r'/stargazers"[^>]*>\s*(?:<[^>]+>\s*)*([\d,\.k]+)')
+    today_re = re.compile(r'([\d,\.k]+)\s+stars?\s+today')
+    lang_re = re.compile(r'itemprop="programmingLanguage">\s*([^<]+?)\s*<')
+
+    def to_int(txt):
+        txt = (txt or "").replace(",", "").strip().lower()
+        try:
+            return int(float(txt[:-1]) * 1000) if txt.endswith("k") else int(float(txt))
+        except ValueError:
+            return None
+
+    for block in card_re.findall(text):
+        m = repo_re.search(block)
+        if not m:
+            continue
+        full = m.group(1).strip()
+        if full.count("/") != 1:                 # trending also links orgs/topics
+            continue
+        desc = clean_text(desc_re.search(block).group(1), 300) if desc_re.search(block) else ""
+        stars = to_int(stars_re.search(block).group(1)) if stars_re.search(block) else None
+        today = to_int(today_re.search(block).group(1)) if today_re.search(block) else None
+        lang = clean_text(lang_re.search(block).group(1), 40) if lang_re.search(block) else ""
+        out.append({
+            "sourceId": "gh_trending", "channel": "gh_trending", "externalId": full,
+            "title": f"{full} - {desc}".strip(" -") if desc else f"GitHub Trending: {full}",
+            "summary": desc or "项目进入今日 GitHub 趋势榜。",
+            "url": f"https://github.com/{full}",
+            "publishedAt": iso(now_cst()),
+            "tags": [t for t in ([lang] if lang else []) + ["trending"] if t],
+            "stars": stars,
+            "qualitySignals": {"codeAvailable": True, "stars": stars,
+                               "starsToday": today, "language": lang},
+            "codeAvailable": True, "lang": "en",
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _gh_trending_from_rest(cfg, log, limit, lookback_days=7):
+    """备用来源: GitHub REST search for repositories created in the last N days.
+
+    Verified 2026-10-01: HTTP 200 JSON (12.6M matches for a plain date filter).
+    Used only when the trending page changes shape again; unauthenticated search
+    is rate limited to ~10 requests/minute, so this costs exactly one request.
+    """
+    since = (now_cst() - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+    url = ("https://api.github.com/search/repositories?q=" +
+           urllib.parse.quote(f"created:>{since}") +
+           "&sort=stars&order=desc&per_page=%d" % min(max(5, limit), 30))
+    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    data = http_json(url, headers=headers, cfg=cfg, log=log, retries=1, timeout=25)
+    out = []
+    for r in (data.get("items") or []) if isinstance(data, dict) else []:
+        name = r.get("full_name")
+        if not name:
+            continue
+        desc = clean_text(r.get("description") or "", 300)
+        out.append({
+            "sourceId": "gh_trending", "channel": "gh_trending", "externalId": name,
+            "title": f"{name} - {desc}".strip(" -") if desc else f"GitHub Trending: {name}",
+            "summary": desc or f"近 {lookback_days} 天新建的高星仓库（GitHub 趋势备用来源）。",
+            "url": r.get("html_url") or f"https://github.com/{name}",
+            "publishedAt": iso(parse_ts(r.get("created_at")) or now_cst()),
+            "tags": (r.get("topics") or [])[:6] + ["trending-rest"],
+            "stars": r.get("stargazers_count", 0),
+            "qualitySignals": {"codeAvailable": True, "stars": r.get("stargazers_count", 0)},
+            "codeAvailable": True, "lang": "en",
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
+def collect_gh_trending(cfg, log, limit):
+    """GitHub Trending, parsed from the server-rendered cards.
+
+    Primary: https://github.com/trending?since=daily (200, server-rendered HTML,
+    robots.txt's generic section does not disallow /trending).
+    备用来源: the REST search endpoint above, for when the markup changes again.
+    """
+    limit = max(1, int(limit or 1))
+    out, err = [], None
+    try:
+        _s, body, _ct = http_get("https://github.com/trending?since=daily", timeout=20,
+                                 cfg=cfg, log=log, retries=1)
+        out = _gh_trending_from_html(body.decode("utf-8", "replace"), limit)
+    except Exception as e:
+        err = e
+        log(f"gh_trending html failed: {e}", "warn")
+    if not out:
+        try:
+            out = _gh_trending_from_rest(cfg, log, limit)
+            if out:
+                log("gh_trending 使用备用来源 GitHub REST search", "warn")
+        except Exception as e:
+            log(f"gh_trending rest fallback failed: {e}", "warn")
+            if err:
+                raise err
+    return out
+
+
+def collect_openreview(cfg, log, limit):
+    """OpenReview — DISABLED (see DISABLED_CHANNELS), code kept for reference.
+
+    Measured 2026-10-01: api2 AND the legacy api1 `/notes` endpoints both answer
+    HTTP 200 with `text/html` — the page titled "Verifying your browser |
+    OpenReview" — i.e. an interstitial that only a real browser passes. Earlier
+    runs saw the JSON form of the same wall (403 ChallengeRequiredError). No
+    public alternative exists, and arXiv + s2 already cover the paper signal.
+    """
+    out = []
+    for venue in ["ICLR.cc/2026/Conference", "NeurIPS.cc/2025/Conference", "ICML.cc/2025/Conference"]:
+        url = ("https://api2.openreview.net/notes?content.venue=" + urllib.parse.quote(venue) +
+               "&limit=%d&details=replyCount&sort=cdate:desc" % min(max(5, limit), 30))
+        try:
+            data = http_json(url, cfg=cfg, log=log, retries=1, timeout=30)
+        except Exception as e:
+            log(f"openreview '{venue}' failed: {e}", "warn")
+            continue
+        for n in (data.get("notes") or []) if isinstance(data, dict) else []:
+            c = n.get("content") or {}
+            title = clean_text((c.get("title") or {}).get("value", ""), 400)
+            if not title:
+                continue
+            nid = str(n.get("id") or title_key(title))
+            short = venue.split("/")[0]
+            out.append({
+                "sourceId": "openreview", "channel": "openreview", "externalId": nid,
+                "title": title,
+                "summary": clean_text((c.get("abstract") or {}).get("value", ""), 1800),
+                "url": f"https://openreview.net/forum?id={nid}",
+                "publishedAt": iso(parse_ts(n.get("cdate")) or now_cst()),
+                "authors": (c.get("authors") or {}).get("value", []) or [],
+                "venue": short, "peerReviewed": True,
+                "qualitySignals": {"peerReviewed": True, "venue": short,
+                                   "replies": n.get("replyCount", 0)},
+                "tags": (c.get("keywords") or {}).get("value", []) or [],
+                "lang": "en",
+            })
+        time.sleep(0.6)
+    return out
+
+
+S2_FIELDS = ("title,abstract,url,publicationDate,authors,venue,citationCount,externalIds")
+
+
+def _s2_bulk(cfg, log, limit):
+    """Primary S2 transport: /paper/search/bulk.
+
+    Verified 2026-10-01: /paper/search answered HTTP 429, while
+    /paper/search/bulk answered 200 with total=367696 — and 429/200/429 again
+    inside the same minute, which is why `retries=2` and the two 备用来源 below
+    both matter. Bulk ignores `limit` and always returns up to 1000 rows, so we
+    sort by publicationDate desc, slice to `limit`, and pay one ~1-2MB body per
+    day for abstracts that are actually worth scoring.
+    """
+    lookback = (now_cst() - timedelta(days=45)).strftime("%Y-%m-%d")
+    query = '"large language model" OR multimodal OR "world model" OR "reinforcement learning"'
+    url = ("https://api.semanticscholar.org/graph/v1/paper/search/bulk?query=" +
+           urllib.parse.quote(query) + f"&fields={S2_FIELDS}" +
+           f"&sort=publicationDate:desc&publicationDateOrYear={lookback}:")
+    # retries=2 because the 429s are transient: in one measured minute the same
+    # bulk URL answered 200, 429, 200. The backoff in http_get covers it, and
+    # OpenAlex is still waiting as the next 备用来源 if it does not recover.
+    data = http_json(url, cfg=cfg, log=log, retries=2, timeout=40)
+    future_cutoff = now_cst() + timedelta(days=120)
+    out = []
+    for p in (data.get("data") or []) if isinstance(data, dict) else []:
+        title = clean_text(p.get("title", ""), 400)
+        if not title:
+            continue
+        stamp = parse_ts(p.get("publicationDate"))
+        if stamp and stamp > future_cutoff:
+            continue          # S2 carries scheduled issue dates far in the future
+        ext = p.get("externalIds") or {}
+        out.append({
+            "sourceId": "s2", "channel": "s2",
+            "externalId": str(p.get("paperId") or title_key(title)),
+            "title": title, "summary": clean_text(p.get("abstract") or "", 1600),
+            "url": p.get("url") or (f"https://arxiv.org/abs/{ext['ArXiv']}" if ext.get("ArXiv") else ""),
+            "publishedAt": iso(stamp or now_cst()),
+            "authors": [a.get("name", "") for a in (p.get("authors") or [])][:12],
+            "venue": p.get("venue") or "", "peerReviewed": bool(p.get("venue")),
+            "qualitySignals": {"citations": p.get("citationCount", 0), "venue": p.get("venue") or "",
+                               "via": "semanticscholar-bulk"},
+            "lang": "en",
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _openalex_abstract(inverted):
+    """OpenAlex ships abstracts as a word -> positions map; rebuild the text."""
+    if not isinstance(inverted, dict):
+        return ""
+    positions = {}
+    for word, idxs in inverted.items():
+        for i in idxs or []:
+            positions[i] = word
+    return " ".join(positions[k] for k in sorted(positions))
+
+
+def _s2_openalex(cfg, log, limit):
+    """备用来源 1: OpenAlex. Generous, no key, verified 200 with 25 rows."""
+    url = ("https://api.openalex.org/works?search=" +
+           urllib.parse.quote("multimodal large language model") +
+           "&per-page=%d&sort=publication_date:desc&mailto=workbench@example.com" % min(max(5, limit), 50))
+    data = http_json(url, cfg=cfg, log=log, retries=1, timeout=30,
+                     headers={"Accept": "application/json"})
+    out = []
+    for w in (data.get("results") or []) if isinstance(data, dict) else []:
+        title = clean_text(w.get("title") or w.get("display_name") or "", 400)
+        if not title:
+            continue
+        venue = ((w.get("primary_location") or {}).get("source") or {}).get("display_name") or ""
+        out.append({
+            "sourceId": "s2", "channel": "s2",
+            "externalId": str(w.get("id") or title_key(title)),
+            "title": title,
+            "summary": clean_text(_openalex_abstract(w.get("abstract_inverted_index")), 1600),
+            "url": w.get("doi") or w.get("id") or "",
+            "publishedAt": iso(parse_ts(w.get("publication_date")) or now_cst()),
+            "authors": [(a.get("author") or {}).get("display_name", "")
+                        for a in (w.get("authorships") or [])][:12],
+            "venue": venue, "peerReviewed": bool(venue),
+            "qualitySignals": {"citations": w.get("cited_by_count", 0), "venue": venue,
+                               "via": "openalex"},
+            "lang": "en",
+        })
+    return out
+
+
+def _s2_crossref(cfg, log, limit):
+    """备用来源 2: Crossref. Verified 200 with 20 rows; abstract is JATS XML."""
+    url = ("https://api.crossref.org/works?query=" +
+           urllib.parse.quote("multimodal large language model") +
+           "&rows=%d&sort=published&order=desc" % min(max(5, limit), 50) +
+           "&select=DOI,title,abstract,URL,published,author,container-title,type")
+    data = http_json(url, cfg=cfg, log=log, retries=1, timeout=30,
+                     headers={"Accept": "application/json"})
+    items = (((data or {}).get("message") or {}).get("items")) or []
+    out = []
+    for it in items:
+        title = clean_text((it.get("title") or [""])[0], 400)
+        if not title:
+            continue
+        published = ((it.get("published") or {}).get("date-parts") or [[None]])[0]
+        stamp = None
+        if published and published[0]:
+            try:
+                stamp = datetime(int(published[0]), int(published[1] or 1), int(published[2] or 1), tzinfo=timezone.utc)
+            except (TypeError, ValueError):
+                stamp = None
+            if stamp and stamp > now_cst() + timedelta(days=30):
+                continue                      # Crossref carries a few absurd future dates
+        out.append({
+            "sourceId": "s2", "channel": "s2",
+            "externalId": str(it.get("DOI") or title_key(title)),
+            "title": title, "summary": clean_text(it.get("abstract") or "", 1600),
+            "url": it.get("URL") or (f"https://doi.org/{it['DOI']}" if it.get("DOI") else ""),
+            "publishedAt": iso(stamp or now_cst()),
+            "authors": [clean_text(f"{a.get('given', '')} {a.get('family', '')}", 80)
+                        for a in (it.get("author") or [])][:12],
+            "venue": clean_text((it.get("container-title") or [""])[0], 120),
+            "peerReviewed": True,
+            "qualitySignals": {"peerReviewed": True, "via": "crossref"},
+            "lang": "en",
+        })
+    return out
+
+
+def collect_s2(cfg, log, limit):
+    """Semantic Scholar + ordered 备用来源 (OpenAlex, Crossref).
+
+    The legacy /paper/search endpoint is still attempted first only when the
+    caller opts in via config; by default we go straight to the endpoints that
+    were verified working, because a burst of 429s every morning is noise.
+    """
+    for label, fn in (("semanticscholar-bulk", _s2_bulk),
+                      ("openalex", _s2_openalex),
+                      ("crossref", _s2_crossref)):
+        try:
+            rows = fn(cfg, log, max(1, int(limit or 1)))
+        except Exception as e:
+            log(f"s2 {label} failed: {e}", "warn")
+            continue
+        if rows:
+            if label != "semanticscholar-bulk":
+                log(f"s2 使用备用来源 {label}", "warn")
+            return rows
+    return []
+
+
+def collect_hn(cfg, log, limit):
+    out = []
+    for q in ["multimodal LLM", "post-training RLHF", "world model", "diffusion model",
+              "LLM agent", "GRPO", "vision language model", "inference optimization"]:
+        url = ("https://hn.algolia.com/api/v1/search?query=" + urllib.parse.quote(q) +
+               f"&tags=story&hitsPerPage={min(max(3, limit), 10)}&numericFilters=points>20")
+        try:
+            data = http_json(url, cfg=cfg, log=log, retries=1)
+        except Exception as e:
+            log(f"hn '{q}' failed: {e}", "warn")
+            continue
+        for h in (data.get("hits") or []) if isinstance(data, dict) else []:
+            title = clean_text(h.get("title") or "", 300)
+            if not title:
+                continue
+            oid = str(h.get("objectID"))
+            pts = h.get("points", 0)
+            out.append({
+                "sourceId": "hn", "channel": "hn", "externalId": oid,
+                "title": title, "summary": clean_text(h.get("story_text") or "", 800),
+                "url": h.get("url") or f"https://news.ycombinator.com/item?id={oid}",
+                "canonicalUrl": f"https://news.ycombinator.com/item?id={oid}",
+                "publishedAt": iso(parse_ts(h.get("created_at")) or now_cst()),
+                "authors": [h.get("author") or ""], "upvotes": pts,
+                "qualitySignals": {"upvotes": pts, "comments": h.get("num_comments", 0)},
+                "lang": "en",
+            })
+        time.sleep(0.3)
+    return out
+
+
+def collect_reddit(cfg, log, limit):
+    """Reddit — DISABLED (see DISABLED_CHANNELS), code kept for re-enabling.
+
+    Reachability as measured on 2026-10-01: the legacy JSON endpoint
+    /r/<sub>/top.json answers HTTP 403, while the Atom feed
+    /r/<sub>/top/.rss?t=day&limit=N answers 200 with 5 entries. We still do NOT
+    collect it: https://www.reddit.com/robots.txt is `User-agent: * /
+    Disallow: /`, and honouring robots.txt is a hard rule for this collector.
+    lobste.rs has the same blanket Disallow, so there is no drop-in substitute
+    either; Hacker News (`hn`) already carries that community signal.
+    """
+    out = []
+    for sub in ["MachineLearning", "LocalLLaMA", "comfyui"]:
+        try:
+            out += _collect_rss(
+                f"https://www.reddit.com/r/{sub}/top/.rss?t=day&limit={min(max(3, limit), 15)}",
+                "reddit", cfg, log, min(max(3, limit), 15), [sub])
+        except Exception as e:
+            log(f"reddit r/{sub} failed: {e}", "warn")
+        time.sleep(0.6)
+    return out
+
+
+def _collect_rss(url, source_id, cfg, log, limit, tags=None):
+    out = []
+    _s, body, _ct = http_get(url, timeout=20, cfg=cfg, log=log, retries=1,
+                             accept="application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8")
+    root = ET.fromstring(body)
+    items = root.findall(".//item") or root.findall(".//{http://www.w3.org/2005/Atom}entry")
+    for it in items[:limit]:
+
+        def tx(tag, _it=it):
+            el = _it.find(tag)
+            if el is None:
+                el = _it.find("{http://www.w3.org/2005/Atom}" + tag)
+            return (el.text or "").strip() if el is not None and el.text else ""
+
+        title = clean_text(tx("title"), 300)
+        link = tx("link")
+        if not link:
+            le = it.find("{http://www.w3.org/2005/Atom}link")
+            link = le.attrib.get("href", "") if le is not None else ""
+        if not title or not link:
+            continue
+        out.append({
+            "sourceId": source_id, "channel": source_id, "externalId": link,
+            "title": title,
+            "summary": clean_text(tx("description") or tx("summary") or tx("content"), 900),
+            "url": link,
+            "publishedAt": iso(parse_ts(tx("pubDate") or tx("published") or tx("updated")) or now_cst()),
+            "tags": list(tags or []),
+            "lang": "zh" if re.search(r"[\u4e00-\u9fff]", title) else "en",
+        })
+    return out
+
+
+def collect_machineheart(cfg, log, limit):
+    """机器之心 — DISABLED (see DISABLED_CHANNELS), code kept for re-enabling.
+
+    Measured 2026-10-01: https://www.jiqizhixin.com/rss and /feed both answer
+    HTTP 200 but with the HTML landing page 机器之心·数据服务 instead of XML;
+    /rss/articles is 404; the only reachable RSSHub mirror 404s on
+    /jiqizhixin/daily. The publisher retired the feed, so the Chinese-AI-media
+    slot is served by `collect_leiphone` (雷锋网) instead.
+    """
+    return _collect_rss("https://www.jiqizhixin.com/rss", "machineheart", cfg, log, limit, ["资讯"])
+
+
+def collect_leiphone(cfg, log, limit):
+    """雷锋网 — the replacement Chinese AI/tech media feed for 机器之心.
+
+    备用来源 requirement: 量子位 (qbitai) is the other live Chinese AI feed, and
+    CHANNEL_SPECS marks it as this channel's backup. Verified 2026-10-01:
+    https://www.leiphone.com/feed answers 200 application/rss+xml with 20 items,
+    the newest stamped the same day, and 算法/工程师 appear across the titles.
+    robots.txt disallows /dynamic/, /search/ and friends but not /feed.
+    """
+    return _collect_rss("https://www.leiphone.com/feed", "leiphone", cfg, log, limit,
+                        ["资讯", "AI", "中文媒体"])
+
+
+def collect_qbitai(cfg, log, limit):
+    return _collect_rss("https://www.qbitai.com/feed", "qbitai", cfg, log, limit, ["资讯"])
+
+
+def collect_hf_blog_rss(cfg, log, limit):
+    return _collect_rss("https://huggingface.co/blog/feed.xml", "hf_blog_rss", cfg, log, limit, ["blog"])
+
+
+def collect_openai_rss(cfg, log, limit):
+    return _collect_rss("https://openai.com/news/rss.xml", "openai_rss", cfg, log, limit, ["blog"])
+
+
+RSSHUB_MIRRORS = [
+    # Ordered by measured health on 2026-10-01. WHY the order: rsshub.app is
+    # behind a Cloudflare interstitial (403 "Just a moment...") and
+    # rsshub.rssforever.com answers 503, so the community mirror is the primary.
+    "https://rss.injahow.cn",
+    "https://rsshub.rssforever.com",
+    "https://rsshub.app",
+]
+
+
+def collect_rsshub(cfg, log, limit):
+    """RSSHub bridge — DISABLED (see DISABLED_CHANNELS), code kept for re-enabling.
+
+    Measured 2026-10-01: rsshub.app 403 (Cloudflare), rsshub.rssforever.com 503,
+    rsshub.ktachibana.party 404/503, rsshub.pseudoyu.com TLS error. The only
+    reachable mirror serves /zhihu/hotlist (already consumed by `zhihu`) and
+    /solidot; every other route tested (github/trending/daily/any, 36kr, v2ex,
+    hackernews, sspai) answered 503. Kept so it can be re-enabled when the
+    public instances recover.
+    """
+    out = []
+    for route in ["zhihu/hotlist", "github/trending/daily/any"]:
+        for base in RSSHUB_MIRRORS:
+            try:
+                rows = _collect_rss(f"{base}/{route}", "rsshub", cfg, log,
+                                    max(5, limit // 2), ["rsshub"])
+            except Exception as e:
+                log(f"rsshub {base}/{route} failed: {e}", "warn")
+                continue
+            if rows:
+                out += rows
+                break
+    return out
+
+
+def collect_zhihu(cfg, log, limit):
+    """知乎热榜 via a public RSSHub mirror.
+
+    WHY a mirror: the first-party endpoints are login-walled —
+    https://www.zhihu.com/api/v4/search/top_search answers 403
+    {"error":{"need_login":true,...}} and https://www.zhihu.com/hot answers 403.
+    We never log in; we read the public bridge instead.
+    Verified 2026-10-01: https://rss.injahow.cn/zhihu/hotlist -> 200
+    application/xml with 40 items.
+    """
+    last = None
+    for base in RSSHUB_MIRRORS:
+        try:
+            rows = _collect_rss(f"{base}/zhihu/hotlist", "zhihu", cfg, log, limit, ["知乎", "热榜"])
+        except Exception as e:
+            last = e
+            log(f"zhihu mirror {base} failed: {e}", "warn")
+            continue
+        if rows:
+            if base != RSSHUB_MIRRORS[0]:
+                log(f"zhihu 使用备用镜像 {base}", "warn")
+            return rows
+    if last:
+        raise last
+    return []
+
+
+def collect_nowcoder(cfg, log, limit):
+    """Nowcoder public discussion pages.
+
+    WHY the regex changed: the listing is server-rendered, but each title sits
+    inside nested <span>s —
+      <a href="/discuss/933114179207069696?sourceSSR=home" ... class="po">
+        <span ...><span ...>机械工程相关题目</span></span></a>
+    so the old `href="(/discuss/\\d+...)"[^>]*>\\s*([^<]{8,120})<` matched 0 of 20
+    links while the page itself was a healthy 200. Verified 2026-10-01: the
+    tag-tolerant pattern below yields 10 (href, title) pairs including 面经/实习
+    threads. robots.txt disallows /search, /nccommon and /ab/ab-test-flow only.
+    """
+    out = []
+    link_re = re.compile(r'<a[^>]*href="(/discuss/\d+)[^"]*"[^>]*>(.*?)</a>', re.S)
+    for url, kind in [("https://www.nowcoder.com/discuss?type=0&order=0", "discuss"),
+                      ("https://www.nowcoder.com/discuss?type=2&order=0", "job")]:
+        try:
+            _s, body, _ct = http_get(url, timeout=20, cfg=cfg, log=log, retries=1)
+            text = body.decode("utf-8", "replace")
+        except Exception as e:
+            log(f"nowcoder {kind} failed: {e}", "warn")
+            continue
+        found, seen = 0, set()
+        for m in link_re.finditer(text):
+            href, inner = m.group(1), m.group(2)
+            title = clean_text(re.sub(r"<[^>]+>", " ", inner), 200)
+            if not title or len(title) < 6 or href in seen:
+                continue
+            seen.add(href)
+            out.append({
+                "sourceId": "nowcoder", "channel": "nowcoder", "externalId": href,
+                "title": title,
+                "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。",
+                "url": "https://www.nowcoder.com" + href,
+                "publishedAt": iso(now_cst()),
+                "tags": ["牛客", "面经"], "lang": "zh",
+            })
+            found += 1
+            if found >= limit:
+                break
+        log.detail(f"nowcoder {kind} -> {found}")
+        time.sleep(0.8)
+    return out
+
+
+def _jobs_common(source_id, rows, cfg):
+    """Normalize heterogeneous job payloads into one item shape.
+
+    WHY the key lists are long: Tencent's API returns RecruitPostName / PostURL /
+    LocationName / LastUpdateTime, while ByteDance-style payloads use
+    title / url / city / publishTime. Looking up a single field name is exactly
+    what made a 200-OK, 339-opening Tencent feed report as `empty`.
+    """
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        title = clean_text(first_of(r, ("title", "name", "jobName", "RecruitPostName",
+                                        "positionName", "postName", "jobTitle")), 200)
+        if not title or not re.search(r"算法|模型|多模态|大模型|AI|machine learning|algorithm|research",
+                                      title, re.I):
+            continue
+        desc_keys = ("description", "requirement", "Responsibility", "jobDescription",
+                     "descriptionHtml", "city", "cityName", "workCity", "LocationName",
+                     "workLocation", "category", "jobCategory", "CategoryName",
+                     "ProductName", "BGName")
+        desc_bits = [clean_text(r.get(k), 240) for k in desc_keys if r.get(k)]
+        url = first_of(r, ("url", "jobUrl", "postUrl", "PostURL", "detailUrl",
+                           "positionUrl", "redirectUrl", "submitUrl"))
+        out.append({
+            "sourceId": source_id, "channel": source_id,
+            "externalId": str(first_of(r, ("id", "code", "RecruitPostId", "PostId",
+                                           "positionId", "jobId")) or title_key(title)),
+            "title": title,
+            "summary": clean_text(" | ".join(b for b in desc_bits if b), 600),
+            "url": url,
+            "publishedAt": iso(parse_ts(first_of(r, ("publishTime", "updateTime", "releaseTime",
+                                                     "LastUpdateTime", "publishDate"))) or now_cst()),
+            "tags": ["招聘"] + [t for t in (clean_text(first_of(r, ("city", "cityName",
+                                                                   "workCity", "LocationName")), 40),) if t],
+            "lang": "zh",
+        })
+    return out
+
+
+def collect_jobs_bytedance(cfg, log, limit):
+    url = ("https://jobs.bytedance.com/api/v1/search/job/posts?keyword=" +
+           urllib.parse.quote("算法实习") + "&limit=20&offset=0&job_category_id_list=&tag_id_list="
+           "&location_code_list=&subject_id_list=&recruitment_id_list=1&portal_type=6")
+    data = http_json(url, cfg=cfg, log=log, retries=1, timeout=30,
+                     headers={"Referer": "https://jobs.bytedance.com/experienced/position"})
+    rows = ((data or {}).get("data") or {}).get("job_post_list") or []
+    return _jobs_common("jobs_bytedance", rows, cfg)
+
+
+def collect_jobs_tencent(cfg, log, limit):
+    """腾讯招聘 — worked all along; the bug was on our side.
+
+    Verified 2026-10-01: HTTP 200 JSON,
+    {"Code":200,"Data":{"Count":339,"Posts":[... 20 rows ...]}}, each row
+    carrying RecruitPostName / PostURL / LastUpdateTime / LocationName /
+    Responsibility. `pageSize=10` and `pageSize=20` both answer at once, so the
+    channel previously reported `empty` only because _jobs_common looked up
+    title/name/jobName and never saw RecruitPostName.
+    """
+    url = ("https://careers.tencent.com/tencentcareer/api/post/Query?timestamp=0&countryId=&cityId="
+           "&bgId=&bgIds=&productId=&categoryId=&parentCategoryId=&attrId=&keyword=" +
+           urllib.parse.quote("算法") + "&pageIndex=1&pageSize=%d&language=zh-cn&area=cn"
+           % min(max(20, limit), 50))
+    data = http_json(url, cfg=cfg, log=log, retries=1, timeout=30)
+    rows = ((data or {}).get("Data") or {}).get("Posts") or []
+    return _jobs_common("jobs_tencent", rows, cfg)
+
+
+def collect_jobs_alibaba(cfg, log, limit):
+    """阿里招聘 — DISABLED (see DISABLED_CHANNELS); endpoint kept for reference.
+
+    The old /api/job/search path is a 404 Whitelabel page. The API the live SPA
+    actually calls is POST https://talent.alibaba.com/position/search (its JS
+    bundle maps `/position/search` and `/searchCondition/list`), but GET answers
+    405, POST without a CSRF token answers 403, and POST with the CSRF token the
+    public page itself sets answers 200 `{"success":true,"datas":null,
+    "totalCount":0}` for every payload shape tried. The backend wants a token
+    only Alibaba's baxia browser script can mint, so this stays blocked rather
+    than turning into a redirect-chasing exercise.
+    """
+    url = ("https://talent.alibaba.com/api/job/search?keyword=" + urllib.parse.quote("算法") +
+           "&pageSize=20&pageNo=1&language=zh")
+    data = http_json(url, cfg=cfg, log=log, retries=1, timeout=30)
+    rows = data.get("data") or (data.get("content") or {}).get("datas") or []
+    if isinstance(rows, dict):
+        rows = rows.get("list") or []
+    return _jobs_common("jobs_alibaba", rows, cfg)
+
+
+def _generic_jobs_html(source_id, url, cfg, log, limit):
+    """For career pages without a public API: extract only visible job links."""
+    out = []
+    _s, body, _ct = http_get(url, timeout=25, cfg=cfg, log=log, retries=1)
+    text = body.decode("utf-8", "replace")
+    seen = set()
+    for m in re.finditer(r'href="([^"]{4,200})"[^>]*>([^<]{6,90})<', text):
+        href, label = m.group(1), clean_text(m.group(2), 90)
+        if not label or label in seen:
+            continue
+        if not re.search(r"算法|模型|实习|多模态|大模型|AI|研究", label):
+            continue
+        seen.add(label)
+        full = href if href.startswith("http") else urllib.parse.urljoin(url, href)
+        out.append({
+            "sourceId": source_id, "channel": source_id, "externalId": full,
+            "title": label, "summary": f"{CHANNEL_NAMES.get(source_id, source_id)} 招聘页公开条目",
+            "url": full, "publishedAt": iso(now_cst()), "tags": ["招聘"], "lang": "zh",
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
+def collect_jobs_zhipu(cfg, log, limit):
+    """智谱招聘 — DISABLED (see DISABLED_CHANNELS), code kept for reference.
+
+    zhipuai.cn/joinus answers 200 with 783KB of Next.js RSC payload, but it is a
+    marketing page: 算法/校招 appear only as i18n category labels, there is no
+    per-job data, no ATS host (only generic feishu.cn form links) and none of the
+    15 referenced _next chunks calls a job API.
+    """
+    return _generic_jobs_html("jobs_zhipu", "https://zhipuai.cn/joinus", cfg, log, limit)
+
+
+def collect_jobs_moonshot(cfg, log, limit):
+    """月之暗面 — DISABLED (see DISABLED_CHANNELS), code kept for reference.
+
+    www.moonshot.cn/careers answers 200 with 95KB and zero job keywords, and now
+    delegates to careers.kimi.com, which is an 11.6KB JS shell with only three
+    RSC pushes, no embedded data (/jobs and /positions are 404) and no API path
+    in its chunks.
+    """
+    return _generic_jobs_html("jobs_moonshot", "https://www.moonshot.cn/careers", cfg, log, limit)
+
+
+def collect_jobs_deepseek(cfg, log, limit):
+    """DeepSeek 招聘 — 备用来源 is the Moka ATS snapshot baked into the site bundle.
+
+    WHY this shape: https://www.deepseek.com/careers is a hard 404 (the homepage
+    links to https://talent.deepseek.com/ instead). That host is a 588-byte SPA
+    shell whose own API needs a browser, but its production bundle
+    /static/main.<hash>.js ships a build-time snapshot of the Moka listing as a
+    literal `JSON.parse('{"crawledAt":...,"sourceUrl":"https://app.mokahr.com/
+    social-recruitment/high-flyer/140576","total":N,"jobs":[...]}')` — the exact
+    data the page renders from. Verified 2026-10-01: 34 jobs, including
+    预训练/后训练/多模态理解 研究员 and 大模型训练/推理框架工程师.
+    """
+    _s, body, _ct = http_get("https://talent.deepseek.com/", timeout=25, cfg=cfg, log=log, retries=1)
+    page = body.decode("utf-8", "replace")
+    m = (re.search(r'<script[^>]+src="(/static/main[^"]+\.js)"', page)
+         or re.search(r'"(/static/main\.[0-9a-z]+\.js)"', page))
+    if not m:
+        log("deepseek: main bundle not referenced by the landing page", "warn")
+        return []
+    _s, js_body, _ct = http_get("https://talent.deepseek.com" + m.group(1),
+                                timeout=30, cfg=cfg, log=log, retries=1)
+    js = js_body.decode("utf-8", "replace")
+    lit = re.search(r"JSON\.parse\('(\{\"crawledAt\".*?)'\)", js, re.S)
+    if not lit:
+        log("deepseek: embedded job catalogue literal not found", "warn")
+        return []
+    try:
+        data = json.loads(js_literal_decode(lit.group(1)))
+    except Exception as e:
+        raise ValueError(f"deepseek catalogue literal unreadable: {e}") from e
+    out = []
+    for job in (data.get("jobs") or [])[:max(1, int(limit or 1))]:
+        title = clean_text(job.get("title") or "", 200)
+        if not title:
+            continue
+        detail = job.get("detailUrl") or data.get("sourceUrl") or "https://talent.deepseek.com/"
+        out.append({
+            "sourceId": "jobs_deepseek", "channel": "jobs_deepseek",
+            "externalId": str(job.get("id") or title_key(title)),
+            "title": title,
+            "summary": clean_text(" | ".join(
+                x for x in [job.get("functionName"),
+                            "、".join(job.get("locations") or []),
+                            clean_text(job.get("descriptionHtml") or "", 400)] if x), 600),
+            "url": detail,
+            "publishedAt": iso(parse_ts(data.get("crawledAt")) or now_cst()),
+            "tags": ["招聘", "DeepSeek"] + [t for t in (job.get("functionName"),) if t],
+            "qualitySignals": {"via": "moka-ats-snapshot", "crawledAt": data.get("crawledAt"),
+                               "sourceUrl": data.get("sourceUrl")},
+            "lang": "zh",
+        })
+    if not out:
+        log("deepseek: catalogue contained no jobs", "warn")
+    return out
+
+
+def collect_jobs_minimax(cfg, log, limit):
+    """MiniMax — DISABLED (see DISABLED_CHANNELS), code kept for reference.
+
+    minimaxi.com/careers renders an embedded Feishu ATSX portal
+    (vrfi1sk8a0.jobs.feishu.cn, robots.txt disallows /api/). The portal index is
+    a 126KB shell with no job rows and its API answers 405 exactly like
+    ByteDance's, so there is nothing to parse without a browser.
+    """
+    return _generic_jobs_html("jobs_minimax", "https://www.minimaxi.com/careers", cfg, log, limit)
+
+
+def collect_jobs_shailab(cfg, log, limit):
+    """上海 AI Lab — DISABLED (see DISABLED_CHANNELS), code kept for reference.
+
+    /joinus, /joinus/social and /joinus/campus all return the same 70KB
+    marketing page with no job rows; openings arrive over JS and no ATS/API
+    endpoint is referenced anywhere in the page or its scripts.
+    """
+    return _generic_jobs_html("jobs_shailab", "https://www.shlab.org.cn/joinus", cfg, log, limit)
+
+
+def collect_inbox(cfg, log, limit):
+    """Human-in-the-loop import.
+
+    Reads only local files produced by scripts/inbox.py from web/data/inbox/.
+    This makes login-walled channels (Xiaohongshu, BOSS Zhipin, Lagou, Shixiseng)
+    usable WITHOUT ever making a network request to them - which is both the
+    legally correct behaviour and the only stable one.
+
+    Re-reads every run so edits to the source rows are picked up; the deduper
+    collapses repeats, so re-importing is free.
+    """
+    out = []
+    inbox = DATA_DIR / "inbox"
+    if not inbox.exists():
+        return out
+    for path in sorted(inbox.glob("normalized-*.json")):
+        try:
+            payload = json.loads(path.read_text("utf-8"))
+        except Exception as e:
+            log(f"inbox: {path.name} unreadable ({e})", "warn")
+            continue
+        rows = payload.get("items") if isinstance(payload, dict) else payload
+        for row in rows or []:
+            if not isinstance(row, dict):
+                continue
+            raw = dict(row)
+            raw["sourceId"] = "inbox"
+            raw["channel"] = "inbox"
+            out.append(raw)
+    if out:
+        log.detail(f"inbox -> {len(out)} rows from {inbox.name}/*.json")
+    return out
+
+
+COLLECTORS = {
+    "arxiv": collect_arxiv, "hf_papers": collect_hf_papers, "hf_models": collect_hf_models,
+    "github": collect_github, "gh_trending": collect_gh_trending,
+    "openreview": collect_openreview, "s2": collect_s2, "hn": collect_hn, "reddit": collect_reddit,
+    "machineheart": collect_machineheart, "qbitai": collect_qbitai, "leiphone": collect_leiphone,
+    "hf_blog_rss": collect_hf_blog_rss, "openai_rss": collect_openai_rss,
+    "rsshub": collect_rsshub, "zhihu": collect_zhihu, "nowcoder": collect_nowcoder,
+    "jobs_bytedance": collect_jobs_bytedance, "jobs_tencent": collect_jobs_tencent,
+    "jobs_alibaba": collect_jobs_alibaba, "jobs_zhipu": collect_jobs_zhipu,
+    "jobs_moonshot": collect_jobs_moonshot, "jobs_deepseek": collect_jobs_deepseek,
+    "jobs_minimax": collect_jobs_minimax, "jobs_shailab": collect_jobs_shailab,
+    "inbox": collect_inbox,
+}
+
+
+# ============================================================================
+# 5. CONFIG
+# ============================================================================
+def deep_merge(base, override):
+    out = dict(base)
+    for k, v in (override or {}).items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+def load_config(path: Path, log: Logger) -> dict:
+    cfg = json.loads(json.dumps(DEFAULT_CONFIG))          # deep copy
+    cats = json.loads(json.dumps(DEFAULT_CATEGORIES))
+    if path.exists():
+        try:
+            user = json.loads(path.read_text("utf-8"))
+            user_cats = user.pop("categories", {}) or {}
+            for cid, c in user_cats.items():
+                if cid in cats:
+                    merged = dict(cats[cid])
+                    merged.update({k: v for k, v in c.items() if k != "keywords"})
+                    extra = [k for k in (c.get("keywords") or []) if k not in merged.get("keywords", [])]
+                    merged["keywords"] = list(merged.get("keywords", [])) + extra
+                    cats[cid] = merged
+                else:
+                    cats[cid] = c
+            cfg = deep_merge(cfg, user)
+            log(f"config loaded: {path}")
+        except Exception as e:
+            log(f"config parse failed, using defaults: {e}", "warn")
+    else:
+        log(f"config not found at {path}, using built-in defaults", "warn")
+    cfg["categories"] = cats
+    for c in cfg["categories"].values():
+        c["keywords"] = [str(k).lower() for k in (c.get("keywords") or [])]
+    return cfg
+
+
+def save_default_config(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(DEFAULT_CONFIG, ensure_ascii=False, indent=2), "utf-8")
+
+
+# ============================================================================
+# 6. CLASSIFY + SCORE
+# ============================================================================
+def classify(item: dict, cfg: dict):
+    blob = " ".join([str(item.get("title") or ""), str(item.get("summary") or ""),
+                     " ".join(item.get("tags") or []), str(item.get("venue") or "")]).lower()
+    title_blob = str(item.get("title") or "").lower()
+    interests = cfg.get("interests") or {}
+    scores, hits = {}, {}
+    for cid, c in cfg["categories"].items():
+        w = float(c.get("weight", 0.8)) * float(interests.get(cid, 0.8))
+        sc, h = 0.0, []
+        for kw in c.get("keywords") or []:
+            if not kw:
+                continue
+            if kw in title_blob:
+                sc += 3.0
+                h.append(kw)
+            elif kw in blob:
+                sc += 1.0
+                h.append(kw)
+        for ac in (c.get("arxiv") or []):
+            if ac and ac in (item.get("tags") or []):
+                sc += 1.5
+        if sc > 0:
+            scores[cid] = sc * w
+            hits[cid] = h
+    if not scores:
+        return "trend", []
+    best = max(scores.items(), key=lambda kv: (kv[1], kv[0]))
+    return best[0], (hits.get(best[0]) or [])[:12]
+
+
+def score_item(item, cfg, tier, cat_hits):
+    sc = cfg.get("scoring") or {}
+    parts = {}
+    parts["category"] = min(40.0, 8.0 * len(cat_hits))
+
+    hl = float(sc.get("freshnessHalfLifeDays", 7.0))
+    ts = parse_ts(item.get("publishedAt"))
+    if ts and hl > 0:
+        age = max(0.0, (now_cst() - ts).total_seconds() / 86400.0)
+        parts["freshness"] = 30.0 * (0.5 ** (age / hl))
+    else:
+        parts["freshness"] = 6.0
+
+    parts["source"] = 12.0 * float((sc.get("sourceTierWeight") or {}).get(tier, 0.7))
+
+    q = item.get("qualitySignals") or {}
+    boost = float(sc.get("qualityBoost", 8.0))
+    qs = 0.0
+    if item.get("peerReviewed"):
+        qs += boost
+    stars = item.get("stars") or q.get("stars") or 0
+    if stars:
+        qs += min(boost, 0.8 * (float(stars) ** 0.5))
+    up = item.get("upvotes") or q.get("upvotes") or 0
+    if up:
+        qs += min(boost * 0.75, float(up) ** 0.65 / 2.0)
+    if item.get("codeAvailable") or q.get("codeAvailable"):
+        qs += 2.0
+    parts["quality"] = min(boost * 2.2, qs)
+
+    parts["content"] = min(9.0, len(str(item.get("summary") or "")) / 220.0 * 9.0)
+
+    total = sum(parts.values())
+    if item.get("lang") == "zh":
+        total *= 1.04
+    return round(min(100.0, total), 1), {k: round(v, 1) for k, v in parts.items()}
+
+
+def explain(item, hits, cfg):
+    """'Why it matters' is composed ONLY from observed signals, never inferred."""
+    czh = (cfg["categories"].get(item.get("category")) or {}).get("zh", "综合趋势")
+    bits = []
+    if hits:
+        bits.append("命中关键词 " + "、".join(hits[:5]))
+    if item.get("peerReviewed"):
+        bits.append(f"同行评审 ({item.get('venue') or 'conference'})")
+    if item.get("stars"):
+        bits.append(f"GitHub {item['stars']} stars")
+    if item.get("upvotes"):
+        bits.append(f"社区热度 {item['upvotes']}")
+    if item.get("codeAvailable"):
+        bits.append("疑似附带开源实现")
+    if item.get("lang") == "zh":
+        bits.append("中文来源，贴近国内求职语境")
+    return f"归属「{czh}」方向" + ("；" + "；".join(bits) if bits else "；待人工复核相关性")
+
+
+# ============================================================================
+# 7. NORMALIZE + DEDUPE
+# ============================================================================
+def _sources_of(item):
+    srcs = []
+    if item.get("url"):
+        srcs.append({"url": item["url"], "name": item.get("sourceId") or item.get("channel")})
+    if item.get("canonicalUrl") and item["canonicalUrl"] != item.get("url"):
+        srcs.append({"url": item["canonicalUrl"], "name": "canonical"})
+    return srcs
+
+
+def normalize(raw, cfg, tier):
+    if not isinstance(raw, dict):
+        return None
+    title = clean_text(raw.get("title") or "", 400)
+    if not title:
+        return None
+    url = canonical_url(raw.get("url") or "")
+    canon = canonical_url(raw.get("canonicalUrl") or "")
+    if not url and not canon:
+        return None
+    item = {
+        "sourceId": raw.get("sourceId") or raw.get("channel") or "unknown",
+        "channel": raw.get("channel") or raw.get("sourceId") or "unknown",
+        "externalId": str(raw.get("externalId") or title_key(title)),
+        "title": title,
+        "summary": clean_text(raw.get("summary") or "", 2000),
+        "url": url or canon,
+        "canonicalUrl": canon or None,
+        "authors": [clean_text(a, 80) for a in (raw.get("authors") or []) if a][:14],
+        "publishedAt": raw.get("publishedAt"),
+        "fetchedAt": iso(now_cst()),
+        "lang": raw.get("lang") or ("zh" if re.search(r"[\u4e00-\u9fff]", title) else "en"),
+        "tags": [clean_text(t, 40) for t in (raw.get("tags") or []) if t][:12],
+        "venue": raw.get("venue") or None,
+        "ccf": raw.get("ccf") or None,
+        "peerReviewed": bool(raw.get("peerReviewed")),
+        "codeAvailable": bool(raw.get("codeAvailable") or (raw.get("qualitySignals") or {}).get("codeAvailable")),
+        "stars": raw.get("stars"),
+        "upvotes": raw.get("upvotes"),
+        "qualitySignals": raw.get("qualitySignals") or {},
+        "difficulty": raw.get("difficulty"),
+        "collectorVersion": COLLECTOR_VERSION,
+        "contentHash": sha1(f"{title}|{raw.get('summary') or ''}")[:16],
+    }
+    item["id"] = stable_id(item["sourceId"], item["externalId"])
+    cat, hits = classify(item, cfg)
+    item["category"] = cat
+    item["categoryHits"] = hits
+    rel, breakdown = score_item(item, cfg, tier, hits)
+    item["relevanceScore"] = rel
+    item["relevanceBreakdown"] = breakdown
+    item["sources"] = _sources_of(item)
+    item["why"] = explain(item, hits, cfg)
+    return item
+
+
+class Deduper:
+    """Layered de-duplication: stable id -> canonical url -> title -> simhash."""
+
+    def __init__(self, state, cfg):
+        d = cfg.get("dedupe") or {}
+        self.bits = int(d.get("simhashBits", 64))
+        self.threshold = int(d.get("hammingThreshold", 3))
+        self.by_key = state.setdefault("byKey", {})
+        self.by_url = state.setdefault("byUrl", {})
+        self.by_title = state.setdefault("byTitle", {})
+        self.hashes = state.setdefault("hashes", [])
+
+    def lookup(self, item):
+        uid = f"{item.get('sourceId')}::{item.get('externalId')}"
+        if uid in self.by_key:
+            return self.by_key[uid]
+        cu = item.get("canonicalUrl") or item.get("url") or ""
+        if cu and cu in self.by_url:
+            return self.by_url[cu]
+        tk = title_key(item.get("title") or "")
+        if tk and tk in self.by_title:
+            return self.by_title[tk]
+        h = simhash(f"{item.get('title')} {item.get('summary')}"[:1500], self.bits)
+        item["_simhash"] = h
+        if h:
+            for other, cid in self.hashes:
+                if hamming(h, other) <= self.threshold:
+                    return cid
+        return None
+
+    def register(self, item, canonical_id):
+        self.by_key[f"{item.get('sourceId')}::{item.get('externalId')}"] = canonical_id
+        cu = item.get("canonicalUrl") or item.get("url") or ""
+        if cu:
+            self.by_url[cu] = canonical_id
+        tk = title_key(item.get("title") or "")
+        if tk:
+            self.by_title[tk] = canonical_id
+        h = item.pop("_simhash", None) or simhash(
+            f"{item.get('title')} {item.get('summary')}"[:1500], self.bits)
+        if h:
+            self.hashes.append([h, canonical_id])
+
+    def prune(self, max_entries=40000):
+        if len(self.hashes) > max_entries:
+            self.hashes = self.hashes[-max_entries:]
+        for store, cap in ((self.by_key, 60000), (self.by_url, 60000), (self.by_title, 60000)):
+            if len(store) > cap:
+                for k in list(store.keys())[:len(store) - cap]:
+                    store.pop(k, None)
+
+
+def merge_duplicate(existing, incoming):
+    """Same content seen on several channels: keep the richest field, keep all sources."""
+    out = dict(existing)
+    for field in ("title", "summary"):
+        if len(str(incoming.get(field) or "")) > len(str(out.get(field) or "")):
+            out[field] = incoming[field]
+    for field in ("authors", "tags"):
+        merged = list(dict.fromkeys(list(out.get(field) or []) + list(incoming.get(field) or [])))
+        if merged:
+            out[field] = merged[:16]
+    qs = dict(out.get("qualitySignals") or {})
+    for k, v in (incoming.get("qualitySignals") or {}).items():
+        if isinstance(v, (int, float)) and isinstance(qs.get(k), (int, float)):
+            qs[k] = max(qs[k], v)
+        else:
+            qs.setdefault(k, v)
+    if qs:
+        out["qualitySignals"] = qs
+    out["peerReviewed"] = bool(out.get("peerReviewed") or incoming.get("peerReviewed"))
+    out["codeAvailable"] = bool(out.get("codeAvailable") or incoming.get("codeAvailable"))
+    srcs = list(out.get("sources") or [])
+    have = {s.get("url") for s in srcs}
+    for s in _sources_of(incoming):
+        if s.get("url") and s["url"] not in have:
+            srcs.append(s)
+            have.add(s["url"])
+    out["sources"] = srcs[:6]
+    if incoming.get("publishedAt") and (not out.get("publishedAt")
+                                       or incoming["publishedAt"] < out["publishedAt"]):
+        out["publishedAt"] = incoming["publishedAt"]
+    out["mergedFrom"] = list(dict.fromkeys(list(out.get("mergedFrom") or []) + [incoming.get("sourceId")]))
+    out["updatedAt"] = iso(now_cst())
+    return out
+
+
+# ============================================================================
+# 8. STORAGE
+# ============================================================================
+def atomic_write_json(path: Path, payload) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + f".{os.getpid()}.tmp")
+    pretty = path.name == "runs.json"
+    data = json.dumps(payload, ensure_ascii=False,
+                      indent=1 if pretty else None,
+                      separators=None if pretty else (",", ":"))
+    tmp.write_text(data, "utf-8")
+    if tmp.stat().st_size < 2:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(f"refusing to write a suspiciously small file: {path}")
+    os.replace(tmp, path)          # atomic on the same volume
+
+
+def read_json(path: Path, fallback):
+    try:
+        if path.exists():
+            return json.loads(path.read_text("utf-8"))
+    except Exception:
+        pass
+    return fallback
+
+
+def build_all_items(state, fresh):
+    canonical = state.get("canonical") or {}
+    merged = dict(canonical)
+    for item in fresh:
+        merged[item["id"]] = {**merged.get(item["id"], {}), **item}
+    keep = ("id", "sourceId", "channel", "externalId", "category", "title", "summary",
+            # summarySource records HOW a summary was obtained (feed vs page meta
+            # tag). Without it in this whitelist the provenance was silently
+            # dropped on every rebuild, so nothing could tell an original abstract
+            # from a backfilled description.
+            "summarySource",
+            "keyPoints", "why", "url", "canonicalUrl", "sources", "authors", "publishedAt",
+            "fetchedAt", "lang", "tags", "entities", "difficulty", "relevanceScore",
+            "qualitySignals", "venue", "ccf", "peerReviewed", "codeAvailable", "stars",
+            "upvotes", "firstSeen", "lastSeen", "contentHash", "categoryHits")
+    # Honour the blocklist here as well as on the ingest path.
+    #
+    # Two gates are needed, not one. Filtering only the incoming raw items stops
+    # NEW imports, but state["canonical"] already holds whatever was imported
+    # before, so items that slipped in during an earlier run would stay published
+    # forever. Rebuilding from `canonical` is exactly how that happened: the
+    # library sat at 763 with 209 human-removed items still listed.
+    blocked_ids = set(state.get("blockedIds") or [])
+    out = []
+    for item in merged.values():
+        if blocked_ids and item.get("id") in blocked_ids:
+            continue
+        row = {k: item.get(k) for k in keep if item.get(k) is not None}
+        row.setdefault("sources", [])
+        row["date"] = str(item.get("firstSeen") or item.get("fetchedAt") or "")[:10]
+        out.append(row)
+    out.sort(key=lambda x: -(x.get("relevanceScore") or 0))
+    return out
+
+
+def compute_stats(items):
+    by_cat, by_ch = {}, {}
+    for i in items:
+        by_cat[i.get("category", "trend")] = by_cat.get(i.get("category", "trend"), 0) + 1
+        by_ch[i.get("channel", "unknown")] = by_ch.get(i.get("channel", "unknown"), 0) + 1
+    return {"byCategory": by_cat, "byChannel": by_ch,
+            "zhShare": round(sum(1 for i in items if i.get("lang") == "zh") / max(1, len(items)), 3)}
+
+
+# ============================================================================
+# 9. RUN
+# ============================================================================
+# Ordering for the human-facing channel table: things that worked first, then
+# empty, then broken, then blocked, then never-verified.
+STATE_RANK = {"ok": 0, "partial": 1, "empty": 2, "error": 3, "parse_error": 4,
+              "blocked": 5, "unknown": 6}
+TIER_RANK = {"P0": 0, "P1": 1, "P2": 2, "MANUAL": 3}
+
+
+def write_proposals(cfg, results, fresh, all_items, log) -> dict:
+    """Deterministic self-iteration output.
+
+    The LLM deep-read layer can write richer proposals, but it needs a
+    credential and is therefore optional. This function makes the
+    observe -> propose step unconditional: every run leaves a reviewable file
+    containing only *mechanically derived* suggestions (no model inference, no
+    guesses). A human still approves anything before it takes effect.
+
+    Signals used (all observable without an LLM):
+      * channels that keep failing / are blocked / returned parse errors
+      * categories that received no items at all
+      * categories that got items historically but none this run
+      * configured keywords that never hit anything (dead weight)
+      * source hosts outside the known-host list (possible junk ingestion)
+    """
+    proposals_dir = DATA_DIR / "proposals"
+    day = date_key(now_cst())
+
+    runs = read_json(RUNS_PATH, [])
+    if not isinstance(runs, list):
+        runs = []
+    fail_streak: dict = {}
+    for r in runs[:8]:
+        for part in str(r.get("notes") or "").split(";"):
+            part = part.strip()
+            m = re.match(r"^([\w\-]+)=(error|blocked|parse_error|empty)$", part)
+            if m and m.group(2) in ("error", "blocked", "parse_error"):
+                fail_streak[m.group(1)] = fail_streak.get(m.group(1), 0) + 1
+
+    channel_health = []
+    for cid, rec in sorted(results.items()):
+        status = str(rec.get("status"))
+        if status == "ok":
+            continue
+        streak = fail_streak.get(cid, 0) + (1 if status in ("error", "blocked", "parse_error") else 0)
+        action = {
+            "blocked": "确认是否已被反爬或已下线；如需继续，改为人工导入或寻找替代源",
+            "error": "检查接口变更或凭据；连续 3 次失败应降级到备用源",
+            "parse_error": "响应格式变了，需要更新解析逻辑（这是我们的问题，不是站点的问题）",
+            "empty": "查询式可能过窄，考虑放宽关键词或时间窗口",
+        }.get(status, "人工复核")
+        channel_health.append({
+            "id": cid, "nameZh": rec.get("nameZh") or cid, "status": status,
+            "streak": streak, "lastError": rec.get("error"),
+            "suggestedAction": action, "escalate": streak >= 3,
+        })
+    channel_health.sort(key=lambda c: (-int(c["escalate"]), -c["streak"], c["id"]))
+
+    got: dict = {}
+    for it in all_items:
+        got[it.get("category")] = got.get(it.get("category"), 0) + 1
+    got_fresh: dict = {}
+    for it in fresh:
+        got_fresh[it.get("category")] = got_fresh.get(it.get("category"), 0) + 1
+    empty_categories = [cid for cid in cfg["categories"] if not got.get(cid)]
+    quiet_categories = [cid for cid in cfg["categories"] if got.get(cid) and not got_fresh.get(cid)]
+
+    hits_counter: dict = {}
+    for it in all_items:
+        for kw in (it.get("categoryHits") or []):
+            hits_counter[kw] = hits_counter.get(kw, 0) + 1
+    dead_keywords: dict = {}
+    for cid, c in cfg["categories"].items():
+        kws = c.get("keywords") or []
+        dead = [k for k in kws if k not in hits_counter and len(k) > 4]
+        if dead and len(dead) > max(3, len(kws) // 2):
+            dead_keywords[cid] = dead[:15]
+
+    suspicious_hosts: dict = {}
+    for it in all_items:
+        h = urllib.parse.urlsplit(it.get("url") or "").netloc.lower().replace("www.", "")
+        if h and not any(h == k or h.endswith("." + k) for k in KNOWN_HOSTS):
+            suspicious_hosts[h] = suspicious_hosts.get(h, 0) + 1
+    suspicious_hosts = dict(sorted(suspicious_hosts.items(), key=lambda kv: -kv[1])[:12])
+
+    queue = []
+    escalated = [c for c in channel_health if c["escalate"]]
+    if escalated:
+        queue.append("以下渠道已连续 3 轮以上失败，请确认是永久下线还是需要换源："
+                     + "，".join(f"{c['id']}({c['status']}×{c['streak']})" for c in escalated))
+    if empty_categories:
+        queue.append("以下分类至今没有任何条目，请确认关键词是否过窄或渠道是否缺失："
+                     + "，".join(empty_categories))
+    if dead_keywords:
+        queue.append("以下分类有过半关键词从未命中，建议精简或改写："
+                     + "，".join(f"{k}({len(v)} 个)" for k, v in dead_keywords.items()))
+    if len(suspicious_hosts) > 8:
+        queue.append("出现较多未知来源域名，请抽查是否误抓：" + "，".join(list(suspicious_hosts)[:6]))
+
+    payload = {
+        "date": day,
+        "generatedAt": iso(now_cst()),
+        "generatedBy": "collect.py deterministic layer (no LLM required)",
+        "reviewPolicy": {
+            "autoApplicable": ["单个关键词权重 ≤10% 的微调"],
+            "requiresHumanApproval": ["分类增删改名", "渠道增删与升降级", "评分公式与权重",
+                                      "去重阈值", "blocklist", "robots.txt 状态变化"],
+        },
+        "channelHealth": channel_health,
+        "coverage": {
+            "categoriesWithItems": sorted(got.keys()),
+            "categoriesEmpty": empty_categories,
+            "categoriesQuietThisRun": quiet_categories,
+            "byCategoryTotal": got,
+            "byCategoryFresh": got_fresh,
+        },
+        "keywordProposals": [
+            {"category": cid, "remove": kws,
+             "reason": "这些关键词在全部已入库条目中从未命中，占用匹配与打分开销"}
+            for cid, kws in dead_keywords.items()
+        ],
+        "newChannelProposals": [],
+        "noiseReport": {
+            "unknownHosts": suspicious_hosts,
+            "unknownHostItemShare": round(sum(suspicious_hosts.values()) / max(1, len(all_items)), 3),
+        },
+        "humanReviewQueue": queue,
+        "stats": {
+            "totalItems": len(all_items),
+            "freshThisRun": len(fresh),
+            "channelsRan": len(results),
+            "channelsOk": sum(1 for r in results.values() if r.get("status") == "ok"),
+        },
+    }
+
+    atomic_write_json(proposals_dir / f"{day}.json", payload)
+    atomic_write_json(proposals_dir / "latest.json", payload)
+    if queue:
+        log(f"proposals/{day}.json: {len(queue)} 条待人工复核", "warn")
+    else:
+        log(f"proposals/{day}.json: 无需人工介入", "ok")
+    return payload
+
+
+def classify_failure(exc_text: str) -> str:
+    """Turn an exception repr into a status the operator can act on.
+
+    `parse_error` exists so that "the host answered and our parser choked" is
+    never confused with `empty` ("the host answered with nothing"): the first is
+    our bug and must be logged as such, the second is normal for a quiet day.
+    """
+    low = (exc_text or "").lower()
+    if any(k in low for k in ("403", "401", "451", "forbidden", "unauthorized")):
+        return "blocked"
+    if "429" in low or "too many requests" in low:
+        return "blocked"
+    if any(k in low for k in ("parseerror", "jsondecode", "not well-formed", "syntaxerror",
+                              "mismatched tag", "undefined entity", "unreadable", "xml")):
+        return "parse_error"
+    return "error"
+
+
+def build_channel_result(cid, spec, status, count, err, dur, risk_note="",
+                         backup_used=None, backup_attempts=None):
+    return {
+        "id": cid, "nameZh": CHANNEL_NAMES.get(cid, cid), "tier": spec.get("tier", "P2"),
+        "mode": spec.get("mode", "api"), "authRequired": bool(spec.get("auth")),
+        "status": status, "count": count, "error": err, "durationSec": round(dur, 2),
+        "backup": spec.get("backup", []),
+        # `backup` above documents the alternatives; these two record what the
+        # runner actually DID this pass, so the UI can show a real fallback chain
+        # instead of a promise. Surviving only as a label was a genuine gap.
+        "backupUsed": backup_used,
+        "backupAttempts": backup_attempts or [],
+        "riskNote": risk_note or None,
+        "disabled": cid in DISABLED_CHANNELS,
+        "checkedAt": iso(now_cst()), "lastChecked": iso(now_cst()),
+    }
+
+
+def collect_channels(wanted, cfg, per_channel, log):
+    """Run the requested collectors, isolating every failure.
+
+    Executes each channel's declared `backup` chain for real: when the primary
+    collector raises or returns nothing, the alternatives in
+    CHANNEL_SPECS[cid]["backup"] are tried in order until one yields items. That
+    turns the reliability spec's "备用来源" from documentation into behaviour.
+    Returns (results, raw_items).
+    """
+    results, raw_items = {}, []
+
+    def task(cid):
+        t = time.time()
+        attempts: list = []
+        try:
+            rows = COLLECTORS[cid](cfg, log, per_channel) or []
+            primary_err = None
+        except Exception as e:
+            rows, primary_err = [], f"{type(e).__name__}: {e}"
+
+        backup_used = None
+        if not rows:
+            for bid in (CHANNEL_SPECS.get(cid, {}).get("backup") or []):
+                if bid not in COLLECTORS:
+                    attempts.append({"id": bid, "result": "not_implemented"})
+                    continue
+                log(f"    {cid}: 主源无结果，尝试备用源 {bid}", "warn")
+                try:
+                    alt = COLLECTORS[bid](cfg, log, per_channel) or []
+                except Exception as e:                              # noqa: BLE001
+                    attempts.append({"id": bid, "result": f"error: {type(e).__name__}: {e}"})
+                    continue
+                if alt:
+                    rows = alt
+                    backup_used = bid
+                    attempts.append({"id": bid, "result": "ok", "count": len(alt)})
+                    log(f"    {cid}: 备用源 {bid} 生效，取得 {len(alt)} 条", "ok")
+                    break
+                attempts.append({"id": bid, "result": "empty"})
+
+        return cid, rows, primary_err, time.time() - t, backup_used, attempts
+
+    with futures.ThreadPoolExecutor(max_workers=min(6, max(1, len(wanted)))) as pool:
+        futs = {pool.submit(task, cid): cid for cid in wanted}
+        for fut in futures.as_completed(futs):
+            cid = futs[fut]
+            try:
+                cid, rows, err, dur, backup_used, attempts = fut.result()
+            except Exception as e:                                  # noqa: BLE001
+                rows, err, dur, backup_used, attempts = [], f"{type(e).__name__}: {e}", 0.0, None, []
+            spec = CHANNEL_SPECS.get(cid, {"tier": "P2"})
+            if err is None and rows:
+                status = "ok"
+            elif rows:
+                # Primary failed but a backup produced items: still a success for
+                # the reader, yet the log must show the degradation.
+                status = "ok"
+            elif err is None:
+                status = "empty"
+            else:
+                status = classify_failure(err)
+            results[cid] = build_channel_result(cid, spec, status, len(rows), err, dur,
+                                                backup_used=backup_used, backup_attempts=attempts)
+            label = CHANNEL_NAMES.get(cid, cid)
+            via = f" [via {backup_used}]" if backup_used else ""
+            if status == "ok":
+                log(f"{label:<16} {len(rows):>4} items ({dur:.1f}s){via}", "ok")
+            elif status == "empty":
+                log(f"{label:<16} empty (host answered, no items)", "warn")
+            elif status == "parse_error":
+                log(f"{label:<16} PARSE ERROR (shape changed, not an empty feed): {err}", "err")
+            elif status == "blocked":
+                log(f"{label:<16} blocked: {err}", "err")
+            else:
+                log(f"{label:<16} {err}", "warn")
+            raw_items += rows
+    return results, raw_items
+
+
+def run_probe(args) -> int:
+    """--probe: one pass over the channels, print a health table, write nothing.
+
+    WHY separate from --dry-run: --dry-run still normalizes, scores and dedupes
+    the whole corpus and prints a run record; when you only want to know which
+    upstream moved, that is wasted work and a lot of output. For the deep,
+    evidence-carrying probe (candidate endpoints, robots.txt, regex diagnosis)
+    use scripts/probe-channels.py.
+    """
+    log = Logger(args.verbose)
+    cfg = load_config(CONFIG_PATH, log)
+    if args.limit:
+        cfg["limits"]["perChannel"] = args.limit
+    per_channel = int(args.limit or 3)
+
+    if args.only:
+        wanted = [c.strip() for c in args.only.split(",") if c.strip() in COLLECTORS]
+    else:
+        wanted = [c for c, s in CHANNEL_SPECS.items() if s["mode"] != "manual"]
+        wanted = [c for c in wanted if c in COLLECTORS and c not in DISABLED_CHANNELS]
+
+    log(f"probe: {len(wanted)} channels, limit={per_channel}, nothing will be written", "step")
+    results, _raw = collect_channels(wanted, cfg, per_channel, log)
+
+    rows = []
+    for cid in sorted(DISABLED_CHANNELS) if not args.only else []:
+        spec = CHANNEL_SPECS.get(cid, {"tier": "P2"})
+        rows.append(build_channel_result(cid, spec, "blocked", 0, None, 0.0, DISABLED_CHANNELS[cid]))
+    rows += [results[c] for c in wanted if c in results]
+
+    safe_print("")
+    safe_print(f"{'channel':<18}{'status':<13}{'items':>6}{'sec':>7}  first item / error")
+    safe_print("-" * 116)
+    for r in sorted(rows, key=lambda x: (x["status"] != "ok", x["id"])):
+        extra = r.get("error") or r.get("riskNote") or ""
+        safe_print(f"{r['id']:<18}{r['status']:<13}{r['count']:>6}{r['durationSec']:>7}  {str(extra)[:62]}")
+    counts = {}
+    for r in rows:
+        counts[r["status"]] = counts.get(r["status"], 0) + 1
+    safe_print("")
+    safe_print(f"probe summary: {counts}")
+    safe_print(f"disabled (not attempted): {', '.join(sorted(DISABLED_CHANNELS))}")
+    safe_print("deeper evidence: python scripts/probe-channels.py")
+    return 0
+
+
+def enrich_missing_summaries(items, cfg, log, cap=90):
+    """Fetch a page's meta description for items that arrived with no summary.
+
+    Why this exists: a card whose entire content is a title plus a link cannot be
+    explained, scored, or deep-read - which is exactly the complaint that some
+    cards have "只有摘要或链接". Two real causes were measured on 2026-10-01:
+
+      * `huggingface.co/blog/feed.xml` carries NO content element at all: its
+        entries are only title/pubDate/link/guid (verified across 870 entries),
+        so all 23 HuggingFace blog cards had an empty summary.
+      * Semantic Scholar's bulk endpoint returns `abstract: null` for a large
+        share of records (14 of 37 s2 cards), and the landing page is then the
+        only accessible place the abstract exists.
+
+    This pass fetches <meta name="description"> / og:description / citation_abstract
+    from the article page. It is bounded (cap), polite (sequential, reuses the
+    throttled shared http_get, small sleep), and never fatal - a failure leaves
+    the item exactly as it was.
+
+    Items that still have no summary afterwards stay in place but are treated as
+    low-importance by prune_items.py, rather than quietly passing as knowledge.
+    """
+    targets = [it for it in items if len(str(it.get("summary") or "").strip()) < 80]
+    if not targets:
+        return 0, 0
+    targets = targets[:cap]
+    filled = 0
+    for it in targets:
+        url = str(it.get("url") or "")
+        if not url.startswith("http"):
+            continue
+        try:
+            _s, body, _ct = http_get(url, timeout=15, cfg=cfg, log=lambda *a, **k: None,
+                                     retries=1, accept="text/html,*/*;q=0.8")
+        except Exception:
+            continue
+        if not body:
+            continue
+        # http_get may hand back bytes; the regexes below need str.
+        if isinstance(body, (bytes, bytearray)):
+            try:
+                body = body.decode("utf-8", "replace")
+            except Exception:
+                body = str(body)
+        head = body[:200000]
+        desc = ""
+        for pat in (
+            r'<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']{40,})["\']',
+            r'<meta[^>]+content=["\']([^"\']{40,})["\'][^>]+property=["\']og:description["\']',
+            r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']{40,})["\']',
+            r'<meta[^>]+content=["\']([^"\']{40,})["\'][^>]+name=["\']description["\']',
+            r'<meta[^>]+name=["\']citation_abstract["\'][^>]+content=["\']([^"\']{40,})["\']',
+        ):
+            m = re.search(pat, head, re.I | re.S)
+            if m:
+                desc = m.group(1)
+                break
+        if not desc:
+            m = re.search(
+                r'<p[^>]*class=["\'][^"\']*(?:abstract|summary)[^"\']*["\'][^>]*>(.{60,1200}?)</p>',
+                head, re.I | re.S)
+            if m:
+                desc = m.group(1)
+        desc = clean_text(desc, 900)
+        if len(desc) >= 60:
+            it["summary"] = desc
+            it["summarySource"] = "page-meta-description"
+            filled += 1
+        time.sleep(0.25)
+    return filled, len(targets)
+
+
+def compose_summary(fresh, all_items, results, cfg, prev_summary=None) -> dict:
+    """Build the day's digest summary — a deterministic "TL;DR" for humans.
+
+    Deliberately mechanical: it selects and orders what is already in the data
+    (highest relevance, most-reported categories, which channels delivered) and
+    states counts. It does not paraphrase abstracts and it never asserts
+    anything that is not derivable from the stored fields, so it stays honest
+    even when the optional LLM layer is switched off. The agent layer can
+    overwrite `headline`/`highlights` with richer prose afterwards.
+
+    `prev_summary` matters for the `--rescore` path, which has no run results to
+    report: without it the channel lists would be silently emptied and the
+    headline would read "0/0 channels produced items".
+    """
+    prev_summary = prev_summary or {}
+    top = sorted(fresh or [], key=lambda x: -(x.get("relevanceScore") or 0))[:6]
+
+    # Diversify the "look at this first" list.
+    #
+    # Observed problem: a raw relevance sort put 3 job listings in the top 3 for
+    # the day, crowding out the technical content the reader actually studies.
+    # Job posts have high keyword match AND freshness, so they win that race.
+    # Taking at most one item per category (then filling from the remainder)
+    # keeps the summary about the day's breadth instead of one noisy channel.
+    diversified: list = []
+    seen_cats: set = set()
+    for it in (fresh or []):
+        cat = it.get("category")
+        if cat in seen_cats:
+            continue
+        if len(diversified) >= 5:
+            break
+        diversified.append(it)
+        seen_cats.add(cat)
+    picked_ids = {it.get("id") for it in diversified}
+    for it in sorted(fresh or [], key=lambda x: -(x.get("relevanceScore") or 0)):
+        if len(diversified) >= 6:
+            break
+        if it.get("id") not in picked_ids:
+            diversified.append(it)
+            picked_ids.add(it.get("id"))
+    top = diversified[:6]
+    cat_fresh: dict = {}
+    for it in fresh:
+        cat_fresh[it.get("category")] = cat_fresh.get(it.get("category"), 0) + 1
+    cat_total: dict = {}
+    for it in all_items:
+        cat_total[it.get("category")] = cat_total.get(it.get("category"), 0) + 1
+    zh = sum(1 for it in fresh if it.get("lang") == "zh")
+    with_code = sum(1 for it in fresh if it.get("codeAvailable"))
+    peer = sum(1 for it in fresh if it.get("peerReviewed"))
+    ok_channels = sorted(r["id"] for r in results.values() if r.get("status") == "ok")
+    bad_channels = sorted(f"{r['id']}({r['status']})" for r in results.values()
+                          if r.get("status") not in ("ok",))
+    if not results:
+        # No run data (the --rescore path): carry the previous observation over
+        # rather than reporting a misleading zero.
+        ok_channels = list(prev_summary.get("channelsWithItems") or [])
+        bad_channels = list(prev_summary.get("channelsWithoutItems") or [])
+
+    top_cat = sorted(cat_fresh.items(), key=lambda kv: -kv[1])[:3]
+    headline = (f"本轮新增 {len(fresh)} 条，累计 {len(all_items)} 条；"
+                + (f"集中在 " + "、".join(f"{(cfg['categories'].get(c) or {}).get('zh', c)} {n} 条"
+                                          for c, n in top_cat) if top_cat else "本轮无新增条目")
+                + (f"；{len(ok_channels)}/{len(ok_channels) + len(bad_channels)} 个渠道有产出。"
+                   if (ok_channels or bad_channels) else "。"))
+
+    highlights = []
+    if top:
+        highlights.append("最高相关：" + "；".join(
+            f"{it.get('title', '')[:52]}({it.get('relevanceScore')})" for it in top[:3]))
+    if peer:
+        highlights.append(f"其中 {peer} 条来自同行评审渠道（OpenReview/会议），可信度更高")
+    if with_code:
+        highlights.append(f"{with_code} 条疑似附带开源实现，适合挑一个动手复现")
+    if zh:
+        highlights.append(f"{zh} 条为中文来源，与国内求职语境更贴近（牛客/知乎/量子位/雷锋网）")
+    if bad_channels:
+        highlights.append("未产出渠道：" + "，".join(bad_channels[:8])
+                          + ("…" if len(bad_channels) > 8 else ""))
+
+    return {
+        "headline": headline,
+        "highlights": highlights,
+        "topItemIds": [it.get("id") for it in top],
+        "counts": {
+            "fresh": len(fresh),
+            "total": len(all_items),
+            "zhSources": zh,
+            "peerReviewed": peer,
+            "codeAvailable": with_code,
+        },
+        "byCategoryFresh": cat_fresh,
+        "byCategoryTotal": cat_total,
+        "channelsWithItems": ok_channels,
+        "channelsWithoutItems": bad_channels,
+        "generatedBy": "collect.py deterministic summarizer",
+    }
+
+
+def run(args) -> int:
+    t0 = time.time()
+    log = Logger(args.verbose)
+    started = now_cst()
+    log(f"Future daily collector v{COLLECTOR_VERSION}", "step")
+    log(f"run time (Asia/Shanghai): {iso(started)}")
+
+    cfg = load_config(CONFIG_PATH, log)
+    if args.limit:
+        cfg["limits"]["perChannel"] = args.limit
+    if not CONFIG_PATH.exists() and not args.dry_run:
+        save_default_config(CONFIG_PATH)
+        log(f"wrote default config template: {CONFIG_PATH}")
+
+    if args.only:
+        # A subset run is by definition a partial check, so mark it narrow unless
+        # the caller explicitly asked for a full-replacement digest.
+        args.narrow = True
+        wanted = [c.strip() for c in args.only.split(",") if c.strip() in COLLECTORS]
+        log("--only given: disabled channels run too, on purpose, for re-testing", "warn")
+        log("--only also implies --narrow: today's digest keeps its previous items", "warn")
+    else:
+        wanted = [cid for cid, spec in CHANNEL_SPECS.items() if spec["mode"] != "manual"]
+        wanted = [c for c in wanted if c in COLLECTORS]
+        # Channels switched off by config (e.g. the login-channel inbox while it
+        # is paused) are treated like blocked ones: reported, never requested.
+        opt_out = [c for c in wanted
+                   if c in DISABLED_CHANNELS or CHANNEL_SPECS[c].get("disabled")]
+        if CHANNEL_SPECS.get("inbox", {}).get("disabled") and not cfg.get("enableInbox"):
+            opt_out = sorted(set(opt_out) | {"inbox"})
+        wanted = [c for c in wanted if c not in DISABLED_CHANNELS
+                  and not CHANNEL_SPECS[c].get("disabled")]
+        if CHANNEL_SPECS.get("inbox", {}).get("disabled") and not cfg.get("enableInbox"):
+            wanted = [c for c in wanted if c != "inbox"]
+        blocked = [c for c in opt_out if c in DISABLED_CHANNELS]
+        off = [c for c in opt_out if c not in DISABLED_CHANNELS]
+        if blocked:
+            log(f"DISABLED_CHANNELS not attempted ({len(blocked)}): {', '.join(sorted(blocked))}", "warn")
+        if off:
+            log(f"switched off by config, not attempted ({len(off)}): {', '.join(sorted(off))}", "warn")
+
+    log(f"channels to run ({len(wanted)}): {', '.join(wanted)}", "step")
+    if MANUAL_ONLY:
+        log(f"skipping login-walled channels (human import only): {', '.join(sorted(MANUAL_ONLY))}", "warn")
+
+    per_channel = int((cfg.get("limits") or {}).get("perChannel", 30))
+    results, raw_items = collect_channels(wanted, cfg, per_channel, log)
+
+    # Blocked channels are REPORTED but never requested: the run log and
+    # web/data/sources.json must show why a channel is dark, or the next reader
+    # will "fix" it again from scratch.
+    for cid in (DISABLED_CHANNELS if not args.only else {}):
+        if cid in COLLECTORS:
+            spec = CHANNEL_SPECS.get(cid, {"tier": "P2"})
+            results[cid] = build_channel_result(cid, spec, "blocked", 0, None, 0.0,
+                                                DISABLED_CHANNELS[cid])
+
+    log(f"raw items: {len(raw_items)} -> normalizing / scoring / deduping", "step")
+
+    # Fill in summaries for content-less items BEFORE scoring, so relevance is
+    # computed on real text rather than on a bare title.
+    #
+    # Priority matters as much as the pass itself. With a plain first-N cap, the
+    # 40 fetch slots went to whatever the feed happened to return first, while the
+    # genuinely summary-less cards already in the library were never reached -
+    # which is why a pass reporting "28/40 filled" still left 19 empty cards.
+    # Canonical entries with a missing/empty summary are therefore put at the
+    # FRONT of the queue, so every run makes progress on the real backlog.
+    summary_gaps: list = []
+    if not args.no_enrich:
+        try:
+            canon_for_gaps = (read_json(STATE_PATH, {}) or {}).get("canonical") or {}
+            raw_ids = {r.get("id") for r in raw_items}
+            for cid, entry in canon_for_gaps.items():
+                if not isinstance(entry, dict):
+                    continue
+                if len(str(entry.get("summary") or "").strip()) >= 80:
+                    continue
+                # Reuse the raw item when the same entry is in this batch, so the
+                # improved summary flows through the normal ingest path; otherwise
+                # synthesise a minimal record whose url we can fetch.
+                match = next((r for r in raw_items
+                              if r.get("id") == cid
+                              or title_key(r.get("title")) == title_key(entry.get("title"))), None)
+                summary_gaps.append(match or {
+                    "id": cid, "title": entry.get("title"), "url": entry.get("url"),
+                    "summary": "", "sourceId": entry.get("channel"),
+                })
+            if summary_gaps:
+                log(f"summary gaps: {len(summary_gaps)} library card(s) have no usable "
+                    f"description; queued for page fetch first", "warn")
+        except Exception as e:
+            log(f"summary gap scan failed: {e}", "warn")
+
+    if not args.no_enrich:
+        try:
+            filled, tried = enrich_missing_summaries(summary_gaps + raw_items, cfg, log)
+            if tried:
+                log(f"summary backfill: {filled}/{tried} items got a description "
+                    f"from their page's meta tag", "info" if filled else "warn")
+        except Exception as e:
+            log(f"summary backfill skipped: {e}", "warn")
+
+    state = read_json(STATE_PATH, {})
+    state.setdefault("version", 1)
+    deduper = Deduper(state, cfg)
+    seen_ids = set(state.get("seenIds") or [])
+    first_seen = state.setdefault("firstSeen", {})
+    last_seen = state.setdefault("lastSeen", {})
+    canonical = state.setdefault("canonical", {})
+
+    # ------------------------------------------------------------------
+    # Blocklist: items a human (or prune_items.py / dedupe_deep.py) removed.
+    #
+    # Without this check the whole cleaning effort silently undid itself: the
+    # pruner archived 165 items and recorded their ids in state["blockedIds"], but
+    # nothing read that list, so the very next collection re-imported them and the
+    # library jumped straight back from 554 to 763. Enforcing it here is what makes
+    # the blocklist actually mean something.
+    #
+    # Matched on BOTH the stable id and the canonical URL, so a re-published item
+    # that gets a new id is still recognised.
+    # ------------------------------------------------------------------
+    blocked_ids = set(state.get("blockedIds") or [])
+    blocked_title_keys = set(state.get("blockedTitleKeys") or [])
+    blocked_urls = {str(u).lower().rstrip("/") for u in (state.get("blockedUrls") or [])}
+
+    fresh, updated, dup_count, dropped, blocked = [], [], 0, 0, 0
+    min_rel = float((cfg.get("scoring") or {}).get("minRelevance", 0) or 0)
+
+    for raw in raw_items:
+        spec = CHANNEL_SPECS.get(raw.get("sourceId"), {"tier": "P2"})
+        item = normalize(raw, cfg, spec["tier"])
+        if not item:
+            dropped += 1
+            continue
+        # --- blocklist gate ---
+        if blocked_ids and item.get("id") in blocked_ids:
+            blocked += 1
+            continue
+        if blocked_title_keys and title_key(item.get("title")) in blocked_title_keys:
+            blocked += 1
+            continue
+        if blocked_urls:
+            cu = str(item.get("canonicalUrl") or item.get("url") or "").lower().rstrip("/")
+            if cu and cu in blocked_urls:
+                blocked += 1
+                continue
+        if item["relevanceScore"] < min_rel:
+            dropped += 1
+            continue
+        cid = deduper.lookup(item)
+        if cid:
+            dup_count += 1
+            last_seen[cid] = iso(now_cst())
+            if canonical.get(cid):
+                canonical[cid] = merge_duplicate(canonical[cid], item)
+                updated.append(canonical[cid])
+            continue
+        item["firstSeen"] = iso(now_cst())
+        item["lastSeen"] = item["firstSeen"]
+        item["learning"] = {"status": "unread", "starred": False, "mastery": 0}
+        canonical[item["id"]] = item
+        first_seen[item["id"]] = item["firstSeen"]
+        last_seen[item["id"]] = item["lastSeen"]
+        seen_ids.add(item["id"])
+        deduper.register(item, item["id"])
+        fresh.append(item)
+        log.detail(f"+ [{item['category']:<13}] {item['relevanceScore']:>5} {item['title'][:70]}")
+
+    fresh.sort(key=lambda x: -x["relevanceScore"])
+    cap = int((cfg.get("limits") or {}).get("maxNewPerRun", 400))
+    if len(fresh) > cap:
+        fresh = fresh[:cap]
+
+    deduper.prune()
+    state["seenIds"] = list(seen_ids)[-120000:]
+    state["lastRunAt"] = iso(now_cst())
+    state["byKey"], state["byUrl"], state["byTitle"] = deduper.by_key, deduper.by_url, deduper.by_title
+    state["hashes"] = deduper.hashes
+
+    log(f"deduped: new={len(fresh)} updated={len(updated)} duplicate_hits={dup_count} "
+        f"dropped={dropped} blocklisted={blocked}", "ok")
+    if blocked:
+        log(f"  {blocked} item(s) skipped by the blocklist (removed earlier by "
+            f"prune_items.py / dedupe_deep.py); they will not come back", "info")
+
+    duration = round(time.time() - t0, 1)
+    ok_channels = sum(1 for r in results.values() if r["status"] == "ok")
+    status = "ok" if ok_channels == len(results) and results else ("partial" if ok_channels else "error")
+
+    # Reconcile backfilled summaries into the canonical store.
+    #
+    # Why this is needed: enrich_missing_summaries() improves the RAW items, but
+    # for an item that already exists the deduper takes the `merge_duplicate`
+    # branch, which keeps whatever summary the canonical record already had - i.e.
+    # still empty. Measured effect: the pass reported "28/40 filled" while the
+    # library still showed 19 summary-less cards afterwards. Writing the improved
+    # text into canonical (and refreshing lastSeen) is what makes it stick.
+    backfilled = 0
+    if not args.no_enrich:
+        # Collect every improved summary in this run, then push it into the
+        # canonical record. Note the canonical store keeps whatever it already
+        # had when the deduper takes the merge_duplicate branch, so without this
+        # step an improved summary is computed and then thrown away.
+        improved = {}
+        for src in (summary_gaps + raw_items):
+            s = str(src.get("summary") or "").strip()
+            if len(s) >= 80 and src.get("summarySource") == "page-meta-description":
+                for key in (src.get("id"), title_key(src.get("title"))):
+                    if key:
+                        improved[key] = s
+        for cid, entry in (canonical or {}).items():
+            if not isinstance(entry, dict):
+                continue
+            cur = str(entry.get("summary") or "").strip()
+            if len(cur) >= 80:
+                continue
+            cand = improved.get(cid) or improved.get(title_key(entry.get("title")))
+            if cand and len(cand) > len(cur):
+                entry["summary"] = cand
+                entry["summarySource"] = "page-meta-description"
+                backfilled += 1
+        log(f"summary reconcile: {backfilled} existing card(s) updated in place "
+            f"(improved candidates in this run: {len(improved)})", "ok" if backfilled else "info")
+
+    run_record = {
+        "startedAt": iso(started), "finishedAt": iso(now_cst()), "status": status,
+        # Distinguish an automatic 20:00 run from a human/dev invocation. Without
+        # this the run history is ambiguous: during development there were many
+        # manual runs in one afternoon, which looks exactly like "the schedule is
+        # firing repeatedly" when reading logs/runs.json.
+        "trigger": getattr(args, "trigger", "manual"),
+        "narrowRun": bool(getattr(args, "narrow", False)),
+        "durationSec": duration, "channelsOk": ok_channels, "channelsTotal": len(results),
+        "channelsBlocked": sum(1 for r in results.values() if r["status"] == "blocked"),
+        "channelsEmpty": sum(1 for r in results.values() if r["status"] == "empty"),
+        "channelsParseError": sum(1 for r in results.values() if r["status"] == "parse_error"),
+        "newItems": len(fresh), "updatedItems": len(updated), "duplicates": dup_count,
+        "rawItems": len(raw_items), "collectorVersion": COLLECTOR_VERSION,
+        "itemsFile": f"digest/{date_key(started)}.json",
+        "notes": "; ".join(f"{r['id']}={r['status']}" for r in results.values()
+                           if r["status"] != "ok") or "all channels reported items",
+        "blockedChannels": {r["id"]: r.get("riskNote") for r in results.values()
+                            if r["status"] == "blocked"},
+    }
+
+    if args.dry_run:
+        log("--dry-run: nothing written", "warn")
+        safe_print(json.dumps({"run": run_record, "newSample": [i["title"] for i in fresh[:10]]},
+                              ensure_ascii=False, indent=2))
+        return 0
+
+    day = date_key(started)
+    all_items = build_all_items(state, fresh)
+    stats = compute_stats(all_items)
+    # A narrowed run (`--only a,b`) exists to test or re-check specific channels.
+    #
+    # It must not be mistaken for the day's research. Replacing digest/today.json
+    # with a 2-item subset made the optional agent layer believe the day had
+    # almost no content (observed: it fell back to "top 12 from the whole index"),
+    # and it made the 每日更新流 render a subset. So a narrow run unions the
+    # previous digest's items into today's, fresh items first.
+    narrow = bool(getattr(args, "narrow", False))
+    if narrow:
+        prior = read_json(DIGEST_DIR / "today.json", None)
+        prior_items = (prior or {}).get("items") or []
+        seen_ids_digest = {i.get("id") for i in fresh}
+        carried = [i for i in prior_items if i.get("id") not in seen_ids_digest]
+        if carried:
+            log(f"narrow run: carried {len(carried)} items forward from the previous digest "
+                f"so the day is not reduced to this subset", "warn")
+            fresh = fresh + carried
+
+    summary = compose_summary(fresh, all_items, results, cfg)
+    digest = {
+        "date": day, "generatedAt": iso(now_cst()), "run": run_record, "stats": stats,
+        "summary": summary,
+        "narrowRun": narrow,
+        "items": fresh,
+        "updated": [{"id": u.get("id"), "title": u.get("title"), "sources": u.get("sources")}
+                    for u in updated[:80]],
+    }
+    atomic_write_json(DIGEST_DIR / f"{day}.json", digest)
+    atomic_write_json(DIGEST_DIR / "today.json", digest)
+
+    index = {"generatedAt": iso(now_cst()), "count": len(all_items), "items": all_items}
+    atomic_write_json(INDEX_DIR / "index.json", index)
+    atomic_write_json(DATA_DIR / "items.json", index)
+
+    # Next scheduled run, derived from the fixed 20:00 Asia/Shanghai cadence, so
+    # the UI never has to hard-code it (and stays right if the schedule moves).
+    now = now_cst()
+    nxt = now.replace(hour=20, minute=0, second=0, microsecond=0)
+    if nxt <= now:
+        nxt += timedelta(days=1)
+
+    manifest = {
+        "generatedAt": iso(now_cst()), "lastRunAt": iso(now_cst()), "date": day,
+        "collectorVersion": COLLECTOR_VERSION, "channelsOk": run_record["channelsOk"],
+        "channelsTotal": run_record["channelsTotal"], "newItems": len(fresh),
+        "totalItems": len(all_items), "durationSec": duration,
+        "targetDate": cfg.get("targetDate"), "targetLabel": cfg.get("targetLabel"),
+        "status": status, "itemsFile": f"digest/{day}.json", "stats": stats,
+        "summary": summary,
+        "schedule": {
+            "cron": "0 20 * * *",
+            "timezone": "Asia/Shanghai",
+            "nextRunAt": iso(nxt),
+            "taskName": "Future-Workbench-Daily-20",
+            "runner": "scripts/run-daily.ps1",
+        },
+        "health": {
+            "channelsWithItems": len(summary["channelsWithItems"]),
+            "channelsWithoutItems": len(summary["channelsWithoutItems"]),
+            "zhShare": stats.get("zhShare"),
+            "emptySummaryItems": sum(1 for i in all_items if not (i.get("summary") or "").strip()),
+            "itemsMissingUrl": sum(1 for i in all_items if not i.get("url")),
+        },
+    }
+    atomic_write_json(DATA_DIR / "manifest.json", manifest)
+
+    runs = read_json(RUNS_PATH, [])
+    if not isinstance(runs, list):
+        runs = []
+    runs.insert(0, run_record)
+    atomic_write_json(RUNS_PATH, runs[:120])
+
+    # Channels + taxonomy doc for the 采集与运行 / 知识分类 views. Categories are
+    # merged with whatever the (possibly richer) research registry already has.
+    existing_sources = read_json(DATA_DIR / "sources.json", {}) or {}
+    tax_by_id = {c.get("id"): c for c in (existing_sources.get("categories") or []) if c.get("id")}
+    merged_cats = []
+    for cid, c in cfg["categories"].items():
+        base = tax_by_id.get(cid, {})
+        merged_cats.append({
+            "id": cid,
+            "nameZh": base.get("nameZh") or c["zh"],
+            "nameEn": base.get("nameEn") or c["en"],
+            "description": base.get("description") or c.get("desc", ""),
+            "collectionGoal": base.get("collectionGoal") or c.get("goal", ""),
+            "updateCadence": base.get("updateCadence") or "每日 20:00 (Asia/Shanghai)",
+            "relevanceWeight": c.get("weight", 0.8),
+            "keywordsZh": [k for k in c["keywords"] if re.search(r"[\u4e00-\u9fff]", k)][:12],
+            "keywordsEn": [k for k in c["keywords"] if not re.search(r"[\u4e00-\u9fff]", k)][:18],
+            "arxivCategories": c.get("arxiv", []),
+        })
+    for cid, base in tax_by_id.items():
+        if cid not in {c["id"] for c in merged_cats}:
+            merged_cats.append(base)
+
+    sources_doc = dict(existing_sources)
+
+    # MERGE the channel registry instead of replacing it.
+    #
+    # Why: a run with `--only arxiv,hf_papers` (or any subset) used to overwrite
+    # the whole `channels` array, so ~90 previously known channel records vanished
+    # from the 采集与运行 view. Now a channel that did not run this pass keeps its
+    # previous record with `staleSince` set, and the response explicitly reports
+    # how many were observed this time versus carried over.
+    prior_channels = {
+        c.get("id"): c for c in (existing_sources.get("channels") or [])
+        if isinstance(c, dict) and c.get("id")
+    }
+    ran_ids = set(results.keys())
+    # Start from previously known records (breadth), then let this run's observed
+    # results overwrite them one by one.
+    merged_channel_store: dict = {cid: dict(rec) for cid, rec in prior_channels.items()}
+    for cid, rec in results.items():
+        merged_channel_store[cid] = dict(rec)
+
+    for cid, prior in prior_channels.items():
+        if cid in ran_ids:
+            continue
+        # Carried over: keep the previous observation but make the staleness explicit.
+        entry = merged_channel_store[cid]
+        entry["notRunThisPass"] = True
+        entry["staleSince"] = entry.get("lastChecked") or existing_sources.get("generatedAt")
+
+    sources_doc.update({
+        "generatedAt": iso(now_cst()),
+        "collectorVersion": COLLECTOR_VERSION,
+        "categories": merged_cats,
+        "channels": sorted(merged_channel_store.values(),
+                           key=lambda c: (STATE_RANK.get(str(c.get("status")), 9),
+                                          TIER_RANK.get(str(c.get("tier")), 9),
+                                          str(c.get("id")))),
+        "channelsObservedThisRun": sorted(ran_ids),
+        "channelsRanCount": len(ran_ids),
+        "channelsKnownCount": len(merged_channel_store),
+        "manualChannels": [
+            {"id": cid, "nameZh": CHANNEL_NAMES.get(cid, cid), "authRequired": True, "mode": "manual",
+             "howTo": "人工登录后导出 CSV/JSON 放入 web/data/inbox/，下次运行时自动合并。"}
+            for cid in sorted(MANUAL_ONLY)
+        ],
+        "scoring": cfg.get("scoring"), "dedupe": cfg.get("dedupe"),
+        "limits": cfg.get("limits"),
+        # NOTE: deliberately NOT setting `lastRunAt` here. A stale `lastRunAt`
+        # field can be inherited from dict(existing_sources) and would contradict
+        # manifest.json; that field is owned by manifest only.
+        "runCounts": {
+            "ok": sum(1 for r in results.values() if r.get("status") == "ok"),
+            "empty": sum(1 for r in results.values() if r.get("status") == "empty"),
+            "error": sum(1 for r in results.values() if r.get("status") == "error"),
+            "blocked": sum(1 for r in results.values() if r.get("status") == "blocked"),
+            "parse_error": sum(1 for r in results.values() if r.get("status") == "parse_error"),
+        },
+    })
+    # Remove any inherited stale runs list / lastRunAt so the UI reads one source.
+    for stale_key in ("lastRunAt", "runs", "notes", "build"):
+        sources_doc.pop(stale_key, None)
+    atomic_write_json(DATA_DIR / "sources.json", sources_doc)
+
+    # Deterministic self-iteration: write a proposal file every run so the loop
+    # produces output even when the optional LLM deep-read layer is skipped.
+    write_proposals(cfg, results, fresh, all_items, log)
+
+    taxonomy = {"generatedAt": iso(now_cst()), "source": "collect.py", "categories": merged_cats}
+    atomic_write_json(DATA_DIR / "taxonomy.json", taxonomy)
+
+    atomic_write_json(STATE_PATH, state)
+
+    log(f"wrote digest/{day}.json, items/index.json, manifest.json, sources.json, logs/runs.json", "ok")
+    log(f"done in {duration}s | status={status} | new={len(fresh)} | total={len(all_items)}", "ok")
+    return 0
+
+
+# ============================================================================
+# 10. CLI
+# ============================================================================
+def build_parser():
+    p = argparse.ArgumentParser(
+        prog="collect.py",
+        description="Future workbench - daily public-source research collector (stdlib only)",
+        formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
+    p.add_argument("--only", help="comma-separated channel ids, e.g. arxiv,github,hf_papers")
+    p.add_argument("--narrow", action="store_true",
+                   help="treat this as a partial check: keep the previous digest items so the "
+                        "day is not reduced to this subset (implied by --only)")
+    p.add_argument("--trigger", default="manual",
+                   choices=["scheduled", "manual", "debug"],
+                   help="how this run was started; recorded in logs/runs.json so the history "
+                        "distinguishes the 20:00 schedule from human runs")
+    p.add_argument("--no-enrich", action="store_true",
+                   help="skip the page-fetch pass that fills summaries for items whose feed "
+                        "carried no content (faster, but leaves title-only cards)")
+    p.add_argument("--limit", type=int, help="max items per channel (overrides config)")
+    p.add_argument("--dry-run", action="store_true", help="print results, write nothing")
+    p.add_argument("--probe", action="store_true",
+                   help="one lightweight pass over the channels, print a health table, write nothing")
+    p.add_argument("--init-config", action="store_true", help="write the config template and exit")
+    p.add_argument("--rescore", action="store_true",
+                   help="re-apply classification + scoring to every stored item, then exit "
+                        "(use after tuning keyword weights or the scoring formula)")
+    p.add_argument("-v", "--verbose", action="store_true", help="trace every accepted item")
+    return p
+
+
+def rescore_all(cfg, log) -> int:
+    """Re-apply classification and scoring to every stored item.
+
+    Needed because relevanceScore is computed at ingest time and stored. After
+    tuning keyword weights (for example, lowering 岗位与招聘 so job listings stop
+    dominating the daily summary) the existing corpus keeps its old scores until
+    it is rescored. Category assignment is refreshed too, so a keyword change
+    also reclassifies items.
+    """
+    state = read_json(STATE_PATH, {})
+    canonical = state.get("canonical") or {}
+    if not canonical:
+        log("no stored items to rescore", "warn")
+        return 1
+
+    changed_cat = changed_score = 0
+    before_top = sorted(canonical.values(), key=lambda x: -(x.get("relevanceScore") or 0))[:5]
+
+    for item in canonical.values():
+        spec = CHANNEL_SPECS.get(item.get("sourceId"), {"tier": "P2"})
+        cat, hits = classify(item, cfg)
+        if cat != item.get("category"):
+            changed_cat += 1
+        item["category"] = cat
+        item["categoryHits"] = hits
+        rel, breakdown = score_item(item, cfg, spec["tier"], hits)
+        if abs(float(rel) - float(item.get("relevanceScore") or 0)) > 0.05:
+            changed_score += 1
+        item["relevanceScore"] = rel
+        item["relevanceBreakdown"] = breakdown
+        item["why"] = explain(item, hits, cfg)
+
+    state["lastRescoreAt"] = iso(now_cst())
+    atomic_write_json(STATE_PATH, state)
+
+    all_items = build_all_items(state, [])
+    atomic_write_json(INDEX_DIR / "index.json",
+                      {"generatedAt": iso(now_cst()), "count": len(all_items), "items": all_items})
+    atomic_write_json(DATA_DIR / "items.json",
+                      {"generatedAt": iso(now_cst()), "count": len(all_items), "items": all_items})
+
+    # Keep the digest's summary consistent with the new scores.
+    digest_path = DIGEST_DIR / "today.json"
+    digest = read_json(digest_path, None)
+    if isinstance(digest, dict):
+        fresh_ids = {i.get("id") for i in (digest.get("items") or [])}
+        fresh = [canonical[i] for i in fresh_ids if i in canonical]
+        digest["summary"] = compose_summary(fresh, all_items, {}, cfg,
+                                            prev_summary=digest.get("summary"))
+        digest["rescoredAt"] = iso(now_cst())
+        atomic_write_json(digest_path, digest)
+        day = digest.get("date")
+        if day:
+            atomic_write_json(DIGEST_DIR / f"{day}.json", digest)
+
+    log(f"rescored {len(canonical)} items: {changed_cat} reclassified, "
+        f"{changed_score} score changes", "ok")
+    after_top = sorted(canonical.values(), key=lambda x: -(x.get("relevanceScore") or 0))[:5]
+    log("top 5 before -> after:", "info")
+    for b, a in zip(before_top, after_top):
+        log(f"  {(b.get('category') or ''):<13} {b.get('relevanceScore')} -> "
+            f"{(a.get('category') or ''):<13} {a.get('relevanceScore')}", "info")
+        log(f"     {str(a.get('title'))[:70]}", "info")
+    return 0
+
+
+def main(argv=None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.init_config:
+        save_default_config(CONFIG_PATH)
+        print(f"wrote {CONFIG_PATH}")
+        return 0
+    try:
+        if args.rescore:
+            log = Logger(args.verbose)
+            return rescore_all(load_config(CONFIG_PATH, log), log)
+        return run_probe(args) if args.probe else run(args)
+    except KeyboardInterrupt:
+        print("\ninterrupted", file=sys.stderr)
+        return 130
+    except Exception:
+        traceback.print_exc()
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

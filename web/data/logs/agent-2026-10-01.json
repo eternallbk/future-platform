@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-01",
+  "startedAt": "2026-10-01T21:07:43+08:00",
+  "finishedAt": "2026-10-01T21:07:43+08:00",
+  "status": "ok",
+  "enrichedCount": 1,
+  "formulaCount": 2,
+  "newJobs": 7,
+  "notes": "按 web/data/deep-read-plan.json（queueSize=1，本轮新增 1 条）深读 1 条：牛客 Kafka 消息堆积排查题，含自包含内联 SVG 图解、3 个八层概念与 2 个五层公式。该条采集摘要为空，enrichment 的排查链路与公式是通用工程参考答案，已在 selfCheck.uncertain 逐条标注来源边界。本轮 digest 无新增招聘条目，jobs 不变更。提案补充了 10 个 blocked 渠道的实测证据与 4 条分类/关键词建议（2 条 taxonomy + 2 条 keyword），并记录「第一轮 12 条已有解析但缺图解」供人工决策。",
+  "errors": [],
+  "selection": {
+    "basis": "web/data/deep-read-plan.json 的 queue（scripts/plan_deep_read.py 生成：质量闸门 + 每类 2-10 条配额）",
+    "readFrom": "web/data/deep-read-plan.json",
+    "queueSize": 1,
+    "categories": [
+      "coding"
+    ],
+    "channels": [
+      "nowcoder"
+    ],
+    "corpusSize": 512,
+    "alreadyEnriched": 18,
+    "note": "本轮确定性采集只新增 1 条（manifest.newItems=1，plan.totals.candidates=1），因此计划队列只有 1 条；严格按清单执行，不另挑条目。"
+  },
+  "generatedBy": "daily-agent",
+  "details": {
+    "enrichedIds": [
+      "525ceb8535fee263"
+    ],
+    "formulaIds": [
+      "f-consumer-lag-drain",
+      "f-partition-parallelism"
+    ],
+    "jobIds": [
+      "tencent-wechat-channels-aigc",
+      "tencent-wand-audio-video",
+      "tencent-wechat-music-generation",
+      "tencent-wechat-llm-posttraining-expert",
+      "tencent-native-multimodal-researcher",
+      "pudu-robotics-2027-campus",
+      "trip-ai-app-intern"
+    ],
+    "enrichmentInsertedThisRun": [],
+    "enrichmentReplacedThisRun": [
+      "525ceb8535fee263"
+    ],
+    "formulasAppendedThisRun": [],
+    "formulasUpdatedThisRun": [],
+    "formulasAlreadyPresent": [
+      "f-consumer-lag-drain",
+      "f-partition-parallelism"
+    ],
+    "jobsAppendedThisRun": [],
+    "jobsAlreadyPresent": [],
+    "unknownEnrichmentIds": []
+  }
+}

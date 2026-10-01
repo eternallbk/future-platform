@@ -1,0 +1,56 @@
+{
+  "collectorVersion": "1.0.0",
+  "targetDate": "2027-04-01",
+  "targetLabel": "目标投递窗口（2027 届春招）",
+  "interests": {
+    "multimodal": 1.0,
+    "posttraining": 1.0,
+    "worldmodel": 1.0,
+    "rl": 0.9,
+    "generative": 0.75,
+    "agent": 0.7,
+    "foundation": 0.6,
+    "engineering": 0.65
+  },
+  "http": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 FutureWorkbench/1.0 (+personal academic research; contact: local)",
+    "defaultTimeout": 25,
+    "maxRetries": 2,
+    "backoffBase": 1.6,
+    "jitter": 0.35,
+    "delayBetween": 0.4
+  },
+  "limits": {
+    "perChannel": 30,
+    "maxNewPerRun": 400
+  },
+  "scoring": {
+    "freshnessHalfLifeDays": 7.0,
+    "sourceTierWeight": {
+      "P0": 1.0,
+      "P1": 0.85,
+      "P2": 0.7
+    },
+    "qualityBoost": 8.0,
+    "minRelevance": 12.0
+  },
+  "dedupe": {
+    "simhashBits": 64,
+    "hammingThreshold": 3
+  },
+  "arxiv": {
+    "queryTerms": [],
+    "maxPerQuery": 25,
+    "lookbackDays": 10
+  },
+  "github": {
+    "queries": [],
+    "minStars": 40,
+    "lookbackDays": 30
+  },
+  "categories": {},
+  "retention": {
+    "archiveAfterDays": 90,
+    "keepDayFiles": 400
+  }
+}

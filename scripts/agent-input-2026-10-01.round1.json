@@ -1,0 +1,1363 @@
+{
+  "date": "2026-10-01",
+  "generatedBy": "daily-agent",
+  "root": "D:\\pythonProject\\DS-daily",
+  "selection": {
+    "basis": "digest/today.json 的 items 为空（最后一次运行是 --only inbox，17:48 覆盖了 17:45 完整采集的 digest），因此按 daily-agent.md 第 2 节「relevanceScore 最高的 8-12 条」的口径，退化为在 items/index.json 全量 717 条中按 relevanceScore 取前 12 条（按分类多样化选择，避免被 agent/engineering 仓库霸榜）。",
+    "readFrom": "web/data/items/index.json",
+    "digestItems": 0,
+    "digestUpdatedOnly": 2,
+    "selectedCount": 12,
+    "fallbackUsed": true,
+    "categoryCoverage": [
+      "multimodal",
+      "posttraining",
+      "worldmodel",
+      "generative",
+      "engineering",
+      "foundation"
+    ]
+  },
+  "enrichment": [
+    {
+      "id": "29301e2028e2267d",
+      "tldr": "把教师「用了哪段多模态证据」蒸馏给学生，学生平均涨 7.23 分。",
+      "keyPoints": [
+        "现有蒸馏只对齐输出分布或隐层，学生可能靠语言先验蒙对。",
+        "MCD 用保持结构的 token 干预，保留/移除证据来识别因果证据。",
+        "蒸馏目标是学生对证据变化的响应模式，而非单点答案。",
+        "七个基准上平均提升 7.23 分，超朴素蒸馏 4.68 分。"
+      ],
+      "why": "「只会答对」的蒸馏留不住证据依赖；因果干预视角可直接用于多模态对齐与蒸馏岗的面试论述。",
+      "difficulty": "hard",
+      "tags": [
+        "distillation",
+        "multimodal",
+        "icl",
+        "causal-inference"
+      ],
+      "entities": [
+        "MCD",
+        "LVLM",
+        "multimodal in-context learning",
+        "knowledge distillation"
+      ],
+      "concepts": [
+        {
+          "name": "因果证据蒸馏 Causal Evidence Distillation",
+          "readable": "传统蒸馏只让学生模仿老师的最终输出，学生可能靠语言先验或 prompt 结构蒙对。MCD 先做保持结构的 token 干预：把上下文里的某段证据保留或移除，看老师的输出分布怎么变，从而识别「哪段证据真正决定了答案」，再让学生模仿这种随证据变化的响应模式。",
+          "analogy": "老师讲题时不只给答案，还会说「把这句话划掉答案就变了，所以它是关键条件」。只抄答案的学生换个数就错；学过「划掉哪句会变」的学生才真正掌握了推理链。",
+          "visual": "横轴放上下文中的候选证据片段，纵轴放「移除该片段后教师输出分布的 KL 变化」，做成从高到低的条形图：红色条=被判定为因果证据的片段，灰色条=无关片段。旁边并排画学生模型的同款条形图，MCD 的目标是让两张图的形状一致，而不是只让最终答案一致。",
+          "formula": "\\mathrm{CE}(e \\mid x) = D_{\\mathrm{KL}}\\left( p_T(y \\mid x) \\,\\|\\, p_T(y \\mid x_{\\setminus e}) \\right)"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-causal-distill",
+          "name": "因果证据蒸馏的干预效应 (Causal Intervention Effect for Distillation)",
+          "category": "multimodal",
+          "glyph": "Σ",
+          "tags": [
+            "distillation",
+            "causal",
+            "multimodal",
+            "kl"
+          ],
+          "latex": "\\mathrm{CE}(e \\mid x) = D_{\\mathrm{KL}}\\left( p_T(y \\mid x) \\,\\|\\, p_T(y \\mid x_{\\setminus e}) \\right)",
+          "html": "<code>CE(e | x) = D_KL( p_T(y | x) ‖ p_T(y | x∖e) )</code>",
+          "symbols": [
+            [
+              "x",
+              "多模态上下文（图像/视频 + 文本 prompt）"
+            ],
+            [
+              "e",
+              "被干预的候选证据 token 片段"
+            ],
+            [
+              "x∖e",
+              "保持结构、只移除证据 e 后的上下文"
+            ],
+            [
+              "p_T",
+              "教师 LVLM 的输出分布"
+            ],
+            [
+              "D_KL",
+              "两个输出分布的 KL 散度，衡量证据 e 的因果影响大小"
+            ]
+          ],
+          "derivation": [
+            "只对齐 p_T(y|x) 会让学生学到「和老师一样的答案」，但学不到「老师依赖了哪段上下文证据」。",
+            "做保持结构的干预：保留或移除某段证据 e，得到 x 与 x∖e 两个输入，避免破坏长度/位置等混淆因素。",
+            "教师在这两个输入上输出分布的 KL 散度，就是 e 对结论的因果影响大小——MCD 用它识别并验证因果证据。",
+            "蒸馏目标从匹配单点输出，改为让学生在「证据保留/移除」两种情况下重现教师的响应模式。"
+          ],
+          "analogy": "像调音师找关键旋钮：把某个旋钮拧一下，如果声音大变，说明它关键。只记住「最终音色」的人学不会调音；记住「拧哪个会变」的人才掌握了这台设备。",
+          "pitfalls": [
+            "把 KL 变化直接等同于因果：高相关但非因果的片段被移除也会改变输出，必须靠保持结构的干预控制混淆。",
+            "干预若不保持上下文结构，学生学到的其实是「输入被破坏」而不是「证据被移除」。",
+            "证据分组粒度选错会把证据切碎，因果效应被稀释，甚至被文本连贯性变化掩盖。"
+          ],
+          "code": "import torch\nimport torch.nn.functional as F\n\n\ndef causal_effect(teacher_logits_full, teacher_logits_masked, tau=1.0):\n    \"\"\"x=完整上下文, x_minus_e=移除证据后（保持 token 结构）。\"\"\"\n    p_full = F.softmax(teacher_logits_full / tau, dim=-1)\n    p_masked = F.softmax(teacher_logits_masked / tau, dim=-1)\n    return F.kl_div(p_masked.log(), p_full, reduction='batchmean')\n\n\n# 蒸馏：让学生重现教师的「证据效应」，而不只是复述答案\nloss = F.kl_div(student_masked_logp, teacher_full_prob, reduction='batchmean') \\\n     + lam * F.mse_loss(student_effect, teacher_effect.detach())\n",
+          "sources": [
+            {
+              "title": "MCD: Causal Distillation of Multimodal In-Context Learning in Large Vision-Language Models",
+              "url": "https://arxiv.org/abs/2609.39920v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "MCD 在三个 LVLM 家族、七个基准上平均提升 7.23 分，比朴素蒸馏高 4.68 分。",
+          "MCD 使用保持结构的 token 干预来识别并验证因果证据，并迁移教师在证据保留/移除下的响应。",
+          "论文指出仅对齐输出分布或隐层会让学生继续依赖语言先验、prompt 结构等虚假线索。"
+        ],
+        "uncertain": [
+          "干预的具体粒度（token 级还是片段级）与聚类方式，摘要未说明。",
+          "7.23 分是哪些基准、何种指标的平均，摘要未列出。"
+        ]
+      }
+    },
+    {
+      "id": "efb9313dbc043c12",
+      "tldr": "编码器内部就压缩视觉 token：4 段 64 帧只用 400 个 token。",
+      "keyPoints": [
+        "视觉 token 随分辨率与时长增长，是长视频理解的主要成本。",
+        "常见做法先密集编码再压缩，训练与部署的表示不一致。",
+        "CoVisco 用分段注意力 + 可学习抽象 token，一次前向编码长视频。",
+        "选择器可按需只输出抽象 token，或追加少量 patch token。"
+      ],
+      "why": "视觉 token 预算直接决定长视频 MLLM 的显存与 prefill 成本，是多模态工程岗的高频取舍题。",
+      "difficulty": "hard",
+      "tags": [
+        "multimodal",
+        "vision-encoder",
+        "token-compression",
+        "long-video",
+        "mllm"
+      ],
+      "entities": [
+        "CoVisco",
+        "OneVision-Encoder",
+        "segmented attention",
+        "abstract tokens",
+        "MLLM"
+      ],
+      "concepts": [
+        {
+          "name": "原生 token 压缩 Native Token Compression",
+          "readable": "主流做法是先把视频密集编码成大量 patch token，然后在编码器之后压缩；训练用密集表示、部署用压缩表示，两者不一致。CoVisco 把压缩放进编码器内部：每个时间片段配一组可学习的抽象 token 来承载片段级表示，细粒度 patch token 在编码器内部始终可用，层间交替做段内注意力与抽象 token 通信，最后按需只暴露抽象 token 或抽象 token + 运行时选出的少量 patch token。",
+          "analogy": "像开会记录：传统做法先把每个人每句话都逐字记下（密集 token），散会后再摘要；CoVisco 是边开会边产出纪要（抽象 token），需要核对细节时可以回查原始发言（patch token）。",
+          "visual": "画一条时间轴切成 4 段，每段里画一簇小圆点表示 patch token，段中心画一个大圆表示抽象 token。段内小圆点之间用浅色细线相连（段内注意力），跨段只连大圆（抽象通信）。右端画一个选择器开关：档位 A 只输出 4 个大圆，档位 B 输出大圆 + 少量被选中的小圆点。",
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "预训练使用 565M 图文对与 6.4M 视频，采用对比目标。",
+          "在四段、64 帧设置下，纯抽象 token 推理只用 400 个视觉 token，在部分基准上超过 OneVision-Encoder。",
+          "抽象 token 只做片段级表示，patch token 在编码器内部全程保留。"
+        ],
+        "uncertain": [
+          "「competitive performance」对应的具体基准与数值，摘要未给出。",
+          "抽象 token 的段数是固定四段还是可配置，摘要未说明。",
+          "「学习型 selector」的监督信号来源未说明。"
+        ]
+      }
+    },
+    {
+      "id": "d87fd23589892f16",
+      "tldr": "用半事实提示找出不稳定 token 并降低其优势，AIME 比 GRPO 高 5.63 分。",
+      "keyPoints": [
+        "GRPO 把同一个答案级优势广播给每个 token，会强化虚假依赖。",
+        "半事实提示保持问题与答案不变，只改无关措辞。",
+        "测 token 概率漂移并归一化成稳定性，降权不稳定 token 的优势。",
+        "稳定本身不加分；Qwen3-4B 上 AIME 提升 5.63 分。"
+      ],
+      "why": "token 级信用分配是 RLVR 后训练的核心争议；该文给出可复现的细粒度改造，适合后训练岗深挖。",
+      "difficulty": "hard",
+      "tags": [
+        "rlvr",
+        "grpo",
+        "credit-assignment",
+        "post-training",
+        "reasoning"
+      ],
+      "entities": [
+        "SCAPO",
+        "GRPO",
+        "RLVR",
+        "Qwen3-4B-Base",
+        "Qwen3-1.7B-Base",
+        "AIME 2024-2026"
+      ],
+      "concepts": [
+        {
+          "name": "半事实干预与 token 级信用分配 Semifactual Interventions and Token-Level Credit Assignment",
+          "readable": "GRPO 把同一个答案级优势 A_i 发给回答里的每个 token。如果模型是靠题面里的无关特征（措辞、选项位置）答对的，这份虚假依赖也会被一起强化。SCAPO 构造「底层问题与答案不变、只改无关措辞」的半事实提示，测每个 token 的概率漂移；漂移大的 token 稳定性差，早期训练就降低它的优势，而稳定本身不额外加分。论文还发现：解码时直接抑制高漂移 token 候选就能提升准确率，且不需要更新权重。",
+          "analogy": "同一道菜换个盘子装。如果评委打分立刻变了，说明他在看盘子而不是在尝菜。SCAPO 找出这几口并压低它们的权重；但「换盘子也不变」并不额外加分，否则会鼓励对所有输入都麻木的答案。",
+          "visual": "横轴是 token 位置，纵轴是半事实干预下的概率漂移，画成柱状图。图上叠两条线：一条水平虚线表示 GRPO 给所有 token 的同一优势，一条随漂移增大而下降的实线表示 SCAPO 调整后的优势。柱子越高（越不稳定），实线压得越低。",
+          "formula": "A'_{i,t} = A_i \\cdot \\left(1 - \\lambda\\,(1 - \\hat{s}_{i,t})\\right)_{+}"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-scapo-credit",
+          "name": "半事实稳定性加权的 token 优势 (Semifactual-Stability Reweighted Token Advantage)",
+          "category": "posttraining",
+          "glyph": "S",
+          "tags": [
+            "grpo",
+            "rlvr",
+            "credit-assignment",
+            "advantage"
+          ],
+          "latex": "A'_{i,t} = A_i \\cdot \\bigl(1 - \\lambda\\,(1 - \\hat{s}_{i,t})\\bigr)_{+}, \\qquad \\hat{s}_{i,t} = \\mathrm{norm}\\bigl(1 - \\lvert p_\\theta(y_t \\mid x) - p_\\theta(y_t \\mid \\tilde{x}) \\rvert\\bigr)",
+          "html": "<code>A'<sub>i,t</sub> = A<sub>i</sub> · (1 − λ(1 − ŝ<sub>i,t</sub>))<sub>+</sub>,  ŝ<sub>i,t</sub> = norm(1 − |p<sub>θ</sub>(y<sub>t</sub>|x) − p<sub>θ</sub>(y<sub>t</sub>|x̃)|)</code>",
+          "symbols": [
+            [
+              "A_i",
+              "GRPO 的答案级组相对优势（同一回答内所有 token 共享）"
+            ],
+            [
+              "x̃",
+              "半事实提示：保持底层问题与答案，只改无关措辞"
+            ],
+            [
+              "|p(y_t|x) − p(y_t|x̃)|",
+              "token t 在干预下的概率漂移，越大越不稳定"
+            ],
+            [
+              "ŝ_{i,t}",
+              "归一化稳定性，漂移越小越接近 1"
+            ],
+            [
+              "λ",
+              "早期训练中对不稳定 token 的降权强度"
+            ],
+            [
+              "(·)_+",
+              "截断到非负：稳定 token 的系数封顶为 1，不获得额外奖励"
+            ]
+          ],
+          "derivation": [
+            "GRPO 用组内归一化得到答案级优势 A_i，并把它广播给回答里的每个 token。",
+            "若模型依据题面里的无关特征答对，这份虚假依赖也会随 A_i 被一起强化。",
+            "构造半事实提示 x̃：问题与答案不变、只改无关措辞，测量每个 token 的概率漂移。",
+            "把漂移归一化成稳定性 ŝ，对不稳定 token 按 (1−λ(1−ŝ))_+ 缩放优势；ŝ=1 时系数为 1，不额外加分。",
+            "论文另证：解码时抑制高漂移 token 候选即可提升准确率，且无需更新任何权重。"
+          ],
+          "analogy": "像老师改小组作业：组内总分（答案级优势）平均到每个人头上，但那个只靠抄题面措辞得分的人，这次要单独把他的分数压下来——而不是给「措辞怎么变都不动」的人加分。",
+          "pitfalls": [
+            "把稳定性当正奖励会鼓励模型输出对所有输入都不敏感的「死板」答案，因此只能降权不能加分。",
+            "只在早期训练降权是设计选择：后期不稳定 token 可能正是需要探索的部分。",
+            "半事实提示必须保证答案不变，否则测到的是任务难度而不是虚假依赖。"
+          ],
+          "code": "import torch\n\n\ndef scapo_advantage(grpo_adv, drift, lam=0.5):\n    \"\"\"grpo_adv: [B] 组相对优势; drift: [B, T] 半事实干预下的 token 概率漂移。\"\"\"\n    stability = 1.0 - drift / (drift.amax(dim=-1, keepdim=True) + 1e-8)   # 归一化\n    scale = (1.0 - lam * (1.0 - stability)).clamp(min=0.0)               # 稳定不加分\n    return grpo_adv.unsqueeze(-1) * scale\n",
+          "sources": [
+            {
+              "title": "Semifactual Credit-Augmented Policy Optimization",
+              "url": "https://arxiv.org/abs/2609.40360v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "SCAPO 在 Qwen3-4B-Base / Qwen3-1.7B-Base 上分别比 GRPO 提升 AIME 2024-2026 准确率 5.63 / 4.17 个百分点。",
+          "抑制高漂移 token 候选可在不更新权重的情况下提升推理准确率。",
+          "两个模型规模上，SCAPO 在多数数学基准和全部评测的分布外基准上取得最好结果。",
+          "摘要写明代码位于 github.com/DtYXs/SCAPO；该地址未登记在 items/index.json 的 sources 中，仅作线索，需人工核实。"
+        ],
+        "uncertain": [
+          "半事实提示如何自动构造（改写模型、模板还是人工）摘要未说明。",
+          "归一化稳定性所用 norm 的具体形式与 λ 取值未给出。"
+        ]
+      }
+    },
+    {
+      "id": "5cfce255508d4df1",
+      "tldr": "只监督动作引起的局部运动而非整帧未来，MetaWorld 成功率达 75.3%。",
+      "keyPoints": [
+        "预测整帧未来会带入与动作无关的外观信息。",
+        "AIMG 用动作与本体感受生成 query，定位每步的交互区域。",
+        "HRC 取相邻时间步交互表示之差作为运动线索，门控注入动作 token。",
+        "训练用未来帧渲染的机械臂掩码做 KL 运动定位监督，推理只用当前观测。"
+      ],
+      "why": "「世界模型该监督什么」比「预测得多准」更关键；只监督可控运动可直接迁移到 VLA/具身实习项目。",
+      "difficulty": "medium",
+      "tags": [
+        "vla",
+        "world-model",
+        "embodied",
+        "action-chunking",
+        "motion"
+      ],
+      "entities": [
+        "MotionWeave",
+        "AIMG",
+        "HRC",
+        "MetaWorld",
+        "π0",
+        "VLA"
+      ],
+      "concepts": [
+        {
+          "name": "动作诱导的运动定位 Action-Induced Motion Grounding",
+          "readable": "直接预测未来整帧会带上大量与动作无关的外观变化；用整体未来表示做引导，又难以建立「某个动作对应局部哪块视觉变化」的时间步级对应。MotionWeave 先用动作与本体感受表示生成按时间步区分的 query，在当前视觉 token 上定位出每个未来动作步真正会改变的局部区域（AIMG）；再把相邻时间步这些交互表示之差编码成运动线索，用门控残差注入动作 token（HRC）。训练时用未来帧渲染的机械臂掩码构造 KL 运动定位监督，推理时只用当前观测。",
+          "analogy": "打台球时你不需要预测整间球房的灯光和观众，只需预测母球会撞到哪颗球、那颗球往哪走。AIMG 是「找出会被撞到的那几颗球」，HRC 是「比较撞击前后的位置差，把差值告诉出杆的手」。",
+          "visual": "画两行时间步（t, t+1, t+2）。每行放一张当前帧缩略图，并在图上用热力图标出被定位的交互区域；相邻两行同一区域之间画箭头，箭头粗细表示运动线索强度；箭头汇聚到一个门控符号后再指向下方的动作 token 序列。",
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "六个 MetaWorld 任务上平均成功率 75.3%，比 π0 的 66.7% 高 8.6 个百分点。",
+          "训练使用未来帧渲染的机器人臂掩码构造 KL 运动定位监督。",
+          "推理阶段只需要当前观测。"
+        ],
+        "uncertain": [
+          "KL 运动定位监督对哪些分布求 KL，摘要未展开。",
+          "「持续交互任务」的具体任务清单与掩码渲染流程未给出。"
+        ]
+      }
+    },
+    {
+      "id": "8508d26e1576b713",
+      "tldr": "世界模型只在想象轨迹覆盖目标时才可靠；完美预测也救不了远目标。",
+      "keyPoints": [
+        "用五个冻结视觉骨干建动作条件预测器，在 Meta-World 评测。",
+        "五步 rollout 仅对 5-10 步内目标可靠。",
+        "预测器放大 81 倍或加长 rollout 训练都不能扩展这个范围。",
+        "完美预测下目标从 5 步推到 20 步，成功率仍从 92% 掉到 41%。",
+        "近处专家子目标把成功率从 23% 提到 76%。"
+      ],
+      "why": "它明确否定了「世界模型越大越能规划」的直觉，为世界模型/具身面试提供可引用的负结果与边界。",
+      "difficulty": "medium",
+      "tags": [
+        "world-model",
+        "model-based-rl",
+        "planning",
+        "vla",
+        "evaluation"
+      ],
+      "entities": [
+        "V-JEPA 2",
+        "V-JEPA 2.1",
+        "VideoMAEv2",
+        "VideoPrism",
+        "DINOv2",
+        "Meta-World",
+        "BridgeData V2",
+        "MPC"
+      ],
+      "concepts": [
+        {
+          "name": "可规划范围 Plannable Horizon",
+          "readable": "世界模型并不是「预测得准就能规划」。论文发现：只有目标落在想象轨迹之内、或略微超出时，世界模型才能可靠地排序动作。用五步 rollout 训练的预测器，只对 5-10 个控制步内的目标可靠；而真实任务目标在 16-53 步之外，靠加长 rollout 或把预测器放大 81 倍都无法扩展这个范围。更关键的是，即使用真实模拟器做完美预测，目标从 5 步推到 20 步，成功率也从 92% 掉到 41%——瓶颈在规划而非预测精度。出路是更长的想象轨迹或更近的子目标。",
+          "analogy": "手电筒只能照五米，要走到五十米外的门，不是把手电筒做亮一点就行，而是沿途找近处的路标一段段走。论文里「附近专家子目标」把成功率从 23% 提到 76% 就是这个道理。",
+          "visual": "横轴为目标距离（控制步），纵轴为成功率，画两条衰减曲线：实线=纯想象 rollout，虚线=完美预测（真实模拟器）。再用两条竖直虚线标出「训练用的 5 步 rollout 长度」和「任务目标 16-53 步区间」，两条线之间用阴影表示可靠区间与失效区间的分界。",
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "五步 rollout 下世界模型只对 5-10 个控制步内的目标可靠排序，而任务目标在 16-53 步外。",
+          "完美预测下目标从 5 步推到 20 步，成功率从 92% 降到 41%。",
+          "纯想象 23%、MPC 30%、想象到目标 47%、近处专家子目标 76%。",
+          "评估使用五个冻结自监督视觉骨干（V-JEPA 2 / V-JEPA 2.1 / VideoMAEv2 / VideoPrism / DINOv2）与 BridgeData V2 真机交互。"
+        ],
+        "uncertain": [
+          "「V-JEPA 2.1 表现最一致」所用的任务集合与指标，摘要未给出。",
+          "81 倍更大预测器与更长 rollout 训练的对照设置细节未给出。"
+        ]
+      }
+    },
+    {
+      "id": "9abd174e0b0ef99f",
+      "tldr": "在冻结视觉基础模型的特征空间加对抗监督，补上 DMD 缺失的感知梯度。",
+      "keyPoints": [
+        "少步自回归视频生成会把早期时间块的误差当上下文反复传播。",
+        "DMD 只在 diffusion 隐空间对齐师生，不监督解码后画质。",
+        "Radian 稀疏解码学生 rollout，在冻结 VFM 特征上加判别头。",
+        "四步生成下 VBench Total 0.8444。",
+        "VBench-Long 由 0.7805 提升到 0.8041，且步数更少。"
+      ],
+      "why": "少步/实时视频生成是生成式方向的核心工程问题，表征空间对抗是可复用的蒸馏增强手段。",
+      "difficulty": "hard",
+      "tags": [
+        "video-generation",
+        "distillation",
+        "adversarial",
+        "autoregressive",
+        "diffusion"
+      ],
+      "entities": [
+        "Radian",
+        "DMD",
+        "VBench",
+        "VideoAlign",
+        "Wan2.1-1.3B",
+        "Rolling Forcing",
+        "VFM"
+      ],
+      "concepts": [
+        {
+          "name": "表征空间对抗蒸馏 Representation-Space Adversarial Distillation",
+          "readable": "少步自回归视频生成会把早期时间块的误差当作后续上下文反复使用，导致细节退化、结构漂移。已有的分布匹配蒸馏（DMD）只在 diffusion 隐空间里对齐学生与教师分布，对「解码后人眼看到的画质」没有直接监督。Radian 在冻结视觉基础模型（VFM）定义的特征空间里补上真实数据的对抗监督：训练时稀疏解码学生 rollout 的帧，抽取多层视觉表示，用轻量判别头区分生成帧与真实帧；DMD 项把学生锚定在教师上，对抗项提供互补的感知与语义梯度。这些附加组件训练后即丢弃，生成器架构与推理去噪预算完全不变。",
+          "analogy": "学生临摹画作，只看铅笔草稿像不像（隐空间对齐）不够；Radian 相当于请一位只看成品照片的评委，指出成品哪里有「AI 味」。评委只在训练时在场，交卷后不增加任何成本。",
+          "visual": "左侧画学生 rollout 的稀疏采样帧，经冻结 VFM 得到多层特征；右侧画真实视频帧经同一 VFM 得到多层特征；两侧特征各接一个轻量判别头，输出真/假。中间一条实线箭头表示 DMD 锚定教师，另一色虚线箭头表示对抗损失并标注「推理时丢弃」。",
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "四步生成下 VBench Total 0.8444、VideoAlign Total 0.8033。",
+          "VBench-Long 从 Rolling Forcing 的 0.7805 提升到 0.8041，且去噪步数更少。",
+          "对抗与判别组件在训练后丢弃，不改变生成器架构和推理去噪预算。",
+          "实验覆盖四步分块、单步逐帧与分钟级自回归生成。"
+        ],
+        "uncertain": [
+          "判别头数量与选用 VFM 的哪些层，摘要未给出。",
+          "DMD 项与对抗项的损失权重配比未给出。"
+        ]
+      }
+    },
+    {
+      "id": "d3e5d21ce6e1f22d",
+      "tldr": "在每个去噪步内重复跑共享 Transformer 块，260M 模型超过 6.5 倍大的基线。",
+      "keyPoints": [
+        "朴素循环不涨点：中间循环监督弱、注意力更新无约束会侵蚀局部信息。",
+        "Looped-DiT 用循环间深监督 + 自调制注意力稳定特征更新。",
+        "相同参数与算力下稳定优于非循环基线。",
+        "固定推理预算时，增加循环深度比增加去噪步数收益更大。",
+        "深层循环能逐步修正前几轮的错误，表现出类似隐式推理的行为。"
+      ],
+      "why": "参数与推理算力受限时，「循环换深度」比堆参数更实际，与基础理论、生成式方向都相关。",
+      "difficulty": "medium",
+      "tags": [
+        "diffusion",
+        "dit",
+        "text-to-image",
+        "looped-transformer",
+        "efficiency"
+      ],
+      "entities": [
+        "Looped Diffusion Transformer",
+        "Looped-DiT",
+        "self-modulating attention",
+        "deep supervision"
+      ],
+      "concepts": [
+        {
+          "name": "循环深度与深监督 Looped Depth with Deep Supervision",
+          "readable": "不增加参数，而是在每个去噪步内把同一组 Transformer block 重复运行多次，等效增加计算深度、迭代精修内部表示。朴素循环不涨点的原因有两个：中间循环的监督信号太弱，以及无约束的注意力更新会逐步侵蚀局部信息。Looped-DiT 的对策是给每个循环加深度监督，并用自调制注意力稳定循环之间的特征更新。结果是在匹配参数、匹配算力下都稳定优于非循环基线，而且在固定推理预算下，增加循环深度比增加去噪步数收益更大。",
+          "analogy": "一道题让同一个人反复检查几遍，比换一个更大的脑子做一遍更划算——但前提是每一遍都有检查清单（深监督），否则越改越乱。",
+          "visual": "画一个去噪步内部的竖直循环链：同一块「shared DiT block」方块重复出现四次，用回环箭头连接；每个方块旁标一个 loss（深监督），用颜色深浅表示权重；右侧放对比条形图，横轴两组分别是「增加循环深度」与「增加去噪步数」，纵轴为固定推理预算下的画质增益。",
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "260M 参数循环模型可超过 6.5 倍大的模型，且推理算力低 4.9 倍。",
+          "固定推理预算下，增加循环深度的收益大于增加去噪步数。",
+          "匹配参数与匹配算力两种设置下，Looped-DiT 都优于非循环基线。"
+        ],
+        "uncertain": [
+          "「多个文生图基准」具体是哪些、用什么指标，摘要未列出。",
+          "循环次数的具体配置与自调制注意力的实现细节未给出。"
+        ]
+      }
+    },
+    {
+      "id": "2249a2664c17959b",
+      "tldr": "把效用优化与生成模型拟合解耦：先算冻结权重，再一次加权训练，快 20 倍。",
+      "keyPoints": [
+        "支持任意效用函数（不止期望奖励最大化）通常代价很高。",
+        "FTFC 在预训练样本上联合拟合有效奖励与密度比权重。",
+        "用 Fenchel 对偶支撑一般 f-散度惩罚，决定奖励如何变成修正权重。",
+        "权重冻结后只用一次重要性加权训练，不需对采样轨迹求导。"
+      ],
+      "why": "奖励对齐与 diffusion 微调常在采样轨迹上反传；FTFC 的解耦与对偶视角是面试加分点。",
+      "difficulty": "hard",
+      "tags": [
+        "diffusion",
+        "flow-matching",
+        "reward-alignment",
+        "fenchel-duality",
+        "finetuning"
+      ],
+      "entities": [
+        "Fenchel Tilt Flow Control",
+        "FTFC",
+        "Fenchel duality",
+        "f-divergence",
+        "flow matching",
+        "diffusion"
+      ],
+      "concepts": [
+        {
+          "name": "Fenchel 对偶与分布倾斜 Fenchel Duality and Distribution Tilting",
+          "readable": "把「对齐任意效用函数」和「拟合生成模型」解耦。第一步只在预训练样本上联合拟合一个有效奖励与密度比权重：用效用函数的变分结构与 Fenchel 对偶，支持一般 f-散度惩罚，由惩罚形式决定奖励如何被变换成分布修正权重。第二步把这些权重冻结，只用一次重要性加权的去噪或 flow matching 去修改扩散/flow 模型，完全不需要对采样轨迹求导。论文对凹效用函数给出精确对偶，并证明加权拟合能复现给定效用下的最优目标分布。",
+          "analogy": "不重新学做菜，只调整每种半成品的采购比例就能让最终菜单符合新口味；比例算一次就固定下来，做菜流程一个字不改。",
+          "visual": "分左右两段流程。左段：预训练样本点云 → 拟合奖励与权重（点的大小/颜色深浅表示权重）→ 一把锁表示「冻结」。右段：同一个扩散/flow 模型 + 冻结权重 → 一次重要性加权训练 → 目标分布点云。两段之间标注「不反向传播穿过采样轨迹」。",
+          "formula": "p^{\\star}(x) \\propto p_{\\text{base}}(x)\\, e^{\\,r(x)/\\lambda}"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-fenchel-tilt",
+          "name": "Fenchel 倾斜的分布修正权重 (Fenchel-Tilted Distribution-Correction Weights)",
+          "category": "generative",
+          "glyph": "T",
+          "tags": [
+            "fenchel",
+            "diffusion",
+            "flow-matching",
+            "importance-weighting"
+          ],
+          "latex": "p^{\\star}(x) \\propto p_{\\text{base}}(x)\\, e^{\\,r(x)/\\lambda}, \\qquad w(x) = \\frac{e^{\\,r(x)/\\lambda}}{\\mathbb{E}_{p_{\\text{base}}}\\left[e^{\\,r/\\lambda}\\right]}",
+          "html": "<code>p*(x) ∝ p_base(x) · e^(r(x)/λ),   w(x) = e^(r(x)/λ) / E_pbase[e^(r/λ)]</code>",
+          "symbols": [
+            [
+              "p_base",
+              "预训练生成模型的采样分布"
+            ],
+            [
+              "r(x)",
+              "由效用函数经 Fenchel 对偶得到的有效奖励"
+            ],
+            [
+              "λ",
+              "温度/正则强度，由所选 f-散度惩罚的形式决定"
+            ],
+            [
+              "w(x)",
+              "冻结后用于重要性加权去噪/flow matching 的密度比权重"
+            ],
+            [
+              "f*",
+              "效用函数的 Fenchel 共轭，决定奖励如何映射为权重"
+            ]
+          ],
+          "derivation": [
+            "目标是把预训练生成模型适配到任意效用函数 u(x) 定义的目标分布，而不是只做期望奖励最大化。",
+            "直接在采样轨迹上做反向传播代价高；先把「优化效用」与「拟合生成模型」解耦。",
+            "用 Fenchel 对偶把「最大化效用 − f-散度惩罚」转成对偶问题，解出有效奖励 r 与密度比权重 w。",
+            "冻结 w，只用一次重要性加权的去噪/flow matching 拟合目标分布；对凹效用函数可证明该加权拟合复现最优目标分布。"
+          ],
+          "analogy": "像调音台而不是重录：不重新演奏，只把各轨音量按一张一次算好的比例表调一遍，成品就换了风格；比例表算完就锁死。",
+          "pitfalls": [
+            "若只支持期望奖励最大化，就丢掉了约束满足、多样性等一般效用——Fenchel 形式的价值正在于覆盖更广的效用类。",
+            "λ 太小会让分布过度倾斜到奖励尖峰，生成多样性骤降；λ 太大则几乎不改变分布。",
+            "权重冻结后若继续更新模型却不重估权重，重要性加权会与当前模型失配。"
+          ],
+          "code": "import torch\n\n\ndef fenchel_weights(reward, lam=1.0):\n    \"\"\"在预训练样本上算一次密度比权重，然后冻结（detach）。\"\"\"\n    w = torch.exp(reward / lam)\n    return w / w.mean()\n\n\n# 一次重要性加权 flow matching：不对采样轨迹反传\nloss = (w.detach() * ((v_theta(x_t, t) - v_target) ** 2).mean(dim=-1)).mean()\n",
+          "sources": [
+            {
+              "title": "Fenchel Tilting: Weighted Correction for Efficient Finetuning of Generative Models",
+              "url": "https://arxiv.org/abs/2609.40030v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "FTFC 在图像与分子生成基准上优于基线，效率最高提升 20 倍。",
+          "对凹效用函数在适当条件下建立了精确对偶，并证明加权拟合复现给定效用的最优目标分布。",
+          "权重冻结后只用一次重要性加权去噪或 flow matching，无需对采样轨迹求导。"
+        ],
+        "uncertain": [
+          "「up to 20x」对比的基线是哪一个，摘要未说明。",
+          "摘要原文存在笔误（“roposed method”），且未给出 venue 信息，需人工确认正式发表信息。"
+        ]
+      }
+    },
+    {
+      "id": "1f2a2da9e59225fd",
+      "tldr": "用两侧二阶统计构造可逆变换再量化 KV cache，2-bit 下不输 OSCAR。",
+      "keyPoints": [
+        "KV cache 显存与带宽随上下文和 batch 增长，限制长上下文推理。",
+        "WUSH 从矩阵乘法两侧因子的二阶统计构造数据感知变换以降低量化误差。",
+        "WUSH-KV 用校准数据分别为 key 与 value 构造变换。",
+        "value 变换折进权重，key 变换在 RoPE 之后施加。",
+        "与 QuEST INT 配合时近最优；2-bit 下不劣于 OSCAR。"
+      ],
+      "why": "KV cache 量化是长上下文推理落地的必经环节，也是推理框架与工程岗的高频考点。",
+      "difficulty": "hard",
+      "tags": [
+        "kv-cache",
+        "quantization",
+        "inference",
+        "sglang",
+        "long-context"
+      ],
+      "entities": [
+        "WUSH-KV",
+        "WUSH",
+        "QuEST INT",
+        "SGLang",
+        "OSCAR",
+        "RoPE"
+      ],
+      "concepts": [
+        {
+          "name": "数据自适应变换量化 Data-Adaptive Transform Quantization",
+          "readable": "低比特量化的误差取决于待量化张量的动态范围。只按单侧统计做缩放会忽略矩阵乘法另一侧因子的分布。WUSH 从矩阵乘法两侧因子的二阶统计构造一个可逆变换，把数值能量在两侧重新分配，使量化格点更贴合实际分布。WUSH-KV 用校准数据分别构造 key 与 value 的变换：value 变换折进模型权重，key 变换在 RoPE 之后施加；变换可与裁剪量化器配合，与 QuEST INT 配对时在温和假设下近最优。",
+          "analogy": "装箱前先按形状把货物重新摆一遍再统一压缩，比乱塞省空间得多；到目的地按原样摆回来，内容不变。",
+          "visual": "画左右两组一维数值分布：左侧是未变换的 K/V 分布（又宽又偏，量化阶梯只能覆盖中间一部分），右侧是变换后的分布（收窄、居中，量化阶梯贴合），中间用双向箭头标注「可逆变换 T」。",
+          "formula": "\\min_{T}\\ \\mathbb{E}\\left\\| XW - Q(TX)\\,Q(T^{-\\top}W) \\right\\|_F^{2}"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-wush-transform",
+          "name": "基于二阶统计的数据自适应量化变换 (Second-Order Data-Adaptive Transform for Quantization)",
+          "category": "engineering",
+          "glyph": "W",
+          "tags": [
+            "quantization",
+            "kv-cache",
+            "inference",
+            "sglang"
+          ],
+          "latex": "\\min_{T}\\ \\mathbb{E}\\left\\| XW - Q(TX)\\,Q(T^{-\\top}W) \\right\\|_F^{2}, \\qquad T \\text{ built from } \\Sigma_X=\\mathbb{E}[XX^{\\top}],\\ \\Sigma_W=\\mathbb{E}[WW^{\\top}]",
+          "html": "<code>min_T E‖ XW − Q(TX)·Q(T<sup>−⊤</sup>W) ‖<sub>F</sub><sup>2</sup>,  T 由 Σ<sub>X</sub>=E[XX<sup>⊤</sup>], Σ<sub>W</sub>=E[WW<sup>⊤</sup>] 构造</code>",
+          "symbols": [
+            [
+              "X, W",
+              "矩阵乘法的两个因子（KV cache 场景下即待量化因子与投影权重）"
+            ],
+            [
+              "T",
+              "数据自适应可逆变换，由两侧二阶统计量构造"
+            ],
+            [
+              "Σ_X, Σ_W",
+              "两个因子的二阶统计（协方差），由校准数据估计"
+            ],
+            [
+              "Q(·)",
+              "低位量化器（如按百分位裁剪的仿射量化 QuEST INT）"
+            ],
+            [
+              "T^{−⊤}",
+              "逆变换的转置，保证 (TX)·(T^{−⊤}W) 与原乘积在数值上还原"
+            ]
+          ],
+          "derivation": [
+            "KV cache 的显存与带宽随上下文长度与 batch 增长，低比特量化是最直接的缓解手段。",
+            "量化误差取决于待量化张量的动态范围；只按单侧统计做缩放会忽略另一侧因子的分布。",
+            "WUSH 用矩阵乘法两侧因子的二阶统计构造可逆变换 T，把数值能量在两侧重新分配，让量化格点更贴合分布。",
+            "WUSH-KV 用校准数据分别构造 key 与 value 的变换：value 变换折进模型权重，key 变换在 RoPE 之后施加。",
+            "与裁剪量化器 QuEST INT 配合时，论文在温和假设下证明该变换近最优；集成进 SGLang 后 2-bit 端到端不劣于 OSCAR。"
+          ],
+          "analogy": "像把一摞长短不一的行李先按形状重排（可逆变换）再统一压缩，比直接乱塞省空间；落地后按原样摆回，行李一件不少。",
+          "pitfalls": [
+            "变换必须可逆且成对施加，只变换一侧就会改变矩阵乘积的语义。",
+            "key 变换必须在 RoPE 之后施加，否则位置编码的旋转会破坏变换所依赖的统计假设。",
+            "校准数据分布与线上分布不一致时，二阶统计失配会让变换收益明显缩水。"
+          ],
+          "code": "import torch\n\n\ndef wush_transforms(X, W, eps=1e-5):\n    \"\"\"示意：分别用两个因子的二阶统计做白化，成对施加以保持乘积不变。\"\"\"\n    def whiten(S):\n        d, V = torch.linalg.eigh(S + eps * torch.eye(S.shape[0], device=S.device))\n        return V @ torch.diag(d.rsqrt()) @ V.t()\n\n    Sx = X.t() @ X / max(X.shape[0] - 1, 1)      # [d_in, d_in]\n    Sw = W @ W.t() / max(W.shape[1] - 1, 1)      # [d_out, d_out]\n    Tx, Tw = whiten(Sx), whiten(Sw)\n    # X @ W == (Tx @ X) @ (Tw.inverse() @ W)  -> 成对量化后再还原\n    return Tx, torch.linalg.inv(Tw)\n",
+          "sources": [
+            {
+              "title": "WUSH-KV: KV Cache Quantization with Data-Adaptive Transforms",
+              "url": "https://huggingface.co/papers/2609.38121"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "WUSH 从矩阵乘法两侧因子的二阶统计构造数据感知变换以降低量化误差。",
+          "WUSH-KV 用校准数据分别构造 key 与 value 变换，value 变换折进权重，key 变换在 RoPE 之后施加。",
+          "与 QuEST INT 配合时该变换在温和假设下近最优；2-bit 下与 OSCAR 相当或更优。"
+        ],
+        "uncertain": [
+          "WUSH 变换的闭式解与「温和假设」的具体内容，摘要未给出；上式是按描述重建的通用量化误差目标。",
+          "端到端评测使用的模型清单与下游任务清单未列出。"
+        ]
+      }
+    },
+    {
+      "id": "c31038343524cca2",
+      "tldr": "首个同时建模循环与 MoE 稀疏的缩放律，用来决定加人还是多跑几轮。",
+      "keyPoints": [
+        "循环固定参数增加计算深度，MoE 稀疏固定激活计算扩大容量。",
+        "已有缩放律只单独建模其中一条，无法预测两者叠加。",
+        "核心是有界、以稀疏度为条件的循环映射，刻画循环的有效参数增益。",
+        "标准稠密与 MoE 缩放律都是它的特例。",
+        "万亿 token 规模下，循环 MoE 可匹敌约 2 倍大的非循环 MoE。"
+      ],
+      "why": "缩放律是判断「堆参数、堆数据还是加循环」的依据，基础理论与大模型训练岗都会问到。",
+      "difficulty": "medium",
+      "tags": [
+        "scaling-law",
+        "mixture-of-experts",
+        "looped-transformer",
+        "efficiency",
+        "foundation"
+      ],
+      "entities": [
+        "Loop Scaling Laws",
+        "Mixture-of-Experts",
+        "looped transformers",
+        "test-time scaling"
+      ],
+      "concepts": [
+        {
+          "name": "循环与稀疏的联合缩放律 Joint Recurrence-Sparsity Scaling",
+          "readable": "循环（recurrence）在固定参数下增加计算深度，MoE 稀疏在固定激活计算下扩大总容量，两者是互补的扩展轴。已有缩放律只单独建模其中一条，无法预测叠加效果。本文提出同时含模型规模、数据量、循环次数与稀疏度的缩放律，核心是一个有界、以稀疏度为条件的循环映射，用来刻画「循环带来的有效参数增益」以及稀疏度如何抬高这个增益。稠密与标准 MoE 缩放律都是它的特例。",
+          "analogy": "同样预算下，你可以多雇人（MoE 容量），也可以让现有的人多干几轮（循环）。这条定律是一张「该加人还是该多干几轮」的对照表，并说明两者如何叠加。",
+          "visual": "画一张等高线图：横轴为循环次数 r，纵轴为专家稀疏度 s，颜色深浅表示 held-out loss；图上叠两条辅助线，分别表示「固定激活计算」与「固定显存」约束下损失下降最快的方向，两条线交点即该约束下的最优配置。",
+          "formula": "L(N, D, r, s) = E + A\\,N_{\\mathrm{eff}}^{-\\alpha} + B\\,D^{-\\beta}, \\quad N_{\\mathrm{eff}} = N \\cdot g(r, s)"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-loop-scaling",
+          "name": "循环 MoE 的联合缩放律 (Joint Scaling Law for Looped Mixture-of-Experts)",
+          "category": "foundation",
+          "glyph": "L",
+          "tags": [
+            "scaling-law",
+            "moe",
+            "recurrence",
+            "foundation"
+          ],
+          "latex": "L(N, D, r, s) = E + A\\,N_{\\mathrm{eff}}^{-\\alpha} + B\\,D^{-\\beta}, \\qquad N_{\\mathrm{eff}} = N \\cdot g(r, s),\\ \\ 0 < g \\le g_{\\max}(s)",
+          "html": "<code>L(N, D, r, s) = E + A·N<sub>eff</sub><sup>−α</sup> + B·D<sup>−β</sup>,   N<sub>eff</sub> = N · g(r, s),  0 &lt; g ≤ g<sub>max</sub>(s)</code>",
+          "symbols": [
+            [
+              "L",
+              "held-out loss"
+            ],
+            [
+              "N",
+              "模型总参数量"
+            ],
+            [
+              "D",
+              "训练 token 数"
+            ],
+            [
+              "r",
+              "循环次数（recurrence），固定参数下增加计算深度"
+            ],
+            [
+              "s",
+              "MoE 稀疏度/激活比例"
+            ],
+            [
+              "N_eff",
+              "有效参数量，由有界、以稀疏度为条件的循环映射 g(r,s) 给出"
+            ],
+            [
+              "E, A, B, α, β",
+              "与标准缩放律一致的常数项与指数项"
+            ]
+          ],
+          "derivation": [
+            "循环与 MoE 稀疏是两条互补的扩展轴：前者固定参数增加计算深度，后者固定激活计算扩大总容量。",
+            "已有缩放律只单独建模其中一条，无法预测两者叠加后的 loss。",
+            "引入有界、以稀疏度为条件的循环映射 g(r,s)，刻画循环带来的有效参数增益以及稀疏度如何抬高这个增益。",
+            "当 r=1 或 s 取稠密极限时，g→0，公式退回标准稠密/MoE 缩放律，保证与既有结论自洽。"
+          ],
+          "analogy": "像给团队排班：给定预算，加人（专家数）和让现有的人加班轮次（循环）都能提产出，但加班收益有上限，而且人越多时「多干几轮」的边际收益越高——这张表就是排班指南。",
+          "pitfalls": [
+            "循环增益有上界：无限制增加循环次数不会线性降低 loss。",
+            "稀疏度会抬高循环增益的上界，但稀疏本身带来容量与路由代价，不能只看 loss。",
+            "这是拟合型经验定律，外推到训练 token 规模或模型规模之外需谨慎。"
+          ],
+          "code": "import numpy as np\n\n\ndef looped_moe_loss(N, D, r, s, E, A, alpha, B, beta, gmax=2.0, k=1.0):\n    \"\"\"g(r, s) 为有界、以稀疏度为条件的循环映射（此处为示意形式）。\"\"\"\n    g = gmax * (1.0 - np.exp(-k * (r - 1.0))) * s   # r=1 时 g=0 -> 退回标准缩放律\n    N_eff = N * (1.0 + g)\n    return E + A * N_eff ** (-alpha) + B * D ** (-beta)\n\n\n# 用法：先在多个 (N, D, r, s) 观测点上拟合常数，再在算力/显存约束下外推选配置\n",
+          "sources": [
+            {
+              "title": "Scaling Laws for Looped Mixture of Experts",
+              "url": "https://huggingface.co/papers/2609.40316"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "稀疏带来约 3 倍激活参数效率，循环带来约 2 倍总参数效率。",
+          "匹配训练算力下，用定律设计的循环 MoE 可匹配约 2 倍大的非循环 MoE。",
+          "标准稠密与 MoE 缩放律是该定律的特例。"
+        ],
+        "uncertain": [
+          "循环映射 g(r,s) 的具体函数形式与拟合常数，摘要未给出；上式是按描述重建的通用形式。",
+          "「reasoning benchmarks」具体是哪些、外推验证的规模未列出。"
+        ]
+      }
+    },
+    {
+      "id": "da13c9f17083344c",
+      "tldr": "213 个 3D 世界异常审计任务：最强模型 42.3%，人类 83.4%。",
+      "keyPoints": [
+        "任务要在 3D 世界里同时做动作探索与视觉推理，二者需紧耦合。",
+        "含 13 个 UE5 / Three.js 环境、213 个异常任务。",
+        "评测两种范式：VLA 探索 + VLM 识别，以及端到端 VLM 智能体。",
+        "固定预算下，五个前沿模型成功率 6.6%-42.3%。",
+        "同一基准上人类成功率为 83.4%。"
+      ],
+      "why": "它把「多模态智能体在交互环境中收集并解释证据」变成可量化基准，是具身/世界模型方向的直接证据。",
+      "difficulty": "easy",
+      "tags": [
+        "benchmark",
+        "multimodal",
+        "3d",
+        "agent",
+        "vla"
+      ],
+      "entities": [
+        "WorldAuditBench",
+        "Unreal Engine 5",
+        "Three.js",
+        "VLM",
+        "VLA"
+      ],
+      "concepts": [
+        {
+          "name": "3D 世界审计 3D World Auditing",
+          "readable": "让多模态智能体在交互式 3D 环境里自主导航，找出「浮空物体、可穿透的墙、与场景不一致的物体」等异常。这个任务难在必须把两种能力紧耦合：动作，用来系统高效地探索世界；视觉推理，用来从多模态观测里判断哪里不对劲，并采取动作去验证。基准在固定探索预算下评测两种范式——先 VLA 探索再 VLM 识别，以及由视觉推理直接驱动动作选择的端到端 VLM 智能体。",
+          "analogy": "像质检员巡厂：既要一眼看出哪里不对（视觉推理），又要走过去换个角度确认（动作验证）。只会看不会走、或只会走不会看，都完不成。",
+          "visual": "画一个 2D 俯视的 3D 场景网格：灰色为正常区域，红点为异常物体位置；蓝色折线表示智能体的探索轨迹并带方向箭头；轨迹经过红点旁时画一个放大镜图标表示「视觉确认」。下方画柱状图，对比五个前沿模型的成功率区间 6.6%-42.3% 与人类的 83.4%。",
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "WorldAuditBench 含 213 个异常任务、13 个环境、五类异常，环境由 Unreal Engine 5 与 Three.js 构建。",
+          "固定探索预算下，五个前沿模型成功率区间为 6.6%-42.3%，人类为 83.4%。",
+          "评测覆盖两种范式：VLA 探索 + VLM 识别，以及端到端 VLM 智能体。"
+        ],
+        "uncertain": [
+          "五个前沿模型具体是哪几个，摘要未列出。",
+          "五类异常的英文名称与任务难度分布未给出。"
+        ]
+      }
+    },
+    {
+      "id": "63407a061b2b8139",
+      "tldr": "不重训策略，用五个椭球覆盖整条手臂做运行时安全滤波。",
+      "keyPoints": [
+        "任务成功不等于安全：机械臂可能撞翻无关物体。",
+        "用五个椭球覆盖夹爪、腕、前臂，对每条指令动作做屏障滤波。",
+        "危险物由 RGB-D 拟合 keep-out 椭球，再用光流跟随。",
+        "碰撞率 65.62%→27.27%，安全成功率 29.35%→50.43%。",
+        "五椭球屏障在 CPU 上 99 分位耗时 2.2 ms。"
+      ],
+      "why": "VLA 落地的安全层往往比策略本身更缺；这套免训练屏蔽方案可直接用于具身实习项目。",
+      "difficulty": "medium",
+      "tags": [
+        "vla",
+        "safety",
+        "control-barrier-function",
+        "embodied",
+        "real-time"
+      ],
+      "entities": [
+        "Multi-Link Safety Filtering",
+        "control barrier function",
+        "RGB-D",
+        "sparse optical flow",
+        "π0.5",
+        "SO-101"
+      ],
+      "concepts": [
+        {
+          "name": "多连杆安全滤波 Control Barrier Function Shield",
+          "readable": "预训练的 VLA 策略可以完成操作任务，同时撞翻无关物体，所以任务成功率不能说明它能安全部署在杂物环境里。该方法不重训策略，而是在运行时加一层滤波：用五个椭球覆盖夹爪、腕、前臂（不只是末端），把每条指令动作送进一个屏障程序，要求机械臂始终位于由 RGB-D 在 reset 时拟合出的 keep-out 椭球之外；再用稀疏光流让这个椭球中心随移动的危险物平移，避免反复检测与重新拟合。",
+          "analogy": "给整条手臂（不只指尖）套上会随危险物移动的隐形护具：护具不改变你想去哪儿，只在你快碰到东西时把动作往安全方向推一点。",
+          "visual": "画机械臂简图，用五个椭圆分别圈住 gripper、wrist、forearm；旁边画一个 keep-out 椭球代表危险物；两者之间画一条最短距离虚线并标注 h(x)。下方用时间轴显示光流如何把椭球中心随危险物平移。",
+          "formula": "\\dot{h}(x,u) + \\alpha\\, h(x) \\ge 0"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-cbf-shield",
+          "name": "多连杆安全滤波的控制屏障条件 (Control Barrier Condition for Multi-Link Shielding)",
+          "category": "worldmodel",
+          "glyph": "h",
+          "tags": [
+            "cbf",
+            "safety",
+            "vla",
+            "embodied",
+            "real-time"
+          ],
+          "latex": "\\dot{h}(x,u) + \\alpha\\, h(x) \\ge 0, \\qquad h(x) = \\lVert c_{\\text{link}}(q) - c_{\\text{obs}} \\rVert - \\left(r_{\\text{link}} + r_{\\text{obs}}\\right)",
+          "html": "<code>ḣ(x,u) + α·h(x) ≥ 0,   h(x) = ‖c_link(q) − c_obs‖ − (r_link + r_obs)</code>",
+          "symbols": [
+            [
+              "x",
+              "机械臂状态（关节角与速度）"
+            ],
+            [
+              "u",
+              "策略给出的指令动作/速度"
+            ],
+            [
+              "h(x)",
+              "屏障函数：连杆与危险椭球之间的带符号距离，h ≥ 0 表示安全"
+            ],
+            [
+              "c_link, c_obs",
+              "连杆与危险椭球的中心"
+            ],
+            [
+              "r_link, r_obs",
+              "连杆与椭球的等效半径"
+            ],
+            [
+              "α > 0",
+              "收敛速率：越大越早开始避让，但动作更保守"
+            ]
+          ],
+          "derivation": [
+            "只用任务成功率无法保证「没有撞到无关物体」，因此需要在运行时约束指令动作，而不是重训策略。",
+            "用五个椭球覆盖夹爪、腕、前臂，取其中 h 最小者代表整条手臂的屏障，覆盖范围超过只守末端执行器。",
+            "危险物用 RGB-D 在 reset 时拟合一个 keep-out 椭球，再用稀疏光流把椭球中心随危险物平移，避免每步重新检测或重拟合。",
+            "每条指令动作必须满足 ḣ + αh ≥ 0；不满足时在最小改动下投影到满足条件的动作集合上——这就是运行时「滤波」（shield）。"
+          ],
+          "analogy": "像给车装自动紧急制动：它不改变你的目的地，只在你即将追尾时替你轻踩一脚刹车。五个椭球相当于把「车头」换成「整条机械臂」。",
+          "pitfalls": [
+            "只守末端执行器会漏掉手臂中段的碰撞；消融显示守护连杆带来额外保护。",
+            "把危险椭球冻结在 reset 时刻会明显丢失保护，必须用光流跟随。",
+            "α 选大虽更安全，但会限制任务动作；选小则避让不及时。"
+          ],
+          "code": "import numpy as np\n\n\ndef shield(u, h, grad_h, alpha=2.0):\n    \"\"\"h: 屏障值(>=0 安全); grad_h: dh/dx(与 u 同维); 返回最小改动的安全动作。\"\"\"\n    hdot = float(grad_h @ u)\n    if hdot + alpha * h >= 0.0:\n        return u                       # 已满足屏障条件，原样执行\n    # 投影到 {u : grad_h·u >= -alpha*h} 上（最小欧氏改动）\n    return u - (hdot + alpha * h) / (grad_h @ grad_h + 1e-8) * grad_h\n",
+          "sources": [
+            {
+              "title": "Multi-Link Safety Filtering for VLA Policies Around Moving Hazards",
+              "url": "https://arxiv.org/abs/2609.40007v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "六个仿真危险运动条件下碰撞率由 65.62% 降到 27.27%，安全成功率由 29.35% 升到 50.43%。",
+          "五椭球屏障在 CPU 上 99 分位耗时 2.2 ms；裁剪视觉-语言前缀并减少 flow-matching 步数可把 π0.5 单次调用从 343 ms 降到 177.3 ms。",
+          "真机 SO-101 上 16 次屏蔽试验中触碰危险物 3 次，未屏蔽为 11 次。"
+        ],
+        "uncertain": [
+          "RGB-D 拟合 keep-out 椭球的算法，以及 reset 时机的精确定义，摘要未展开。",
+          "「keep-out 椭球」尺寸如何随任务设定未说明。"
+        ]
+      }
+    }
+  ],
+  "jobs": [
+    {
+      "id": "tencent-wechat-channels-aigc",
+      "company": "腾讯 微信视频号（WXG）",
+      "shortName": "腾讯",
+      "tier": "A",
+      "title": "AIGC 算法工程师（视频号特效平台）",
+      "directions": [
+        "multimodal",
+        "generative",
+        "post-training"
+      ],
+      "cities": [
+        "广州"
+      ],
+      "pay": null,
+      "duration": null,
+      "conversion": null,
+      "open": true,
+      "applyUrl": "http://careers.tencent.com/jobdesc.html?postId=2052396002803105792",
+      "seasonality": null,
+      "highlights": [
+        "职责含图像/视频模型的后训练与真实感、指令精准度优化",
+        "含在线模型训练方案与 GPU 吞吐优化，支持天级迭代"
+      ],
+      "process": [],
+      "notes": "社招/专家岗，非实习。由 daily-agent 从 items/index.json 的 jobs_tencent 条目（id f639cab45c7fb6bd）追加。日薪、名额、截止时间未获取到，待核实。岗位原文发布日期 2026-09-07。",
+      "confidence": "low",
+      "sources": [
+        {
+          "title": "微信视频号-AIGC算法工程师（腾讯招聘岗位页）",
+          "url": "http://careers.tencent.com/jobdesc.html?postId=2052396002803105792"
+        }
+      ],
+      "relevance": 79,
+      "postedAt": "2026-09-07T00:00:00+08:00",
+      "deadline": null
+    },
+    {
+      "id": "tencent-wand-audio-video",
+      "company": "腾讯 WAND（CSIG 音视频 PaaS）",
+      "shortName": "腾讯",
+      "tier": "A",
+      "title": "AI 音视频算法工程师（多模态理解与生成）",
+      "directions": [
+        "multimodal",
+        "generative"
+      ],
+      "cities": [
+        "深圳"
+      ],
+      "pay": null,
+      "duration": null,
+      "conversion": null,
+      "open": true,
+      "applyUrl": "http://careers.tencent.com/jobdesc.html?postId=2082102980622069760",
+      "seasonality": null,
+      "highlights": [
+        "方向覆盖多模态理解、多模态生成与编辑、生成式图像与视频处理",
+        "要求提升算法在业务中的稳定性并推动落地"
+      ],
+      "process": [],
+      "notes": "社招/专家岗，非实习。由 daily-agent 从 items/index.json 的 jobs_tencent 条目（id 32ab6f129d2771cd）追加。日薪、名额、截止时间未获取到，待核实。岗位原文发布日期 2026-08-10。",
+      "confidence": "low",
+      "sources": [
+        {
+          "title": "WAND AI音视频算法工程师（腾讯招聘岗位页）",
+          "url": "http://careers.tencent.com/jobdesc.html?postId=2082102980622069760"
+        }
+      ],
+      "relevance": 75,
+      "postedAt": "2026-08-10T00:00:00+08:00",
+      "deadline": null
+    },
+    {
+      "id": "tencent-wechat-music-generation",
+      "company": "腾讯 微信（WXG 微信AI助手）",
+      "shortName": "腾讯",
+      "tier": "A",
+      "title": "音乐生成算法工程师",
+      "directions": [
+        "generative",
+        "multimodal",
+        "post-training"
+      ],
+      "cities": [
+        "北京"
+      ],
+      "pay": null,
+      "duration": null,
+      "conversion": null,
+      "open": true,
+      "applyUrl": "http://careers.tencent.com/jobdesc.html?postId=2084242224543084544",
+      "seasonality": null,
+      "highlights": [
+        "覆盖音乐生成、理解与编辑，含数据建设、预训练、后训练、评测与推理优化",
+        "要求把模型从实验推进到产品，优化音质、结构完整性与可控性"
+      ],
+      "process": [],
+      "notes": "社招/专家岗，非实习。由 daily-agent 从 items/index.json 的 jobs_tencent 条目（id ac848d074f2a6a3e）追加。日薪、名额、截止时间未获取到，待核实。岗位原文发布日期 2026-08-03。",
+      "confidence": "low",
+      "sources": [
+        {
+          "title": "微信-音乐生成算法工程师（腾讯招聘岗位页）",
+          "url": "http://careers.tencent.com/jobdesc.html?postId=2084242224543084544"
+        }
+      ],
+      "relevance": 79,
+      "postedAt": "2026-08-03T00:00:00+08:00",
+      "deadline": null
+    },
+    {
+      "id": "tencent-wechat-llm-posttraining-expert",
+      "company": "腾讯 微信（WXG 公共）",
+      "shortName": "腾讯",
+      "tier": "A",
+      "title": "大模型后训练算法专家（推理能力方向）",
+      "directions": [
+        "post-training",
+        "rl"
+      ],
+      "cities": [
+        "北京"
+      ],
+      "pay": null,
+      "duration": null,
+      "conversion": null,
+      "open": true,
+      "applyUrl": "http://careers.tencent.com/jobdesc.html?postId=2013277866984366080",
+      "seasonality": null,
+      "highlights": [
+        "负责数学推理、逻辑推理、知识推理与通用任务的算法研发与优化",
+        "要求跟踪推理前沿并推动研究成果在业务落地"
+      ],
+      "process": [],
+      "notes": "社招/专家岗，非实习。由 daily-agent 追加：该条目在 items/index.json 中被分到 posttraining 而非 job（id a4ed93e2728d9a43），已在提案中记录该分类问题。日薪、名额、截止时间未获取到，待核实。岗位原文发布日期 2026-09-20。",
+      "confidence": "low",
+      "sources": [
+        {
+          "title": "微信-大模型后训练算法专家（腾讯招聘岗位页）",
+          "url": "http://careers.tencent.com/jobdesc.html?postId=2013277866984366080"
+        }
+      ],
+      "relevance": 75,
+      "postedAt": "2026-09-20T00:00:00+08:00",
+      "deadline": null
+    },
+    {
+      "id": "tencent-native-multimodal-researcher",
+      "company": "腾讯 云智能（CSIG）",
+      "shortName": "腾讯",
+      "tier": "A",
+      "title": "原生多模态算法研究员（全模态统一理解与生成）",
+      "directions": [
+        "multimodal",
+        "generative",
+        "world-model"
+      ],
+      "cities": [
+        "上海"
+      ],
+      "pay": null,
+      "duration": null,
+      "conversion": null,
+      "open": true,
+      "applyUrl": "http://careers.tencent.com/jobdesc.html?postId=2047219099016265728",
+      "seasonality": null,
+      "highlights": [
+        "参与原生多模态基座模型研发，覆盖图像、视频、音频与文本的统一理解与生成",
+        "含统一模态表示、多模态预训练策略、多尺度/长序列建模与生成一致性"
+      ],
+      "process": [],
+      "notes": "社招/研究员岗，非实习。由 daily-agent 追加：该条目在 items/index.json 中被分到 multimodal 而非 job（id c81019e7ff53ec67），已在提案中记录该分类问题。日薪、名额、截止时间未获取到，待核实。岗位原文发布日期 2026-09-28。",
+      "confidence": "low",
+      "sources": [
+        {
+          "title": "原生多模态算法研究员（腾讯招聘岗位页）",
+          "url": "http://careers.tencent.com/jobdesc.html?postId=2047219099016265728"
+        }
+      ],
+      "relevance": 79,
+      "postedAt": "2026-09-28T00:00:00+08:00",
+      "deadline": null
+    }
+  ],
+  "proposals": {
+    "channelHealth": [
+      {
+        "id": "openreview",
+        "status": "blocked",
+        "evidence": "api2 与 api1 的 /notes 均返回 200 text/html「Verifying your browser | OpenReview」（更早的运行出现 403 ChallengeRequiredError）；只有浏览器能通过该挑战。",
+        "suggestedAction": "保持 DISABLED，不再每天重试；论文覆盖由 arXiv + s2（备用 openalex/crossref）承担。"
+      },
+      {
+        "id": "jobs_bytedance",
+        "status": "blocked",
+        "evidence": "GET /api/v1/search/job/posts 返回 200 但内容是猎头平台 HTML，POST 返回 405（0 字节），带尾斜杠返回 307，/referral/api/... 返回 404；JS bundle 确认路径正确，属边缘 WAF 拦截。",
+        "suggestedAction": "走人工导入（scripts/inbox.py）或浏览器辅助；保持 disabled。"
+      },
+      {
+        "id": "jobs_alibaba",
+        "status": "blocked",
+        "evidence": "POST talent.alibaba.com/position/search 无 CSRF 时 403；带页面 XSRF-TOKEN 返回 200 但 datas:null、totalCount:0；/searchCondition/list 的 searchItems 为 null —— 后端要求只能由 baxia 浏览器脚本铸造的 token。",
+        "suggestedAction": "走人工导入；保持 disabled。"
+      },
+      {
+        "id": "machineheart",
+        "status": "blocked",
+        "evidence": "/rss 与 /feed 均返回 200 text/html（机器之心·数据服务落地页）而非 RSS，/rss/articles 404，可达的 RSSHub 镜像 /jiqizhixin/daily 也 404 —— 属「假 200」。",
+        "suggestedAction": "保持 leiphone（雷锋网 AI feed）作为替代中文资讯源。"
+      },
+      {
+        "id": "rsshub",
+        "status": "blocked",
+        "evidence": "rsshub.app 403 Cloudflare 挑战、rsshub.rssforever.com 503、rsshub.ktachibana.party 404/503、rsshub.pseudoyu.com TLS 错误；唯一可达镜像 rss.injahow.cn 只提供 /zhihu/hotlist 与 /solidot，其中知乎路由已被固定 zhihu 渠道消费。",
+        "suggestedAction": "公共实例不可用；如需 RSSHub 只能自建 Docker 实例，暂不启用。"
+      },
+      {
+        "id": "reddit",
+        "status": "blocked",
+        "evidence": "https://www.reddit.com/robots.txt 为「User-agent: * / Disallow: /」，即使 .rss 返回 200 也不抓取；lobste.rs 同为全站 Disallow。",
+        "suggestedAction": "合规原因永久跳过；社区信号由 hn 承担。"
+      },
+      {
+        "id": "jobs_zhipu",
+        "status": "blocked",
+        "evidence": "zhipuai.cn/joinus 返回 200（783KB）但只服务端渲染岗位类别，无逐岗数据；15 个 Next.js chunk 中无岗位 API 引用。",
+        "suggestedAction": "走人工导入；保持 disabled。"
+      },
+      {
+        "id": "jobs_moonshot",
+        "status": "blocked",
+        "evidence": "moonshot.cn/careers 返回 200（95KB）但不含任何岗位关键词，现委托给 careers.kimi.com，后者是 11.6KB 的 JS 壳，/jobs 与 /positions 均 404，chunk 中无岗位 API。",
+        "suggestedAction": "走人工导入；保持 disabled。"
+      },
+      {
+        "id": "jobs_minimax",
+        "status": "blocked",
+        "evidence": "careers 页内嵌飞书 ATSX 门户（vrfi1sk8a0.jobs.feishu.cn），其 API 与字节同样返回 405，且 minimaxi.com/robots.txt 对 /api/ 为 Disallow。",
+        "suggestedAction": "走人工导入；保持 disabled。"
+      },
+      {
+        "id": "jobs_shailab",
+        "status": "blocked",
+        "evidence": "/joinus、/joinus/social、/joinus/campus 返回同一个 70KB 营销页，无岗位行；岗位由 JS 拉取且页面未引用任何 ATS/API 端点。",
+        "suggestedAction": "走人工导入；保持 disabled。"
+      }
+    ],
+    "taxonomyProposals": [
+      {
+        "action": "reweight",
+        "category": "job",
+        "reason": "观察到的分类错误：13 条来自 jobs_tencent / jobs_deepseek / jobs_moonshot 渠道的招聘条目被分到 agent、posttraining、multimodal、rl 等方向类，例如「原生多模态算法研究员」→ multimodal、「微信-大模型后训练算法专家」→ posttraining。岗位渠道的条目应优先归入 job，方向命中改写入 directions 字段，否则既污染方向类统计、也让岗位看板漏掉这些机会。",
+        "proposedKeywords": [
+          "算法工程师",
+          "算法专家",
+          "研究员"
+        ]
+      },
+      {
+        "action": "split",
+        "category": "worldmodel",
+        "reason": "worldmodel 现有 72 条，其中 vla 24 条、vision-language-action 22 条、embodied 8 条，评测对象（机械臂操作、动作条件预测）与视频世界模型/model-based RL（如 TD-MPC 类规划）差别很大，混在一类里无法按方法论对比。建议至少用子标签区分 VLA 与视频/潜空间世界模型。",
+        "proposedKeywords": [
+          "vla",
+          "vision-language-action",
+          "action-conditioned",
+          "model-based-rl",
+          "embodied"
+        ]
+      },
+      {
+        "action": "reweight",
+        "category": "rl",
+        "reason": "RL 是主攻方向之一（interest 权重 0.9），但全量只有 17 条，其中 8 条由 'ppo' 子串误命中（详见 keywordProposals）。真实 RL 内容实际不足 10 条，覆盖率被高估；而 LLM 后训练的 RL 部分（GRPO/RLVR）大量落在 posttraining 类，导致 rl 类名不副实。建议明确 rl 收录经典 RL（PPO/SAC/世界模型规划），并把 LLM 对齐类 RL 保留在 posttraining。",
+        "proposedKeywords": [
+          "proximal policy optimization",
+          "policy gradient",
+          "advantage actor-critic",
+          "sample efficiency"
+        ]
+      }
+    ],
+    "keywordProposals": [
+      {
+        "category": "rl",
+        "add": [
+          "proximal policy optimization"
+        ],
+        "remove": [
+          "ppo"
+        ],
+        "reason": "已证实的子串误命中：'ppo' 在 11 条命中里至少 8 条是子串偶然命中——OPPO（华为 Mate 90 手机问答）、support/supports（OpenAI 公告、法律白皮书）、Opportunities（法律白皮书标题）被当作 PPO；且命中后整条内容进入 rl 类。建议改为带词边界的匹配，或用 'proximal policy optimization' 这类不含常见子串的长词。"
+      },
+      {
+        "category": "posttraining",
+        "add": [
+          "preference optimization",
+          "rlvr"
+        ],
+        "remove": [
+          "kto"
+        ],
+        "reason": "已证实的子串误命中：'kto' 大小写不敏感地命中 desktop（数据库客户端 t8y2/dbx 的 'Docker' 描述）与 TikTok（牛客 tiktok 社交面经、知乎热榜），把 3 条完全无关的条目归入后训练。KTO 本身是长尾对齐算法，不值得用 3 个字母做关键词。"
+      },
+      {
+        "category": "posttraining",
+        "add": [
+          "post-training alignment"
+        ],
+        "remove": [
+          "post training"
+        ],
+        "reason": "'post training'（空格写法）命中 intel/auto-round —— 其含义是 post-training quantization（PTQ，训练后量化），与对齐语义的 post-training 是两件事；该条目把量化工具放进了后训练对齐类。带连字符的 'post-training' 关键词表现正常（26 条），建议删掉空格写法并在 posttraining 类排除 quantization 语境。"
+      },
+      {
+        "category": "foundation",
+        "add": [
+          "transformer architecture",
+          "attention mechanism",
+          "scaling law"
+        ],
+        "remove": [
+          "基础",
+          "理论"
+        ],
+        "reason": "'基础' 命中 7 条，其中 5 条与基础理论无关（江苏高校规划、比亚迪闪充站、国轩高科电池、画师诈骗、银行技术面操作系统题）；'理论' 仅 1 条且同样是高校政策问答。中文没有词边界，单字/泛词关键词会把知乎与资讯热榜整段吸进来，建议改成具象的英文技术词。"
+      },
+      {
+        "category": "paper",
+        "add": [
+          "venue:arxiv-listing"
+        ],
+        "remove": [
+          "arxiv"
+        ],
+        "reason": "'arxiv' 命中 9 条，其中 4 条是 HuggingFace 上的模型仓库卡片（NovaSearch/jasper_en_vision_language_v1、X1AOX1A/WorldModel-*-7B/8B），把模型卡片当成论文。论文归属应由渠道（arxiv/hf_papers/api）判定，而不是靠关键词字符串。"
+      },
+      {
+        "category": "agent",
+        "add": [
+          "agent harness",
+          "tool use",
+          "computer use"
+        ],
+        "remove": [],
+        "reason": "agent 类 140 条，占全量 717 条的 19.5%，是最大类；'agent'/'agentic' 命中 126/24 条，把大量通用编排框架（haystack、ruoyi-ai、langchain4j、PraisonAI 等）与真实智能体研究混在一起。建议提高该类阈值，并把偏工程的框架类改归 engineering，仅在命中更具体的 agent 能力词时才归 agent。"
+      }
+    ],
+    "newChannelProposals": [
+      {
+        "id": "pmlr-icml",
+        "why": "注册表实测 HTTP 200，可补 ICML/AISTATS 官方论文集，缓解 OpenReview 被机器人挑战拦截后会议论文的覆盖缺口（当前 paper 类仅 18 条）。",
+        "verifiedUrl": "https://proceedings.mlr.press",
+        "authRequired": false
+      },
+      {
+        "id": "neurips-proceedings",
+        "why": "注册表实测 HTTP 200，NeurIPS 官方论文集，可为 qualitySignals.venue 提供权威发表证据（便于区分 arXiv 预印本与已录用论文）。",
+        "verifiedUrl": "https://papers.nips.cc",
+        "authRequired": false
+      },
+      {
+        "id": "cvf-openaccess-cvpr",
+        "why": "注册表实测 HTTP 200，CVPR/ICCV 开放获取入口，是多模态与生成式方向的主会场；可用于交叉核对 camera-ready 版本。",
+        "verifiedUrl": "https://openaccess.thecvf.com",
+        "authRequired": false
+      }
+    ],
+    "noiseReport": {
+      "overBroadKeywords": [
+        "ppo",
+        "kto",
+        "基础",
+        "理论",
+        "post training",
+        "arxiv",
+        "agent",
+        "agentic"
+      ],
+      "underCoveredCategories": [
+        "rl",
+        "foundation"
+      ]
+    },
+    "humanReviewQueue": [
+      "enrichment.json 本轮首次写入，但前端 Store（web/assets/js/core.part.js）只加载 manifest/digest/jobs/learning/sources/taxonomy/logs/index/proposals/formulas，并未加载 enrichment.json —— 深读内容（tldr/keyPoints/concepts）目前不会显示在任何视图。请确认：允许改前端加载 enrichment.json 并按 id 合并，还是把 enrichment 合并进 items/index.json（本轮遵守铁律未改前端、未改 index.json）。",
+      "web/data/jobs.json 由 scripts/build_jobs_json.py 从 research/jobs_kb.json 整体重建（scripts/build_jobs_json.py:39、257-339），daily-agent 追加的 5 个岗位会在下次重建时丢失。请确认：给 jobs.json 加合并步骤，还是把岗位增量写回 research/jobs_kb.json。",
+      "请确认 'ppo'/'kto' 等短关键词是否应改为词边界匹配：已用原文验证 'ppo' 命中 OPPO/support/supports/Opportunities，'kto' 命中 desktop/TikTok（大小写不敏感子串）。",
+      "请确认是否把招聘渠道（jobs_tencent/jobs_deepseek/jobs_moonshot）的条目强制归入 job 类：当前 13 条岗位被分到方向类（含「原生多模态算法研究员」→multimodal 等）。",
+      "digest/today.json 的 items 为空：17:45 的完整采集（新增 20 条）被 17:48 的 --only inbox 运行覆盖，导致深读层拿不到「本轮新增」，只能回退到全量 index.json 按分数取前 12 条。请确认 digest 是否应改为按日累积，而不是被最后一次运行覆盖。",
+      "请确认本轮深读对象的回退口径（digest 为空 → 按 items/index.json 的 relevanceScore 取 12 条，并做分类多样化）是否符合预期；若不符合，请给出希望的替代口径。",
+      "intel/auto-round（post training quantization 工具）被收录进 posttraining 对齐类；请确认是否需要为 quantization/PTQ 单独建类或在 posttraining 中排除该语境。",
+      "中文热榜噪声：本轮有 8 条知乎/资讯条目（手机评测、约稿诈骗、比亚迪快充、高校规划等）进入 rl/foundation 类。请确认是否需要中文来源白名单或对 zhihu/leiphone 渠道收紧关键词。",
+      "摘要完整度：717 条中 278 条（38.8%）摘要短于 60 字符，主要来自 hf_models(82)、nowcoder(60)、hn(58)、hf_blog_rss(30)。这会让深读层无原文可依（本轮已全部避开这些条目）。请确认是否要为这些渠道补抓详情页。",
+      "公式库字段不齐：6 个种子公式中 5 个（f-dpo/f-grpo/f-ddpm/f-rope/f-clip）只有 html 没有 latex，本轮新增的 6 个两者都有。前端优先渲染 html 所以不影响显示；但若要统一 latex 字段，应改 scripts/seed_formulas.py 的源数据，而不是直接改 web/data/formulas.json（后者会被重新生成覆盖）。",
+      "数据层校验脚本 scripts/verify_web_data.py 在本轮写入后仍报 4 项 FAIL，全部来自未被本轮改动的 sources.json（缺 pwc/codeforces/manual 三个渠道 id、26 个渠道缺 rateLimit 键、mode 出现 local/html-scrape/unreachable/manual-needs-login/off-limits 等非约定值、16 个 status=ok 的渠道没有观测记录）。这些在 2026-10-01 17:48 采集器运行时即存在，与深读层无关；请确认是修 sources.json 还是修校验脚本的期望值。"
+    ]
+  },
+  "log": {
+    "status": "ok",
+    "notes": "digest/today.json 的 items 为空（最后一次运行为 17:48 的 --only inbox，1 个渠道、2 条重复，覆盖了 17:45 完整采集的 digest），故按 daily-agent.md 第 2 节口径回退：在 items/index.json 全量 717 条中按 relevanceScore 取前 12 条并做分类多样化。所有 tldr/keyPoints/why/concepts/formulas 的断言均可在对应条目的 title/summary 中核对；无法确认的写进 selfCheck.uncertain。新增 12 条 enrichment、6 个公式（f-causal-distill/f-scapo-credit/f-cbf-shield/f-fenchel-tilt/f-wush-transform/f-loop-scaling）、5 个腾讯社招岗位（非实习，confidence=low）。未修改前端代码，未修改 items/index.json。",
+    "errors": []
+  }
+}

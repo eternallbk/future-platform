@@ -1,0 +1,2131 @@
+{
+ "generatedAt": "2026-10-01T21:08:21+08:00",
+ "generatedBy": "plan_deep_read.py",
+ "policy": {
+  "perCategoryMin": 2,
+  "perCategoryMax": 10,
+  "freshOnly": false,
+  "note": "每个分类挑 2–10 条做深度解析；其余条目仍保留在卡片库里可搜索、参与去重，但不会进入深度解析队列，也不会挤占「今日速览」。",
+  "noiseRules": [
+   {
+    "id": "career-vent",
+    "why": "求职吐槽/情绪帖：信息量为零，且会大量重复"
+   },
+   {
+    "id": "generic-question",
+    "why": "泛化提问帖：没有可结构化的知识"
+   },
+   {
+    "id": "referral-code",
+    "why": "内推码/广告：有用但不需要深度解析，单独归入岗位信息即可"
+   },
+   {
+    "id": "salary-thread",
+    "why": "纯薪资讨论：数字无法核实，且极易重复"
+   }
+  ]
+ },
+ "totals": {
+  "corpus": 512,
+  "alreadyEnriched": 19,
+  "candidates": 493,
+  "skimmed": 22,
+  "selected": 103,
+  "categories": 13
+ },
+ "perCategory": {
+  "agent": {
+   "quota": 7,
+   "picked": 7,
+   "candidates": 124,
+   "categoryWeight": 0.6
+  },
+  "coding": {
+   "quota": 10,
+   "picked": 10,
+   "candidates": 34,
+   "categoryWeight": 1.0
+  },
+  "course": {
+   "quota": 6,
+   "picked": 1,
+   "candidates": 1,
+   "categoryWeight": 0.55
+  },
+  "engineering": {
+   "quota": 7,
+   "picked": 7,
+   "candidates": 26,
+   "categoryWeight": 0.65
+  },
+  "foundation": {
+   "quota": 8,
+   "picked": 8,
+   "candidates": 12,
+   "categoryWeight": 0.7
+  },
+  "generative": {
+   "quota": 9,
+   "picked": 9,
+   "candidates": 33,
+   "categoryWeight": 0.85
+  },
+  "job": {
+   "quota": 6,
+   "picked": 6,
+   "candidates": 23,
+   "categoryWeight": 0.5
+  },
+  "multimodal": {
+   "quota": 10,
+   "picked": 10,
+   "candidates": 45,
+   "categoryWeight": 1.0
+  },
+  "paper": {
+   "quota": 10,
+   "picked": 10,
+   "candidates": 12,
+   "categoryWeight": 0.95
+  },
+  "posttraining": {
+   "quota": 10,
+   "picked": 10,
+   "candidates": 65,
+   "categoryWeight": 1.0
+  },
+  "rl": {
+   "quota": 9,
+   "picked": 9,
+   "candidates": 14,
+   "categoryWeight": 0.9
+  },
+  "trend": {
+   "quota": 6,
+   "picked": 6,
+   "candidates": 38,
+   "categoryWeight": 0.45
+  },
+  "worldmodel": {
+   "quota": 10,
+   "picked": 10,
+   "candidates": 44,
+   "categoryWeight": 1.0
+  }
+ },
+ "queue": [
+  {
+   "id": "2f84c181617f7429",
+   "title": "One Signal Theory - A Conceptual Architecture for Context Management in Large Language Models via Synthetic Affective Signal Modulation of Attention",
+   "category": "foundation",
+   "channel": "s2",
+   "relevanceScore": 95.0,
+   "depthScore": 78.98,
+   "url": "https://doi.org/10.5281/zenodo.23068062",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 42.75,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "ce4c4e04726b1248",
+   "title": "Leveraging vision language models for digit recognition on digital measuring devices: a comparative analysis",
+   "category": "multimodal",
+   "channel": "s2",
+   "relevanceScore": 71.0,
+   "depthScore": 78.95,
+   "url": "https://doi.org/10.11591/eei.v15i5.11769",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 31.95,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "9ca183eb8171af98",
+   "title": "RoboCoach: World Models as Active Coaches for Compositional Robot Skills",
+   "category": "worldmodel",
+   "channel": "hf_papers",
+   "relevanceScore": 67.0,
+   "depthScore": 78.15,
+   "url": "https://huggingface.co/papers/2609.39685",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.150000000000002,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "f192b93c4998b755",
+   "title": "Learning Where to Look: Anatomical Grounding and Guided Attention for Cardiac MRI Vision-Language Models",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "relevanceScore": 66.9,
+   "depthScore": 78.11,
+   "url": "https://arxiv.org/abs/2609.39899v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.105000000000004,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "0cba51532f6021bd",
+   "title": "RATIO: Reasoning Analysis and Token-level Inference Optimization for Quantized Reasoning Models",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "relevanceScore": 66.8,
+   "depthScore": 78.06,
+   "url": "https://arxiv.org/abs/2609.39801v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.06,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "36e87c365265467a",
+   "title": "Beyond Policy Alignment: Closing the Planning-Learning Loop for Robot Control with Learned World Models",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "relevanceScore": 66.7,
+   "depthScore": 78.02,
+   "url": "https://arxiv.org/abs/2609.39751v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.015,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "4a643af09b98ef5b",
+   "title": "No Task Vector Is an Island: A Comprehensive Study on the Composability of Task Vectors from On-Policy Distillation",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "relevanceScore": 66.3,
+   "depthScore": 77.84,
+   "url": "https://arxiv.org/abs/2609.39405v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.835,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "ffef356681d5686d",
+   "title": "From Search to Signal: Online Post-Training in Automatic Heuristic Design",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "relevanceScore": 66.2,
+   "depthScore": 77.79,
+   "url": "https://arxiv.org/abs/2609.39383v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.790000000000003,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "c116aff0dfdf69ae",
+   "title": "QATFactory: A Versatile, Deployment-Aligned Framework for Quantization-aware Training and Distillation of LLMs",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "relevanceScore": 66.1,
+   "depthScore": 77.75,
+   "url": "https://arxiv.org/abs/2609.39223v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.744999999999997,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "2d66048b20488b7d",
+   "title": "LocoWM: High-Precision Locomotion through World-Model-Guided Residual Adaptation",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "relevanceScore": 66.0,
+   "depthScore": 77.7,
+   "url": "https://arxiv.org/abs/2609.39179v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.7,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "d7f5135eaae78aaf",
+   "title": "Linear Recurrent Memory Suffices to Distil a World-Model Policy for Robot Air Hockey",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "relevanceScore": 66.0,
+   "depthScore": 77.7,
+   "url": "https://arxiv.org/abs/2609.39151v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.7,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "d4fbb4ebf08ca5e3",
+   "title": "Pattern Over Pixels: Measuring Pattern Completion Bias in Multimodal Code Generation",
+   "category": "multimodal",
+   "channel": "s2",
+   "relevanceScore": 66.1,
+   "depthScore": 76.75,
+   "url": "https://doi.org/10.5281/zenodo.19341952",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.744999999999997,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "e1a60ff5bcdd74ad",
+   "title": "Beyond human readers: designing domain-specific language notebooks for AI-assisted code generation",
+   "category": "posttraining",
+   "channel": "s2",
+   "relevanceScore": 65.2,
+   "depthScore": 76.34,
+   "url": "https://doi.org/10.5281/zenodo.22801493",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.340000000000003,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "2459123f398960a0",
+   "title": "Where WiFi Sensing Fails:A Reproducibility Study of CSI-IMU Substitution for Human Activity Recognition",
+   "category": "multimodal",
+   "channel": "s2",
+   "relevanceScore": 63.2,
+   "depthScore": 75.44,
+   "url": "https://openalex.org/W7208797711",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 28.44,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "8398e354a2caa87f",
+   "title": "A multimodal manual therapy, exercise, and psychological intervention for painful diabetic neuropathy: the NeuOst feasibility randomised controlled trial.",
+   "category": "multimodal",
+   "channel": "s2",
+   "relevanceScore": 63.2,
+   "depthScore": 75.44,
+   "url": "https://doi.org/10.1097/pr9.0000000000001498",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 28.44,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "2e1f908ff2f8f54c",
+   "title": "Regulating the Frontier: Model-Level Evidence from the EU AI Act",
+   "category": "paper",
+   "channel": "s2",
+   "relevanceScore": 65.2,
+   "depthScore": 74.81,
+   "url": "https://doi.org/10.17613/8rga5-9wc04",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.340000000000003,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "d1b0187f93cee313",
+   "title": "DynaHarness: A Dynamic Physical Harness for Self-Evolving Robot Agents",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "relevanceScore": 59.2,
+   "depthScore": 74.64,
+   "url": "https://arxiv.org/abs/2609.40306v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.64,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "fcfa54ba9b6cca9e",
+   "title": "Learning Steganography Is Easy, Learning Steganographic Reasoning Is Hard",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "relevanceScore": 58.8,
+   "depthScore": 74.46,
+   "url": "https://arxiv.org/abs/2609.39838v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.46,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "44c5c6789d8a432d",
+   "title": "Physis-Lang: Self-Evolving Language as a Physical Representation for Video World Model",
+   "category": "worldmodel",
+   "channel": "hf_papers",
+   "relevanceScore": 58.6,
+   "depthScore": 74.37,
+   "url": "https://huggingface.co/papers/2609.40358",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.37,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "7d2f1016a053206d",
+   "title": "Game-Guided Skill Discovery through Self-Play for Playable Agent Control",
+   "category": "posttraining",
+   "channel": "hf_papers",
+   "relevanceScore": 58.2,
+   "depthScore": 74.19,
+   "url": "https://huggingface.co/papers/2609.40137",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.19,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "5b906eb7f347d41b",
+   "title": "MEND: Label-Free Detection, Localisation, and Correction of Latent Hallucination in World Models",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "relevanceScore": 58.0,
+   "depthScore": 74.1,
+   "url": "https://arxiv.org/abs/2609.39182v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.1,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "63e2ea5d702c742c",
+   "title": "Quantum Algorithms for Computational Fluid Dynamics",
+   "category": "generative",
+   "channel": "arxiv",
+   "relevanceScore": 66.9,
+   "depthScore": 73.42,
+   "url": "https://arxiv.org/abs/2609.39962v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.105000000000004,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "77e544498b6fdcba",
+   "title": "Patient-Centered Treatment Planning for Chronic Multimorbidity: A Hierarchical Reinforcement Learning Framework for Preference Modeling",
+   "category": "rl",
+   "channel": "arxiv",
+   "relevanceScore": 80.9,
+   "depthScore": 73.35,
+   "url": "https://arxiv.org/abs/2609.39911v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 36.405,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "e3c2e19e8960c634",
+   "title": "AI Applicability in Law: Opportunities,Limitations, and Governance in a Hybrid Legal Ecosystem",
+   "category": "rl",
+   "channel": "s2",
+   "relevanceScore": 65.2,
+   "depthScore": 73.29,
+   "url": "https://doi.org/10.5281/zenodo.18169951",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.340000000000003,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "a7028777dd732792",
+   "title": "LongEmo: Towards Emotion Understanding and Reasoning in Long Videos",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "relevanceScore": 73.0,
+   "depthScore": 72.85,
+   "url": "https://arxiv.org/abs/2609.40079v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 32.85,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "3b8aff0c0d667aba",
+   "title": "Benchmarking the safety of large language models for robotic health attendant control",
+   "category": "paper",
+   "channel": "s2",
+   "relevanceScore": 60.4,
+   "depthScore": 72.7,
+   "url": "https://doi.org/10.1098/rsos.261022",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 27.18,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "f321317c5c6a3438",
+   "title": "AccLock: Unlocking Identity with Heartbeat Using In-Ear Accelerometers",
+   "category": "paper",
+   "channel": "s2",
+   "relevanceScore": 60.3,
+   "depthScore": 72.65,
+   "url": "https://doi.org/10.1145/3832028",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 27.134999999999998,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "28f899c9d5f4731d",
+   "title": "modelscope/ms-swift - Use PEFT or Full-parameter to CPT/SFT/DPO/GRPO 600+ LLMs (Qwen3.8, DeepSeek-V4, GLM-5.1, InternLM3, Llama4, ...) and 300+ MLLMs (Qwen3-VL, Qwen3-Omni, InternVL3.5, Ovis2.5, GLM5.3, Gemma4, Llava, Phi4, ...) (AAAI 2025).",
+   "category": "posttraining",
+   "channel": "github",
+   "relevanceScore": 84.7,
+   "depthScore": 72.5,
+   "url": "https://github.com/modelscope/ms-swift",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 38.115,
+    "content": 4.38,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "f54e6534688ba9fc",
+   "title": "Uruqi: Learning Spatial Cognition from Visual Experience",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "relevanceScore": 72.0,
+   "depthScore": 72.4,
+   "url": "https://arxiv.org/abs/2609.39195v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 32.4,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "7d02e98128d5425f",
+   "title": "BEYOND SATISFACTION: PREDICTORS AND CORRELATES OF MARITAL HEALTH",
+   "category": "paper",
+   "channel": "s2",
+   "relevanceScore": 63.2,
+   "depthScore": 72.15,
+   "url": "https://openalex.org/W7214516059",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 28.44,
+    "content": 16.18,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "d5b06f5694d9123e",
+   "title": "DC-SAE: Deep Compression Semantic Autoencoder for Faster Diffusion Convergence",
+   "category": "generative",
+   "channel": "hf_papers",
+   "relevanceScore": 81.4,
+   "depthScore": 72.03,
+   "url": "https://huggingface.co/papers/2609.39222",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 36.63,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "657ce65bbfd1b65f",
+   "title": "DYNAMICS OF PORTFOLIO ASSESSMENT STRATEGY IN EVALUATING THE ENGLISH LANGUAGE SKILLS FOR PUPILS WITH HEARING IMPAIRMENTS IN FAKO DIVISION, SOUTH WEST REGION OF CAMEROON",
+   "category": "generative",
+   "channel": "s2",
+   "relevanceScore": 65.2,
+   "depthScore": 71.76,
+   "url": "https://doi.org/10.5281/zenodo.18206766",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.340000000000003,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "9ae4c993750e49a5",
+   "title": "Do Better Goal Representations Improve Goal-Conditioned Reinforcement Learning?",
+   "category": "rl",
+   "channel": "arxiv",
+   "relevanceScore": 58.9,
+   "depthScore": 71.52,
+   "url": "https://arxiv.org/abs/2609.39901v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.505,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "df0685d3ab6cb432",
+   "title": "NVIDIA-AI-Blueprints/video-search-and-summarization - NVIDIA AI Blueprint for video search and summarization (VSS) is a GPU-accelerated reference architecture for building video analytics agents with real-time verified alerts, visual Q&A, and automated reporting. The VSS Blueprint uses vision language models (VLMs) such as NVIDIA Cosmos, LLMs such as NVIDIA Nemotron, RAG, and NVIDIA NIMs.",
+   "category": "multimodal",
+   "channel": "github",
+   "relevanceScore": 76.9,
+   "depthScore": 71.34,
+   "url": "https://github.com/NVIDIA-AI-Blueprints/video-search-and-summarization",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 34.605000000000004,
+    "content": 6.740000000000001,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "7a6ec1f53a0bfa09",
+   "title": "Big data and psychiatry: advances, constraints and future directions.",
+   "category": "generative",
+   "channel": "s2",
+   "relevanceScore": 63.2,
+   "depthScore": 70.91,
+   "url": "https://doi.org/10.1002/wps.70113",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 28.44,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "99fb8b7ff588817d",
+   "title": "longxiang-ai/awesome-video-diffusions - A curated and auto-updated collection of video diffusion / video generation papers from arXiv, covering text-to-video, image-to-video, controllable generation, world models, video editing, and 16+ research categories.",
+   "category": "generative",
+   "channel": "github",
+   "relevanceScore": 89.7,
+   "depthScore": 70.22,
+   "url": "https://github.com/longxiang-ai/awesome-video-diffusions",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 40.365,
+    "content": 4.34,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "547107730b2b6103",
+   "title": "Grounding with Confidence: Controllable Generative Video Temporal Grounding",
+   "category": "generative",
+   "channel": "arxiv",
+   "relevanceScore": 58.8,
+   "depthScore": 69.99,
+   "url": "https://arxiv.org/abs/2609.39883v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.46,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "7ca2e20b3b95038a",
+   "title": "Agent Error Dataset: Scaling 50,000 Error--Diagnosis Pairs for Failure Analysis and Error-Aware Post-Training",
+   "category": "posttraining",
+   "channel": "hf_papers",
+   "relevanceScore": 66.5,
+   "depthScore": 69.92,
+   "url": "https://huggingface.co/papers/2609.40111",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.925,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "56c25a19aad550c4",
+   "title": "DeepFeature: LLM-Empowered Context-aware Feature Generation for Wearable Biosignals",
+   "category": "generative",
+   "channel": "s2",
+   "relevanceScore": 60.4,
+   "depthScore": 69.73,
+   "url": "https://doi.org/10.1145/3831996",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 27.18,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "4de3fbdcfdb43eff",
+   "title": "Multimodal Flow: Unified Flow Modeling of Language and Vision in Embedding Spaces",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "relevanceScore": 65.2,
+   "depthScore": 69.34,
+   "url": "https://arxiv.org/abs/2609.40362v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.340000000000003,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "0168f52ec886ea9c",
+   "title": "MemLife: Curating and Reasoning over Long-Term Egocentric Video Memories",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "relevanceScore": 65.1,
+   "depthScore": 69.3,
+   "url": "https://arxiv.org/abs/2609.40195v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.294999999999998,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "7b43d7b16cc9a324",
+   "title": "walkinglabs/hands-on-modern-rl - 🚀 An open-source, hands-on curriculum bridging the gap from basic RL concepts to LLM alignment, RLVR, and advanced Agentic systems.",
+   "category": "posttraining",
+   "channel": "github",
+   "relevanceScore": 81.0,
+   "depthScore": 69.07,
+   "url": "https://github.com/walkinglabs/hands-on-modern-rl",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 36.45,
+    "content": 2.6199999999999997,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "10c6cb7bbc88ceef",
+   "title": "ATLAS: Aligned Transport of Latent Structure for Reliable World Model Planning",
+   "category": "worldmodel",
+   "channel": "hf_papers",
+   "relevanceScore": 63.6,
+   "depthScore": 68.62,
+   "url": "https://huggingface.co/papers/2609.36333",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 28.62,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "324ee823fef4dbb4",
+   "title": "From Given to Gathered Evidence: Agentic Learning for Longitudinal Medical Reasoning",
+   "category": "agent",
+   "channel": "arxiv",
+   "relevanceScore": 74.5,
+   "depthScore": 68.48,
+   "url": "https://arxiv.org/abs/2609.39566v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 33.525,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "1cffddbda5b078ac",
+   "title": "Darpan: A Digital Twin Framework for the Next-Generation Computing Continuum",
+   "category": "paper",
+   "channel": "arxiv",
+   "relevanceScore": 64.8,
+   "depthScore": 67.78,
+   "url": "https://arxiv.org/abs/2609.39799v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.16,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "ae5f1b9da8e383f0",
+   "title": "LongTake: Learning to Sustain Dynamics in Long-Horizon Video Generation",
+   "category": "generative",
+   "channel": "arxiv",
+   "relevanceScore": 70.9,
+   "depthScore": 67.59,
+   "url": "https://arxiv.org/abs/2609.38562v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 31.905000000000005,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "3193367a76ed388d",
+   "title": "PreviewDiff: Multimodal Critic-Guided Search over Diffusion Latents",
+   "category": "generative",
+   "channel": "hf_papers",
+   "relevanceScore": 69.6,
+   "depthScore": 67.04,
+   "url": "https://huggingface.co/papers/2609.36199",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 31.319999999999997,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "c44346574fe421aa",
+   "title": "Quantum Enhanced Deep Reinforcement Learning for Distribution Network Reconfiguration",
+   "category": "rl",
+   "channel": "arxiv",
+   "relevanceScore": 65.2,
+   "depthScore": 66.57,
+   "url": "https://arxiv.org/abs/2609.40327v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.340000000000003,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "071d08582672f10b",
+   "title": "The Low-Rank Structure of VLA Reinforcement Learning",
+   "category": "worldmodel",
+   "channel": "hf_papers",
+   "relevanceScore": 59.0,
+   "depthScore": 66.55,
+   "url": "https://huggingface.co/papers/2609.34599",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.55,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "b23fa633aed23b9e",
+   "title": "Riemannian Flow Models with Reinforcement Learning for Molecular Crystal Structure Prediction",
+   "category": "rl",
+   "channel": "arxiv",
+   "relevanceScore": 64.7,
+   "depthScore": 66.35,
+   "url": "https://arxiv.org/abs/2609.39773v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.115000000000002,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "cbfe6087f9c43604",
+   "title": "deepset-ai/haystack - Open-source AI orchestration framework for building context-engineered, production-ready LLM applications. Design modular pipelines and agent workflows with explicit control over retrieval, routing, memory, and generation. Built for scalable agents, RAG, multimodal applications, semantic search, and conversational systems.",
+   "category": "agent",
+   "channel": "github",
+   "relevanceScore": 92.8,
+   "depthScore": 65.72,
+   "url": "https://github.com/deepset-ai/haystack",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 41.76,
+    "content": 6.4799999999999995,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "f1959ffd8e7058e7",
+   "title": "How Much of a Harness Does a Strong Agent Need for Autonomous ML Engineering?",
+   "category": "agent",
+   "channel": "arxiv",
+   "relevanceScore": 67.2,
+   "depthScore": 65.72,
+   "url": "https://arxiv.org/abs/2609.40303v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.240000000000002,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "d07e4a916ba60b87",
+   "title": "ginwind/VLA-JEPA - [ECCV 2026] VLA-JEPA: Enhancing Vision-Language-Action Model with Latent World Model",
+   "category": "worldmodel",
+   "channel": "github",
+   "relevanceScore": 74.9,
+   "depthScore": 65.39,
+   "url": "https://github.com/ginwind/VLA-JEPA",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 33.705000000000005,
+    "content": 1.68,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "221b6496ea4cd2f6",
+   "title": "EviRover: Reinforcing Agentic Perception Beyond a Glance",
+   "category": "agent",
+   "channel": "hf_papers",
+   "relevanceScore": 65.7,
+   "depthScore": 65.15,
+   "url": "https://huggingface.co/papers/2609.40230",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.565,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "605a94e5b0dde801",
+   "title": "Code to Control: Synthesizing Parameterized Reactive Controllers",
+   "category": "agent",
+   "channel": "arxiv",
+   "relevanceScore": 65.3,
+   "depthScore": 65.0,
+   "url": "https://arxiv.org/abs/2609.38733v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.384999999999998,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "326d45331195bd6f",
+   "title": "Atomizer-IO: Beyond Pixels, Patches and Grids",
+   "category": "paper",
+   "channel": "arxiv",
+   "relevanceScore": 57.2,
+   "depthScore": 64.43,
+   "url": "https://arxiv.org/abs/2609.40320v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 25.740000000000002,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "ec70af7a045b9f22",
+   "title": "AXIAL: Attention-based eXplainability for Interpretable Alzheimer’s Localized diagnosis using 2D CNNs on 3D MRI brain scans",
+   "category": "foundation",
+   "channel": "s2",
+   "relevanceScore": 58.1,
+   "depthScore": 64.37,
+   "url": "https://doi.org/10.1186/s12911-026-03833-2",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.145,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "49d205ddfa53b616",
+   "title": "Minimizing capture time with many small traps in heterogeneous media",
+   "category": "paper",
+   "channel": "arxiv",
+   "relevanceScore": 56.9,
+   "depthScore": 64.29,
+   "url": "https://arxiv.org/abs/2609.39990v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 25.605,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "4d26991c192e8192",
+   "title": "KUAISHOU Explorer LLM-Rec Challenge 2026: Reasoning Generative Recommendation",
+   "category": "paper",
+   "channel": "arxiv",
+   "relevanceScore": 56.8,
+   "depthScore": 64.25,
+   "url": "https://arxiv.org/abs/2609.39828v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 25.56,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "5edfee114f60afd1",
+   "title": "vllm-project/vllm - A high-throughput and memory-efficient inference and serving engine for LLMs",
+   "category": "engineering",
+   "channel": "github",
+   "relevanceScore": 95.0,
+   "depthScore": 64.22,
+   "url": "https://github.com/vllm-project/vllm",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 42.75,
+    "content": 1.9200000000000002,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "2760b3ea24e31fe2",
+   "title": "DyRAD: Radar Novel View Synthesis for Dynamic Driving Scenes",
+   "category": "paper",
+   "channel": "hf_papers",
+   "relevanceScore": 56.5,
+   "depthScore": 64.12,
+   "url": "https://huggingface.co/papers/2609.39841",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 25.425,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "16f22cc40f0bad0f",
+   "title": "Breaking Babel: A Self-Evolving Multi-Agent System for Long-Form Subtitle Translation",
+   "category": "agent",
+   "channel": "hf_papers",
+   "relevanceScore": 79.2,
+   "depthScore": 63.54,
+   "url": "https://huggingface.co/papers/2609.38660",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 35.64,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "dd3ee83684a019cf",
+   "title": "langchain4j/langchain4j - LangChain4j is an idiomatic, open-source Java library for building LLM-powered applications on the JVM. It offers a unified API over popular LLM providers and vector stores, and makes implementing tool calling (including MCP support), agents and RAG easy. It integrates seamlessly with enterprise Java frameworks like Quarkus and Spring Boot.",
+   "category": "agent",
+   "channel": "github",
+   "relevanceScore": 84.9,
+   "depthScore": 63.04,
+   "url": "https://github.com/langchain4j/langchain4j",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 38.205000000000005,
+    "content": 6.84,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "f92d0f5913e59e39",
+   "title": "sgl-project/sglang - SGLang is a high-performance serving framework for large language models and multimodal models.",
+   "category": "engineering",
+   "channel": "github",
+   "relevanceScore": 87.8,
+   "depthScore": 61.41,
+   "url": "https://github.com/sgl-project/sglang",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 39.51,
+    "content": 1.9,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "ff26e0bb61fb7364",
+   "title": "Periodic Weak Spots: Phase Sensitivity from Chunked KV-Cache Compression",
+   "category": "foundation",
+   "channel": "hf_papers",
+   "relevanceScore": 64.5,
+   "depthScore": 60.74,
+   "url": "https://huggingface.co/papers/2609.36322",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.025000000000002,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "567c7131b3a62afc",
+   "title": "The Evolution of Attention in Large Language Models: Mechanisms, Trade-offs, and Emerging Trends",
+   "category": "foundation",
+   "channel": "hf_papers",
+   "relevanceScore": 64.4,
+   "depthScore": 60.7,
+   "url": "https://huggingface.co/papers/2609.39661",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 28.980000000000004,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "fb8063dfdeda93d7",
+   "title": "Herschel: Continuous Optimization of Production LLM Inference through On-Demand Profiling",
+   "category": "engineering",
+   "channel": "arxiv",
+   "relevanceScore": 65.2,
+   "depthScore": 59.63,
+   "url": "https://arxiv.org/abs/2609.40247v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.340000000000003,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "205120feb76f0e57",
+   "title": "Decision-Oriented Recommendation Reranking: An Empirical Study of Jev",
+   "category": "engineering",
+   "channel": "hf_papers",
+   "relevanceScore": 63.7,
+   "depthScore": 59.05,
+   "url": "https://huggingface.co/papers/2609.40241",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 28.665000000000003,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "4151aaf2fefa6d1c",
+   "title": "What Makes Recurrence Effective in Looped Language Models?",
+   "category": "engineering",
+   "channel": "hf_papers",
+   "relevanceScore": 62.9,
+   "depthScore": 58.74,
+   "url": "https://huggingface.co/papers/2609.36636",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 28.305,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "38b311baeaddf577",
+   "title": "DeepSeek 开源算子工具大礼包，联手华为昇腾，手撕 CUDA 绑定！",
+   "category": "coding",
+   "channel": "leiphone",
+   "relevanceScore": 56.8,
+   "depthScore": 58.56,
+   "url": "https://leiphone.com/category/yanxishe/UUIfK7eeFE9Ws1JI.html",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 25.56,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "04fcddde1afe9558",
+   "title": "Kimi 和 DeepSeek，为什么出现在同一张模型架构图里？",
+   "category": "foundation",
+   "channel": "leiphone",
+   "relevanceScore": 73.0,
+   "depthScore": 57.95,
+   "url": "https://leiphone.com/category/yanxishe/S39sSkqntdgkDuJu.html",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 32.85,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "78c877e1449c8249",
+   "title": "SlideDP: Scaling Host-Resident LLM Fine-Tuning Across Multiple GPUs",
+   "category": "engineering",
+   "channel": "hf_papers",
+   "relevanceScore": 59.0,
+   "depthScore": 57.23,
+   "url": "https://huggingface.co/papers/2609.34162",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.55,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "8a60bc7ca8f1e1b9",
+   "title": "dromara/Omega-AI - Omega-AI is a Java-based deep learning framework that helps you quickly build neural networks for inference and training. Its engine supports automatic differentiation, multithreading, and GPU acceleration with CUDA and cuDNN.",
+   "category": "engineering",
+   "channel": "github",
+   "relevanceScore": 69.3,
+   "depthScore": 56.51,
+   "url": "https://github.com/dromara/Omega-AI",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 31.185,
+    "content": 4.52,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "7c9a6438bd4ebde0",
+   "title": "Retrieval Capacity of Self-Attention Under Competition",
+   "category": "foundation",
+   "channel": "hf_papers",
+   "relevanceScore": 52.7,
+   "depthScore": 56.07,
+   "url": "https://huggingface.co/papers/2609.37879",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 23.715000000000003,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "c6f8a01f7daa1107",
+   "title": "2000座高速闪充站落成，比亚迪如何扛住国庆车流？",
+   "category": "foundation",
+   "channel": "leiphone",
+   "relevanceScore": 56.5,
+   "depthScore": 51.41,
+   "url": "https://leiphone.com/category/transportation/GE7BYDthsIqb4nA8.html",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 25.425,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "c3cf36c4c3c1ec3b",
+   "title": "世界制造业大会丨国轩高科重磅发布低空飞行高功率电池等三大创新成果",
+   "category": "foundation",
+   "channel": "leiphone",
+   "relevanceScore": 56.4,
+   "depthScore": 51.37,
+   "url": "https://leiphone.com/category/industrynews/DOdBNcP5frSITM4c.html",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 25.38,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "aa59255c96356e14",
+   "title": "Polymer informatics: A review of ai-driven structure-property modeling and material design",
+   "category": "trend",
+   "channel": "s2",
+   "relevanceScore": 71.2,
+   "depthScore": 49.95,
+   "url": "https://doi.org/10.13374/j.issn2095-9389.2026.01.24.001",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 32.04,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "2cb5ec505adcdc16",
+   "title": "Future of AI in English Language Education: Trends and Predictions",
+   "category": "trend",
+   "channel": "s2",
+   "relevanceScore": 65.2,
+   "depthScore": 47.85,
+   "url": "https://doi.org/10.5281/zenodo.18739462",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.340000000000003,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "ac31b726aa916663",
+   "title": "Helping small businesses put AI to work",
+   "category": "rl",
+   "channel": "openai_rss",
+   "relevanceScore": 53.2,
+   "depthScore": 47.31,
+   "url": "https://openai.com/index/helping-small-businesses-put-ai-to-work",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 23.94,
+    "content": 3.3400000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "93fd45570461f7fb",
+   "title": "Introducing MentalHealthBench",
+   "category": "paper",
+   "channel": "openai_rss",
+   "relevanceScore": 52.1,
+   "depthScore": 47.28,
+   "url": "https://openai.com/index/introducing-mentalhealthbench",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 23.445,
+    "content": 2.8,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "53344f20223a19bc",
+   "title": "The Lenfest Institute grows landmark program with expanded OpenAI support",
+   "category": "rl",
+   "channel": "openai_rss",
+   "relevanceScore": 53.0,
+   "depthScore": 47.16,
+   "url": "https://openai.com/index/lenfest-ai-collaborative-expansion",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 23.85,
+    "content": 3.28,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "03bb131a7ca0f08b",
+   "title": "How we will do better for Australia",
+   "category": "rl",
+   "channel": "openai_rss",
+   "relevanceScore": 52.8,
+   "depthScore": 46.98,
+   "url": "https://openai.com/index/how-we-will-do-better-for-australia",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 23.759999999999998,
+    "content": 3.18,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "58df9168468cf02e",
+   "title": "OpenAI extends cyber access to Ukraine for civilian defense",
+   "category": "rl",
+   "channel": "openai_rss",
+   "relevanceScore": 51.9,
+   "depthScore": 46.15,
+   "url": "https://openai.com/index/openai-extends-cyber-access-to-ukraine-for-civilian-defense",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 23.355,
+    "content": 2.7199999999999998,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "1b03c94e71f218a7",
+   "title": "Language, Imitation and Creativity : Dialogic Resonance in Grammar and Pragmatics",
+   "category": "trend",
+   "channel": "s2",
+   "relevanceScore": 52.5,
+   "depthScore": 43.39,
+   "url": "https://openalex.org/W7171751349",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 23.625,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "367e17bfa5e19024",
+   "title": "9.26 中国电信-计算机类笔试",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 59.4,
+   "depthScore": 42.17,
+   "url": "https://nowcoder.com/discuss/933320824260427776",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.73,
+    "content": 0.44,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "040ac851698f9ed8",
+   "title": "27届大疆面试凉经+1，今年秋招太难了......",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.0,
+   "depthScore": 41.29,
+   "url": "https://nowcoder.com/discuss/934744716044664832",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.95,
+    "content": 3.3400000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "a269d242962e0bae",
+   "title": "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.0,
+   "depthScore": 41.29,
+   "url": "https://nowcoder.com/discuss/935191455750946816",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.95,
+    "content": 3.3400000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "52e617684045fc77",
+   "title": "（诺瓦星云）双非硕秋招实录！9 月斩获 4 份嵌入式开发 offer，面经连载中",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.0,
+   "depthScore": 41.19,
+   "url": "https://nowcoder.com/discuss/935200647861792768",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.95,
+    "content": 3.2399999999999998,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "08c13c3679a12cac",
+   "title": "(秋招) 9.16 字节中交广 - 交易与广告业务 - AI全栈开发工程师",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 38.44,
+   "url": "https://nowcoder.com/discuss/932587389027962880",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 0.44,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "0dbbc1be350a9669",
+   "title": "27届软件工程关于我的大学三年",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 38.44,
+   "url": "https://nowcoder.com/discuss/934831064369942528",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 0.44,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "153213a1b791c02b",
+   "title": "字节跳动 AI数据运营实习生（自动化方向）-AI数据与安全 一面面经",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 38.44,
+   "url": "https://nowcoder.com/discuss/932604724463882240",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 0.44,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "19faf28d880171cf",
+   "title": "家人们，秋招貌似迎来转机！！！",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 38.44,
+   "url": "https://nowcoder.com/discuss/934397413215731712",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 0.44,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "2ecb5586eb60e90a",
+   "title": "计算机专业去做智驾，到底能干什么？",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 38.44,
+   "url": "https://nowcoder.com/discuss/932591058599280640",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 0.44,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "de562cfcf11aa64e",
+   "title": "EvoDuet: Bilevel Co-Evolution of Web Searching and Task Solving for Scientific Discovery",
+   "category": "trend",
+   "channel": "hf_papers",
+   "relevanceScore": 53.2,
+   "depthScore": 38.17,
+   "url": "https://huggingface.co/papers/2609.40340",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 23.94,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "2ca8c6b88fd1dcdf",
+   "title": "debpalash/VoiceStudio - VoiceStudio is the open-source, fully-local ElevenLabs alternative — voice cloning, voice design, video dubbing, dictation, transcription & audiobook creation in 646 languages.",
+   "category": "trend",
+   "channel": "gh_trending",
+   "relevanceScore": 65.4,
+   "depthScore": 37.4,
+   "url": "https://github.com/debpalash/VoiceStudio",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.430000000000003,
+    "content": 3.52,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "e6171b12b44b3aee",
+   "title": "LANTERN: Illuminating Hidden Mathematical Knowledge in Language Models",
+   "category": "job",
+   "channel": "hf_papers",
+   "relevanceScore": 47.1,
+   "depthScore": 36.96,
+   "url": "https://huggingface.co/papers/2609.32264",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 21.195,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "51de29aa6be4a013",
+   "title": "全球开源前二，阶跃终于回来了",
+   "category": "trend",
+   "channel": "leiphone",
+   "relevanceScore": 64.7,
+   "depthScore": 36.75,
+   "url": "https://leiphone.com/category/yanxishe/LjT1ojuhnJ3pBvu4.html",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.115000000000002,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "e82ba51d6a4c33e2",
+   "title": "mbzuai-oryx/Awesome-LLM-Post-training - Awesome Reasoning LLM Tutorial/Survey/Guide",
+   "category": "course",
+   "channel": "github",
+   "relevanceScore": 50.1,
+   "depthScore": 33.12,
+   "url": "https://github.com/mbzuai-oryx/Awesome-LLM-Post-training",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.545,
+    "content": 2.84,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "834c065236f88841",
+   "title": "UltraInstinctVR: A Model-Based Tool for Automated System Testing of VR Applications",
+   "category": "job",
+   "channel": "s2",
+   "relevanceScore": 57.1,
+   "depthScore": 32.11,
+   "url": "https://doi.org/10.1145/3832783.3834642",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 25.695,
+    "content": 0.44,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "e03350ce8cc3adf9",
+   "title": "Sam Altman’s remarks at the United Nations Security Council",
+   "category": "job",
+   "channel": "openai_rss",
+   "relevanceScore": 52.0,
+   "depthScore": 26.53,
+   "url": "https://openai.com/index/sam-altman-un-security-council-remarks",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 23.400000000000002,
+    "content": 2.76,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "f32b36ee07ec60ba",
+   "title": "微信小店-高级风控算法工程师",
+   "category": "job",
+   "channel": "jobs_tencent",
+   "relevanceScore": 62.7,
+   "depthScore": 25.28,
+   "url": "http://careers.tencent.com/jobdesc.html?postId=2077293039302393856",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 28.215000000000003,
+    "content": 3.3799999999999994,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "05fcd1723c34ab79",
+   "title": "微信小店-推荐算法工程师",
+   "category": "job",
+   "channel": "jobs_tencent",
+   "relevanceScore": 60.5,
+   "depthScore": 23.67,
+   "url": "http://careers.tencent.com/jobdesc.html?postId=1936827400029601792",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 27.225,
+    "content": 2.3600000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "d821c97b149a0920",
+   "title": "QQ-高级算法工程师",
+   "category": "job",
+   "channel": "jobs_tencent",
+   "relevanceScore": 53.0,
+   "depthScore": 23.26,
+   "url": "http://careers.tencent.com/jobdesc.html?postId=2044968720287297536",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 23.85,
+    "content": 5.219999999999999,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 0.0
+   }
+  }
+ ],
+ "skimSample": [
+  {
+   "id": "a97194c18ca5df10",
+   "title": "Algorithmic Justice and Responsible AI Journalism: A Comparative Communication Policy Pers",
+   "category": "course",
+   "rule": "category-mismatch",
+   "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
+  },
+  {
+   "id": "b6c9d82bc1b6edb2",
+   "title": "byoungd/up - An advanced guide which might benefit you a lot 🎉 . 韩先凯的人生进阶指南 人生进阶指南 离谱的人生 人",
+   "category": "course",
+   "rule": "category-mismatch",
+   "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
+  },
+  {
+   "id": "70b020327d7ac379",
+   "title": "Development of a biomarker-guided chemotherapy response model using combined CEA and CA19-",
+   "category": "course",
+   "rule": "category-mismatch",
+   "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
+  },
+  {
+   "id": "cf46aa443a01dd26",
+   "title": "NATURAL LANGUAGE PROCESSING PARSER TECHNIQUE FOR DOCUMENT CRACKING AND INFORMATION EXTRACT",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "91a727f163388b46",
+   "title": "FIREWALL: A surrogate model for the rapid assessment of tokamak wall loading and melting b",
+   "category": "exam",
+   "rule": "category-mismatch",
+   "why": "看起来不是笔试题（缺少面试/手撕/LeetCode/真题等标志）"
+  },
+  {
+   "id": "44bfa5cd4d38d970",
+   "title": "RL-Guided PAC-NMPC for Probabilistically-Safe Perception-Based Navigation in Unknown Envir",
+   "category": "course",
+   "rule": "category-mismatch",
+   "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
+  },
+  {
+   "id": "3a82e4cb52188848",
+   "title": "High velocity dust grains produced by a supernova explosion",
+   "category": "exam",
+   "rule": "category-mismatch",
+   "why": "看起来不是笔试题（缺少面试/手撕/LeetCode/真题等标志）"
+  },
+  {
+   "id": "3eb31e4ba48e3956",
+   "title": "Introducing dots",
+   "category": "exam",
+   "rule": "category-mismatch",
+   "why": "看起来不是笔试题（缺少面试/手撕/LeetCode/真题等标志）"
+  },
+  {
+   "id": "faf10d087cfb6e85",
+   "title": "Dating the Model: Hidden Dates in System Prompts Affect LLM Evaluation",
+   "category": "exam",
+   "rule": "category-mismatch",
+   "why": "看起来不是笔试题（缺少面试/手撕/LeetCode/真题等标志）"
+  },
+  {
+   "id": "72fbe46b74bb5d67",
+   "title": "Advisory Group on Mathematics and Artificial Intelligence",
+   "category": "course",
+   "rule": "category-mismatch",
+   "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
+  },
+  {
+   "id": "6861811bce9fd459",
+   "title": "Towards safety cases for frontier AI training",
+   "category": "course",
+   "rule": "category-mismatch",
+   "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
+  },
+  {
+   "id": "b4b07c88825ecc6b",
+   "title": "9月也快结束了 ，然后9月初才结束差不多三个月的出差,也就是几个月没回去了，前几天中秋节回家了一趟待来几天，给老妈发了几百的过节费，给老爸买了两条烟，然后又去外婆家买了一些过节的礼",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "e0f0f37b2f8a4080",
+   "title": "面试官：\"介绍一下你怎么排查 CPU 飙高的线上问题的？\"",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "5f47316656dd4eeb",
+   "title": "分享｜5年Java面字节，虚拟线程和GraalVM深挖，三面终于OC",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "7c37d4c2e1e684be",
+   "title": "springboot启动时会自动读取环境变量的配置吗",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "646008786510a2fb",
+   "title": "面试官：“讲一下你怎么把接口性能从15.8秒优化到 300毫秒的？”",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "d14b627ecdbfa61d",
+   "title": "面试结束之后，面试官是怎么判断你过不过的？",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "9a637541b375fbc2",
+   "title": "今天来看一份27届安徽理工大学后端开发岗简历",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "9af39f84a7cf3012",
+   "title": "Proaction boosts sales 60% and saves 75+ hours with Codex",
+   "category": "exam",
+   "rule": "category-mismatch",
+   "why": "看起来不是笔试题（缺少面试/手撕/LeetCode/真题等标志）"
+  },
+  {
+   "id": "315f21535a1316d4",
+   "title": "Open TTS Leaderboard: Scalable Evaluation for Multilingual Text-to-Speech and Voice Clonin",
+   "category": "exam",
+   "rule": "category-mismatch",
+   "why": "看起来不是笔试题（缺少面试/手撕/LeetCode/真题等标志）"
+  },
+  {
+   "id": "1a5f406b2892f397",
+   "title": "The Open ASR Leaderboard Adds Its First Global South Language",
+   "category": "exam",
+   "rule": "category-mismatch",
+   "why": "看起来不是笔试题（缺少面试/手撕/LeetCode/真题等标志）"
+  },
+  {
+   "id": "57dd2eb9b69a82c9",
+   "title": "uncbiag/Awesome-Foundation-Models - A curated list of foundation models for vision and lan",
+   "category": "course",
+   "rule": "category-mismatch",
+   "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
+  }
+ ],
+ "skimByRule": {
+  "category-mismatch": 22
+ }
+}
