@@ -17,7 +17,7 @@
  *   §2  UTIL             escape/markdown/date/dom helpers
  *   §3  STATE            central reactive state + localStorage persistence
  *   §4  STORE            the ONLY place that knows the data-layer file layout
- *   §5  THEME            palette + accent + density application
+ *   §5  THEME            palette + accent application
  *   §6  TOAST            transient notifications
  *   §7  PALETTE          Ctrl-K command palette / global search
  *   §8  ROUTER           hash router
@@ -879,9 +879,10 @@ function hostOf(u) {
 const LS_KEY = 'future.workbench.v1';
 
 const DEFAULT_PREFS = {
-  theme: 'midnight',
-  accent: 'blue',
-  density: 'comfortable',
+  // 暖砂纸 (warm sandpaper) is the default: a low-glare warm light theme that is
+  // comfortable for long reading sessions, which is what this workbench is for.
+  theme: 'sand',
+  accent: 'amber',
   reducedMotion: false,
   showAside: true,
   digestGroup: 'day',      // 'day' | 'category'
@@ -1454,14 +1455,18 @@ function groupByDay(items) {
     .map(([day, list]) => ({ day, items: list.sort((a, b) => b.relevance - a.relevance) }));
 }
 
-/* ======================== §5 THEME / DENSITY ============================ */
+/* ============================== §5 THEME ================================ */
 
 function applyPrefs() {
   const p = state.prefs;
   const root = document.documentElement;
-  root.dataset.theme = p.theme || 'midnight';
-  root.dataset.accent = p.accent || 'blue';
-  root.dataset.density = p.density || 'comfortable';
+  root.dataset.theme = p.theme || 'sand';
+  root.dataset.accent = p.accent || 'amber';
+  // NOTE: there is deliberately NO `data-density`. The density setting was
+  // removed because nothing ever read it - no CSS rule targeted
+  // `[data-density]`, so the 舒适/紧凑 toggle had zero visual effect and was
+  // purely decorative. Keeping a control that does nothing is worse than not
+  // offering it.
   root.dataset.motion = p.reducedMotion ? 'reduced' : 'full';
   const theme = THEMES.find((t) => t.id === p.theme);
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -1476,11 +1481,6 @@ function setTheme(id) {
 }
 
 function setAccent(id) { state.prefs.accent = id; applyPrefs(); saveUser(); }
-function setDensity(d) {
-  state.prefs.density = d;
-  applyPrefs(); saveUser();
-  $$('#density-switch button').forEach((b) => b.classList.toggle('is-on', b.dataset.density === d));
-}
 
 function toggleThemeKind() {
   const cur = THEMES.find((t) => t.id === state.prefs.theme) || THEMES[0];
@@ -1505,7 +1505,7 @@ function toast(message, kind = 'ok', ms = 3200) {
   }, ms);
 }
 
-/* ===== ui.part.js — 647 lines ===== */
+/* ===== ui.part.js — 641 lines ===== */
 
 /* ============================================================================
  * Future · 求职学习工作台 — ui.js (part 1b)
@@ -1550,10 +1550,6 @@ function openThemePopover(anchor) {
       <label class="row" style="justify-content:space-between;font-size:var(--fs-2xs);cursor:pointer">
         <span>减少动画</span>
         <span class="switch" role="switch" tabindex="0" aria-checked="${p.reducedMotion}" data-act="toggle-motion"></span>
-      </label>
-      <label class="row" style="justify-content:space-between;font-size:var(--fs-2xs);cursor:pointer">
-        <span>紧凑密度</span>
-        <span class="switch" role="switch" tabindex="0" aria-checked="${p.density === 'compact'}" data-act="toggle-density"></span>
       </label>
     </div>`;
 
@@ -1950,7 +1946,6 @@ const ACTIONS = {
   'set-theme': (t) => { setTheme(t.dataset.themeId); closePopover(); openThemePopover($('#btn-theme')); },
   'set-accent': (t) => { setAccent(t.dataset.accentId); closePopover(); openThemePopover($('#btn-theme')); },
   'toggle-motion': () => { state.prefs.reducedMotion = !state.prefs.reducedMotion; applyPrefs(); saveUser(); if (popoverNode) { closePopover(); openThemePopover($('#btn-theme')); } },
-  'toggle-density': () => { setDensity(state.prefs.density === 'compact' ? 'comfortable' : 'compact'); if (popoverNode) { closePopover(); openThemePopover($('#btn-theme')); } },
 
   'close-palette': () => closePalette(),
   'open-palette': () => openPalette(),
@@ -2126,7 +2121,6 @@ function installShell() {
   $('#btn-print').addEventListener('click', () => window.print());
   $('#drawer-close').addEventListener('click', closeDrawer);
   $('#scrim').addEventListener('click', closeDrawer);
-  $$('#density-switch button').forEach((b) => b.addEventListener('click', () => setDensity(b.dataset.density)));
 
   document.addEventListener('click', (e) => {
     const link = e.target.closest('[data-route]');
@@ -2154,7 +2148,7 @@ function installShell() {
   }, 260));
 }
 
-/* ===== views.part.js — 690 lines ===== */
+/* ===== views.part.js — 705 lines ===== */
 
 /* ============================================================================
  * Future · 求职学习工作台 — views.js (part 2)
@@ -2427,7 +2421,7 @@ const DashboardView = {
       <span class="hero-eyebrow"><span class="pulse"></span> 上海时间 ${esc(shanghaiNow().toLocaleString('zh-CN', { hour12: false }))} · 数据更新于 ${esc(m.lastRunAt ? relTime(m.lastRunAt) : '尚未采集')}</span>
       <h1>${greeting()}，今天把<em>信息差</em>变成<em>竞争力</em></h1>
       <p>面向 <b>多模态算法 / Post-training / 生成式模型 / 世界模型</b> 方向的结构化情报与学习系统。
-      每日上海时间 **20:00**** 自动联网调研，把散落在 arXiv、GitHub、牛客、各厂招聘官网的信息，整理成可执行的下一步。</p>
+      每日上海时间 <b>20:00</b> 自动联网调研，把散落在 arXiv、GitHub、牛客、各厂招聘官网的信息，整理成可执行的下一步。</p>
 
       <div class="hero-stats">
         <div class="stat"><span class="stat-val tnum">${state.items.length}<small>条</small></span><span class="stat-key">知识卡片</span>
@@ -2499,11 +2493,13 @@ const DashboardView = {
           <div class="panel-body" style="padding:0">
             ${state.jobs.length ? `<div class="mini-list">
               ${activeJobs.slice(0, 6).map((j) => `
-                <button class="mini-item" style="width:100%;text-align:left" data-act="open-job" data-id="${attr(j.id)}">
-                  <span class="tier" data-tier="${attr(j.tier)}">${esc(j.tier)}</span>
-                  <span class="t" style="font-weight:600;color:var(--fg-0)">${esc(j.company)}</span>
-                  <span class="t text-2" style="flex:2">${esc(j.directions.slice(0, 3).join(' · ') || j.title)}</span>
-                  <span class="n" style="color:var(--ok);font-weight:640">${esc(j.pay || '面议')}</span>
+                <button class="mini-item job-mini" style="width:100%;text-align:left" data-act="open-job" data-id="${attr(j.id)}">
+                  <span class="job-mini-head">
+                    <span class="tier" data-tier="${attr(j.tier)}">${esc(j.tier)}</span>
+                    <span class="job-mini-name">${esc(j.company)}</span>
+                  </span>
+                  <span class="job-mini-dirs">${esc(j.directions.slice(0, 3).map(dirZh).join(' · ') || j.title)}</span>
+                  <span class="job-mini-pay" data-tip="${attr(j.pay || '面议')}">${esc(j.pay || '面议')}</span>
                 </button>`).join('')}
             </div>
             <div style="padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line-0);display:flex;gap:var(--sp-4);flex-wrap:wrap">
@@ -2541,17 +2537,30 @@ const DashboardView = {
         </div>
 
         <div class="panel">
-          <div class="panel-head"><div class="panel-title">${icon('i-grid')} 分类分布</div></div>
+          <div class="panel-head"><div class="panel-title">${icon('i-grid')} 分类分布</div>
+            <span class="result-line" style="margin-left:auto">共 ${state.items.length} 条</span></div>
           <div class="panel-body">
-            <div class="donut-wrap">
-              ${ring(s.pct, 76, 8, null, `${Math.round(s.pct)}%`)}
-              <div class="legend">
-                ${CATEGORIES.filter((c) => catCounts.get(c.id)).slice(0, 6).map((c) => `
-                  <div class="legend-item" data-cat="${c.id}">
+            <!-- This panel is about category DISTRIBUTION. It previously also showed
+                 a ring chart of learning progress, whose centre read "0%" (nothing
+                 marked mastered yet) under a heading about categories - misleading,
+                 and it squeezed the legend into a narrow column. The legend now
+                 gets the full width and lists every non-empty category. -->
+            <div class="legend legend-block">
+              ${(() => {
+                const rows = CATEGORIES.filter((c) => catCounts.get(c.id));
+                if (!rows.length) return '<span class="legend-item">暂无数据</span>';
+                const max = Math.max(...rows.map((c) => catCounts.get(c.id)));
+                return rows.map((c) => {
+                  const n = catCounts.get(c.id);
+                  const pct = Math.round((n / max) * 100);
+                  return `<div class="legend-item" data-cat="${c.id}">
                     <span class="legend-swatch" style="background:${c.color}"></span>
-                    <span class="truncate">${esc(c.zh)}</span><span class="lv">${catCounts.get(c.id)}</span>
-                  </div>`).join('') || '<span class="legend-item">暂无数据</span>'}
-              </div>
+                    <span class="legend-name truncate">${esc(c.zh)}</span>
+                    <span class="legend-bar"><i style="width:${pct}%;background:${c.color}"></i></span>
+                    <span class="lv">${n}</span>
+                  </div>`;
+                }).join('');
+              })()}
             </div>
             <button class="btn btn-sm" style="width:100%;margin-top:var(--sp-4)" data-route="#/categories">查看全部分类</button>
           </div>
@@ -2846,7 +2855,7 @@ const KnowledgeView = {
   after() { wireSortSelect(); wireItemKeyboard(); },
 };
 
-/* ===== views2.part.js — 1797 lines ===== */
+/* ===== views2.part.js — 1796 lines ===== */
 
 /* ============================================================================
  * Future · 求职学习工作台 — views2.js (part 3)
@@ -4629,7 +4638,6 @@ function boot() {
 
   installShell();
   installKeyboard();
-  $$('#density-switch button').forEach((b) => b.classList.toggle('is-on', b.dataset.density === state.prefs.density));
 
   Store.boot().then(() => {
     if (!location.hash) history.replaceState(null, '', '#/dashboard');

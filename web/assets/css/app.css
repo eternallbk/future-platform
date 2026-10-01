@@ -20,6 +20,11 @@
   height: 100dvh;
   max-width: var(--content-max);
   margin-inline: auto;
+  /* `overflow-x: clip` contains any accidental horizontal overflow from a child
+     without creating a scroll container (unlike `hidden`, which would make this
+     an ancestor that clips absolutely-positioned popovers). Measured: a 4px
+     overflow here previously escaped to the viewport. */
+  overflow-x: clip;
 }
 
 /* --- Topbar -------------------------------------------------------------- */
@@ -191,9 +196,20 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
+  width: var(--aside-w);
   border-left: 1px solid var(--line-0);
   background: var(--bg-1);
+  /* Long unbroken strings (Chinese titles with no spaces, URLs, SHA hashes)
+     could previously force the rail wider than its column. `anywhere` lets them
+     break instead of pushing the layout out of view. */
+  overflow-wrap: anywhere;
 }
+/* The aside hosts lists whose rows are built from user/data-derived text of
+   arbitrary length. These two rules are the general guard: grid/flex children may
+   shrink below their content size, and long words wrap rather than overflow. */
+.aside .panel, .aside .mini-list, .aside .mini-item { min-width: 0; max-width: 100%; }
+.aside .kv dd, .aside .kv dt { min-width: 0; overflow-wrap: anywhere; }
 
 /* ==========================================================================
    2. PRIMITIVES
@@ -892,6 +908,26 @@ select.select {
   overflow-x: auto;
 }
 .math-source code { font-size: var(--fs-2xs); color: var(--accent-hi); white-space: nowrap; }
+
+/* Topbar actions -----------------------------------------------------------------
+   `#btn-refresh` measured 75px of content in a 31px box, which pushed the whole
+   header 4px past the viewport. The cause was NOT the buttons: the search trigger
+   `.cmd-trigger` has `flex: 1 1 auto`, so it consumed the free space and squeezed
+   `.topbar-actions` down to 97px. The buttons then shrank below their content
+   because nothing set `flex-shrink: 0` on them.
+   Fix: the action group keeps its intrinsic size and never shrinks; the search
+   trigger is the one flexible element and is allowed to shrink.
+   -------------------------------------------------------------------------------- */
+.topbar-actions { min-width: 0; flex: 0 0 auto; flex-wrap: nowrap; }
+.topbar-actions > .btn { min-width: 0; flex: 0 0 auto; }
+.topbar-actions > .btn > svg { flex: 0 0 auto; }
+.topbar-actions > .btn > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmd-trigger { min-width: 0; }
+@media (max-width: 1240px) {
+  /* Drop the word rather than squeeze it into "刷…": the icon still reads clearly. */
+  .topbar-actions > .btn > span { display: none; }
+  .topbar-actions > .btn { padding: 0 var(--sp-2); }
+}
 .math-source .icon-btn { margin-left: auto; flex: 0 0 auto; }
 .sym-table { display: grid; grid-template-columns: max-content 1fr; gap: 6px var(--sp-4); align-items: baseline; }
 .sym-table dt {
@@ -1326,6 +1362,21 @@ table.tbl td.num, table.tbl th.num { text-align: right; font-variant-numeric: ta
 /* --- Aside blocks ------------------------------------------------------ */
 .aside-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-4); }
 
+/* Category legend used inside the dashboard aside: name, proportional bar, count.
+   A bar makes the distribution readable at a glance in a narrow column, which the
+   previous donut-plus-two-column layout could not do. */
+.legend-block { display: flex; flex-direction: column; gap: 7px; }
+.legend-block .legend-item {
+  display: grid; grid-template-columns: 8px minmax(0, 6.5em) minmax(0, 1fr) auto;
+  align-items: center; gap: var(--sp-2); font-size: var(--fs-3xs); color: var(--fg-1);
+}
+.legend-block .legend-name { min-width: 0; }
+.legend-block .legend-bar {
+  height: 5px; border-radius: var(--r-pill); background: var(--bg-4); overflow: hidden;
+}
+.legend-block .legend-bar > i { display: block; height: 100%; border-radius: var(--r-pill); }
+.legend-block .lv { font-variant-numeric: tabular-nums; color: var(--fg-2); font-weight: 620; }
+
 .mini-list { display: flex; flex-direction: column; }
 .mini-item {
   display: flex; align-items: center; gap: var(--sp-3);
@@ -1339,6 +1390,49 @@ table.tbl td.num, table.tbl th.num { text-align: right; font-variant-numeric: ta
 .mini-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cat, var(--fg-3)); flex: 0 0 auto; }
 .mini-item .t { flex: 1 1 auto; min-width: 0; color: var(--fg-1); }
 .mini-item .n { flex: 0 0 auto; color: var(--fg-3); font-variant-numeric: tabular-nums; font-size: var(--fs-3xs); }
+
+/* --- Job rows inside the dashboard aside ---------------------------------
+   The previous version was a single flex line: tier | company | directions |
+   pay. Job pay/notes strings in jobs.json run to 200+ characters (they are
+   media-reported salary ranges), and with `flex: 2` on the directions cell plus
+   no max-width anywhere, the row grew wider than its column. Because the parent
+   used `overflow-x: hidden`, the excess was simply cut off and every cell wrapped
+   into a tall pile of fragments - the layout seen in the reported screenshot.
+
+   Fix strategy, in order of importance:
+     1. a GRID with minmax(0, 1fr) so children can shrink below content width
+     2. `.job-mini-pay` clamped to 2 lines plus a tooltip carrying the full text
+     3. `overflow-wrap: anywhere` so a long unbroken string cannot force width
+   The component now has a fixed two-line footprint per job regardless of how
+   verbose the underlying pay text is.
+   -------------------------------------------------------------------------- */
+.job-mini {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head head"
+    "dirs pay";
+  align-items: center;
+  gap: 2px var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+}
+.job-mini-head { grid-area: head; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.job-mini-name {
+  font-weight: 640; color: var(--fg-0); font-size: var(--fs-xs);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.job-mini-dirs {
+  grid-area: dirs; min-width: 0; color: var(--fg-3);
+  font-size: var(--fs-3xs); line-height: var(--lh-snug);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere;
+}
+.job-mini-pay {
+  grid-area: pay; max-width: 11em; text-align: right;
+  color: var(--ok); font-weight: 640; font-size: var(--fs-3xs);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere;
+}
 
 .heat { display: grid; grid-template-columns: repeat(auto-fill, 11px); gap: 3px; }
 .heat-cell { width: 11px; height: 11px; border-radius: 2.5px; background: var(--bg-4); }
@@ -1367,6 +1461,31 @@ table.tbl td.num, table.tbl th.num { text-align: right; font-variant-numeric: ta
 .status-line .ok { color: var(--ok); }
 .status-line .warn { color: var(--warn); }
 .status-line .err { color: var(--err); }
+
+/* The rail footer status strip is a flex row: icon + label + "43 分钟前" + "14/24".
+   Measured with scripts/audit-layout.mjs at 1100px it overflowed its 239px rail by
+   40px. The cause is specific and easy to miss: a flex child's default
+   `min-width: auto` resolves to its CONTENT width, so neither the label nor the
+   "1/1" chip could shrink below ~50px, and the row ended up 247px inside a 207px
+   box. Setting `min-width: 0` on the children is what actually allows the row to
+   fit; `overflow: hidden` alone only clips. */
+.rail-foot { flex: 0 0 auto; min-width: 0; padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--line-0); }
+#rail-status {
+  min-width: 0; max-width: 100%;
+  display: flex; flex-wrap: nowrap; align-items: center;
+  overflow: hidden;
+}
+#rail-status > * { min-width: 0; }
+#rail-status > svg { flex: 0 0 auto; }
+/* The label is the flexible element: it truncates so the timestamp and the
+   channel-ratio chip always stay fully visible. The timestamp keeps its
+   `margin-left: auto` so short labels still push it to the right edge, but it is
+   capped so a long relative time ("43 分钟前") cannot itself cause overflow. */
+#rail-status > span:not(.tnum) {
+  flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#rail-status > span[data-tip="最近一次采集"] { flex: 0 1 auto; max-width: 6.5em; }
+#rail-status > span.tnum { flex: 0 0 auto; white-space: nowrap; }
 
 /* --- Tabs -------------------------------------------------------------- */
 .tabs { display: flex; align-items: center; gap: var(--sp-1); border-bottom: 1px solid var(--line-0); margin-bottom: var(--sp-4); overflow-x: auto; }
@@ -1406,7 +1525,16 @@ table.tbl td.num, table.tbl th.num { text-align: right; font-variant-numeric: ta
    4. RESPONSIVE
    ========================================================================= */
 @media (max-width: 1400px) {
-  :root { --rail-w: 240px; }
+  :root { --rail-w: 240px; --aside-w: 320px; }
+}
+
+/* Between the tablet breakpoint and full desktop the aside was squeezed to
+   `minmax(210px, 1fr)` of a two-column dashboard, which is far too narrow for
+   its content (job rows, health key/values, category legend) and produced badly
+   wrapped text. 1180px is where the dashboard already collapses to one column,
+   so widening the floor here costs nothing. */
+@media (max-width: 1280px) {
+  :root { --aside-w: 300px; }
 }
 
 @media (max-width: 1180px) {
@@ -1457,3 +1585,4 @@ table.tbl td.num, table.tbl th.num { text-align: right; font-variant-numeric: ta
   .card, .panel, .formula { break-inside: avoid; border-color: #ccc; }
   .hero::after { display: none; }
 }
+

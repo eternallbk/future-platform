@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-01T21:08:21+08:00",
+ "generatedAt": "2026-10-01T22:56:30+08:00",
  "generatedBy": "plan_deep_read.py",
  "policy": {
   "perCategoryMin": 2,
@@ -26,10 +26,10 @@
   ]
  },
  "totals": {
-  "corpus": 512,
+  "corpus": 526,
   "alreadyEnriched": 19,
-  "candidates": 493,
-  "skimmed": 22,
+  "candidates": 507,
+  "skimmed": 47,
   "selected": 103,
   "categories": 13
  },
@@ -37,13 +37,13 @@
   "agent": {
    "quota": 7,
    "picked": 7,
-   "candidates": 124,
+   "candidates": 125,
    "categoryWeight": 0.6
   },
   "coding": {
    "quota": 10,
    "picked": 10,
-   "candidates": 34,
+   "candidates": 16,
    "categoryWeight": 1.0
   },
   "course": {
@@ -61,7 +61,7 @@
   "foundation": {
    "quota": 8,
    "picked": 8,
-   "candidates": 12,
+   "candidates": 13,
    "categoryWeight": 0.7
   },
   "generative": {
@@ -79,25 +79,25 @@
   "multimodal": {
    "quota": 10,
    "picked": 10,
-   "candidates": 45,
+   "candidates": 47,
    "categoryWeight": 1.0
   },
   "paper": {
    "quota": 10,
    "picked": 10,
-   "candidates": 12,
+   "candidates": 13,
    "categoryWeight": 0.95
   },
   "posttraining": {
    "quota": 10,
    "picked": 10,
-   "candidates": 65,
+   "candidates": 66,
    "categoryWeight": 1.0
   },
   "rl": {
    "quota": 9,
    "picked": 9,
-   "candidates": 14,
+   "candidates": 15,
    "categoryWeight": 0.9
   },
   "trend": {
@@ -673,6 +673,24 @@
    }
   },
   {
+   "id": "c08ec69a3de0ff45",
+   "title": "Soft Spatial Reasoning",
+   "category": "multimodal",
+   "channel": "hf_papers",
+   "relevanceScore": 70.6,
+   "depthScore": 71.77,
+   "url": "https://huggingface.co/papers/2609.38717",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 31.77,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "657ce65bbfd1b65f",
    "title": "DYNAMICS OF PORTFOLIO ASSESSMENT STRATEGY IN EVALUATING THE ENGLISH LANGUAGE SKILLS FOR PUPILS WITH HEARING IMPAIRMENTS IN FAKO DIVISION, SOUTH WEST REGION OF CAMEROON",
    "category": "generative",
@@ -827,24 +845,6 @@
    "hasSummary": true,
    "scoreBreakdown": {
     "relevance": 29.340000000000003,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "0168f52ec886ea9c",
-   "title": "MemLife: Curating and Reasoning over Long-Term Egocentric Video Memories",
-   "category": "multimodal",
-   "channel": "arxiv",
-   "relevanceScore": 65.1,
-   "depthScore": 69.3,
-   "url": "https://arxiv.org/abs/2609.40195v1",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 29.294999999999998,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -1231,6 +1231,24 @@
    }
   },
   {
+   "id": "06aeb2509b595d9c",
+   "title": "Removing Timing Shortcuts Improves Non-Invasive Brain-to-Text",
+   "category": "paper",
+   "channel": "hf_papers",
+   "relevanceScore": 55.1,
+   "depthScore": 63.5,
+   "url": "https://huggingface.co/papers/2609.40359",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 24.795,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "dd3ee83684a019cf",
    "title": "langchain4j/langchain4j - LangChain4j is an idiomatic, open-source Java library for building LLM-powered applications on the JVM. It offers a unified API over popular LLM providers and vector stores, and makes implementing tool calling (including MCP support), agents and RAG easy. It integrates seamlessly with enterprise Java frameworks like Quarkus and Spring Boot.",
    "category": "agent",
@@ -1295,6 +1313,24 @@
    "hasSummary": true,
    "scoreBreakdown": {
     "relevance": 28.980000000000004,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "171b76b97d2612ff",
+   "title": "Label-free steering: Compressing test-time reinforcement learning into bias-only subspaces",
+   "category": "rl",
+   "channel": "hf_papers",
+   "relevanceScore": 50.5,
+   "depthScore": 60.22,
+   "url": "https://huggingface.co/papers/2609.18587",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.725,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -1411,6 +1447,24 @@
    }
   },
   {
+   "id": "fecb76418bb791ae",
+   "title": "How Much Is an AI Token Worth? Scaling Laws for Wild AI-Generated Web Text",
+   "category": "foundation",
+   "channel": "hf_papers",
+   "relevanceScore": 54.6,
+   "depthScore": 56.82,
+   "url": "https://huggingface.co/papers/2609.40295",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 24.57,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "8a60bc7ca8f1e1b9",
    "title": "dromara/Omega-AI - Omega-AI is a Java-based deep learning framework that helps you quickly build neural networks for inference and training. Its engine supports automatic differentiation, multithreading, and GPU acceleration with CUDA and cuDNN.",
    "category": "engineering",
@@ -1457,24 +1511,6 @@
    "hasSummary": true,
    "scoreBreakdown": {
     "relevance": 25.425,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "c3cf36c4c3c1ec3b",
-   "title": "世界制造业大会丨国轩高科重磅发布低空飞行高功率电池等三大创新成果",
-   "category": "foundation",
-   "channel": "leiphone",
-   "relevanceScore": 56.4,
-   "depthScore": 51.37,
-   "url": "https://leiphone.com/category/industrynews/DOdBNcP5frSITM4c.html",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 25.38,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -1537,24 +1573,6 @@
    }
   },
   {
-   "id": "93fd45570461f7fb",
-   "title": "Introducing MentalHealthBench",
-   "category": "paper",
-   "channel": "openai_rss",
-   "relevanceScore": 52.1,
-   "depthScore": 47.28,
-   "url": "https://openai.com/index/introducing-mentalhealthbench",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 23.445,
-    "content": 2.8,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
    "id": "53344f20223a19bc",
    "title": "The Lenfest Institute grows landmark program with expanded OpenAI support",
    "category": "rl",
@@ -1591,24 +1609,6 @@
    }
   },
   {
-   "id": "58df9168468cf02e",
-   "title": "OpenAI extends cyber access to Ukraine for civilian defense",
-   "category": "rl",
-   "channel": "openai_rss",
-   "relevanceScore": 51.9,
-   "depthScore": 46.15,
-   "url": "https://openai.com/index/openai-extends-cyber-access-to-ukraine-for-civilian-defense",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 23.355,
-    "content": 2.7199999999999998,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
    "id": "1b03c94e71f218a7",
    "title": "Language, Imitation and Creativity : Dialogic Resonance in Grammar and Pragmatics",
    "category": "trend",
@@ -1627,17 +1627,143 @@
    }
   },
   {
-   "id": "367e17bfa5e19024",
-   "title": "9.26 中国电信-计算机类笔试",
+   "id": "153213a1b791c02b",
+   "title": "字节跳动 AI数据运营实习生（自动化方向）-AI数据与安全 一面面经",
    "category": "coding",
    "channel": "nowcoder",
-   "relevanceScore": 59.4,
-   "depthScore": 42.17,
-   "url": "https://nowcoder.com/discuss/933320824260427776",
+   "relevanceScore": 51.1,
+   "depthScore": 41.34,
+   "url": "https://nowcoder.com/discuss/932604724463882240",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 26.73,
-    "content": 0.44,
+    "relevance": 22.995,
+    "content": 3.3400000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "3437847e7e173c9f",
+   "title": "27届华为面试凉经+1，今年秋招太难了......",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 41.34,
+   "url": "https://nowcoder.com/discuss/932994497917517824",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 3.3400000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "6e85217f7aeabd04",
+   "title": "快手 Feed 团队二面（25min）",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 41.34,
+   "url": "https://nowcoder.com/discuss/934110434167095296",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 3.3400000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "7db5e99d71d98229",
+   "title": "金9结束了 我的秋招还好吗？",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 41.34,
+   "url": "https://nowcoder.com/discuss/934080767628496896",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 3.3400000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "e57e1974a45388b9",
+   "title": "京东后端实习一二面面经（Offer）",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 41.34,
+   "url": "https://nowcoder.com/discuss/933060569995759616",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 3.3400000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "e642b13b2a0d9d5e",
+   "title": "【面经】字节/AI 应用工程师 一面挂经……",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 41.34,
+   "url": "https://nowcoder.com/discuss/933023499399024640",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 3.3400000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "ed3acbe06568ac16",
+   "title": "【干货预警-中行面经汇总】中国银行信息科技岗面经汇总（总行信息科技岗、中行软开）",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 41.34,
+   "url": "https://nowcoder.com/discuss/933073510845403136",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 3.3400000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "edfefc7dc6799d27",
+   "title": "得物Java开发工程师一面面经",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 41.34,
+   "url": "https://nowcoder.com/discuss/932614802113908736",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 3.3400000000000003,
     "code": 0.0,
     "peer": 0.0,
     "trust": 0.0,
@@ -1656,132 +1782,6 @@
    "scoreBreakdown": {
     "relevance": 22.95,
     "content": 3.3400000000000003,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "a269d242962e0bae",
-   "title": "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）",
-   "category": "coding",
-   "channel": "nowcoder",
-   "relevanceScore": 51.0,
-   "depthScore": 41.29,
-   "url": "https://nowcoder.com/discuss/935191455750946816",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 22.95,
-    "content": 3.3400000000000003,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "52e617684045fc77",
-   "title": "（诺瓦星云）双非硕秋招实录！9 月斩获 4 份嵌入式开发 offer，面经连载中",
-   "category": "coding",
-   "channel": "nowcoder",
-   "relevanceScore": 51.0,
-   "depthScore": 41.19,
-   "url": "https://nowcoder.com/discuss/935200647861792768",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 22.95,
-    "content": 3.2399999999999998,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "08c13c3679a12cac",
-   "title": "(秋招) 9.16 字节中交广 - 交易与广告业务 - AI全栈开发工程师",
-   "category": "coding",
-   "channel": "nowcoder",
-   "relevanceScore": 51.1,
-   "depthScore": 38.44,
-   "url": "https://nowcoder.com/discuss/932587389027962880",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 22.995,
-    "content": 0.44,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "0dbbc1be350a9669",
-   "title": "27届软件工程关于我的大学三年",
-   "category": "coding",
-   "channel": "nowcoder",
-   "relevanceScore": 51.1,
-   "depthScore": 38.44,
-   "url": "https://nowcoder.com/discuss/934831064369942528",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 22.995,
-    "content": 0.44,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "153213a1b791c02b",
-   "title": "字节跳动 AI数据运营实习生（自动化方向）-AI数据与安全 一面面经",
-   "category": "coding",
-   "channel": "nowcoder",
-   "relevanceScore": 51.1,
-   "depthScore": 38.44,
-   "url": "https://nowcoder.com/discuss/932604724463882240",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 22.995,
-    "content": 0.44,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "19faf28d880171cf",
-   "title": "家人们，秋招貌似迎来转机！！！",
-   "category": "coding",
-   "channel": "nowcoder",
-   "relevanceScore": 51.1,
-   "depthScore": 38.44,
-   "url": "https://nowcoder.com/discuss/934397413215731712",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 22.995,
-    "content": 0.44,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "2ecb5586eb60e90a",
-   "title": "计算机专业去做智驾，到底能干什么？",
-   "category": "coding",
-   "channel": "nowcoder",
-   "relevanceScore": 51.1,
-   "depthScore": 38.44,
-   "url": "https://nowcoder.com/discuss/932591058599280640",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 22.995,
-    "content": 0.44,
     "code": 0.0,
     "peer": 0.0,
     "trust": 0.0,
@@ -1933,17 +1933,17 @@
    }
   },
   {
-   "id": "05fcd1723c34ab79",
-   "title": "微信小店-推荐算法工程师",
+   "id": "07bc5c3687968645",
+   "title": "携程AI应用开发实习一面（OC）",
    "category": "job",
-   "channel": "jobs_tencent",
-   "relevanceScore": 60.5,
-   "depthScore": 23.67,
-   "url": "http://careers.tencent.com/jobdesc.html?postId=1936827400029601792",
+   "channel": "nowcoder",
+   "relevanceScore": 59.4,
+   "depthScore": 24.06,
+   "url": "https://nowcoder.com/discuss/933058120102739968",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 27.225,
-    "content": 2.3600000000000003,
+    "relevance": 26.73,
+    "content": 3.3400000000000003,
     "code": 0.0,
     "peer": 0.0,
     "trust": 0.0,
@@ -1951,17 +1951,17 @@
    }
   },
   {
-   "id": "d821c97b149a0920",
-   "title": "QQ-高级算法工程师",
+   "id": "b3b450c38babb389",
+   "title": "京东offer，携程oc，28实习timeline与感受",
    "category": "job",
-   "channel": "jobs_tencent",
-   "relevanceScore": 53.0,
-   "depthScore": 23.26,
-   "url": "http://careers.tencent.com/jobdesc.html?postId=2044968720287297536",
+   "channel": "nowcoder",
+   "relevanceScore": 59.4,
+   "depthScore": 24.06,
+   "url": "https://nowcoder.com/discuss/932692853946351616",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 23.85,
-    "content": 5.219999999999999,
+    "relevance": 26.73,
+    "content": 3.3400000000000003,
     "code": 0.0,
     "peer": 0.0,
     "trust": 0.0,
@@ -1990,6 +1990,27 @@
    "category": "course",
    "rule": "category-mismatch",
    "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
+  },
+  {
+   "id": "367e17bfa5e19024",
+   "title": "9.26 中国电信-计算机类笔试",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "e4d42c4a35efe634",
+   "title": "阿里淘天集团27届校招已经正式启动！阿里巴巴内推",
+   "category": "job",
+   "rule": "referral-code",
+   "why": "内推码/广告：有用但不需要深度解析，单独归入岗位信息即可"
+  },
+  {
+   "id": "c774859b5652b767",
+   "title": "巨人网络内推，巨人网络27届校招正式启动了",
+   "category": "job",
+   "rule": "referral-code",
+   "why": "内推码/广告：有用但不需要深度解析，单独归入岗位信息即可"
   },
   {
    "id": "cf46aa443a01dd26",
@@ -2048,6 +2069,153 @@
    "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
   },
   {
+   "id": "ea69886b6a95faf2",
+   "title": "有知道巨人网络的学长学姐吗？想了解一下真实体验！",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "3f581b8db2e0b3c8",
+   "title": "华子面试压力依旧这么大,吓哭",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "fe1aecbfe4127021",
+   "title": "其实很多人的归宿都是中小厂，只不过幸存者偏差让你只看到了大厂",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "d0b03ad5c8b0bb81",
+   "title": "嵌入式面试不会这些，那真的很难了",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "8c866a65a245922b",
+   "title": "数分岗投了很多一个面试都没有，想请大家帮我看看简历",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "c7c92dd3eb7d0aee",
+   "title": "面试官：“介绍一下你怎么排查‘OOM’ 的线上问题的？”",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "5d4f438b6bd2fea5",
+   "title": "offer帮选腾讯wxg转正 or 南瑞研发中心",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "08c13c3679a12cac",
+   "title": "(秋招) 9.16 字节中交广 - 交易与广告业务 - AI全栈开发工程师",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "bbb38d3e7d1c8c4f",
+   "title": "想进 AI应用服务商：产品岗和交付岗，先看清两条路的日常",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "f40e5e4fb06107cb",
+   "title": "秋招投了几十家没面试？先别急着怀疑自己",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "f7d4939faf8f534f",
+   "title": "银行科技岗工作内容介绍——总行科技部",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "0dbbc1be350a9669",
+   "title": "27届软件工程关于我的大学三年",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "4870e270e1c6bf80",
+   "title": "微店 AI全栈开发 秋招一面",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "535bb449fa5f8625",
+   "title": "有没有人发现27国企秋招的有点不对劲？",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "c6fa70f3e13ab0b0",
+   "title": "C++美团高强度拷打一面 ！！人都麻了啊",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "8f1ce46bc9a77a80",
+   "title": "22届过来人说下，应届生第一份工作怎么选？",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "19faf28d880171cf",
+   "title": "家人们，秋招貌似迎来转机！！！",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "dc6b105ffac20661",
+   "title": "普渡机器人秋招正式启动啦，普渡机器人内推",
+   "category": "worldmodel",
+   "rule": "referral-code",
+   "why": "内推码/广告：有用但不需要深度解析，单独归入岗位信息即可"
+  },
+  {
+   "id": "2ecb5586eb60e90a",
+   "title": "计算机专业去做智驾，到底能干什么？",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "dce133154e573ec6",
+   "title": "研究了一下奇安信少年大将军计划，感觉不是普通管培",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "8e10bb18c1eba3a6",
+   "title": "9.24OBSBOT寻影一面",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
    "id": "b4b07c88825ecc6b",
    "title": "9月也快结束了 ，然后9月初才结束差不多三个月的出差,也就是几个月没回去了，前几天中秋节回家了一趟待来几天，给老妈发了几百的过节费，给老爸买了两条烟，然后又去外婆家买了一些过节的礼",
    "category": "coding",
@@ -2081,51 +2249,10 @@
    "category": "coding",
    "rule": "category-mismatch",
    "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "d14b627ecdbfa61d",
-   "title": "面试结束之后，面试官是怎么判断你过不过的？",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "9a637541b375fbc2",
-   "title": "今天来看一份27届安徽理工大学后端开发岗简历",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "9af39f84a7cf3012",
-   "title": "Proaction boosts sales 60% and saves 75+ hours with Codex",
-   "category": "exam",
-   "rule": "category-mismatch",
-   "why": "看起来不是笔试题（缺少面试/手撕/LeetCode/真题等标志）"
-  },
-  {
-   "id": "315f21535a1316d4",
-   "title": "Open TTS Leaderboard: Scalable Evaluation for Multilingual Text-to-Speech and Voice Clonin",
-   "category": "exam",
-   "rule": "category-mismatch",
-   "why": "看起来不是笔试题（缺少面试/手撕/LeetCode/真题等标志）"
-  },
-  {
-   "id": "1a5f406b2892f397",
-   "title": "The Open ASR Leaderboard Adds Its First Global South Language",
-   "category": "exam",
-   "rule": "category-mismatch",
-   "why": "看起来不是笔试题（缺少面试/手撕/LeetCode/真题等标志）"
-  },
-  {
-   "id": "57dd2eb9b69a82c9",
-   "title": "uncbiag/Awesome-Foundation-Models - A curated list of foundation models for vision and lan",
-   "category": "course",
-   "rule": "category-mismatch",
-   "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
   }
  ],
  "skimByRule": {
-  "category-mismatch": 22
+  "category-mismatch": 44,
+  "referral-code": 3
  }
 }

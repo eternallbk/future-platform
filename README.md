@@ -361,13 +361,44 @@ python -m http.server 8790 --directory dist     # 本地预览
 **A. Cloudflare Pages（推荐，国内访问相对稳）**
 Workers & Pages → Create → Pages → Upload assets → 把 `dist/` 拖进去 → 得到 `*.pages.dev` 域名。
 
-**B. GitHub Pages**
+**B. GitHub Pages（当前已用这个方案发布）**
+
+仓库：`https://github.com/eternallbk/future-platform`
+站点：`https://eternallbk.github.io/future-platform/`
+
 ```powershell
-# .gitignore 已排除 dist/，所以是「复制到 docs/ 再提交」
-Copy-Item -Recurse -Force dist\* docs\site\
-git add .; git commit -m "publish workbench"; git push
-# Settings → Pages → Deploy from a branch → main 分支的 /docs/site
+# 一条命令：构建 dist/ → 隐私审计 → 推送到 gh-pages
+powershell -ExecutionPolicy Bypass -File scripts\publish-gh-pages.ps1 -Rebuild
 ```
+
+然后在 GitHub 网页端做**一次**设置：Settings → Pages → Source = `Deploy from a branch`
+→ Branch = `gh-pages` / `(root)` → Save。
+
+> **不要用 `git subtree push --prefix dist origin gh-pages`。** `dist/` 是生成目录、
+> 被 `.gitignore` 排除，因此不是任何 commit 里的已跟踪路径；而 `git subtree split
+> --prefix` 只读已提交历史，必然报 `fatal: 'dist' does not exist; use 'git subtree
+> add'`；接着 `git subtree add --prefix dist` 又会因为 `dist/` 在磁盘上已存在而报
+> `prefix 'dist' already exists`。两者都无法在 dist/ 被正确忽略的前提下工作。
+
+> **部署仓库放在 `%TEMP%`，绝不放在 `dist/` 里 —— 这是踩过坑的。**
+> 早期版本在 `dist/.git` 建了一个小仓库。当它丢失 HEAD/config 后就不再是有效
+> 仓库，git 的目录发现机制会**向上走**并悄悄改用项目主仓库，结果：
+> `git -C dist checkout -B gh-pages` 在主仓库里建了 `gh-pages` 分支并把工作区切过去、
+> 四个 "Publish workbench site" 提交把源码（scripts/、web/data/、README.md）写进了
+> 该分支、推送失败后主仓库停在错误分支上。当时网络不通所以没推上去，主仓库已复原。
+> 现在的脚本：临时目录建仓库、每次 git 调用都显式设置 `GIT_DIR` + `GIT_WORK_TREE`、
+> **校验解析出的仓库根目录必须等于临时目录，否则中止**、且再也不用裸 `-C dist`。
+
+> **⚠️ 请提交你的工作。** 上面那次 `git checkout` 把**未提交**的改动回退了
+> （`scripts/publish-gh-pages.ps1`、`scripts/handoff_ghpages.py`、
+> `scripts/build_site.py` 的一部分、`run-daily.ps1` 的发布步骤都丢过一次）。
+> 这些现在都已重新写好，但**仍未提交**。请尽快执行：
+> ```powershell
+> git add -A
+> git commit -m "每日 20:00 排期、卡片清理、自动发布到 gh-pages"
+> git push
+> ```
+> 规则：`main` 只放源码；任何未提交的新文件在切分支时都可能消失。
 
 **C. Vercel / Netlify**：构建命令留空，发布目录填 `dist`。
 

@@ -269,7 +269,7 @@ export const DashboardView = {
       <span class="hero-eyebrow"><span class="pulse"></span> 上海时间 ${esc(shanghaiNow().toLocaleString('zh-CN', { hour12: false }))} · 数据更新于 ${esc(m.lastRunAt ? relTime(m.lastRunAt) : '尚未采集')}</span>
       <h1>${greeting()}，今天把<em>信息差</em>变成<em>竞争力</em></h1>
       <p>面向 <b>多模态算法 / Post-training / 生成式模型 / 世界模型</b> 方向的结构化情报与学习系统。
-      每日上海时间 **20:00**** 自动联网调研，把散落在 arXiv、GitHub、牛客、各厂招聘官网的信息，整理成可执行的下一步。</p>
+      每日上海时间 <b>20:00</b> 自动联网调研，把散落在 arXiv、GitHub、牛客、各厂招聘官网的信息，整理成可执行的下一步。</p>
 
       <div class="hero-stats">
         <div class="stat"><span class="stat-val tnum">${state.items.length}<small>条</small></span><span class="stat-key">知识卡片</span>
@@ -341,11 +341,13 @@ export const DashboardView = {
           <div class="panel-body" style="padding:0">
             ${state.jobs.length ? `<div class="mini-list">
               ${activeJobs.slice(0, 6).map((j) => `
-                <button class="mini-item" style="width:100%;text-align:left" data-act="open-job" data-id="${attr(j.id)}">
-                  <span class="tier" data-tier="${attr(j.tier)}">${esc(j.tier)}</span>
-                  <span class="t" style="font-weight:600;color:var(--fg-0)">${esc(j.company)}</span>
-                  <span class="t text-2" style="flex:2">${esc(j.directions.slice(0, 3).join(' · ') || j.title)}</span>
-                  <span class="n" style="color:var(--ok);font-weight:640">${esc(j.pay || '面议')}</span>
+                <button class="mini-item job-mini" style="width:100%;text-align:left" data-act="open-job" data-id="${attr(j.id)}">
+                  <span class="job-mini-head">
+                    <span class="tier" data-tier="${attr(j.tier)}">${esc(j.tier)}</span>
+                    <span class="job-mini-name">${esc(j.company)}</span>
+                  </span>
+                  <span class="job-mini-dirs">${esc(j.directions.slice(0, 3).map(dirZh).join(' · ') || j.title)}</span>
+                  <span class="job-mini-pay" data-tip="${attr(j.pay || '面议')}">${esc(j.pay || '面议')}</span>
                 </button>`).join('')}
             </div>
             <div style="padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line-0);display:flex;gap:var(--sp-4);flex-wrap:wrap">
@@ -383,17 +385,30 @@ export const DashboardView = {
         </div>
 
         <div class="panel">
-          <div class="panel-head"><div class="panel-title">${icon('i-grid')} 分类分布</div></div>
+          <div class="panel-head"><div class="panel-title">${icon('i-grid')} 分类分布</div>
+            <span class="result-line" style="margin-left:auto">共 ${state.items.length} 条</span></div>
           <div class="panel-body">
-            <div class="donut-wrap">
-              ${ring(s.pct, 76, 8, null, `${Math.round(s.pct)}%`)}
-              <div class="legend">
-                ${CATEGORIES.filter((c) => catCounts.get(c.id)).slice(0, 6).map((c) => `
-                  <div class="legend-item" data-cat="${c.id}">
+            <!-- This panel is about category DISTRIBUTION. It previously also showed
+                 a ring chart of learning progress, whose centre read "0%" (nothing
+                 marked mastered yet) under a heading about categories - misleading,
+                 and it squeezed the legend into a narrow column. The legend now
+                 gets the full width and lists every non-empty category. -->
+            <div class="legend legend-block">
+              ${(() => {
+                const rows = CATEGORIES.filter((c) => catCounts.get(c.id));
+                if (!rows.length) return '<span class="legend-item">暂无数据</span>';
+                const max = Math.max(...rows.map((c) => catCounts.get(c.id)));
+                return rows.map((c) => {
+                  const n = catCounts.get(c.id);
+                  const pct = Math.round((n / max) * 100);
+                  return `<div class="legend-item" data-cat="${c.id}">
                     <span class="legend-swatch" style="background:${c.color}"></span>
-                    <span class="truncate">${esc(c.zh)}</span><span class="lv">${catCounts.get(c.id)}</span>
-                  </div>`).join('') || '<span class="legend-item">暂无数据</span>'}
-              </div>
+                    <span class="legend-name truncate">${esc(c.zh)}</span>
+                    <span class="legend-bar"><i style="width:${pct}%;background:${c.color}"></i></span>
+                    <span class="lv">${n}</span>
+                  </div>`;
+                }).join('');
+              })()}
             </div>
             <button class="btn btn-sm" style="width:100%;margin-top:var(--sp-4)" data-route="#/categories">查看全部分类</button>
           </div>

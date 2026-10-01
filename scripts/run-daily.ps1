@@ -33,6 +33,7 @@
 [CmdletBinding()]
 param(
     [switch]$SkipAgent,        # run the deterministic layer only
+[switch]$SkipPublish,      # do not push dist/ to gh-pages this run
     [string]$Only = '',        # comma-separated channel ids (debugging)
     [int]$Limit = 0,           # per-channel item cap; 0 = use config value
     [switch]$Status,           # print current status and exit
@@ -320,24 +321,62 @@ if (-not $SkipAgent) {
 }
 
 # ---------------------------------------------------------------------------
-# 6b. Rebuild the publishable site (dist/) so a hosted copy - GitHub Pages,
-#     Cloudflare Pages - reflects this run without a manual step.
+# 6b. Rebuild the publishable site (dist/).
 #
 #     Deliberately non-fatal: publishing is a convenience, and a failure here
 #     (e.g. a transient file lock) must never mark the data refresh as failed.
-#     `--check` is not used because we DO want the artifact written.
 # ---------------------------------------------------------------------------
 $SiteBuilder = Join-Path $ScriptDir 'build_site.py'
+$siteOk = $false
 if (Test-Path $SiteBuilder) {
     Write-Log 'rebuilding the publishable site (dist/)' 'STEP'
     $siteExit = Invoke-Logged $PythonExe @($SiteBuilder)
     if ($siteExit -ne 0) {
         Write-Log "build_site.py returned $siteExit (the data refresh itself is unaffected)" 'WARN'
     } else {
-        Write-Log 'dist/ refreshed; publish it (git subtree push --prefix dist origin gh-pages) or let your host pull it' 'OK'
+        $siteOk = $true
+        Write-Log 'dist/ rebuilt' 'OK'
     }
 } else {
     Write-Log 'build_site.py not found, skipping the site build' 'WARN'
+}
+
+# ---------------------------------------------------------------------------
+# 6c. Publish dist/ to the gh-pages branch so the hosted site tracks this run.
+#
+#     WHY THIS STEP EXISTS: GitHub Pages never reads this machine's disk. A
+#     successful local collection does NOT update the website - only a push does.
+#     Without this step the site silently freezes at the last manual publish while
+#     the local workbench keeps moving.
+#
+#     CREDENTIALS: Git Credential Manager is the system credential helper and a
+#     github.com token is stored, so the push works unattended (verified with a
+#     non-interactive push before wiring this in). For a long-lived schedule, use
+#     a fine-grained PAT limited to this repository with Contents: Read and write.
+#
+#     NON-FATAL BY DESIGN: an expired token or an unreachable network must not
+#     make the data refresh look failed. The failure is logged loudly and the
+#     local dist/ is untouched.
+# ---------------------------------------------------------------------------
+$Publisher = Join-Path $ScriptDir 'publish-gh-pages.ps1'
+if ($siteOk -and -not $SkipPublish) {
+    if (Test-Path $Publisher) {
+        Write-Log 'publishing dist/ to gh-pages (GitHub Pages)' 'STEP'
+        # No -Rebuild: dist/ was just built above. The publish script re-runs its
+        # own privacy audit before pushing, which is intentional - that is the last
+        # gate before the content becomes public.
+        $pubExit = Invoke-Logged 'powershell.exe' @('-NoProfile', '-ExecutionPolicy', 'Bypass',
+                                                   '-File', $Publisher)
+        if ($pubExit -eq 0) {
+            Write-Log 'published to gh-pages; GitHub Pages rebuilds it in ~1 minute' 'OK'
+        } else {
+            Write-Log "publish FAILED (exit $pubExit): if the network is fine, check credentials via scripts\handoff_ghpages.py --trouble. The local data refresh succeeded." 'WARN'
+        }
+    } else {
+        Write-Log 'publish-gh-pages.ps1 not found, skipping the publish step' 'WARN'
+    }
+} elseif ($SkipPublish) {
+    Write-Log 'publish step skipped by -SkipPublish' 'WARN'
 }
 
 # ---------------------------------------------------------------------------

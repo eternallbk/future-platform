@@ -42,10 +42,6 @@ export function openThemePopover(anchor) {
         <span>减少动画</span>
         <span class="switch" role="switch" tabindex="0" aria-checked="${p.reducedMotion}" data-act="toggle-motion"></span>
       </label>
-      <label class="row" style="justify-content:space-between;font-size:var(--fs-2xs);cursor:pointer">
-        <span>紧凑密度</span>
-        <span class="switch" role="switch" tabindex="0" aria-checked="${p.density === 'compact'}" data-act="toggle-density"></span>
-      </label>
     </div>`;
 
   document.body.append(node);
@@ -441,7 +437,6 @@ const ACTIONS = {
   'set-theme': (t) => { setTheme(t.dataset.themeId); closePopover(); openThemePopover($('#btn-theme')); },
   'set-accent': (t) => { setAccent(t.dataset.accentId); closePopover(); openThemePopover($('#btn-theme')); },
   'toggle-motion': () => { state.prefs.reducedMotion = !state.prefs.reducedMotion; applyPrefs(); saveUser(); if (popoverNode) { closePopover(); openThemePopover($('#btn-theme')); } },
-  'toggle-density': () => { setDensity(state.prefs.density === 'compact' ? 'comfortable' : 'compact'); if (popoverNode) { closePopover(); openThemePopover($('#btn-theme')); } },
 
   'close-palette': () => closePalette(),
   'open-palette': () => openPalette(),
@@ -617,7 +612,6 @@ export function installShell() {
   $('#btn-print').addEventListener('click', () => window.print());
   $('#drawer-close').addEventListener('click', closeDrawer);
   $('#scrim').addEventListener('click', closeDrawer);
-  $$('#density-switch button').forEach((b) => b.addEventListener('click', () => setDensity(b.dataset.density)));
 
   document.addEventListener('click', (e) => {
     const link = e.target.closest('[data-route]');

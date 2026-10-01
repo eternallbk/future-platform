@@ -138,10 +138,9 @@
     </button>
 
     <div class="topbar-actions">
-      <div class="segmented" id="density-switch" role="group" aria-label="信息密度">
-        <button data-density="comfortable" class="is-on">舒适</button>
-        <button data-density="compact">紧凑</button>
-      </div>
+      <!-- The 舒适/紧凑 density switch was removed here: nothing ever read
+           `data-density` (no CSS rule targeted it), so it was a control with no
+           effect. -->
 
       <button class="btn btn-sm btn-ghost" id="btn-refresh" data-tip="重新读取本地数据层">
         <svg><use href="#i-refresh"/></svg><span>刷新</span>

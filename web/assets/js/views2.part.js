@@ -1779,7 +1779,6 @@ export function boot() {
 
   installShell();
   installKeyboard();
-  $$('#density-switch button').forEach((b) => b.classList.toggle('is-on', b.dataset.density === state.prefs.density));
 
   Store.boot().then(() => {
     if (!location.hash) history.replaceState(null, '', '#/dashboard');

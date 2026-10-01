@@ -7,7 +7,7 @@
  *   §2  UTIL             escape/markdown/date/dom helpers
  *   §3  STATE            central reactive state + localStorage persistence
  *   §4  STORE            the ONLY place that knows the data-layer file layout
- *   §5  THEME            palette + accent + density application
+ *   §5  THEME            palette + accent application
  *   §6  TOAST            transient notifications
  *   §7  PALETTE          Ctrl-K command palette / global search
  *   §8  ROUTER           hash router
@@ -869,9 +869,10 @@ export function hostOf(u) {
 const LS_KEY = 'future.workbench.v1';
 
 const DEFAULT_PREFS = {
-  theme: 'midnight',
-  accent: 'blue',
-  density: 'comfortable',
+  // 暖砂纸 (warm sandpaper) is the default: a low-glare warm light theme that is
+  // comfortable for long reading sessions, which is what this workbench is for.
+  theme: 'sand',
+  accent: 'amber',
   reducedMotion: false,
   showAside: true,
   digestGroup: 'day',      // 'day' | 'category'
@@ -1444,14 +1445,18 @@ export function groupByDay(items) {
     .map(([day, list]) => ({ day, items: list.sort((a, b) => b.relevance - a.relevance) }));
 }
 
-/* ======================== §5 THEME / DENSITY ============================ */
+/* ============================== §5 THEME ================================ */
 
 export function applyPrefs() {
   const p = state.prefs;
   const root = document.documentElement;
-  root.dataset.theme = p.theme || 'midnight';
-  root.dataset.accent = p.accent || 'blue';
-  root.dataset.density = p.density || 'comfortable';
+  root.dataset.theme = p.theme || 'sand';
+  root.dataset.accent = p.accent || 'amber';
+  // NOTE: there is deliberately NO `data-density`. The density setting was
+  // removed because nothing ever read it - no CSS rule targeted
+  // `[data-density]`, so the 舒适/紧凑 toggle had zero visual effect and was
+  // purely decorative. Keeping a control that does nothing is worse than not
+  // offering it.
   root.dataset.motion = p.reducedMotion ? 'reduced' : 'full';
   const theme = THEMES.find((t) => t.id === p.theme);
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -1466,11 +1471,6 @@ export function setTheme(id) {
 }
 
 export function setAccent(id) { state.prefs.accent = id; applyPrefs(); saveUser(); }
-export function setDensity(d) {
-  state.prefs.density = d;
-  applyPrefs(); saveUser();
-  $$('#density-switch button').forEach((b) => b.classList.toggle('is-on', b.dataset.density === d));
-}
 
 export function toggleThemeKind() {
   const cur = THEMES.find((t) => t.id === state.prefs.theme) || THEMES[0];

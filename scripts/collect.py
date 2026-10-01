@@ -2309,7 +2309,7 @@ def run_probe(args) -> int:
     return 0
 
 
-def enrich_missing_summaries(items, cfg, log, cap=90):
+def enrich_missing_summaries(items, cfg, log, cap=90, budget_sec=120, state=None):
     """Fetch a page's meta description for items that arrived with no summary.
 
     Why this exists: a card whose entire content is a title plus a link cannot be
@@ -2323,29 +2323,52 @@ def enrich_missing_summaries(items, cfg, log, cap=90):
         share of records (14 of 37 s2 cards), and the landing page is then the
         only accessible place the abstract exists.
 
-    This pass fetches <meta name="description"> / og:description / citation_abstract
-    from the article page. It is bounded (cap), polite (sequential, reuses the
-    throttled shared http_get, small sleep), and never fatal - a failure leaves
-    the item exactly as it was.
+    Bounded three ways. The unbounded first version made a daily run take
+    24 minutes (measured: 1455s, dominated by waiting on dead URLs), which is
+    unacceptable for a scheduled task, so:
+      * `cap`        - at most this many fetches per run
+      * `budget_sec` - stop once this much wall time is spent, whatever the cap
+      * `state`      - remember URLs that already failed and stop retrying after
+                       3 attempts. Several sources (old Nowcoder discussion pages,
+                       dead DOIs) genuinely have no meta description, and
+                       re-attempting them every day is pure waste.
 
-    Items that still have no summary afterwards stay in place but are treated as
-    low-importance by prune_items.py, rather than quietly passing as knowledge.
+    Failures persist in `state["summaryFetchFails"]` so the next run skips them.
+    Anything still summary-less is treated as low importance by prune_items.py
+    rather than quietly passing as knowledge.
     """
     targets = [it for it in items if len(str(it.get("summary") or "").strip()) < 80]
     if not targets:
         return 0, 0
-    targets = targets[:cap]
+    fails = (state or {}).get("summaryFetchFails") or {}
+    started = time.time()
+    tried = 0
     filled = 0
+    gave_up = 0
     for it in targets:
+        if tried >= cap:
+            break
+        if time.time() - started > budget_sec:
+            log(f"  summary backfill: stopped at the {budget_sec}s budget "
+                f"(filled {filled} of {tried} attempted)", "warn")
+            break
         url = str(it.get("url") or "")
         if not url.startswith("http"):
             continue
+        if int(fails.get(url, 0)) >= 3:
+            gave_up += 1
+            continue
+        tried += 1
         try:
-            _s, body, _ct = http_get(url, timeout=15, cfg=cfg, log=lambda *a, **k: None,
-                                     retries=1, accept="text/html,*/*;q=0.8")
+            _s, body, _ct = http_get(url, timeout=8, cfg=cfg, log=lambda *a, **k: None,
+                                     retries=0, accept="text/html,*/*;q=0.8")
         except Exception:
+            if state is not None:
+                fails[url] = int(fails.get(url, 0)) + 1
             continue
         if not body:
+            if state is not None:
+                fails[url] = int(fails.get(url, 0)) + 1
             continue
         # http_get may hand back bytes; the regexes below need str.
         if isinstance(body, (bytes, bytearray)):
@@ -2377,8 +2400,14 @@ def enrich_missing_summaries(items, cfg, log, cap=90):
             it["summary"] = desc
             it["summarySource"] = "page-meta-description"
             filled += 1
-        time.sleep(0.25)
-    return filled, len(targets)
+        elif state is not None:
+            fails[url] = int(fails.get(url, 0)) + 1
+        time.sleep(0.15)
+    if gave_up:
+        log(f"  summary backfill: skipped {gave_up} url(s) that already failed 3+ times", "info")
+    if state is not None:
+        state["summaryFetchFails"] = fails
+    return filled, tried
 
 
 def compose_summary(fresh, all_items, results, cfg, prev_summary=None) -> dict:
@@ -2540,6 +2569,13 @@ def run(args) -> int:
 
     log(f"raw items: {len(raw_items)} -> normalizing / scoring / deduping", "step")
 
+    # State is loaded HERE, before the summary pass, because the pass both reads
+    # the canonical store (to find cards whose summary is missing) and records
+    # failed URLs into it. Loading it later made the gap scan reference an
+    # undefined name.
+    state = read_json(STATE_PATH, {})
+    state.setdefault("version", 1)
+
     # Fill in summaries for content-less items BEFORE scoring, so relevance is
     # computed on real text rather than on a bare title.
     #
@@ -2552,7 +2588,7 @@ def run(args) -> int:
     summary_gaps: list = []
     if not args.no_enrich:
         try:
-            canon_for_gaps = (read_json(STATE_PATH, {}) or {}).get("canonical") or {}
+            canon_for_gaps = state.get("canonical") or {}
             raw_ids = {r.get("id") for r in raw_items}
             for cid, entry in canon_for_gaps.items():
                 if not isinstance(entry, dict):
@@ -2577,15 +2613,14 @@ def run(args) -> int:
 
     if not args.no_enrich:
         try:
-            filled, tried = enrich_missing_summaries(summary_gaps + raw_items, cfg, log)
+            filled, tried = enrich_missing_summaries(summary_gaps + raw_items, cfg, log,
+                                                     state=state)
             if tried:
                 log(f"summary backfill: {filled}/{tried} items got a description "
                     f"from their page's meta tag", "info" if filled else "warn")
         except Exception as e:
             log(f"summary backfill skipped: {e}", "warn")
 
-    state = read_json(STATE_PATH, {})
-    state.setdefault("version", 1)
     deduper = Deduper(state, cfg)
     seen_ids = set(state.get("seenIds") or [])
     first_seen = state.setdefault("firstSeen", {})
