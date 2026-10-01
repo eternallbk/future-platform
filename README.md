@@ -239,6 +239,11 @@ $env:WEB_ROOT="$PWD\dist"; node scripts\verify-web.mjs --port 8792   # 验证发
 node scripts\audit-layout.mjs
 node scripts\audit-layout.mjs --width 1100,1440,1680 --routes dashboard,jobs,knowledge
 
+# 公式守卫：把 formulas.json 里每条 LaTeX 都过一遍真实的 tex() 渲染器。
+# 必须跑：公式剖析页整体是一个模板字符串，任何一条公式抛异常都会让整页变空白。
+# 深读层每天会无人值守地新增公式，坏字符串可能在夜里出现。
+node scripts\check-formulas.mjs
+
 # 重建学习路线 / 公式库（内容在脚本里，改完重新生成即可）
 python scripts\build_learning_kb.py
 python scripts\seed_formulas.py

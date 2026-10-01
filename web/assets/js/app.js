@@ -6,7 +6,7 @@
  * ========================================================================= */
 'use strict';
 
-/* ===== core.part.js — 1497 lines ===== */
+/* ===== core.part.js — 1515 lines ===== */
 
 /* ============================================================================
  * Future · 求职学习工作台 — app.js (part 1/2)
@@ -471,6 +471,7 @@ function texFindGroupEnd(s, start) {
 
 function texArg(s, i) {
   // Read the argument of a command starting at index i. Returns [content, next].
+  // A missing argument yields '' (never null) so callers can render it safely.
   while (s[i] === ' ') i += 1;
   if (s[i] === '{') {
     const end = texFindGroupEnd(s, i);
@@ -481,7 +482,7 @@ function texArg(s, i) {
     const m = /^\\[A-Za-z]+/.exec(s.slice(i));
     if (m) return [m[0], i + m[0].length];
   }
-  if (i < s.length) return [s[i], i + 1];
+  if (i < s.length && typeof s[i] === 'string') return [s[i], i + 1];
   return ['', i];
 }
 
@@ -509,6 +510,16 @@ function tex(src) {
     n: 'ⁿ', i: 'ⁱ' };
 
   function renderGroup(t) {
+    // Defensive coercion. renderGroup is called recursively (via texArg) on the
+    // argument of commands like \sqrt, \frac, \text and the accents, and an
+    // argument genuinely may be absent - e.g. a formula that ends with a bare
+    // "\sqrt", or "\frac{a}{}" - in which case texArg hands back null/undefined.
+    // Without this guard, `t[i]` threw "Cannot read properties of null (reading
+    // '0')", which took down the ENTIRE 公式剖析 page because the view render was
+    // one big template. A malformed formula must degrade to a small visual defect,
+    // never a blank page.
+    if (t == null) return '';
+    if (typeof t !== 'string') t = String(t);
     const out = [];
     let i = 0;
     while (i < t.length) {
@@ -605,6 +616,13 @@ function tex(src) {
       // ---- identifiers ---------------------------------------------------
       if (/[0-9.]/.test(c)) {
         const m = /^[0-9]+(\.[0-9]+)?/.exec(t.slice(i));
+        // `m` is normally guaranteed here, but report the state instead of throwing
+        // if it ever is not: a malformed formula must not blank the whole page.
+        if (!m) {
+          out.push(`<span class="tex-unknown">${esc(c)}</span>`);
+          i += 1;
+          continue;
+        }
         out.push(`<span class="tex-num">${m[0]}</span>`);
         i += m[0].length;
         continue;
