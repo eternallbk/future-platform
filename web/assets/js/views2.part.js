@@ -1173,8 +1173,11 @@ export const ProgressView = {
 
     return `
     <div class="section-head"><div><h2 class="section-title">进度与统计</h2>
-      <p class="section-desc">所有状态保存在浏览器 localStorage，可导出为 JSON 备份或跨设备迁移。</p></div>
-      <div class="section-actions"><button class="btn btn-sm" data-act="export">${icon('i-download')} 导出进度</button></div></div>
+      <p class="section-desc">所有状态保存在浏览器 localStorage。收藏与掌握度可以写成学习信号，让每日采集向你实际在学的方向倾斜。</p></div>
+      <div class="section-actions">
+        <button class="btn btn-sm btn-ghost" data-act="export">${icon('i-download')} 导出进度</button>
+        <button class="btn btn-sm" data-act="export-feedback" data-tip="写出 web/data/feedback.json：采集器会据此调整类目权重与深读配额">${icon('i-refresh')} 写出学习信号</button>
+      </div></div>
 
     <div class="grid grid-4" style="margin-bottom:var(--sp-6)">
       ${[

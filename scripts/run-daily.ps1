@@ -34,6 +34,8 @@
 param(
     [switch]$SkipAgent,        # run the deterministic layer only
 [switch]$SkipPublish,      # do not push dist/ to gh-pages this run
+[switch]$SkipGuards,       # skip the product guards (formula gate + layout audit)
+[switch]$SkipTune,         # skip the auto-applicable keyword self-tuning
     [string]$Only = '',        # comma-separated channel ids (debugging)
     [int]$Limit = 0,           # per-channel item cap; 0 = use config value
     [switch]$Status,           # print current status and exit
@@ -336,6 +338,67 @@ if (-not $SkipAgent) {
 }
 
 # ---------------------------------------------------------------------------
+# 6. Self-tuning: apply the ONE change class that is allowed to auto-apply.
+#
+#     reviewPolicy has always declared that minor keyword adjustments may take
+#     effect automatically while everything else (category changes, channel
+#     add/drop, scoring weights, dedupe thresholds, blocklist) needs human approval.
+#     That auto channel had no implementation, so "self-improvement" stopped at
+#     "detect a problem" and never "fix a problem".
+#
+#     tune_keywords.py consumes the keywordProposals the deep-read agent produced
+#     and applies them under hard guardrails: length/shape checks, a stopword list,
+#     no keyword shared with another category, protected core keywords, and caps of
+#     5 per category and 12 per run. Every change is appended to
+#     web/data/proposals/keyword-tune-log.jsonl with its reason, so it is auditable
+#     and reversible.
+#
+#     Non-fatal: a tuning failure must never break the data refresh.
+# ---------------------------------------------------------------------------
+$Tuner = Join-Path $ScriptDir 'tune_keywords.py'
+if ((Test-Path $Tuner) -and -not $SkipTune) {
+    Write-Log 'self-tuning: applying minor keyword adjustments (auto-applicable class)' 'STEP'
+    $tuneExit = Invoke-Logged $PythonExe @($Tuner)
+    if ($tuneExit -ne 0) {
+        Write-Log "tune_keywords.py returned $tuneExit; keyword set left unchanged" 'WARN'
+    }
+} elseif ($SkipTune) {
+    Write-Log 'self-tuning skipped by -SkipTune' 'WARN'
+} else {
+    Write-Log 'tune_keywords.py not found, skipping self-tuning' 'WARN'
+}
+
+# ---------------------------------------------------------------------------
+# 6a. Product guards.
+#
+#     WHY THIS STEP EXISTS: check-formulas.mjs and audit-layout.mjs were written
+#     in response to two real outages (a completely blank formula-analysis page,
+#     and clipped/overflowing panels), but they only ran when a human remembered to
+#     run them. A guard that is not on the daily path does not protect anything.
+#
+#     The formula check is a GATE: one malformed LaTeX string thrown by tex()
+#     replaces the whole page with an error card, and the deep-read agent writes new
+#     formulas unattended every night, so this must be checked before publishing.
+#     The layout audit is advisory only and never blocks a data refresh.
+# ---------------------------------------------------------------------------
+$Guards = Join-Path $ScriptDir 'run_guards.py'
+$guardFailed = $false
+if ((Test-Path $Guards) -and -not $SkipGuards) {
+    Write-Log 'product guards: formula renderer + layout overflow' 'STEP'
+    $guardExit = Invoke-Logged $PythonExe @($Guards)
+    if ($guardExit -ne 0) {
+        $guardFailed = $true
+        Write-Log 'FORMULA GATE FAILED: a malformed formula would blank the formula-analysis page. Fix web/data/formulas.json before publishing.' 'WARN'
+    } else {
+        Write-Log 'guards passed' 'OK'
+    }
+} elseif ($SkipGuards) {
+    Write-Log 'product guards skipped by -SkipGuards' 'WARN'
+} else {
+    Write-Log 'run_guards.py not found, skipping product guards' 'WARN'
+}
+
+# ---------------------------------------------------------------------------
 # 6b. Rebuild the publishable site (dist/).
 #
 #     Deliberately non-fatal: publishing is a convenience, and a failure here
@@ -354,6 +417,14 @@ if (Test-Path $SiteBuilder) {
     }
 } else {
     Write-Log 'build_site.py not found, skipping the site build' 'WARN'
+}
+
+# A failed formula gate means the published page would be broken, so skip the
+# publish but keep the locally refreshed data. Publishing a blank page is worse
+# than publishing yesterday's good page.
+if ($guardFailed) {
+    $siteOk = $false
+    Write-Log 'publish held back because the formula gate failed (local data is still up to date)' 'WARN'
 }
 
 # ---------------------------------------------------------------------------

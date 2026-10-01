@@ -28,6 +28,13 @@
 /* ============================ §1 CONSTANTS ============================== */
 
 export const CATEGORIES = [
+  // 'unclassified' is the bucket for items where NO keyword matched. It is
+  // deliberately visible (and placed first) rather than silently folded into
+  // 'trend', because a growing pile here is the signal that the keyword set needs
+  // tuning - which is exactly what the automatic keyword tuner acts on.
+  { id: 'unclassified', zh: '未分类',         en: 'Unclassified',      icon: 'i-alert',    color: 'var(--fg-3)',
+    desc: '没有命中任何分类关键词的条目。堆在这里通常意味着关键词需要调整。',
+    goal: '保持这一栏接近零；若持续增长，说明关键词覆盖不足或有新的方向出现。' },
   { id: 'multimodal',   zh: '多模态算法',     en: 'Multimodal',        icon: 'i-layers',   color: 'var(--c-multimodal)',
     desc: '视觉-语言对齐、VLM 架构、跨模态检索与生成、多模态评测。',
     goal: '每日捕获多模态大模型的新架构、对齐方法与评测基准进展。' },
@@ -1231,6 +1238,11 @@ export function normalizeItem(raw) {
 
 function mapCategoryAlias(c) {
   if (!c) return 'trend';
+  // 'unclassified' is emitted by collect.py when NO keyword matched at all. Calling
+  // it 'trend' was actively misleading: the old classifier defaulted zero-hit items
+  // to trend, which is how a grammar/pragmatics paper ended up in the trend queue.
+  // Keep it as its own label so it is visible and can be filtered out.
+  if (/^unclassified$|uncategor/.test(c)) return 'unclassified';
   if (/multi|vision|vlm|mllm/.test(c)) return 'multimodal';
   if (/post|sft|rlhf|align|dpo|grpo/.test(c)) return 'posttraining';
   if (/world|embodied|vla/.test(c)) return 'worldmodel';

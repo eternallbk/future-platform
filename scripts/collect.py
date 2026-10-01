@@ -1678,6 +1678,13 @@ def load_config(path: Path, log: Logger) -> dict:
                     merged.update({k: v for k, v in c.items() if k != "keywords"})
                     extra = [k for k in (c.get("keywords") or []) if k not in merged.get("keywords", [])]
                     merged["keywords"] = list(merged.get("keywords", [])) + extra
+                    # keywordRemove lets the self-tuning pass DELETE a built-in
+                    # keyword. The list above can only ever append, so without an
+                    # explicit removal channel a keyword proven to be too broad
+                    # ("review", "theory") could never be retired.
+                    rm = {str(k).lower() for k in (c.get("keywordRemove") or [])}
+                    if rm:
+                        merged["keywords"] = [k for k in merged["keywords"] if str(k).lower() not in rm]
                     cats[cid] = merged
                 else:
                     cats[cid] = c
@@ -1701,6 +1708,38 @@ def save_default_config(path: Path) -> None:
 # ============================================================================
 # 6. CLASSIFY + SCORE
 # ============================================================================
+def _kw_match(kw: str, text: str) -> bool:
+    """Does `kw` appear in `text` as a real token rather than a substring?
+
+    WHY THIS MATTERS (a real classification defect, found by the deep-read agent):
+    the classifier used plain substring containment, so short English keywords
+    matched unrelated words inside longer ones and dragged nonsense into the corpus:
+
+        'dit'    matched  audit, traditional, conditions
+        'intern' matched  international, internal
+        'ppo'    matched  Opportunities
+        'review' matched  reviewed, preview
+        '基础'   matched  BYD/Guoxuan battery-industry news (a real substring, but
+                          irrelevant to the 'foundation' ML category)
+
+    Evidence from one run: an education-assessment paper and a psychiatry survey
+    were scored into 'generative', a UN speech into 'job', a law white-paper ranked
+    FIRST in 'rl'. Cleaning that up by hand was a daily chore.
+
+    Rule: keywords containing only ASCII word characters are matched on word
+    boundaries. Keywords containing CJK (or punctuation) keep substring matching,
+    because Chinese has no word boundaries and '多模态' must match inside
+    '多模态大模型'. Short ASCII keywords (<4 chars) also require a boundary, which
+    is exactly the 'dit'/'ppo' case.
+    """
+    if not kw:
+        return False
+    if not kw.isascii():
+        return kw in text
+    # Escape the keyword, then require non-word characters (or the string edges).
+    return re.search(r"(?<![0-9a-z])" + re.escape(kw) + r"(?![0-9a-z])", text) is not None
+
+
 def classify(item: dict, cfg: dict):
     blob = " ".join([str(item.get("title") or ""), str(item.get("summary") or ""),
                      " ".join(item.get("tags") or []), str(item.get("venue") or "")]).lower()
@@ -1713,10 +1752,10 @@ def classify(item: dict, cfg: dict):
         for kw in c.get("keywords") or []:
             if not kw:
                 continue
-            if kw in title_blob:
+            if _kw_match(kw, title_blob):
                 sc += 3.0
                 h.append(kw)
-            elif kw in blob:
+            elif _kw_match(kw, blob):
                 sc += 1.0
                 h.append(kw)
         for ac in (c.get("arxiv") or []):
@@ -1726,7 +1765,10 @@ def classify(item: dict, cfg: dict):
             scores[cid] = sc * w
             hits[cid] = h
     if not scores:
-        return "trend", []
+        # Zero keyword hits. Previously this silently became "trend", which is how
+        # a grammar/pragmatics paper with an EMPTY categoryHits ended up in the
+        # trend queue. A weak match on nothing is not a trend - it is unclassified.
+        return "unclassified", []
     best = max(scores.items(), key=lambda kv: (kv[1], kv[0]))
     return best[0], (hits.get(best[0]) or [])[:12]
 
@@ -1735,6 +1777,13 @@ def score_item(item, cfg, tier, cat_hits):
     sc = cfg.get("scoring") or {}
     parts = {}
     parts["category"] = min(40.0, 8.0 * len(cat_hits))
+    # An item that matched NO category keyword already loses the whole 40-point
+    # category component (len(cat_hits) == 0). Apply one more explicit penalty so
+    # unclassified items rank below every genuinely classified item instead of
+    # merely tying with the weakest matches. They stay searchable, but they cannot
+    # crowd the dashboard or the digest.
+    if not cat_hits:
+        parts["unclassified"] = -12.0
 
     hl = float(sc.get("freshnessHalfLifeDays", 7.0))
     ts = parse_ts(item.get("publishedAt"))
@@ -1970,6 +2019,10 @@ def build_all_items(state, fresh):
             # dropped on every rebuild, so nothing could tell an original abstract
             # from a backfilled description.
             "summarySource",
+            # relevanceBreakdown exposes WHY an item scored what it did, including
+            # the learning-signal bonus. It must survive the rebuild or the ranking
+            # change is invisible and unauditable.
+            "relevanceBreakdown",
             "keyPoints", "why", "url", "canonicalUrl", "sources", "authors", "publishedAt",
             "fetchedAt", "lang", "tags", "entities", "difficulty", "relevanceScore",
             "qualitySignals", "venue", "ccf", "peerReviewed", "codeAvailable", "stars",
@@ -2089,6 +2142,61 @@ def write_proposals(cfg, results, fresh, all_items, log) -> dict:
             suspicious_hosts[h] = suspicious_hosts.get(h, 0) + 1
     suspicious_hosts = dict(sorted(suspicious_hosts.items(), key=lambda kv: -kv[1])[:12])
 
+    # ------------------------------------------------------------------
+    # New-channel proposals.
+    #
+    # This field existed but was hardcoded to an empty list, so the workbench could
+    # never propose a new source - the "channel-add" rule in the design (a domain
+    # that keeps showing up in manual imports but is not collected automatically)
+    # had no implementation.
+    #
+    # Signal used: domains that appear in HUMAN-IMPORTED items (channel == "inbox")
+    # and are not in KNOWN_HOSTS. That is the strongest available evidence that a
+    # source is worth collecting: the reader went and fetched it by hand, 5+ times.
+    # Nothing is fetched or enabled automatically - this only produces a proposal
+    # that the deep-read agent verifies (API/RSS availability, robots.txt) before a
+    # human approves it.
+    # ------------------------------------------------------------------
+    new_channel_proposals = []
+    try:
+        imported_hosts: dict = {}
+        for it in all_items:
+            if it.get("channel") != "inbox":
+                continue
+            h = urllib.parse.urlsplit(it.get("url") or "").netloc.lower().replace("www.", "")
+            if not h:
+                continue
+            if any(h == k or h.endswith("." + k) for k in KNOWN_HOSTS):
+                continue
+            rec = imported_hosts.setdefault(h, {"count": 0, "samples": [], "categories": {}})
+            rec["count"] += 1
+            if len(rec["samples"]) < 3:
+                rec["samples"].append(str(it.get("title") or "")[:90])
+            c = it.get("category") or "trend"
+            rec["categories"][c] = rec["categories"].get(c, 0) + 1
+        for h, rec in sorted(imported_hosts.items(), key=lambda kv: -kv[1]["count"]):
+            if rec["count"] < 5:
+                continue
+            top_cat = max(rec["categories"].items(), key=lambda kv: kv[1])[0]
+            new_channel_proposals.append({
+                "domain": h,
+                "importedCount": rec["count"],
+                "dominantCategory": top_cat,
+                "sampleTitles": rec["samples"],
+                "suggestedMode": "rss-or-api",
+                "reason": (f"你手工导入了 {rec['count']} 条来自 {h} 的内容，但它不在采集渠道里。"
+                           f"若该站 robots.txt 允许且有 RSS/API，建议加入渠道自动采集。"),
+                "requiresHumanApproval": True,
+                "verificationSteps": [
+                    "检查 robots.txt 是否允许抓取",
+                    "确认是否有官方 RSS 或公开 API（优先）",
+                    "若无 API/RSS，评估 HTML 解析的稳定性与限速要求",
+                    "批准后在 CHANNEL_SPECS 与 config 中登记，并跑一次 --probe 实测",
+                ],
+            })
+    except Exception as e:
+        log(f"new-channel proposal scan failed: {e}", "warn")
+
     queue = []
     escalated = [c for c in channel_health if c["escalate"]]
     if escalated:
@@ -2125,7 +2233,7 @@ def write_proposals(cfg, results, fresh, all_items, log) -> dict:
              "reason": "这些关键词在全部已入库条目中从未命中，占用匹配与打分开销"}
             for cid, kws in dead_keywords.items()
         ],
-        "newChannelProposals": [],
+        "newChannelProposals": new_channel_proposals,
         "noiseReport": {
             "unknownHosts": suspicious_hosts,
             "unknownHostItemShare": round(sum(suspicious_hosts.values()) / max(1, len(all_items)), 3),
@@ -2622,10 +2730,88 @@ def run(args) -> int:
             log(f"summary backfill skipped: {e}", "warn")
 
     deduper = Deduper(state, cfg)
+
+    # ------------------------------------------------------------------
+    # Learning signals — close the feedback loop with the workbench UI.
+    #
+    # Stars, reading status and mastery live in the browser's localStorage, which
+    # this process cannot read. Without a bridge, ranking can only ever use
+    # keyword heuristics and never adapts to what the reader actually studies -
+    # which is the difference between "a feed" and "a workbench that helps me".
+    # The progress page therefore offers 「写出学习信号」, which writes
+    # web/data/feedback.json; here we apply it as a small, capped multiplier.
+    #
+    # Deliberately gentle: the bonus is capped so a burst of stars on one topic
+    # cannot drown out the other directions, and it never overrides the relevance
+    # gate. It nudges, it does not steer.
+    # ------------------------------------------------------------------
+    feedback = read_json(DATA_DIR / "feedback.json", {}) or {}
+    fb_cat = feedback.get("byCategory") or {}
+    fb_chan = feedback.get("byChannel") or {}
+    if fb_cat or fb_chan:
+        top_cat = sorted(fb_cat.items(), key=lambda kv: -kv[1])[:5]
+        log(f"learning signals: {feedback.get('starredCount', 0)} starred / "
+            f"{len(fb_cat)} categories engaged (top: "
+            f"{', '.join(f'{k}×{v}' for k, v in top_cat) or '—'})", "info")
+    else:
+        log("learning signals: none yet — use 「写出学习信号」on the progress page "
+            "to let ranking follow your interests", "info")
+
+    def signal_bonus(cat: str, chan: str) -> float:
+        """A capped ±bonus from the reader's own behaviour (0 when no signals)."""
+        if not (fb_cat or fb_chan):
+            return 0.0
+        max_cat = max(fb_cat.values()) if fb_cat else 1
+        max_chan = max(fb_chan.values()) if fb_chan else 1
+        b = 0.0
+        if cat and cat in fb_cat:
+            b += 8.0 * (fb_cat[cat] / max_cat)      # up to +8 points
+        if chan and chan in fb_chan:
+            b += 4.0 * (fb_chan[chan] / max_chan)   # up to +4 points
+        return round(b, 2)
+
     seen_ids = set(state.get("seenIds") or [])
     first_seen = state.setdefault("firstSeen", {})
     last_seen = state.setdefault("lastSeen", {})
     canonical = state.setdefault("canonical", {})
+
+    # ------------------------------------------------------------------
+    # Reconcile previously-applied learning bonuses.
+    #
+    # A bonus is baked into relevanceScore when an item is imported, so an item that
+    # received one keeps that score forever - including after the reader deletes
+    # feedback.json or their interests change. Measured: removing the file left 5
+    # items still boosted. That is a silent, permanent distortion of the ranking.
+    #
+    # Fix: when a stored item carries a learningSignalBonus, remove exactly that
+    # amount and recompute the bonus for the current signals. Self-correcting, and
+    # idempotent because the stored bonus is always subtracted first.
+    # ------------------------------------------------------------------
+    rebased = 0
+    for cid, entry in canonical.items():
+        if not isinstance(entry, dict):
+            continue
+        bd = entry.get("relevanceBreakdown")
+        prev = 0.0
+        if isinstance(bd, dict):
+            try:
+                prev = float(bd.get("learningSignalBonus") or 0)
+            except (TypeError, ValueError):
+                prev = 0.0
+        if not prev:
+            continue
+        base = float(entry.get("relevanceScore") or 0) - prev
+        now_bonus = signal_bonus(entry.get("category"), entry.get("channel"))
+        entry["relevanceScore"] = round(max(0.0, min(100.0, base + now_bonus)), 2)
+        if isinstance(bd, dict):
+            if now_bonus:
+                bd["learningSignalBonus"] = now_bonus
+            else:
+                bd.pop("learningSignalBonus", None)
+        rebased += 1
+    if rebased:
+        log(f"learning signals: rebased {rebased} previously boosted item(s) "
+            f"(removes stale interest bonuses)", "info")
 
     # ------------------------------------------------------------------
     # Blocklist: items a human (or prune_items.py / dedupe_deep.py) removed.
@@ -2652,6 +2838,15 @@ def run(args) -> int:
         if not item:
             dropped += 1
             continue
+        # Apply the reader's own learning signals before the gates, and record the
+        # adjustment in the breakdown so the change is auditable in the UI rather
+        # than a mysterious score drift.
+        bonus = signal_bonus(item.get("category"), item.get("channel"))
+        if bonus:
+            item["relevanceScore"] = round(min(100.0, float(item["relevanceScore"]) + bonus), 2)
+            bd = item.setdefault("relevanceBreakdown", {})
+            if isinstance(bd, dict):
+                bd["learningSignalBonus"] = bonus
         # --- blocklist gate ---
         if blocked_ids and item.get("id") in blocked_ids:
             blocked += 1
@@ -2690,6 +2885,37 @@ def run(args) -> int:
     cap = int((cfg.get("limits") or {}).get("maxNewPerRun", 400))
     if len(fresh) > cap:
         fresh = fresh[:cap]
+
+    # ------------------------------------------------------------------
+    # Per-category intake cap.
+    #
+    # The reader asked for depth over volume: 2-10 deeply-analysed items per
+    # direction per day beats 40 shallow ones, and a lopsided corpus is what made
+    # 'agent' hold 24% of everything. Without a cap a single chatty channel or a
+    # broad keyword set can push one category far ahead of the others, which both
+    # drowns the digest and starves the categories that matter (multimodal /
+    # post-training / world models).
+    #
+    # Only the FRESH intake is capped - the existing library is never truncated, so
+    # nothing already curated is lost. Items over the cap stay in the corpus from a
+    # previous run and simply do not grow further this run.
+    # ------------------------------------------------------------------
+    per_cat_cap = int((cfg.get("limits") or {}).get("perCategoryPerRun", 0) or 0)
+    if per_cat_cap > 0:
+        kept, used, trimmed = [], {}, 0
+        for it in fresh:
+            c = it.get("category") or "trend"
+            if used.get(c, 0) >= per_cat_cap:
+                trimmed += 1
+                continue
+            used[c] = used.get(c, 0) + 1
+            kept.append(it)
+        if trimmed:
+            over = sorted(((c, n) for c, n in used.items() if n >= per_cat_cap),
+                          key=lambda kv: -kv[1])[:5]
+            log(f"per-category cap {per_cat_cap}: dropped {trimmed} item(s); "
+                f"busiest: {', '.join(f'{c}={n}' for c, n in over)}", "info")
+        fresh = kept
 
     deduper.prune()
     state["seenIds"] = list(seen_ids)[-120000:]

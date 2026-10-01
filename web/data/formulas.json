@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-10-02T00:17:34+08:00",
+ "generatedAt": "2026-10-02T02:05:44+08:00",
  "source": "seed+daily",
- "count": 37,
+ "count": 54,
  "formulas": [
   {
    "id": "f-attention",
@@ -2119,6 +2119,911 @@
     {
      "title": "mbzuai-oryx/Awesome-LLM-Post-training - Awesome Reasoning LLM Tutorial/Survey/Guide",
      "url": "https://github.com/mbzuai-oryx/Awesome-LLM-Post-training"
+    }
+   ]
+  },
+  {
+   "id": "f-cara-anatomy-routing",
+   "name": "解剖路由注意力（Anatomy-Routed Attention）",
+   "category": "multimodal",
+   "latex": "\\alpha_i=\\frac{\\exp\\big(s(h_q,p_i)/\\tau\\big)}{\\sum_j\\exp\\big(s(h_q,p_j)/\\tau\\big)},\\qquad \\tilde{H}=\\sum_i\\alpha_i p_i,\\qquad A=\\mathrm{softmax}\\!\\left(\\frac{QK^\\top}{\\sqrt{d}}+\\lambda\\tilde{H}\\right)",
+   "symbols": [
+    [
+     "h_q",
+     "问题文本在解码器中的隐状态"
+    ],
+    [
+     "p_i",
+     "第 i 个解剖结构先验（热图或嵌入）"
+    ],
+    [
+     "s(·,·)",
+     "问题与结构的相关性打分"
+    ],
+    [
+     "\\tau",
+     "路由温度，越小选择越硬"
+    ],
+    [
+     "\\alpha_i",
+     "路由到第 i 个结构的权重"
+    ],
+    [
+     "\\tilde{H}",
+     "加权聚合后的解剖先验"
+    ],
+    [
+     "\\lambda",
+     "先验注入强度（可学习）"
+    ]
+   ],
+   "derivation": [
+    "把问题隐状态与每个候选解剖先验打分，得到「该看谁」的分数。",
+    "softmax 归一成路由权重，避免多个结构互相抢注意力。",
+    "按权重把结构先验聚合成一个空间偏置 \\tilde{H}。",
+    "把 \\tilde{H} 以强度 \\lambda 加到解码注意力的 logits 上，结构性地改变「看哪里」。"
+   ],
+   "analogy": "像给检索加一次「先限定版块再搜索」：先选对解剖版块，再在版块内做细粒度注意力。",
+   "pitfalls": [
+    "\\lambda 太大会把注意力锁死在先验上，模型失去纠错能力。",
+    "硬选择还是软加权，直接决定先验预测错误时的鲁棒性。",
+    "先验只作用于解码器，替代不了视觉编码器的表征质量。"
+   ],
+   "code": "import torch, torch.nn.functional as F\n\ndef cara_attention(q, k, v, priors, w_q, w_p, lam, tau=0.1):\n    # q: (B,1,d) 解码器当前问题隐状态; priors: (B,N,d) N 个解剖结构先验\n    score = torch.tanh(q @ w_q + priors @ w_p).sum(-1) / tau   # (B,N)\n    alpha = F.softmax(score, dim=-1)                            # 路由权重\n    hint = (alpha.unsqueeze(-1) * priors).sum(1)                # (B,d) 加权先验\n    logits = (q @ k.transpose(-1, -2)) / q.shape[-1] ** 0.5     # (B,1,T)\n    logits = logits + lam * (q @ hint.unsqueeze(-1))            # 注入空间偏置\n    return F.softmax(logits, dim=-1) @ v\n",
+   "sources": [
+    {
+     "title": "Learning Where to Look: Anatomical Grounding and Guided Attention for Cardiac MRI Vision-Language Models",
+     "url": "https://arxiv.org/abs/2609.39899v1"
+    }
+   ]
+  },
+  {
+   "id": "f-hybrid-multistep-td",
+   "name": "混合多步 TD 目标（Hybrid Multi-step TD Target）",
+   "category": "worldmodel",
+   "latex": "\\hat{G}^{\\mathrm{hyb}}_t=\\sum_{n=1}^{N}\\omega_n\\Big(\\sum_{k=0}^{n-1}\\gamma^k r_{t+k}+\\gamma^{n}\\,\\tilde{V}(s_{t+n})\\Big),\\qquad \\sum_{n=1}^{N}\\omega_n=1,\\ \\ \\omega_n\\ge 0",
+   "symbols": [
+    [
+     "\\gamma",
+     "折扣因子"
+    ],
+    [
+     "r_{t+k}",
+     "第 k 步的真实回报"
+    ],
+    [
+     "N",
+     "参与混合的最大步长"
+    ],
+    [
+     "\\omega_n",
+     "步长为 n 的混合权重"
+    ],
+    [
+     "\\tilde{V}(s)",
+     "分歧感知的终端价值估计"
+    ]
+   ],
+   "derivation": [
+    "n=1 时目标退化成普通 1-step TD，偏差最大、方差最小。",
+    "对每个 n 累加 n 步真实回报，再用价值函数在 s_{t+n} 处自举。",
+    "用非负且和为 1 的权重混合所有 n 的目标，控制偏差-方差折中。",
+    "把自举项换成按分歧缩放的终端价值，让不可信的估计少影响更新。"
+   ],
+   "analogy": "像做预算：先按已发生的现金流算一部分，剩下的按多年平均估，两者按可信度加权。",
+   "pitfalls": [
+    "ω 不归一化会整体缩放价值尺度，学习率等效改变。",
+    "γ^n 与 ω_n 都会压低远期项，两者混在一起很难调参。",
+    "n 越大自举点越远，离线数据覆盖不足时反而更差。"
+   ],
+   "code": "import torch\n\ndef hybrid_td_target(rewards, values, gamma, omegas):\n    # rewards: (T,) 真实回报; values: (T+1,) 各时刻自举价值(最后一个是终端价值)\n    # omegas: (N,) 各步长权重, 已归一并满足 sum=1\n    T = rewards.shape[0]\n    out = torch.zeros(T)\n    for n, w in enumerate(omegas, start=1):\n        idx = torch.arange(T).clamp(max=T - n)          # 末尾不足 n 步时截断\n        ret = torch.zeros(T)\n        for k in range(n):\n            ret = ret + (gamma ** k) * rewards[(idx + k).clamp(max=T - 1)]\n        boot = (gamma ** n) * values[(idx + n).clamp(max=T)]\n        out = out + w * (ret + boot)\n    return out\n",
+   "sources": [
+    {
+     "title": "Beyond Policy Alignment: Closing the Planning-Learning Loop for Robot Control with Learned World Models",
+     "url": "https://arxiv.org/abs/2609.39751v1"
+    }
+   ]
+  },
+  {
+   "id": "f-task-vector-composition",
+   "name": "任务向量线性组合（Task Vector Composition）",
+   "category": "posttraining",
+   "latex": "\\tau_k=\\theta_k-\\theta_{\\mathrm{base}},\\qquad \\theta_{\\mathrm{merged}}=\\theta_{\\mathrm{base}}+\\sum_{k}\\lambda_k\\,\\tau_k,\\qquad \\tau_{\\mathrm{OPD}}\\not\\parallel\\tau_{\\mathrm{RL}}",
+   "symbols": [
+    [
+     "\\theta_{\\mathrm{base}}",
+     "基座模型参数"
+    ],
+    [
+     "\\theta_k",
+     "第 k 个任务微调后的参数"
+    ],
+    [
+     "\\tau_k",
+     "第 k 个任务的 task vector"
+    ],
+    [
+     "\\lambda_k",
+     "合并系数（可按范数缩放）"
+    ],
+    [
+     "\\not\\parallel",
+     "两者方向不共线，即更新子空间互补"
+    ]
+   ],
+   "derivation": [
+    "把每个任务的微调结果写成相对基座的参数位移 τ_k。",
+    "用系数 λ_k 对多个 τ_k 做线性组合，得多任务模型。",
+    "系数按各 τ 的范数缩放，避免某个任务的更新尺度压倒其他任务。",
+    "评估时看组合模型在全部任务上的平均分，而不是看组合向量本身有多长。"
+   ],
+   "analogy": "像用几支不同方向的画笔在同一张画布上叠加颜色，方向越不同，叠加出的色域越宽。",
+   "pitfalls": [
+    "λ 不归一化会整体改变更新范数，等价于换了学习率。",
+    "不同任务的 τ 尺度差异大，不缩放就会由一个任务主导。",
+    "不同 backbone 的 τ 不可混用，合并必须在同一基座坐标系里。"
+   ],
+   "code": "import torch\n\ndef merge_task_vectors(base_sd, vectors, lambdas=None):\n    # base_sd: 基座 state_dict; vectors: [{\"state\": sd, \"name\": str}, ...]\n    lambdas = lambdas or [1.0 / len(vectors)] * len(vectors)\n    out = {k: v.clone() for k, v in base_sd.items()}\n    for w, vec in zip(lambdas, vectors):\n        for k, v in vec[\"state\"].items():\n            if out[k].dtype.is_floating_point:\n                out[k] = out[k] + w * (v - base_sd[k])   # base + sum lambda * tau\n    return out\n\n\ndef tau_norm(merged_sd, base_sd):\n    return sum(((merged_sd[k] - base_sd[k]) ** 2).sum().item()\n               for k in base_sd if base_sd[k].dtype.is_floating_point) ** 0.5\n",
+   "sources": [
+    {
+     "title": "No Task Vector Is an Island: A Comprehensive Study on the Composability of Task Vectors from On-Policy Distillation",
+     "url": "https://arxiv.org/abs/2609.39405v1"
+    }
+   ]
+  },
+  {
+   "id": "f-fp4-block-quantization",
+   "name": "分块伪量化与直通梯度（Block-wise Fake Quantization）",
+   "category": "posttraining",
+   "latex": "\\Delta_b=\\frac{\\max_{w\\in\\mathcal{B}_b}|w|}{q_{\\max}},\\qquad \\hat{w}=\\Delta_b\\cdot\\mathrm{clip}\\!\\left(\\mathrm{round}\\!\\left(\\frac{w}{\\Delta_b}\\right),-q_{\\max},q_{\\max}\\right),\\qquad \\frac{\\partial\\hat{w}}{\\partial w}\\approx 1",
+   "symbols": [
+    [
+     "\\mathcal{B}_b",
+     "第 b 个量化块（如 16 或 32 个元素）"
+    ],
+    [
+     "q_{\\max}",
+     "目标格式可表示的最大幅值"
+    ],
+    [
+     "\\Delta_b",
+     "该块的缩放因子"
+    ],
+    [
+     "\\hat{w}",
+     "反量化后的权重（前向实际使用）"
+    ],
+    [
+     "\\approx 1",
+     "反向用直通估计器，把 round/clip 当恒等映射"
+    ]
+   ],
+   "derivation": [
+    "按块取最大绝对值，定出该块能表示的最大幅值对应的缩放因子 Δ_b。",
+    "把权重除以 Δ_b 后四舍五入到整数格点，得到低位宽表示。",
+    "裁剪到目标格式范围，再乘回 Δ_b 得到反量化权重。",
+    "反向传播时对 round 与 clip 采用直通估计器，让梯度近似无损地穿过去。"
+   ],
+   "analogy": "像用有限档位的台阶去近似一条连续曲线，台阶高度由这一段的最大值决定。",
+   "pitfalls": [
+    "块越大，离群值越容易主导 Δ，其它元素分辨率被牺牲。",
+    "只量化权重与同时量化激活的噪声量级不同，不能用同一配方。",
+    "反量化后必须保持高精度累加，否则误差会在矩阵乘里被放大。"
+   ],
+   "code": "import torch\n\ndef fake_quant_blockwise(w, q_max=6.0, block=32):\n    # NVFP4 的 E2M1 可表示范围约为 [-6, 6]\n    shape = w.shape\n    wb = w.reshape(-1, block)\n    delta = wb.abs().amax(dim=1, keepdim=True).clamp(min=1e-8) / q_max\n    q = torch.round(wb / delta).clamp(-q_max, q_max)\n    dq = (q * delta).reshape(shape)\n    # straight-through estimator: 前向用量化值, 反向梯度直通\n    return w + (dq - w).detach()\n",
+   "sources": [
+    {
+     "title": "QATFactory: A Versatile, Deployment-Aligned Framework for Quantization-aware Training and Distillation of LLMs",
+     "url": "https://arxiv.org/abs/2609.39223v1"
+    }
+   ]
+  },
+  {
+   "id": "f-preactive-residual-correction",
+   "name": "预动式残差修正（Preactive Residual Correction）",
+   "category": "worldmodel",
+   "latex": "a_t=a_t^{\\mathrm{base}}+\\pi_\\psi\\big(\\hat{s}_{t+1:t+H}\\,;\\,h_t\\big),\\qquad \\hat{s}_{t+1:t+H}=f_\\phi\\big(h_t,\\,a_t^{\\mathrm{base}}\\big)",
+   "symbols": [
+    [
+     "a_t^{\\mathrm{base}}",
+     "基础策略输出的命令跟随动作"
+    ],
+    [
+     "h_t",
+     "本体感觉历史编码"
+    ],
+    [
+     "f_\\phi",
+     "动作条件世界模型"
+    ],
+    [
+     "\\hat{s}_{t+1:t+H}",
+     "预测的未来 H 步物理状态序列"
+    ],
+    [
+     "\\pi_\\psi",
+     "残差适配器（只训练它）"
+    ],
+    [
+     "H",
+     "预测窗口长度"
+    ]
+   ],
+   "derivation": [
+    "基础策略先给出一个只考虑命令跟随的动作 a^base。",
+    "世界模型 f_φ 以本体历史与 a^base 为条件，滚动预测未来 H 步状态。",
+    "适配器 π_ψ 以预测序列为条件输出一个加性修正量。",
+    "两模块冻结后只优化 ψ，让修正贴合基础动作分布，最终动作是二者的和。"
+   ],
+   "analogy": "像老司机先按常规打方向，再根据「前面是个坑」的预判提前微调，而不是等车颠了才回正。",
+   "pitfalls": [
+    "H 太短就没有「提前」，太长则预测误差主导修正方向。",
+    "加性残差若不加幅度约束，会破坏基础策略的稳定性。",
+    "世界模型只见到基础策略的数据分布，适应性残差自己探索出的动作分布覆盖不到。"
+   ],
+   "code": "import torch, torch.nn as nn\n\nclass LocoWMAdapter(nn.Module):\n    def __init__(self, obs_dim, act_dim, state_dim, horizon, hidden=256):\n        super().__init__()\n        self.horizon = horizon\n        self.world_model = nn.GRU(obs_dim + act_dim, state_dim, batch_first=True)\n        self.adapter = nn.Sequential(\n            nn.Linear(obs_dim + horizon * state_dim, hidden), nn.SiLU(),\n            nn.Linear(hidden, act_dim), nn.Tanh())   # 有界残差\n\n    def forward(self, obs_hist, base_action):\n        # obs_hist: (B,T,obs_dim); base_action: (B,act_dim)\n        b, t, _ = obs_hist.shape\n        inp = torch.cat([obs_hist, base_action.unsqueeze(1).expand(b, t, -1)], -1)\n        _, h = self.world_model(inp)                     # 动作条件动力学\n        pred = h.squeeze(0)                              # 未来状态的紧凑表示\n        return base_action + self.adapter(torch.cat([obs_hist[:, -1], pred], -1))\n",
+   "sources": [
+    {
+     "title": "LocoWM: High-Precision Locomotion through World-Model-Guided Residual Adaptation",
+     "url": "https://arxiv.org/abs/2609.39179v1"
+    }
+   ]
+  },
+  {
+   "id": "f-diagonal-linear-recurrence",
+   "name": "对角线性递归与低秩非线性创新（Diagonal Linear Recurrence）",
+   "category": "worldmodel",
+   "latex": "h_t=a\\odot h_{t-1}+b\\odot u_t+\\sum_{r=1}^{k}u_r\\,v_r^{\\top}\\phi(u_t),\\qquad k=0\\ \\Rightarrow\\ \\text{purely linear}",
+   "symbols": [
+    [
+     "h_t",
+     "t 时刻 64 维递归状态"
+    ],
+    [
+     "a",
+     "逐元素衰减系数"
+    ],
+    [
+     "b",
+     "逐元素写入系数"
+    ],
+    [
+     "u_t",
+     "观测编码器输出（非线性）"
+    ],
+    [
+     "\\phi",
+     "非线性激活"
+    ],
+    [
+     "k",
+     "非线性创新项的秩，k=0 表示纯线性"
+    ],
+    [
+     "u_r v_r^\\top",
+     "秩 1 的分量，叠加成 rank-k 修正"
+    ]
+   ],
+   "derivation": [
+    "先写对角线性部分 a ⊙ h_{t-1}，让每个状态维度独立衰减。",
+    "加上写入项 b ⊙ u_t，把当前观测压进状态。",
+    "若要引入非线性递归，用 rank-k 低秩项 u_r v_r^⊤ φ(u_t) 做修正，避免满矩阵的参数量。",
+    "令 k = 0 即退化成纯线性递归，用来检验「非线性递归是否必要」。"
+   ],
+   "analogy": "像给每条录音带配一个可调的衰减旋钮，另外再挂 k 个联动开关；实测发现不挂开关也够用。",
+   "pitfalls": [
+    "非线性放在递归里还是放在观测编码器里，效果并不等价。",
+    "k 增大不代表更强：本文实测增加 k 没有可测收益。",
+    "64 维、该教师、该黑障时长的结论不能直接外推到别的任务。"
+   ],
+   "code": "import torch, torch.nn as nn\n\nclass DiagLinearRecurrence(nn.Module):\n    def __init__(self, d_in, d_state=64, k=0):\n        super().__init__()\n        self.log_a = nn.Parameter(torch.zeros(d_state))   # sigmoid 后作为衰减系数\n        self.b = nn.Linear(d_in, d_state)\n        self.U = nn.Parameter(torch.randn(d_state, k) * 0.01) if k else None\n        self.V = nn.Linear(d_in, k, bias=False) if k else None\n\n    def forward(self, u_seq, h=None):\n        # u_seq: (B,T,d_in)  观测编码器输出\n        b, t, _ = u_seq.shape\n        h = h if h is not None else u_seq.new_zeros(b, self.log_a.numel())\n        a = torch.sigmoid(self.log_a)\n        outs = []\n        for i in range(t):\n            u = u_seq[:, i]\n            h = a * h + self.b(u)\n            if self.U is not None:\n                h = h + (self.U @ self.V(u).transpose(0, 1)).transpose(0, 1)\n            outs.append(h)\n        return torch.stack(outs, 1), h\n",
+   "sources": [
+    {
+     "title": "Linear Recurrent Memory Suffices to Distil a World-Model Policy for Robot Air Hockey",
+     "url": "https://arxiv.org/abs/2609.39151v1"
+    }
+   ]
+  },
+  {
+   "id": "f-latent-diffusion-objective",
+   "name": "潜空间扩散训练目标（Latent Diffusion Objective）",
+   "category": "generative",
+   "latex": "\\mathcal{L}(\\theta)=\\mathbb{E}_{x,\\,\\epsilon,\\,t}\\Big\\|\\epsilon-\\epsilon_\\theta\\big(z_t,\\,t,\\,c\\big)\\Big\\|_2^2,\\qquad z=E(x),\\quad z_t=\\sqrt{\\bar\\alpha_t}\\,z+\\sqrt{1-\\bar\\alpha_t}\\,\\epsilon",
+   "symbols": [
+    [
+     "x",
+     "训练图像"
+    ],
+    [
+     "E",
+     "图像编码器（高压缩 tokenizer，如 DC-SAE）"
+    ],
+    [
+     "z",
+     "紧凑潜变量，空间尺寸为原图的 1/r"
+    ],
+    [
+     "\\epsilon",
+     "标准高斯噪声"
+    ],
+    [
+     "t",
+     "扩散时间步"
+    ],
+    [
+     "\\bar\\alpha_t",
+     "累积噪声调度系数"
+    ],
+    [
+     "z_t",
+     "第 t 步加噪后的潜变量"
+    ],
+    [
+     "\\epsilon_\\theta",
+     "去噪网络（如 1.6B DiT）"
+    ],
+    [
+     "c",
+     "条件（类别标签或文本）"
+    ]
+   ],
+   "derivation": [
+    "先用高压缩编码器把图像映射成紧凑潜变量 z，把扩散的建模对象从像素搬到更短的序列上。",
+    "按噪声调度对 z 加噪得到 z_t，让网络在每个噪声水平上都见到训练样本。",
+    "让网络预测注入的噪声 ε，回归目标就是这一项 MSE，等价于在潜空间上做去噪得分匹配。",
+    "压缩率 r 越高，潜序列越短、训练与推理越省，但 z 承载的信息越少，同一个目标更难拟合、收敛更慢——这正是 DC-SAE 要缓解的矛盾。"
+   ],
+   "analogy": "像先把大图缩成小缩略图再学修图：缩略图越小越省事，但细节丢得越多，修图模型要花更久才能学会还原。",
+   "pitfalls": [
+    "高压缩造成的信息损失无法靠更长训练补回，损失下降不等于重建变好。",
+    "潜变量的缩放因子（latent scale）不校准，会让噪声预测目标与激活尺度不匹配。",
+    "PSNR 衡量逐像素重建、gFID 衡量生成分布质量，只看其中一个会误判 tokenizer 的好坏。",
+    "像素归一化范围与 PSNR 里的 MAX 取值不一致时，PSNR 数字无法跨论文比较。"
+   ],
+   "code": "import torch\nimport torch.nn.functional as F\n\n\ndef latent_diffusion_loss(eps_net, encoder, x, alphas_bar, cond=None, num_steps=1000):\n    # x: (B,3,H,W); encoder: 冻结的高压缩潜编码器（DC-SAE 的压缩通路）\n    with torch.no_grad():\n        z = encoder(x)                                     # (B,C,h,w)，h = H / 32\n    b = z.shape[0]\n    t = torch.randint(0, num_steps, (b,), device=z.device)\n    eps = torch.randn_like(z)                              # 目标噪声\n    a = alphas_bar.to(z.device)[t].view(b, 1, 1, 1)\n    z_t = a.sqrt() * z + (1.0 - a).sqrt() * eps            # 前向加噪\n    eps_hat = eps_net(z_t, t, cond)                        # 预测噪声\n    return F.mse_loss(eps_hat, eps)\n",
+   "sources": [
+    {
+     "title": "DC-SAE: Deep Compression Semantic Autoencoder for Faster Diffusion Convergence",
+     "url": "https://arxiv.org/abs/2609.39222"
+    }
+   ]
+  },
+  {
+   "id": "f-compression-psnr-gfid",
+   "name": "空间压缩率与 PSNR/gFID 指标（Compression Ratio, PSNR and gFID）",
+   "category": "generative",
+   "latex": "r=\\frac{H}{h}=\\frac{W}{w}=32,\\qquad \\mathrm{PSNR}=10\\log_{10}\\frac{\\mathrm{MAX}^2}{\\mathrm{MSE}},\\qquad \\mathrm{gFID}=\\big\\|\\mu_r-\\mu_g\\big\\|_2^2+\\mathrm{Tr}\\Big(\\Sigma_r+\\Sigma_g-2\\big(\\Sigma_r\\Sigma_g\\big)^{1/2}\\Big)",
+   "symbols": [
+    [
+     "r",
+     "空间压缩率，原图边长与潜变量边长之比（像素数之比为 r^2）"
+    ],
+    [
+     "H\\times W",
+     "原图像素尺寸（本文为 512×512）"
+    ],
+    [
+     "h\\times w",
+     "潜变量尺寸（r=32 时为 16×16）"
+    ],
+    [
+     "\\mathrm{MAX}",
+     "像素最大值（通常取 1 或 255）"
+    ],
+    [
+     "\\mathrm{MSE}",
+     "重建与真值的均方误差"
+    ],
+    [
+     "\\mu_r,\\Sigma_r",
+     "真实图像特征的均值与协方差"
+    ],
+    [
+     "\\mu_g,\\Sigma_g",
+     "生成图像特征的均值与协方差"
+    ]
+   ],
+   "derivation": [
+    "空间压缩率定义为原图边长与潜变量边长之比，DC-SAE 在 512×512 上取到 32（潜变量 16×16）。",
+    "PSNR 把重建的均方误差取对数，MSE 越小分数越高，衡量的是逐像素保真度。",
+    "gFID 用真实与生成图像特征分布之间的 Fréchet 距离，衡量的是生成质量与分布距离。",
+    "把这两组指标放在同一压缩率、同一吞吐下比较，才能判断高压缩是否真的同时保住了重建与生成。"
+   ],
+   "analogy": "PSNR 像逐题对答案的准确率，gFID 像把全班成绩分布拿来对比：一个看单张图像素对得准不准，一个看整体分布像不像。",
+   "pitfalls": [
+    "PSNR 对模糊不敏感，解码器输出偏糊仍可能拿到不低的分数。",
+    "gFID 依赖特征提取器与评测样本量，不同实现的数值不可直接横向比较。",
+    "比较时必须固定压缩率与吞吐；压缩率不同的两个 tokenizer，PSNR 不具可比性。"
+   ],
+   "code": "import torch\n\n\ndef compression_ratio(img_hw, latent_hw):\n    # DC-SAE @ 512x512: 512 / 16 = 32 倍空间压缩（每个空间维度各降 32 倍）\n    assert img_hw[0] / latent_hw[0] == img_hw[1] / latent_hw[1], \"各向同性下采样\"\n    return img_hw[0] / latent_hw[0]\n\n\ndef psnr(x, x_hat, max_val=1.0):\n    # 29.79 dB 对应 MSE ≈ 10 ** (-2.979) ≈ 1.05e-3\n    mse = torch.mean((x - x_hat) ** 2)\n    return float(10.0 * torch.log10(torch.tensor(max_val ** 2) / mse.clamp(min=1e-12)))\n\n\nassert abs(compression_ratio((512, 512), (16, 16)) - 32.0) < 1e-9\n",
+   "sources": [
+    {
+     "title": "DC-SAE: Deep Compression Semantic Autoencoder for Faster Diffusion Convergence",
+     "url": "https://huggingface.co/papers/2609.39222"
+    }
+   ]
+  },
+  {
+   "id": "f-temporal-distance-goal",
+   "name": "时间距离目标表征（Temporal-distance Goal Representation）",
+   "category": "rl",
+   "latex": "d^{\\pi}(s,g)=\\mathbb{E}_{\\pi}\\!\\left[\\sum_{t=0}^{\\infty}\\gamma^{t}\\,\\mathbb{1}[s_t\\neq g]\\right],\\qquad \\phi(s,g)=d^{\\pi}(s,g)\\ \\ \\text{(deterministic)}",
+   "symbols": [
+    [
+     "s",
+     "当前状态"
+    ],
+    [
+     "g",
+     "目标状态"
+    ],
+    [
+     "\\gamma",
+     "折扣因子，控制远距离的权重"
+    ],
+    [
+     "\\mathbb{1}[\\cdot]",
+     "指示函数，未到达目标时为 1"
+    ],
+    [
+     "d^{\\pi}(s,g)",
+     "按策略 π 走到目标的期望折扣步数"
+    ],
+    [
+     "\\phi(s,g)",
+     "用作策略输入的目标表征"
+    ]
+   ],
+   "derivation": [
+    "先定义「走到目标所需的折扣步数」为期望的折扣指示函数之和。",
+    "在确定性转移下期望消失，它退化为最短路径长度，可以精确计算。",
+    "把这个标量（或由它导出的嵌入）当作目标表征喂给策略。",
+    "再人为破坏该表征的几何质量，用同一学习器比较成绩，隔离表征变量。"
+   ],
+   "analogy": "像用「还剩几站地铁」替代「目的地的经纬度」来描述目标，远近关系一目了然。",
+   "pitfalls": [
+    "折扣因子 γ 会改变距离度量本身的几何形状，不同 γ 的结论不可直接比较。",
+    "随机转移下「步数」不再是良定义的确定性量，该表征失去精确性。",
+    "破坏几何质量的具体方式会影响结论可比性，必须与状态侧使用同一套干预。"
+   ],
+   "code": "import numpy as np\nfrom collections import deque\n\ndef temporal_distance(goal, grid, blocked):\n    # grid: (H, W); blocked: set of obstacles -> BFS 得到每格到目标的步数\n    H, W = grid.shape\n    dist = np.full((H, W), np.inf)\n    dist[goal] = 0.0\n    q = deque([goal])\n    while q:\n        r, c = q.popleft()\n        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < H and 0 <= nc < W and (nr, nc) not in blocked:\n                if dist[nr, nc] > dist[r, c] + 1:\n                    dist[nr, nc] = dist[r, c] + 1\n                    q.append((nr, nc))\n    return dist   # phi(s, g) = dist[s]; 确定性环境下即时间距离\n\n\ndef fourier_features(x, B):\n    # 随机傅里叶位置编码: 状态的替代表示\n    proj = x @ B                     # B: (d, m) ~ N(0, sigma^2)\n    return np.concatenate([np.sin(proj), np.cos(proj)], axis=-1)\n",
+   "sources": [
+    {
+     "title": "Do Better Goal Representations Improve Goal-Conditioned Reinforcement Learning?",
+     "url": "https://arxiv.org/abs/2609.39901v1"
+    }
+   ]
+  },
+  {
+   "id": "f-hyperchunk-flow-loss",
+   "name": "超块流匹配目标（Hyperchunk Flow Matching）",
+   "category": "multimodal",
+   "latex": "\\mathcal{L}(\\theta)=\\mathbb{E}_{t,\\,x_0,x_1}\\Big\\|v_\\theta\\big(x_t,t\\mid \\mathrm{ctx}\\big)-\\big(x_1-x_0\\big)\\Big\\|^2,\\qquad x_t=(1-t)\\,x_0+t\\,x_1",
+   "symbols": [
+    [
+     "t",
+     "流时间，采样自 [0,1]"
+    ],
+    [
+     "x_0",
+     "源噪声超块"
+    ],
+    [
+     "x_1",
+     "目标超块（真实文本/图像嵌入）"
+    ],
+    [
+     "x_t",
+     "线性插值得到的中间状态"
+    ],
+    [
+     "v_\\theta",
+     "网络学到的向量场"
+    ],
+    [
+     "\\mathrm{ctx}",
+     "块级因果可见的前序超块"
+    ]
+   ],
+   "derivation": [
+    "在噪声 x_0 与真实目标超块 x_1 之间做线性插值，得到中间状态 x_t。",
+    "条件流匹配的目标速度场就是直线方向 x_1 - x_0，回归它等价于最小化传输代价。",
+    "只对块级因果可见的前序超块条件化，保证训练与推理的可见性一致。",
+    "对多个目标块并行回归，梯度平均后等价于在整条块序列上学一个共享向量场。"
+   ],
+   "analogy": "像给每个超块画一条从噪声到目标的直线，模型只需要学「往哪个方向走、走多快」。",
+   "pitfalls": [
+    "t 的采样分布偏斜会让困难时间段欠训练。",
+    "块内双向而跨块因果，掩码写错就会泄漏未来信息，指标虚高。",
+    "不同模态的连续表征尺度不同，损失会被尺度大的模态主导。"
+   ],
+   "code": "import torch\n\ndef flow_matching_loss(v_net, x1, ctx, t=None):\n    # x1: (B,L,d) 目标超块序列; ctx: 前序超块(因果可见)\n    b = x1.shape[0]\n    if t is None:\n        t = torch.rand(b, 1, 1)\n    x0 = torch.randn_like(x1)                 # 源噪声\n    xt = (1 - t) * x0 + t * x1                # 线性插值路径\n    target = x1 - x0                          # 直线速度场\n    pred = v_net(xt, t.squeeze(-1), ctx)      # 条件于前序块\n    return ((pred - target) ** 2).mean()\n",
+   "sources": [
+    {
+     "title": "Multimodal Flow: Unified Flow Modeling of Language and Vision in Embedding Spaces",
+     "url": "https://arxiv.org/abs/2609.40362v1"
+    }
+   ]
+  },
+  {
+   "id": "f-budget-normalized-success",
+   "name": "等时间预算成功率（Time-budget-normalised Success Rate）",
+   "category": "agent",
+   "latex": "S(B)=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}\\!\\left[\\mathrm{solve}_i=1\\ \\wedge\\ \\tau_i\\le B\\right],\\qquad \\tau_i=\\sum_{t=1}^{T_i} c_t",
+   "symbols": [
+    [
+     "N",
+     "参与比较的 MLE 任务数量"
+    ],
+    [
+     "B",
+     "每个任务允许的 wall-clock 时间预算"
+    ],
+    [
+     "T_i",
+     "第 i 个任务的交互轮数"
+    ],
+    [
+     "c_t",
+     "第 t 轮读、写、执行所消耗的时间"
+    ],
+    [
+     "\\tau_i",
+     "第 i 个任务的实际耗时"
+    ],
+    [
+     "\\mathrm{solve}_i",
+     "第 i 个任务是否被解决（0/1）"
+    ],
+    [
+     "S(B)",
+     "预算 B 下的成功率"
+    ]
+   ],
+   "derivation": [
+    "先把「做得对」与「做得快」分开定义：solve 表示任务是否被解决。",
+    "把每一轮读、写、执行的时间累加，得到该任务的实际耗时 τ_i。",
+    "只有任务被解决且耗时不超过预算 B 时才计为成功，避免用无限时间换分数。",
+    "对全部任务取平均，得到可在不同 harness 之间直接比较的单一指标。"
+   ],
+   "analogy": "像限时考试：答对但超时不算分，这样比较两种做法的优劣才公平。",
+   "pitfalls": [
+    "预算 B 的取值会改变排名：B 很小时比的是速度，B 很大时机制层的开销被掩盖。",
+    "不同任务耗时量级差异大，直接平均会让慢任务主导结果。",
+    "时间统计口径（是否计入模型推理、是否计入排队）必须与对照方案完全一致。"
+   ],
+   "code": "def budget_success_rate(tasks, budget):\n    # tasks: [{\"solved\": bool, \"costs\": [每轮耗时, ...]}, ...]\n    hit = 0\n    for t in tasks:\n        tau = sum(t[\"costs\"])                     # 任务实际耗时\n        hit += int(bool(t[\"solved\"]) and tau <= budget)\n    return hit / len(tasks)                       # S(B)：等预算成功率\n",
+   "sources": [
+    {
+     "title": "How Much of a Harness Does a Strong Agent Need for Autonomous ML Engineering?",
+     "url": "https://arxiv.org/abs/2609.40303v1"
+    }
+   ]
+  },
+  {
+   "id": "f-harness-ablation-effect",
+   "name": "harness 消融效应估计（Harness Ablation Effect）",
+   "category": "agent",
+   "latex": "\\hat{\\Delta}=\\frac{1}{N}\\sum_{i=1}^{N}\\big(s_i^{\\text{min}}-s_i^{\\text{harness}}\\big),\\qquad \\mathrm{SE}(\\hat{\\Delta})=\\frac{\\sigma_d}{\\sqrt{N}},\\qquad \\sigma_d^2=\\frac{1}{N-1}\\sum_{i=1}^{N}\\big(d_i-\\hat{\\Delta}\\big)^2",
+   "symbols": [
+    [
+     "s_i^{\\text{min}}",
+     "最小 harness 单会话在第 i 个任务上的得分"
+    ],
+    [
+     "s_i^{\\text{harness}}",
+     "精雕 harness 在同一任务、同一主干上的得分"
+    ],
+    [
+     "d_i",
+     "两种方案在第 i 个任务上的配对差"
+    ],
+    [
+     "\\hat{\\Delta}",
+     "平均配对差，接近 0 表示 harness 没有带来优势"
+    ],
+    [
+     "\\sigma_d",
+     "配对差的标准差"
+    ],
+    [
+     "\\mathrm{SE}",
+     "均值估计的标准误"
+    ],
+    [
+     "N",
+     "配对任务数量"
+    ]
+   ],
+   "derivation": [
+    "对每个任务取两种方案的得分并作差，得到配对差 d_i，先消掉任务难度差异。",
+    "对全部任务求平均，得到 harness 带来的平均分数变化 Δ。",
+    "用配对差的标准差除以 √N 给出标准误，用来判断 Δ 是否只是随机噪声。",
+    "当 Δ 的置信区间跨过 0 时，说明精雕 harness 相对最小基线没有可测优势。"
+   ],
+   "analogy": "像同一批学生用两种教辅各做一遍同样的卷子，只看每人两次的分差，而不是比较两个班的平均分。",
+   "pitfalls": [
+    "不做配对而直接比两组平均分，任务难度差异会淹没 harness 的真实效应。",
+    "同一任务多次运行的随机性要一并估计，否则标准误会偏小、结论过于自信。",
+    "Δ≈0 只说明在当前基准与主干下无优势，不能外推到所有任务与所有预算。"
+   ],
+   "code": "import math\n\n\ndef harness_ablation_effect(minimal, harness):\n    # minimal / harness: 同一批任务上两种方案的得分, 一一配对\n    diffs = [a - b for a, b in zip(minimal, harness)]\n    n = len(diffs)\n    delta = sum(diffs) / n\n    var = sum((d - delta) ** 2 for d in diffs) / (n - 1)\n    se = math.sqrt(var / n)\n    ci = (delta - 1.96 * se, delta + 1.96 * se)\n    return delta, se, ci          # 置信区间跨 0 => 无显著优势\n",
+   "sources": [
+    {
+     "title": "How Much of a Harness Does a Strong Agent Need for Autonomous ML Engineering?",
+     "url": "https://arxiv.org/abs/2609.40303v1"
+    }
+   ]
+  },
+  {
+   "id": "f-phase-coordinate",
+   "name": "相位坐标与压缩步长（Phase Coordinate and Compression Stride）",
+   "category": "foundation",
+   "latex": "\\phi(i)=i\\bmod W\\in\\{0,1,\\dots,W-1\\},\\qquad n_{\\mathrm{cache}}=\\left\\lceil\\frac{L}{W}\\right\\rceil\\cdot k,\\qquad k\\ge 1,\\ \\ W>k",
+   "symbols": [
+    [
+     "i",
+     "token 在序列中的索引"
+    ],
+    [
+     "W",
+     "分块压缩的固定步长，即压缩窗口覆盖的连续 token 数"
+    ],
+    [
+     "\\phi(i)",
+     "第 i 个 token 的相位，即它相对压缩窗口边界的位置"
+    ],
+    [
+     "L",
+     "序列长度"
+    ],
+    [
+     "k",
+     "每个压缩窗口保留下来的缓存条目数"
+    ],
+    [
+     "n_{\\mathrm{cache}}",
+     "压缩后的缓存条目总数"
+    ]
+   ],
+   "derivation": [
+    "分块压缩以固定步长 W 切分连续 token，每个 token 因此落在一个压缩窗口内。",
+    "用索引对 W 取模就得到它相对窗口边界的偏移，这就是新的位置坐标「相位」。",
+    "每个窗口压成 k 条缓存项，W > k 才叫压缩，于是缓存条目数从 L 降到约 L/W·k。",
+    "缓存条目变少，窗口内不同位置的信息被聚合的强度不同，可恢复性遂随相位周期变化。"
+   ],
+   "analogy": "像把一长串座位每 W 个编成一个包厢、只留 k 个观察窗；你坐在包厢里的第几个座位，决定了你还能不能被看见。",
+   "pitfalls": [
+    "相位定义可以说成 i mod W，也可以说到最近窗口边界的距离，两者在 W 为偶数时得到的相位数是不同的。",
+    "把相位当成绝对位置编码来理解会出错：它是一个周期量，同一相位在整条序列上反复出现。",
+    "k 不变而增大 W 会同时放大压缩率与相位效应，两个变量被混在一起比较就无法归因。"
+   ],
+   "code": "import torch\n\n\ndef phase_of_token(seq_len: int, stride: int) -> torch.Tensor:\n    # 分块压缩步长 stride=W: 每个 token 的相位 = 它在压缩窗口内的偏移\n    i = torch.arange(seq_len)\n    return i % stride                      # (L,) 取值 0 .. W-1\n\n\ndef compressed_cache_len(seq_len: int, stride: int, keep_per_window: int = 1) -> int:\n    # 把每 stride 个连续 token 的缓存压成 keep_per_window 条\n    windows = (seq_len + stride - 1) // stride\n    return windows * keep_per_window\n\n\nif __name__ == \"__main__\":\n    print(phase_of_token(16, 4))                    # 相位 0,1,2,3 循环出现\n    print(compressed_cache_len(8192, 8, 1))         # 8192 -> 1024 条缓存项\n",
+   "sources": [
+    {
+     "title": "Periodic Weak Spots: Phase Sensitivity from Chunked KV-Cache Compression",
+     "url": "https://huggingface.co/papers/2609.36322"
+    }
+   ]
+  },
+  {
+   "id": "f-phase-average-gap",
+   "name": "相位平均准确率与最差相位差（Phase-averaged Accuracy and Worst-phase Gap）",
+   "category": "foundation",
+   "latex": "\\overline{\\mathrm{Acc}}=\\frac{1}{W}\\sum_{\\phi=0}^{W-1}\\mathrm{Acc}(\\phi),\\qquad \\mathrm{Acc}(\\phi)=\\mathbb{E}\\big[\\,\\mathrm{hit}\\mid \\phi(i)=\\phi\\,\\big],\\qquad \\Delta_{\\mathrm{phase}}=\\max_{\\phi}\\mathrm{Acc}(\\phi)-\\min_{\\phi}\\mathrm{Acc}(\\phi)\\ \\le\\ 40\\%",
+   "symbols": [
+    [
+     "W",
+     "压缩步长，也是相位取值个数"
+    ],
+    [
+     "\\phi",
+     "相位索引，取 0 到 W−1"
+    ],
+    [
+     "\\mathrm{Acc}(\\phi)",
+     "源 token 相位为 φ 时的检索准确率"
+    ],
+    [
+     "\\mathrm{hit}",
+     "该条检索样本是否成功（0/1）"
+    ],
+    [
+     "\\overline{\\mathrm{Acc}}",
+     "跨相位的平均准确率，即常见基准分"
+    ],
+    [
+     "\\Delta_{\\mathrm{phase}}",
+     "最好相位与最差相位的准确率之差"
+    ]
+   ],
+   "derivation": [
+    "把评测样本按源 token 的相位 φ 分桶，在每个桶内算检索成功率，得到 Acc(φ)。",
+    "对全部 W 个相位取平均，得到通常汇报的那个「平均基准分」。",
+    "再取各相位准确率的最大值与最小值之差，作为相位敏感性的标量指标。",
+    "摘要报告该差值在大开源模型上最多可达 40 个百分点，说明平均分可以掩盖系统性的位置性失败。"
+   ],
+   "analogy": "像用全班平均分评价一门课：平均 68 分看着还行，但如果每次换座位就有四成学生从会做变成不会做，这个平均分掩盖了大问题。",
+   "pitfalls": [
+    "只看平均准确率会完全看不到相位效应：高平均分与低最差相位可以同时存在。",
+    "各相位的样本数不均衡时，未加权的相位平均会被样本多的相位主导。",
+    "差值还要看样本量与置信区间，40 个百分点是「最多」而非所有设置下的典型值。",
+    "相位的定义（i mod W 还是到边界的距离）一变，分桶结果随之改变，指标不可跨定义比较。"
+   ],
+   "code": "import torch\n\n\ndef phase_accuracy(hits: torch.Tensor, phases: torch.Tensor, n_phase: int) -> torch.Tensor:\n    # hits: (N,) 每条检索样本是否命中(0/1); phases: (N,) 该样本源 token 的相位\n    acc = torch.full((n_phase,), float(\"nan\"))\n    for p in range(n_phase):\n        mask = phases == p\n        if mask.any():\n            acc[p] = hits[mask].float().mean()\n    return acc\n\n\ndef phase_average_and_gap(hits: torch.Tensor, phases: torch.Tensor, n_phase: int):\n    acc = phase_accuracy(hits, phases, n_phase)\n    valid = acc[~torch.isnan(acc)]                 # 忽略没有样本的相位\n    mean_acc = valid.mean().item()                 # 平均基准分\n    gap = (valid.max() - valid.min()).item()       # 最差相位差\n    return mean_acc, gap, acc\n\n\nif __name__ == \"__main__\":\n    hits = torch.tensor([1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0])\n    phases = torch.arange(hits.numel()) % 8                   # W = 8\n    print(phase_average_and_gap(hits, phases, 8))\n",
+   "sources": [
+    {
+     "title": "Periodic Weak Spots: Phase Sensitivity from Chunked KV-Cache Compression",
+     "url": "https://arxiv.org/abs/2609.36322"
+    }
+   ]
+  },
+  {
+   "id": "f-majority-vote-pseudolabel",
+   "name": "多数投票伪标签奖励（Majority-vote Pseudo-label Reward）",
+   "category": "rl",
+   "latex": "\\hat{y}(x)=\\arg\\max_{a}\\sum_{i=1}^{K}\\mathbb{1}\\big[\\mathrm{Ans}(y_i)=a\\big],\\qquad r_i=\\mathbb{1}\\big[\\mathrm{Ans}(y_i)=\\hat{y}(x)\\big],\\qquad \\nabla_\\Delta J=\\mathbb{E}\\big[r_i\\,\\nabla_\\Delta\\log\\pi_\\Delta(y_i\\mid x)\\big]",
+   "symbols": [
+    [
+     "x",
+     "测试时的问题"
+    ],
+    [
+     "K",
+     "每题采样的推理链条数"
+    ],
+    [
+     "y_i",
+     "第 i 条采样推理链"
+    ],
+    [
+     "\\mathrm{Ans}(\\cdot)",
+     "从推理链抽取最终答案"
+    ],
+    [
+     "\\hat{y}(x)",
+     "多数投票得到的伪标签"
+    ],
+    [
+     "r_i",
+     "第 i 条链的 0/1 奖励"
+    ],
+    [
+     "\\Delta",
+     "只包含 bias 的参数增量"
+    ]
+   ],
+   "derivation": [
+    "对同一问题采样 K 条推理链，各自抽取最终答案。",
+    "统计每个答案的票数，取众数作为伪标签 ŷ。",
+    "把「答案与伪标签一致」定义为奖励 1，否则 0，完全不需要人工标签。",
+    "在 bias-only 子空间上做策略梯度更新，主干参数保持冻结。"
+   ],
+   "analogy": "像无标准答案的竞赛用「群体投票」当参考答案，再按是否与参考答案一致给分。",
+   "pitfalls": [
+    "K 太小时众数不稳定，奖励噪声会主导更新。",
+    "伪标签本身可能全票错误，需要一致性筛选或置信度门槛。",
+    "只在 bias 空间优化，限制了模型能修正的错误类型。"
+   ],
+   "code": "import torch\nfrom collections import Counter\n\ndef majority_reward(answers):\n    # answers: list[str] 同一题 K 条链抽取出的答案\n    label, _ = Counter(answers).most_common(1)[0]\n    return [1.0 if a == label else 0.0 for a in answers], label\n\n\ndef bias_only_params(model):\n    # 只把 bias 交给优化器, 主干冻结\n    for n, p in model.named_parameters():\n        p.requires_grad = n.endswith(\"bias\")\n    return [p for p in model.parameters() if p.requires_grad]\n\n\ndef reinforce_step(model, batch, rewards, optimizer, logps):\n    # logps: (K,) 每条链的对数概率之和; rewards: (K,)\n    adv = torch.tensor(rewards) - sum(rewards) / len(rewards)\n    loss = -(adv * logps).mean()\n    optimizer.zero_grad(); loss.backward(); optimizer.step()\n    return loss.item()\n",
+   "sources": [
+    {
+     "title": "Label-free steering: Compressing test-time reinforcement learning into bias-only subspaces",
+     "url": "https://huggingface.co/papers/2609.18587"
+    }
+   ]
+  },
+  {
+   "id": "f-amortized-profiling-overhead",
+   "name": "分摊剖析开销（Amortized Profiling Overhead）",
+   "category": "engineering",
+   "latex": "\\mathrm{ovh}=\\rho\\cdot c_{\\mathrm{sample}},\\qquad \\rho=\\frac{K\\,w}{T},\\qquad \\mathrm{ovh}_{\\mathrm{TTFT}}<0.5\\%,\\quad \\mathrm{ovh}_{\\mathrm{TPOT}}<7\\%",
+   "symbols": [
+    [
+     "\\rho",
+     "采集占空比：活跃窗口总时长 / 观测期总时长"
+    ],
+    [
+     "K",
+     "观测期内的采集窗口个数"
+    ],
+    [
+     "w",
+     "单个窗口长度，摘要给出典型值 30 秒"
+    ],
+    [
+     "T",
+     "观测期总时长"
+    ],
+    [
+     "c_{\\mathrm{sample}}",
+     "窗口内单位时间的相对采集成本"
+    ],
+    [
+     "\\mathrm{ovh}_{\\mathrm{TTFT}}",
+     "首 token 时间上的活跃采集相对开销"
+    ],
+    [
+     "\\mathrm{ovh}_{\\mathrm{TPOT}}",
+     "每输出 token 时间上的活跃采集相对开销"
+    ]
+   ],
+   "derivation": [
+    "用窗口个数乘窗口长度 K·w 得到活跃采集总时长，它是唯一可调的分子。",
+    "再除以观测期总时长 T，把「采多久」化成无量纲的占空比 ρ，便于跨部署比较。",
+    "乘以窗口内单位时间的相对采集成本 c_sample，就得到分摊到整体服务上的开销 ovh。",
+    "把同一占空比分别代入首 token 与每 token 输出的延迟口径，即得摘要给出的 0.5% 与 7% 两个上界。"
+   ],
+   "analogy": "像电费只按空调实际开机时长乘以功率算，而不是按整个夏天算；开机时段挑得准，账就不会失控。",
+   "pitfalls": [
+    "把「窗口内开销」当成「全局开销」：真正的成本必须乘占空比才是分摊值。",
+    "TTFT 与 TPOT 的开销口径不同，不能用一个比例互相套用（摘要给的是 <0.5% 与 7%）。",
+    "c_sample 随采集粒度非线性增长，占空比减半不等于开销减半。"
+   ],
+   "code": "import numpy as np\n\n\ndef duty_cycle(horizon_s, window_s=30.0, n_windows=10):\n    # 有界窗口：K 个 w 秒窗口摊到 T 秒观测期上\n    max_windows = max(int(horizon_s // window_s), 1)\n    k = min(int(n_windows), max_windows)\n    return k, k * window_s / horizon_s\n\n\ndef amortized_overhead(horizon_s, window_s=30.0, n_windows=10,\n                       cost_ttft=0.004, cost_tpot=0.06):\n    # 分摊开销 = 占空比 * 窗口内单位时间相对成本\n    k, rho = duty_cycle(horizon_s, window_s, n_windows)\n    return {\"K\": k, \"rho\": rho,\n            \"ovh_ttft\": rho * cost_ttft,\n            \"ovh_tpot\": rho * cost_tpot}\n\n\nif __name__ == \"__main__\":\n    for T in (600.0, 3600.0, 86400.0):\n        r = amortized_overhead(T)\n        print(\"T=%.0fs K=%d rho=%.4f ttft=%.3f%% tpot=%.3f%%\"\n              % (T, r[\"K\"], r[\"rho\"], 100 * r[\"ovh_ttft\"], 100 * r[\"ovh_tpot\"]))\n    # 常开追踪的对照：占空比恒为 1，开销不随观测期增长而摊薄\n    always_on = 1.0 * 0.06\n    print(\"always-on tpot overhead = %.3f%%\" % (100 * always_on))\n",
+   "sources": [
+    {
+     "title": "Herschel: Continuous Optimization of Production LLM Inference through On-Demand Profiling",
+     "url": "https://arxiv.org/abs/2609.40247v1"
+    }
+   ]
+  },
+  {
+   "id": "f-bounded-window-evidence-budget",
+   "name": "有界窗口证据预算与低效命中率（Bounded-window Evidence Budget）",
+   "category": "engineering",
+   "latex": "\\mathcal{E}=K\\,w\\,b,\\qquad \\rho=\\frac{K\\,w}{T},\\qquad \\eta=\\frac{N_{\\mathrm{ineff}}}{N_{\\mathrm{trace}}}=23\\%,\\qquad N_{\\mathrm{trace}}\\approx 1.7\\times10^{4}",
+   "symbols": [
+    [
+     "\\mathcal{E}",
+     "观测期内采集到的证据总量"
+    ],
+    [
+     "K",
+     "采集窗口个数"
+    ],
+    [
+     "w",
+     "单个窗口长度，摘要给出典型值 30 秒"
+    ],
+    [
+     "b",
+     "窗口内单位时间产出的证据量（每秒条数）"
+    ],
+    [
+     "\\rho",
+     "占空比 K·w/T，即成本预算约束"
+    ],
+    [
+     "\\eta",
+     "低效命中率：定位到低效模式的轨迹占比，摘要给 23%"
+    ],
+    [
+     "N_{\\mathrm{trace}}",
+     "观测期内累计轨迹数，摘要给约 17,000"
+    ],
+    [
+     "N_{\\mathrm{ineff}}",
+     "其中定位到低效模式的轨迹数"
+    ]
+   ],
+   "derivation": [
+    "每个窗口按每秒 b 条产出证据，K 个窗口合起来给出总证据量 E = K·w·b。",
+    "证据不能无限采，占空比 ρ = K·w/T 就是成本预算约束，需要在预算内挑窗口而不是全量追踪。",
+    "把观测期内的产出概括成命中率 η = N_ineff / N_trace，它衡量这套采证流程是否真能定位低效。",
+    "代入摘要的六个月口径 N_trace ≈ 1.7 万与 η = 23%，命中率本身就是评估系统产出的核心指标。"
+   ],
+   "analogy": "像质检不是全检而是按批抽检：抽检次数决定成本，抽中缺陷的比例决定这套抽检方案值不值。",
+   "pitfalls": [
+    "把 23% 当成「低效发生率」：它只是被采集与判定覆盖到的轨迹占比，存在分母口径歧义。",
+    "命中率与占空比不是单调关系，加窗口未必线性提高 η，要防止只报好看的比值。",
+    "证据量 E 大不等于可诊断，缺少跨进程依赖时仍拼不出机制。"
+   ],
+   "code": "def evidence_budget(horizon_s, window_s=30.0, n_windows=10, evi_per_s=50.0):\n    # E = K * w * b, 同时报告占空比预算\n    k = min(int(n_windows), max(int(horizon_s // window_s), 1))\n    evidence = k * window_s * evi_per_s\n    return {\"K\": k, \"evidence\": evidence, \"rho\": k * window_s / horizon_s}\n\n\ndef inefficiency_yield(n_trace=17000, eta=0.23):\n    # 摘要口径：约 1.7 万条轨迹，23% 定位到低效模式\n    return round(n_trace * eta)\n\n\nif __name__ == \"__main__\":\n    print(evidence_budget(86400.0))\n    print(\"ineff traces ~\", inefficiency_yield())\n",
+   "sources": [
+    {
+     "title": "Herschel: Continuous Optimization of Production LLM Inference through On-Demand Profiling",
+     "url": "https://arxiv.org/abs/2609.40247v1"
     }
    ]
   }

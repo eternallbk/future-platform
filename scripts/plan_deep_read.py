@@ -140,6 +140,12 @@ def category_mismatch(item: dict) -> str | None:
                          r"binary search|two pointers|滑动窗口|并查集|单调栈|"
                          r"interview|coding|problem|solution", blob):
             return "看起来不是手撕题（本文归类可能错误）"
+    elif cat == "unclassified":
+        # No keyword matched at all. There is nothing to deep-read against a
+        # category, and spending a quota slot on it would take that slot away from a
+        # real direction. These items are reported instead (see the proposal's
+        # noiseReport) so the keyword set can be extended deliberately.
+        return "未命中任何分类关键词（应扩充关键词，而不是给它深度解析）"
     return None
 
 
@@ -218,14 +224,28 @@ def build_plan(per_min: int, per_max: int, fresh_only: bool) -> dict:
 
     selected: list[dict] = []
     per_category: dict[str, dict] = {}
+    # Learning signals let the quota follow what the reader actually studies.
+    # Without this the plan is blind to the reader's own behaviour and always
+    # spends depth on the same static category weights.
+    feedback = load(DATA / "feedback.json", {}) or {}
+    fb_cat = feedback.get("byCategory") or {}
+    max_fb = max(fb_cat.values()) if fb_cat else 0
+
     for cat, rows in sorted(by_cat.items()):
         scored = []
         for it in rows:
             s, parts = depth_score(it)
+            # A small depth bonus for categories the reader engages with, capped at
+            # +6 so an interest cannot starve the other directions.
+            if max_fb:
+                s = round(s + 6.0 * (fb_cat.get(cat, 0) / max_fb), 2)
             scored.append((s, parts, it))
         scored.sort(key=lambda x: (-x[0], str(x[2].get("id"))))
 
         catw = CATEGORY_DEPTH_VALUE.get(cat, 0.5)
+        # Interest can lift the quota by up to +1 slot (never below the base).
+        if max_fb and fb_cat.get(cat):
+            catw = min(1.0, catw + 0.1 * (fb_cat[cat] / max_fb))
         quota = int(round(per_min + (per_max - per_min) * catw))
         quota = max(per_min, min(per_max, quota))
 

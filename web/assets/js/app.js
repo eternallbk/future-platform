@@ -6,7 +6,7 @@
  * ========================================================================= */
 'use strict';
 
-/* ===== core.part.js — 1515 lines ===== */
+/* ===== core.part.js — 1527 lines ===== */
 
 /* ============================================================================
  * Future · 求职学习工作台 — app.js (part 1/2)
@@ -38,6 +38,13 @@
 /* ============================ §1 CONSTANTS ============================== */
 
 const CATEGORIES = [
+  // 'unclassified' is the bucket for items where NO keyword matched. It is
+  // deliberately visible (and placed first) rather than silently folded into
+  // 'trend', because a growing pile here is the signal that the keyword set needs
+  // tuning - which is exactly what the automatic keyword tuner acts on.
+  { id: 'unclassified', zh: '未分类',         en: 'Unclassified',      icon: 'i-alert',    color: 'var(--fg-3)',
+    desc: '没有命中任何分类关键词的条目。堆在这里通常意味着关键词需要调整。',
+    goal: '保持这一栏接近零；若持续增长，说明关键词覆盖不足或有新的方向出现。' },
   { id: 'multimodal',   zh: '多模态算法',     en: 'Multimodal',        icon: 'i-layers',   color: 'var(--c-multimodal)',
     desc: '视觉-语言对齐、VLM 架构、跨模态检索与生成、多模态评测。',
     goal: '每日捕获多模态大模型的新架构、对齐方法与评测基准进展。' },
@@ -1241,6 +1248,11 @@ function normalizeItem(raw) {
 
 function mapCategoryAlias(c) {
   if (!c) return 'trend';
+  // 'unclassified' is emitted by collect.py when NO keyword matched at all. Calling
+  // it 'trend' was actively misleading: the old classifier defaulted zero-hit items
+  // to trend, which is how a grammar/pragmatics paper ended up in the trend queue.
+  // Keep it as its own label so it is visible and can be filtered out.
+  if (/^unclassified$|uncategor/.test(c)) return 'unclassified';
   if (/multi|vision|vlm|mllm/.test(c)) return 'multimodal';
   if (/post|sft|rlhf|align|dpo|grpo/.test(c)) return 'posttraining';
   if (/world|embodied|vla/.test(c)) return 'worldmodel';
@@ -1523,7 +1535,7 @@ function toast(message, kind = 'ok', ms = 3200) {
   }, ms);
 }
 
-/* ===== ui.part.js — 641 lines ===== */
+/* ===== ui.part.js — 728 lines ===== */
 
 /* ============================================================================
  * Future · 求职学习工作台 — ui.js (part 1b)
@@ -1663,6 +1675,7 @@ const COMMANDS = [
   { id: 'cmd:accent', label: '更换强调色', icon: 'i-palette', group: '命令', run: () => openThemePopover($('#btn-theme')) },
   { id: 'cmd:refresh', label: '重新加载本地数据层', icon: 'i-refresh', group: '命令', run: () => reloadData() },
   { id: 'cmd:export', label: '导出我的进度（JSON）', icon: 'i-download', group: '命令', run: () => exportProgress() },
+  { id: 'cmd:feedback', label: '写出学习信号（让采集器学习你的偏好）', icon: 'i-refresh', group: '命令', run: () => exportFeedback() },
   { id: 'cmd:print', label: '打印当前视图', icon: 'i-download', group: '命令', run: () => window.print() },
   { id: 'cmd:today', label: '只看今天的更新', icon: 'i-clock', group: '命令', run: () => { go('#/digest'); } },
 ];
@@ -1929,6 +1942,91 @@ function reloadData() {
   });
 }
 
+/* Build the signal payload the collector consumes.
+ *
+ * WHY THIS EXISTS: stars, reading status and mastery all live in localStorage,
+ * which the Python collector cannot read. Without an export, content selection
+ * can never adapt to what the reader actually values - the workbench would keep
+ * scoring purely on keyword/relevance heuristics forever. This payload is written
+ * to web/data/feedback.json (locally, or via the File System Access API when the
+ * browser supports it) and collect.py uses it to (a) give a small scoring bonus to
+ * categories and channels the reader engages with, and (b) let plan_deep_read.py
+ * prefer those categories when filling its quota.
+ *
+ * Privacy: it contains item ids and category names only - no notes, no personal
+ * data - and web/data/feedback.json is excluded from the published site.
+ */
+function buildFeedbackPayload() {
+  const catOf = new Map(state.items.map((i) => [i.id, i.category]));
+  const chanOf = new Map(state.items.map((i) => [i.id, i.channel]));
+  const byCategory = {};
+  const byChannel = {};
+  const bump = (obj, key, n = 1) => {
+    if (!key) return;
+    obj[key] = (obj[key] || 0) + n;
+  };
+
+  for (const id of Object.keys(state.user.starred)) {
+    bump(byCategory, catOf.get(id));
+    bump(byChannel, chanOf.get(id));
+  }
+  for (const [id, st] of Object.entries(state.user.status || {})) {
+    // "已掌握" is the strongest signal; "学习中" a weaker one.
+    bump(byCategory, catOf.get(id), st === 'done' ? 3 : 1);
+    bump(byChannel, chanOf.get(id), st === 'done' ? 2 : 1);
+  }
+  for (const [id, lv] of Object.entries(state.user.mastery || {})) {
+    bump(byCategory, catOf.get(id), Number(lv) || 0);
+  }
+
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    exportedBy: 'Future workbench (browser)',
+    summary: completionStats(),
+    starredCount: Object.keys(state.user.starred).length,
+    byCategory,
+    byChannel,
+    // Read states per item are useful for a future "resurface what I stalled on".
+    stalledIds: Object.entries(state.user.status || {})
+      .filter(([, v]) => v === 'reading').map(([k]) => k).slice(0, 200),
+  };
+}
+
+/** Persist the feedback file next to the other data files.
+ *
+ * Two transports, because there is no server:
+ *   · File System Access API (Chrome/Edge): writes straight into web/data/ after
+ *     a one-time directory grant. This is the path that makes the loop automatic.
+ *   · Otherwise: falls back to a normal download, and the README explains to drop
+ *     it into web/data/feedback.json.
+ */
+async function exportFeedback() {
+  const payload = buildFeedbackPayload();
+  const text = JSON.stringify(payload, null, 2);
+  try {
+    if (window.showDirectoryPicker) {
+      const dir = await window.showDirectoryPicker({ id: 'future-data', mode: 'readwrite' });
+      const fh = await dir.getFileHandle('feedback.json', { create: true });
+      const w = await fh.createWritable();
+      await w.write(text);
+      await w.close();
+      toast('已写入 feedback.json，下一轮采集会使用你的收藏与进度', 'ok', 4200);
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;   // user cancelled the picker
+    // fall through to the download path
+  }
+  const blob = new Blob([text], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'feedback.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('已导出 feedback.json，请放入 web/data/ 后重新采集', 'warn', 5200);
+}
+
 function exportProgress() {
   const payload = {
     exportedAt: new Date().toISOString(),
@@ -1971,6 +2069,7 @@ const ACTIONS = {
   'open-theme': (t) => openThemePopover(t),
   'reload': () => reloadData(),
   'export': () => exportProgress(),
+  'export-feedback': () => exportFeedback(),
   'print': () => window.print(),
   'copy': (t) => copyText(t.dataset.copy || '', t.dataset.copyMsg || '已复制'),
   'toggle-rail': () => $('#rail').classList.toggle('open'),
@@ -2873,7 +2972,7 @@ const KnowledgeView = {
   after() { wireSortSelect(); wireItemKeyboard(); },
 };
 
-/* ===== views2.part.js — 1796 lines ===== */
+/* ===== views2.part.js — 1799 lines ===== */
 
 /* ============================================================================
  * Future · 求职学习工作台 — views2.js (part 3)
@@ -4050,8 +4149,11 @@ const ProgressView = {
 
     return `
     <div class="section-head"><div><h2 class="section-title">进度与统计</h2>
-      <p class="section-desc">所有状态保存在浏览器 localStorage，可导出为 JSON 备份或跨设备迁移。</p></div>
-      <div class="section-actions"><button class="btn btn-sm" data-act="export">${icon('i-download')} 导出进度</button></div></div>
+      <p class="section-desc">所有状态保存在浏览器 localStorage。收藏与掌握度可以写成学习信号，让每日采集向你实际在学的方向倾斜。</p></div>
+      <div class="section-actions">
+        <button class="btn btn-sm btn-ghost" data-act="export">${icon('i-download')} 导出进度</button>
+        <button class="btn btn-sm" data-act="export-feedback" data-tip="写出 web/data/feedback.json：采集器会据此调整类目权重与深读配额">${icon('i-refresh')} 写出学习信号</button>
+      </div></div>
 
     <div class="grid grid-4" style="margin-bottom:var(--sp-6)">
       ${[

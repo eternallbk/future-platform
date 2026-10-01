@@ -103,7 +103,6 @@ let lastReport = null;
  */
 function pageProbe() {
   const out = [];
-  const tol = 2;
   const all = document.querySelectorAll('body *');
   for (const el of all) {
     const cs = getComputedStyle(el);
@@ -111,23 +110,48 @@ function pageProbe() {
     if (cs.overflowX === 'auto' || cs.overflowX === 'scroll') continue;
     if (el.tagName === 'HTML' || el.tagName === 'BODY') continue;
     const overflow = el.scrollWidth - el.clientWidth;
-    if (overflow > tol && el.clientWidth > 0) {
-      const id = el.id ? '#' + el.id : '';
-      const cls = (el.className && typeof el.className === 'string')
-        ? '.' + el.className.trim().split(/\s+/).slice(0, 3).join('.') : '';
-      out.push({
-        sel: el.tagName.toLowerCase() + id + cls,
-        overflow,
-        clientW: el.clientWidth,
-        scrollW: el.scrollWidth,
-        text: (el.textContent || '').trim().slice(0, 60),
-      });
-    }
+    if (overflow <= 0 || el.clientWidth <= 0) continue;
+
+    // Severity filter. Measurements of a few pixels are almost always sub-pixel
+    // or scrollbar rounding, and elements that deliberately ellipsise
+    // (`text-overflow: ellipsis` with `overflow: hidden`) or line-clamp are
+    // *designed* to clip. Reporting those produced ~150 rows of noise and buried
+    // the genuine findings, which made the guard useless. What matters is content
+    // clipped WITHOUT an ellipsis, or a large overflow meaning a real break.
+    const ellipsises = cs.textOverflow === 'ellipsis';
+    const clamps = cs.webkitLineClamp && cs.webkitLineClamp !== 'none';
+    const meaningful = overflow >= 24 || (!ellipsises && !clamps && overflow >= 8);
+    if (!meaningful) continue;
+
+    const id = el.id ? '#' + el.id : '';
+    const cls = (el.className && typeof el.className === 'string')
+      ? '.' + el.className.trim().split(/\s+/).slice(0, 3).join('.') : '';
+    out.push({
+      sel: el.tagName.toLowerCase() + id + cls,
+      overflow,
+      clientW: el.clientWidth,
+      scrollW: el.scrollWidth,
+      trimmed: ellipsises || Boolean(clamps),
+      text: (el.textContent || '').trim().slice(0, 60),
+    });
+  }
+  out.sort((a, b) => b.overflow - a.overflow);
+  // Deduplicate: a repeated component (a card in a list) produced dozens of
+  // identical rows, which made the report look far worse than it is and hid the
+  // distinct problems. Keep the worst instance of each selector+text pair.
+  const seen = new Set();
+  const uniq = [];
+  for (const o of out) {
+    const key = o.sel + '|' + o.text;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniq.push(o);
   }
   const wide = [];
   for (const el of all) {
     const r = el.getBoundingClientRect();
-    if (r.width > window.innerWidth + tol) {
+    // Only a genuine horizontal escape counts; a few px is rounding.
+    if (r.width > window.innerWidth + 8) {
       const cls = (el.className && typeof el.className === 'string')
         ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
       wide.push({ sel: el.tagName.toLowerCase() + cls, w: Math.round(r.width) });
@@ -136,24 +160,7 @@ function pageProbe() {
   const payload = JSON.stringify({
     vw: window.innerWidth,
     cards: document.querySelectorAll('.kcard,.job-mini,.mini-item,.panel').length,
-    // Proof that the CSS under test actually reached this document.
-    cssProbe: (() => {
-      try {
-        const sheets = Array.from(document.styleSheets);
-        let txt = '';
-        for (const s of sheets) {
-          try { for (const r of s.cssRules) txt += r.cssText; } catch (e) { /* cross-origin */ }
-        }
-        return {
-          sheets: sheets.map((s) => (s.href || 'inline').split('/').pop()),
-          len: txt.length,
-          hasClip: txt.includes('overflow-x: clip'),
-          hasTopbarFlex: txt.includes('.topbar-actions{min-width:0;flex:0 0 auto'),
-          linkCount: document.querySelectorAll('link[rel=stylesheet]').length,
-        };
-      } catch (e) { return { error: String(e) }; }
-    })(),
-    overflow: out.slice(0, 25),
+    overflow: uniq.slice(0, 25),
     tooWide: wide.slice(0, 15),
   });
   try { fetch('/audit-report', { method: 'POST', body: payload, keepalive: true }); } catch (e) { /* ignore */ }
@@ -197,7 +204,6 @@ console.log(`[audit] serving ${WEB} on http://127.0.0.1:${PORT}`);
 console.log(`[audit] widths: ${WIDTHS.join(', ')}  routes: ${ROUTES.join(', ')}\n`);
 
 let problems = 0;
-let reportedCss = false;
 console.log('[audit] static overflow check (scrollWidth > clientWidth)\n');
 for (const w of WIDTHS) {
   for (const route of ROUTES) {
@@ -220,10 +226,6 @@ for (const w of WIDTHS) {
       continue;
     }
     const data = JSON.parse(raw);
-    if (!reportedCss) {
-      reportedCss = true;
-      console.log('[audit] CSS seen by the page:', JSON.stringify(data.cssProbe), '\n');
-    }
     const n = data.overflow.length;
     const wide = data.tooWide.length;
     if (!n && !wide) {

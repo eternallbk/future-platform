@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-02T00:17:34+08:00",
+  "generatedAt": "2026-10-02T02:05:44+08:00",
   "source": "daily-agent",
-  "count": 32,
+  "count": 45,
   "byId": {
     "29301e2028e2267d": {
       "id": "29301e2028e2267d",
@@ -5639,6 +5639,2558 @@
           "采集给出的相关度评分为 50.1，属偏低，说明采集侧也认为这条信息量有限",
           "概念卡片中的后训练与清单仓库机制属通用背景知识，不是该条摘要中的结论",
           "f-sft-crossentropy 是通用后训练基础公式，并非该条仓库简介中的内容，仅因该仓库面向后训练主题而收入。"
+        ]
+      }
+    },
+    "f192b93c4998b755": {
+      "id": "f192b93c4998b755",
+      "tldr": "心脏 MRI 的视觉语言模型先按问题预测该看哪个解剖结构，再用这个先验引导解码注意力，定位与临床问答一起提升。",
+      "keyPoints": [
+        "自建 12.9 万解剖定位对与 4.3 万临床问答对",
+        "覆盖短轴电影、延迟强化、长轴电影三种 CMR",
+        "CARA 按问题路由解剖先验并调制解码注意力",
+        "解剖定位预训练与 CARA 组合成 CARA-VL",
+        "在外部临床队列上显示出初步泛化"
+      ],
+      "why": "医学多模态是「领域先验 + 注意力路由」最干净的样板：先定位再回答的结构可以直接搬到工业缺陷、具身场景理解。",
+      "difficulty": "medium",
+      "tags": [
+        "multimodal",
+        "medical-vlm",
+        "grounding",
+        "attention",
+        "vlm"
+      ],
+      "entities": [
+        "CARA",
+        "CARA-VL",
+        "CMR",
+        "LGE",
+        "short-axis cine"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "CARA-VL 的四段流水线",
+        "caption": "先用问题选出该看的解剖结构，再把该先验注入解码器注意力",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='CARA-VL 从问题文本、解剖路由、CARA 解码到答案与定位的四层结构'><rect x='60.0' y='20.0' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='41.6' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>问题文本</text><text x='406.0' y='41.6' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>临床提问</text><line x1='240.0' y1='53.2' x2='240.0' y2='55.2' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,62.2 236.4,55.2 243.6,55.2' fill='var(--line-1)'/><rect x='60.0' y='62.2' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='83.9' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>解剖路由</text><text x='406.0' y='83.9' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>按问题选结构</text><line x1='240.0' y1='95.5' x2='240.0' y2='97.5' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,104.5 236.4,97.5 243.6,97.5' fill='var(--line-1)'/><rect x='60.0' y='104.5' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='126.1' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>CARA 解码</text><text x='406.0' y='126.1' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>先验调制注意力</text><line x1='240.0' y1='137.8' x2='240.0' y2='139.8' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,146.8 236.4,139.8 243.6,139.8' fill='var(--line-1)'/><rect x='60.0' y='146.8' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='168.4' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>答案与定位</text><text x='406.0' y='168.4' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>区域 + 结论</text></svg>",
+        "spec": {
+          "type": "architecture",
+          "nodes": [
+            {
+              "label": "问题文本",
+              "detail": "临床提问"
+            },
+            {
+              "label": "解剖路由",
+              "detail": "按问题选结构"
+            },
+            {
+              "label": "CARA 解码",
+              "detail": "先验调制注意力"
+            },
+            {
+              "label": "答案与定位",
+              "detail": "区域 + 结论"
+            }
+          ]
+        },
+        "alt": "CARA-VL 从问题文本、解剖路由、CARA 解码到答案与定位的四层结构"
+      },
+      "concepts": [
+        {
+          "name": "Anatomy-Routed Attention（解剖路由注意力）",
+          "readable": "普通 VLM 让解码器自己从整张图里找重点；CARA 先用问题判断该关注哪个解剖结构，把这块结构的空间先验当成权重叠加到解码注意力上。",
+          "analogy": "像上级查房时说一句「这次重点看左心室下壁」，你直接把片子推到那个位置细看，而不是从整张片子从头找起。",
+          "analogyBreaksDown": "上级的判断基本是对的；CARA 的结构预测会出错，一旦选错结构，注意力就被锁死在错误区域，可能比自由注意力更糟。",
+          "mechanism": "先用解剖定位任务学会预测结构热图，再按问题文本路由到目标结构，作为空间先验调制解码器对视觉特征的交叉注意力；定位与问答两阶段解耦，避免互相拉扯。",
+          "visual": "横轴是解码层数，纵轴是注意力落在正确心肌节段的比例；自由注意力缓慢爬升，CARA 从第一层就明显更高且更平。",
+          "prerequisites": [
+            "Transformer 交叉注意力",
+            "视觉-语言模型基本结构",
+            "心脏 MRI 短轴/长轴切面常识"
+          ],
+          "selfTest": [
+            "CARA 与普通 cross-attention 相比多做了什么？",
+            "为什么作者要分成定位预训练与问答两步？",
+            "结构先验预测错误会带来什么后果？"
+          ],
+          "formula": "\\alpha_i=\\mathrm{softmax}\\big(s(h_q,p_i)/\\tau\\big)"
+        },
+        {
+          "name": "Anatomical Grounding Pretraining（解剖定位预训练）",
+          "readable": "先让模型学会回答「某个结构在哪」，产出结构热图；这样它天然获得空间先验，再用这些先验去支撑临床问答。",
+          "analogy": "像规培医生先练几个月的「认结构、圈位置」，练熟之后才去学答临床问题：手上有地图，再谈诊断。",
+          "analogyBreaksDown": "临床上定位准确不等于会答临床问题；预训练只提供空间先验，因果判断与临床推理仍要靠问答数据补。",
+          "mechanism": "用公开数据集派生 12.9 万条定位对，训练模型输出解剖结构热图；问答阶段复用该能力，使监督不必依赖逐图配对的临床报告。",
+          "visual": "一张心脏短轴底图，上面叠加若干半透明热斑，每个热斑对应一个解剖名；颜色越亮表示该结构定位置信度越高。",
+          "prerequisites": [
+            "关键点/热图监督",
+            "医学影像标注格式"
+          ],
+          "selfTest": [
+            "定位预训练解决了什么数据瓶颈？",
+            "为什么说它降低了对配对报告的依赖？",
+            "热图监督与分类监督的差别是什么？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-cara-anatomy-routing",
+          "name": "解剖路由注意力（Anatomy-Routed Attention）",
+          "category": "multimodal",
+          "latex": "\\alpha_i=\\frac{\\exp\\big(s(h_q,p_i)/\\tau\\big)}{\\sum_j\\exp\\big(s(h_q,p_j)/\\tau\\big)},\\qquad \\tilde{H}=\\sum_i\\alpha_i p_i,\\qquad A=\\mathrm{softmax}\\!\\left(\\frac{QK^\\top}{\\sqrt{d}}+\\lambda\\tilde{H}\\right)",
+          "symbols": [
+            [
+              "h_q",
+              "问题文本在解码器中的隐状态"
+            ],
+            [
+              "p_i",
+              "第 i 个解剖结构先验（热图或嵌入）"
+            ],
+            [
+              "s(·,·)",
+              "问题与结构的相关性打分"
+            ],
+            [
+              "\\tau",
+              "路由温度，越小选择越硬"
+            ],
+            [
+              "\\alpha_i",
+              "路由到第 i 个结构的权重"
+            ],
+            [
+              "\\tilde{H}",
+              "加权聚合后的解剖先验"
+            ],
+            [
+              "\\lambda",
+              "先验注入强度（可学习）"
+            ]
+          ],
+          "derivation": [
+            "把问题隐状态与每个候选解剖先验打分，得到「该看谁」的分数。",
+            "softmax 归一成路由权重，避免多个结构互相抢注意力。",
+            "按权重把结构先验聚合成一个空间偏置 \\tilde{H}。",
+            "把 \\tilde{H} 以强度 \\lambda 加到解码注意力的 logits 上，结构性地改变「看哪里」。"
+          ],
+          "analogy": "像给检索加一次「先限定版块再搜索」：先选对解剖版块，再在版块内做细粒度注意力。",
+          "pitfalls": [
+            "\\lambda 太大会把注意力锁死在先验上，模型失去纠错能力。",
+            "硬选择还是软加权，直接决定先验预测错误时的鲁棒性。",
+            "先验只作用于解码器，替代不了视觉编码器的表征质量。"
+          ],
+          "code": "import torch, torch.nn.functional as F\n\ndef cara_attention(q, k, v, priors, w_q, w_p, lam, tau=0.1):\n    # q: (B,1,d) 解码器当前问题隐状态; priors: (B,N,d) N 个解剖结构先验\n    score = torch.tanh(q @ w_q + priors @ w_p).sum(-1) / tau   # (B,N)\n    alpha = F.softmax(score, dim=-1)                            # 路由权重\n    hint = (alpha.unsqueeze(-1) * priors).sum(1)                # (B,d) 加权先验\n    logits = (q @ k.transpose(-1, -2)) / q.shape[-1] ** 0.5     # (B,1,T)\n    logits = logits + lam * (q @ hint.unsqueeze(-1))            # 注入空间偏置\n    return F.softmax(logits, dim=-1) @ v\n",
+          "sources": [
+            {
+              "title": "Learning Where to Look: Anatomical Grounding and Guided Attention for Cardiac MRI Vision-Language Models",
+              "url": "https://arxiv.org/abs/2609.39899v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "构建了 128,915 条解剖定位与 42,799 条临床问答数据",
+          "CARA 按问题选择解剖先验并引导解码器注意力",
+          "定位预训练加 CARA 组成 CARA-VL，在临床评估与区域定位上表现更好",
+          "在外部临床队列上显示出泛化希望"
+        ],
+        "uncertain": [
+          "路由注意力公式的精确形式（软/硬选择、注入哪一层）摘要未给，此处按方法描述重构",
+          "「promising generalization」只有定性描述，外部队列的具体指标需查原文",
+          "QA 数据声明「发表后放出」，当前无法下载核对"
+        ]
+      }
+    },
+    "36e87c365265467a": {
+      "id": "36e87c365265467a",
+      "tldr": "在 TD-MPC 闭环上同时改评论家监督与终端价值估计，HumanoidBench 平衡任务回报 98 升到 387。",
+      "keyPoints": [
+        "规划器决定学习数据，评论家又给规划打分，形成闭环",
+        "混合多步 TD 目标让评论家先看更多真实回报再自举",
+        "分歧感知终端价值降低 MPPI 中不可信价值的影响",
+        "回报加权 actor 蒸馏强化高回报回合的规划动作",
+        "7 自由度 KUKA 上零样本迁移优于 TD-M(PC)²"
+      ],
+      "why": "世界模型控制当前主线就是 TD-MPC 这类闭环；它逐环指出「该改哪里」，是世界模型与具身控制面试的高频话题。",
+      "difficulty": "hard",
+      "tags": [
+        "world-model",
+        "model-predictive-control",
+        "rl",
+        "embodied",
+        "sim2real"
+      ],
+      "entities": [
+        "PL-MPC",
+        "TD-MPC",
+        "MPPI",
+        "HumanoidBench",
+        "KUKA IIWA14"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "PL-MPC 的规划-学习闭环",
+        "caption": "规划产生数据、评论家给规划打分，改环上的三处就能显著提升",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='PL-MPC 由规划器、世界模型、评论家与 actor 蒸馏构成的闭环结构'><rect x='60.0' y='20.0' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='41.6' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>MPPI 规划器</text><text x='406.0' y='41.6' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>采样候选动作</text><line x1='240.0' y1='53.2' x2='240.0' y2='55.2' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,62.2 236.4,55.2 243.6,55.2' fill='var(--line-1)'/><rect x='60.0' y='62.2' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='83.9' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>世界模型</text><text x='406.0' y='83.9' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>预测未来状态</text><line x1='240.0' y1='95.5' x2='240.0' y2='97.5' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,104.5 236.4,97.5 243.6,97.5' fill='var(--line-1)'/><rect x='60.0' y='104.5' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='126.1' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>评论家</text><text x='406.0' y='126.1' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>混合多步 TD 打分</text><line x1='240.0' y1='137.8' x2='240.0' y2='139.8' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,146.8 236.4,139.8 243.6,139.8' fill='var(--line-1)'/><rect x='60.0' y='146.8' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='168.4' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>actor 蒸馏</text><text x='406.0' y='168.4' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>回报加权模仿</text></svg>",
+        "spec": {
+          "type": "architecture",
+          "nodes": [
+            {
+              "label": "MPPI 规划器",
+              "detail": "采样候选动作"
+            },
+            {
+              "label": "世界模型",
+              "detail": "预测未来状态"
+            },
+            {
+              "label": "评论家",
+              "detail": "混合多步 TD 打分"
+            },
+            {
+              "label": "actor 蒸馏",
+              "detail": "回报加权模仿"
+            }
+          ]
+        },
+        "alt": "PL-MPC 由规划器、世界模型、评论家与 actor 蒸馏构成的闭环结构"
+      },
+      "concepts": [
+        {
+          "name": "Hybrid Multi-step TD Targets（混合多步 TD 目标）",
+          "readable": "TD 学习靠自举估计未来回报；这里让评论家在自举之前先看若干步已实现的真实回报，并把不同步长的目标加权混合，降低早期价值噪声的传染。",
+          "analogy": "像估年终奖：先看已经到手的几个月工资，剩下的月份再按往年涨幅估，而不是一上来就全靠猜。",
+          "analogyBreaksDown": "真实回报窗口越长方差越大，而且真机上多走几步意味着更多交互，样本成本并不便宜。",
+          "mechanism": "构造不同步长的 n-step 目标，与 1-step 目标按权重混合，使评论家在自举前接触更多已实现回报，缓解价值过估计。",
+          "visual": "横轴是 TD 步长 n，纵轴偏差与方差：1-step 偏差大、n 大时方差大，混合权重在中间取折中。",
+          "prerequisites": [
+            "TD 学习与自举",
+            "n-step 回报",
+            "MPPI 随机打靶规划"
+          ],
+          "selfTest": [
+            "为什么自举前多看真实回报能降偏差？",
+            "混合多步目标与单纯加大 n 有什么区别？",
+            "方差会随 n 怎么变化？"
+          ],
+          "formula": "\\hat{G}^{\\mathrm{hyb}}_t=\\sum_{n=1}^{N}\\omega_n\\Big(\\sum_{k=0}^{n-1}\\gamma^k r_{t+k}+\\gamma^n V_\\phi(s_{t+n})\\Big)"
+        },
+        {
+          "name": "Disagreement-aware Terminal Value（分歧感知终端价值）",
+          "readable": "MPPI 规划到窗口末端时必须给一个终端价值；用多个价值估计之间的分歧来衡量可信度，分歧大的终端值就少信一点。",
+          "analogy": "像多位医生会诊：意见一致时敢下结论，分歧大时就不把话说死，宁可保守。",
+          "analogyBreaksDown": "分歧小不等于正确——多个估计可能一起错，它度量的是不确定性而不是误差。",
+          "mechanism": "用集成或重复估计的离散度衡量终端价值可信度，在 MPPI 打分中按不确定性缩放，减少乐观偏差诱导出来的错误轨迹。",
+          "visual": "散点图：横轴轨迹采样分数、纵轴终端价值，用误差棒表示分歧；误差棒越长颜色越淡、权重越低。",
+          "prerequisites": [
+            "MPPI / 随机打靶规划",
+            "集成与不确定性估计"
+          ],
+          "selfTest": [
+            "为什么规划末端的价值最不可靠？",
+            "分歧如何转成打分权重？",
+            "它与保守价值惩罚有什么差别？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-hybrid-multistep-td",
+          "name": "混合多步 TD 目标（Hybrid Multi-step TD Target）",
+          "category": "worldmodel",
+          "latex": "\\hat{G}^{\\mathrm{hyb}}_t=\\sum_{n=1}^{N}\\omega_n\\Big(\\sum_{k=0}^{n-1}\\gamma^k r_{t+k}+\\gamma^{n}\\,\\tilde{V}(s_{t+n})\\Big),\\qquad \\sum_{n=1}^{N}\\omega_n=1,\\ \\ \\omega_n\\ge 0",
+          "symbols": [
+            [
+              "\\gamma",
+              "折扣因子"
+            ],
+            [
+              "r_{t+k}",
+              "第 k 步的真实回报"
+            ],
+            [
+              "N",
+              "参与混合的最大步长"
+            ],
+            [
+              "\\omega_n",
+              "步长为 n 的混合权重"
+            ],
+            [
+              "\\tilde{V}(s)",
+              "分歧感知的终端价值估计"
+            ]
+          ],
+          "derivation": [
+            "n=1 时目标退化成普通 1-step TD，偏差最大、方差最小。",
+            "对每个 n 累加 n 步真实回报，再用价值函数在 s_{t+n} 处自举。",
+            "用非负且和为 1 的权重混合所有 n 的目标，控制偏差-方差折中。",
+            "把自举项换成按分歧缩放的终端价值，让不可信的估计少影响更新。"
+          ],
+          "analogy": "像做预算：先按已发生的现金流算一部分，剩下的按多年平均估，两者按可信度加权。",
+          "pitfalls": [
+            "ω 不归一化会整体缩放价值尺度，学习率等效改变。",
+            "γ^n 与 ω_n 都会压低远期项，两者混在一起很难调参。",
+            "n 越大自举点越远，离线数据覆盖不足时反而更差。"
+          ],
+          "code": "import torch\n\ndef hybrid_td_target(rewards, values, gamma, omegas):\n    # rewards: (T,) 真实回报; values: (T+1,) 各时刻自举价值(最后一个是终端价值)\n    # omegas: (N,) 各步长权重, 已归一并满足 sum=1\n    T = rewards.shape[0]\n    out = torch.zeros(T)\n    for n, w in enumerate(omegas, start=1):\n        idx = torch.arange(T).clamp(max=T - n)          # 末尾不足 n 步时截断\n        ret = torch.zeros(T)\n        for k in range(n):\n            ret = ret + (gamma ** k) * rewards[(idx + k).clamp(max=T - 1)]\n        boot = (gamma ** n) * values[(idx + n).clamp(max=T)]\n        out = out + w * (ret + boot)\n    return out\n",
+          "sources": [
+            {
+              "title": "Beyond Policy Alignment: Closing the Planning-Learning Loop for Robot Control with Learned World Models",
+              "url": "https://arxiv.org/abs/2609.39751v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "PL-MPC 在 TD-MPC 框架上额外修改了评论家监督与规划终端价值估计",
+          "混合多步 TD 目标让评论家在自举前接触更多已实现回报",
+          "分歧感知终端估计降低不确定价值在 MPPI 中的影响",
+          "回报加权 actor 蒸馏强调高回报回合里规划器执行的动作",
+          "balance-hard 的 TAR 从 98±18 提升到 387±255，hurdle 从 199±13 到 466±200",
+          "在 7 自由度 KUKA IIWA14 上零样本迁移优于 TD-M(PC)²"
+        ],
+        "uncertain": [
+          "混合权重的具体设定（固定/自适应、N 取值）与分歧的具体度量方式摘要未给，公式为按描述重构",
+          "「broader benchmark 仍依赖任务」说明提升并非普遍，具体哪些任务无提升需查原文",
+          "成功率数字只说「更高」，未给具体值"
+        ]
+      }
+    },
+    "4a643af09b98ef5b": {
+      "id": "4a643af09b98ef5b",
+      "tldr": "在策略蒸馏的 task vector 与 RL 更新互补：同任务合并常优于两者，跨任务组合 7/8 项更好。",
+      "keyPoints": [
+        "在策略蒸馏用学生自己的轨迹接受教师反馈",
+        "其参数更新与 RL 教师产生的不一样",
+        "五个领域、两种架构上验证两类可组合性",
+        "同任务内合并 OPD 与 RL 向量可超过两者",
+        "参数空间分析显示两者更新显著不共线"
+      ],
+      "why": "后训练工程里「能不能合并能力」比「单任务最强」更接近现实；这篇把可组合性当成独立评估维度，面试可直接讲。",
+      "difficulty": "medium",
+      "tags": [
+        "posttraining",
+        "task-vector",
+        "model-merging",
+        "distillation",
+        "rl"
+      ],
+      "entities": [
+        "task vector",
+        "on-policy distillation",
+        "RL teacher",
+        "SmolLM3-3B",
+        "model merging"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "两类后训练更新的合并",
+        "caption": "OPD 学生向量与 RL 教师向量方向不同，合并后能同时补上对方缺的能力",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='RL 教师更新与学生蒸馏更新合并成组合向量并提升跨任务表现的流程'><rect x='12.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='61.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>RL 教师</text><text x='61.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>task vector A</text><rect x='131.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='180.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>OPD 学生</text><text x='180.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>task vector B</text><rect x='250.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='299.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>参数空间合并</text><text x='299.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>αA + βB</text><rect x='369.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='418.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>组合能力</text><text x='418.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>跨任务更强</text><line x1='111.0' y1='100.0' x2='243.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='250.0,100.0 243.0,103.6 243.0,96.4' fill='var(--line-1)'/><line x1='230.0' y1='100.0' x2='243.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='250.0,100.0 243.0,103.6 243.0,96.4' fill='var(--line-1)'/><line x1='349.0' y1='100.0' x2='362.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='369.0,100.0 362.0,103.6 362.0,96.4' fill='var(--line-1)'/><text x='359.0' y='90.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>评估平均分</text></svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {
+              "label": "RL 教师",
+              "detail": "task vector A"
+            },
+            {
+              "label": "OPD 学生",
+              "detail": "task vector B"
+            },
+            {
+              "label": "参数空间合并",
+              "detail": "αA + βB"
+            },
+            {
+              "label": "组合能力",
+              "detail": "跨任务更强"
+            }
+          ],
+          "edges": [
+            {
+              "from": 0,
+              "to": 2,
+              "label": ""
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": ""
+            },
+            {
+              "from": 2,
+              "to": 3,
+              "label": "评估平均分"
+            }
+          ]
+        },
+        "alt": "RL 教师更新与学生蒸馏更新合并成组合向量并提升跨任务表现的流程"
+      },
+      "concepts": [
+        {
+          "name": "Task Vector and Composition（任务向量与可组合性）",
+          "readable": "task vector 就是微调后与基座的参数差 τ = θ_ft − θ_base；把它当成一个可加减的方向，多个任务的向量相加就得到多能力模型。",
+          "analogy": "像给同一辆车装不同改装件：每个改装对应一个位移向量，合起来看能不能同时提升多项性能。",
+          "analogyBreaksDown": "向量相加假设各任务的位移大致正交；两个任务争夺同一批参数时，相加会互相抵消甚至破坏基座能力。",
+          "mechanism": "以基座为原点把每个后训练更新表示成向量，再用不同系数组合；评估组合后模型在多个任务上的平均表现，而不是看单个向量有多强。",
+          "visual": "二维参数平面：RL 更新箭头与 OPD 更新箭头夹角接近直角，合成箭头明显长于任一原箭头。",
+          "prerequisites": [
+            "微调与参数空间",
+            "权重平均式模型合并",
+            "策略蒸馏"
+          ],
+          "selfTest": [
+            "task vector 的定义是什么？",
+            "为什么可组合性与单项性能是两件事？",
+            "参数不共线为什么意味着可以互补？"
+          ],
+          "formula": "\\tau_k=\\theta_k-\\theta_{\\mathrm{base}}"
+        },
+        {
+          "name": "On-Policy Distillation（在策略蒸馏）",
+          "readable": "学生自己在环境里生成轨迹，教师只对这些学生轨迹给反馈，因此参数更新方向和直接模仿教师、或让 RL 教师自己训练都不一样。",
+          "analogy": "像学徒先自己动手做，师傅只在学徒的做法上点评，而不是把师傅的完整操作录像塞给学徒照抄。",
+          "analogyBreaksDown": "学生轨迹分布受学生当前水平限制，教师反馈再准也纠正不到学生根本没探索到的区域。",
+          "mechanism": "用学生策略采样轨迹，教师提供逐步反馈作为监督或奖励信号，得到与 RL 教师不同的参数位移，为合并提供互补方向。",
+          "visual": "两条轨迹对照：教师自己采样，与学生采样后由教师点评，后者分布更贴近学生当前水平。",
+          "prerequisites": [
+            "策略梯度 / RLVR",
+            "知识蒸馏",
+            "分布偏移"
+          ],
+          "selfTest": [
+            "on-policy 蒸馏与离线蒸馏的差别？",
+            "为什么它的更新方向与 RL 教师不同？",
+            "它的主要短板在哪里？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-task-vector-composition",
+          "name": "任务向量线性组合（Task Vector Composition）",
+          "category": "posttraining",
+          "latex": "\\tau_k=\\theta_k-\\theta_{\\mathrm{base}},\\qquad \\theta_{\\mathrm{merged}}=\\theta_{\\mathrm{base}}+\\sum_{k}\\lambda_k\\,\\tau_k,\\qquad \\tau_{\\mathrm{OPD}}\\not\\parallel\\tau_{\\mathrm{RL}}",
+          "symbols": [
+            [
+              "\\theta_{\\mathrm{base}}",
+              "基座模型参数"
+            ],
+            [
+              "\\theta_k",
+              "第 k 个任务微调后的参数"
+            ],
+            [
+              "\\tau_k",
+              "第 k 个任务的 task vector"
+            ],
+            [
+              "\\lambda_k",
+              "合并系数（可按范数缩放）"
+            ],
+            [
+              "\\not\\parallel",
+              "两者方向不共线，即更新子空间互补"
+            ]
+          ],
+          "derivation": [
+            "把每个任务的微调结果写成相对基座的参数位移 τ_k。",
+            "用系数 λ_k 对多个 τ_k 做线性组合，得多任务模型。",
+            "系数按各 τ 的范数缩放，避免某个任务的更新尺度压倒其他任务。",
+            "评估时看组合模型在全部任务上的平均分，而不是看组合向量本身有多长。"
+          ],
+          "analogy": "像用几支不同方向的画笔在同一张画布上叠加颜色，方向越不同，叠加出的色域越宽。",
+          "pitfalls": [
+            "λ 不归一化会整体改变更新范数，等价于换了学习率。",
+            "不同任务的 τ 尺度差异大，不缩放就会由一个任务主导。",
+            "不同 backbone 的 τ 不可混用，合并必须在同一基座坐标系里。"
+          ],
+          "code": "import torch\n\ndef merge_task_vectors(base_sd, vectors, lambdas=None):\n    # base_sd: 基座 state_dict; vectors: [{\"state\": sd, \"name\": str}, ...]\n    lambdas = lambdas or [1.0 / len(vectors)] * len(vectors)\n    out = {k: v.clone() for k, v in base_sd.items()}\n    for w, vec in zip(lambdas, vectors):\n        for k, v in vec[\"state\"].items():\n            if out[k].dtype.is_floating_point:\n                out[k] = out[k] + w * (v - base_sd[k])   # base + sum lambda * tau\n    return out\n\n\ndef tau_norm(merged_sd, base_sd):\n    return sum(((merged_sd[k] - base_sd[k]) ** 2).sum().item()\n               for k in base_sd if base_sd[k].dtype.is_floating_point) ** 0.5\n",
+          "sources": [
+            {
+              "title": "No Task Vector Is an Island: A Comprehensive Study on the Composability of Task Vectors from On-Policy Distillation",
+              "url": "https://arxiv.org/abs/2609.39405v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "OPD 用学生在自己轨迹上的教师反馈训练，其更新通常不同于 RL 教师产生的更新",
+          "在五个领域、两种模型架构上找到同任务与跨任务两类可组合性证据",
+          "同任务内合并 OPD 与 RL 向量可以超过两者，即使 OPD 学生单独更弱",
+          "跨任务 OPD 组合在 8 组 backbone-合并规则对比中 7 组平均分更高",
+          "参数空间分析显示 OPD 与 RL 更新显著不共线",
+          "SmolLM3-3B 的 CODE 域上合并方向优于任一组成方向"
+        ],
+        "uncertain": [
+          "合并系数与合并规则的具体设置摘要未给，公式是通用形式的重构",
+          "「更弱的单项不代表更弱的可组合性」只给了定性解释，机制层面的原因需查原文",
+          "各领域的绝对分值未在摘要中列出"
+        ]
+      }
+    },
+    "c116aff0dfdf69ae": {
+      "id": "c116aff0dfdf69ae",
+      "tldr": "在 BF16 中模拟部署量化：无需 FP4 硬件即可训练 NVFP4 模型，并直接导出到 vLLM。",
+      "keyPoints": [
+        "以 BF16 矩阵乘配合量化误差模拟，摆脱对 FP4 硬件的依赖",
+        "覆盖 NVFP4、MXFP4 与 llama.cpp 的 Q4_K",
+        "支持稠密与 MoE 模型、全参与 LoRA 训练",
+        "导出即用，无需额外有损转换或推理开销",
+        "Qwen3.5-9B 上 NVFP4 68.9%、MXFP4 66.0%"
+      ],
+      "why": "工程岗最常问「怎么把大模型压到能上线」；这篇给出可复现的量化感知蒸馏框架，还有格式相关的反直觉结论。",
+      "difficulty": "medium",
+      "tags": [
+        "posttraining",
+        "quantization",
+        "qat",
+        "distillation",
+        "inference"
+      ],
+      "entities": [
+        "QATFactory",
+        "NVFP4",
+        "MXFP4",
+        "Q4_K",
+        "vLLM",
+        "Qwen3.5-9B"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "QATFactory 的量化感知蒸馏",
+        "caption": "前向在 BF16 里算，量化误差以模拟方式注入，导出时无需再转换",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='从 BF16 前向、量化模拟、QAD 训练到直接导出推理引擎的四步流程'><rect x='12.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='61.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>BF16 前向</text><text x='61.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>矩阵乘</text><rect x='131.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='180.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>量化模拟</text><text x='180.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>FP4 / Q4_K</text><rect x='250.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='299.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>QAD 训练</text><text x='299.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>全参或 LoRA</text><rect x='369.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='418.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>直接导出</text><text x='418.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>vLLM / llama</text><line x1='111.0' y1='100.0' x2='124.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='131.0,100.0 124.0,103.6 124.0,96.4' fill='var(--line-1)'/><line x1='230.0' y1='100.0' x2='243.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='250.0,100.0 243.0,103.6 243.0,96.4' fill='var(--line-1)'/><line x1='349.0' y1='100.0' x2='362.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='369.0,100.0 362.0,103.6 362.0,96.4' fill='var(--line-1)'/><text x='359.0' y='90.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>无有损转换</text></svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {
+              "label": "BF16 前向",
+              "detail": "矩阵乘"
+            },
+            {
+              "label": "量化模拟",
+              "detail": "FP4 / Q4_K"
+            },
+            {
+              "label": "QAD 训练",
+              "detail": "全参或 LoRA"
+            },
+            {
+              "label": "直接导出",
+              "detail": "vLLM / llama"
+            }
+          ],
+          "edges": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": ""
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": ""
+            },
+            {
+              "from": 2,
+              "to": 3,
+              "label": "无有损转换"
+            }
+          ]
+        },
+        "alt": "从 BF16 前向、量化模拟、QAD 训练到直接导出推理引擎的四步流程"
+      },
+      "concepts": [
+        {
+          "name": "Deployment-aligned Quantization Simulation（部署对齐的量化模拟）",
+          "readable": "训练时矩阵乘仍在 BF16 里做，但权重和激活先按部署格式量化再反量化，让模型提前适应量化噪声，而不要求训练卡原生支持该格式。",
+          "analogy": "像考前就用真正的答题卡模拟填涂，而不是平时随便写、进考场才发现格子对不上。",
+          "analogyBreaksDown": "模拟的是量化误差的数值效应，不等于真实内核的算子融合与内存访问行为，导出后性能仍可能不同。",
+          "mechanism": "在计算图里插入量化-反量化节点，前向用高精度累加，反向对量化算子用直通估计器传梯度，从而在不支持 FP4 的卡上训练 FP4 模型。",
+          "visual": "一条数轴：连续权重点被吸附到最近的 FP4 格点，旁边用短箭头标出被舍入掉的残差。",
+          "prerequisites": [
+            "数值格式与量化基础",
+            "直通估计器 STE",
+            "LoRA 与全参微调"
+          ],
+          "selfTest": [
+            "为什么 BF16 矩阵乘也能训练 NVFP4 模型？",
+            "量化模拟与训练后量化 PTQ 的区别？",
+            "STE 在反向做了什么样的近似？"
+          ],
+          "formula": "\\hat{W}=\\Delta\\cdot\\mathrm{clip}\\!\\left(\\mathrm{round}(W/\\Delta)\\right)"
+        },
+        {
+          "name": "Format-dependent Training Recipe（格式相关的训练配方）",
+          "readable": "NVFP4 与 MXFP4 在部署时都量化权重和激活，但训练时最优策略不同：NVFP4 只量化权重更好，MXFP4 需要权重与激活一起量化。",
+          "analogy": "像两把刻度不同的秤：一把只需你知道毛重，另一把对皮重也敏感，配平方式自然不一样。",
+          "analogyBreaksDown": "这是实验观察到的经验规律，换模型规模、数据或校准方案后未必成立。",
+          "mechanism": "两种格式的缩放因子粒度与可表示范围不同，激活量化引入的噪声量级随之不同，于是改变了「要不要在训练时量化激活」的最优选择。",
+          "visual": "两组并列柱状图，每组三根：PTQ 基线、只量化权重、权重加激活一起量化。",
+          "prerequisites": [
+            "FP4 格式与缩放因子",
+            "量化粒度（per-tensor / per-block）"
+          ],
+          "selfTest": [
+            "两种 FP4 格式的训练策略差异是什么？",
+            "为什么激活量化会改变结论？",
+            "换模型后能直接照搬这套配方吗？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-fp4-block-quantization",
+          "name": "分块伪量化与直通梯度（Block-wise Fake Quantization）",
+          "category": "posttraining",
+          "latex": "\\Delta_b=\\frac{\\max_{w\\in\\mathcal{B}_b}|w|}{q_{\\max}},\\qquad \\hat{w}=\\Delta_b\\cdot\\mathrm{clip}\\!\\left(\\mathrm{round}\\!\\left(\\frac{w}{\\Delta_b}\\right),-q_{\\max},q_{\\max}\\right),\\qquad \\frac{\\partial\\hat{w}}{\\partial w}\\approx 1",
+          "symbols": [
+            [
+              "\\mathcal{B}_b",
+              "第 b 个量化块（如 16 或 32 个元素）"
+            ],
+            [
+              "q_{\\max}",
+              "目标格式可表示的最大幅值"
+            ],
+            [
+              "\\Delta_b",
+              "该块的缩放因子"
+            ],
+            [
+              "\\hat{w}",
+              "反量化后的权重（前向实际使用）"
+            ],
+            [
+              "\\approx 1",
+              "反向用直通估计器，把 round/clip 当恒等映射"
+            ]
+          ],
+          "derivation": [
+            "按块取最大绝对值，定出该块能表示的最大幅值对应的缩放因子 Δ_b。",
+            "把权重除以 Δ_b 后四舍五入到整数格点，得到低位宽表示。",
+            "裁剪到目标格式范围，再乘回 Δ_b 得到反量化权重。",
+            "反向传播时对 round 与 clip 采用直通估计器，让梯度近似无损地穿过去。"
+          ],
+          "analogy": "像用有限档位的台阶去近似一条连续曲线，台阶高度由这一段的最大值决定。",
+          "pitfalls": [
+            "块越大，离群值越容易主导 Δ，其它元素分辨率被牺牲。",
+            "只量化权重与同时量化激活的噪声量级不同，不能用同一配方。",
+            "反量化后必须保持高精度累加，否则误差会在矩阵乘里被放大。"
+          ],
+          "code": "import torch\n\ndef fake_quant_blockwise(w, q_max=6.0, block=32):\n    # NVFP4 的 E2M1 可表示范围约为 [-6, 6]\n    shape = w.shape\n    wb = w.reshape(-1, block)\n    delta = wb.abs().amax(dim=1, keepdim=True).clamp(min=1e-8) / q_max\n    q = torch.round(wb / delta).clamp(-q_max, q_max)\n    dq = (q * delta).reshape(shape)\n    # straight-through estimator: 前向用量化值, 反向梯度直通\n    return w + (dq - w).detach()\n",
+          "sources": [
+            {
+              "title": "QATFactory: A Versatile, Deployment-Aligned Framework for Quantization-aware Training and Distillation of LLMs",
+              "url": "https://arxiv.org/abs/2609.39223v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "QATFactory 在 BF16 中执行矩阵乘，同时模拟部署时量化，因而可在缺少 FP4 张量核心的 H100 上做 NVFP4 训练",
+          "支持 NVFP4、MXFP4 与 llama.cpp 的 Q4_K，稠密与 MoE，全参与 LoRA",
+          "检查点可直接导出到 vLLM 与 llama.cpp，无额外有损转换或推理开销",
+          "实验覆盖 8B 到 230B 模型，并在生产推理引擎中评估导出模型",
+          "Qwen3.5-9B 上 QAD 在 NVFP4 得 68.9%、MXFP4 得 66.0%，高于最佳 PTQ 的 65.4% 与 56.4%",
+          "最佳训练策略与格式有关：NVFP4 偏向只量化权重，MXFP4 偏向同时量化权重与激活"
+        ],
+        "uncertain": [
+          "摘要末尾被截断，「更少 32K 序列训练提升 1.9 分」的完整对照实验需查原文",
+          "QARL（量化感知强化学习）部分的具体结果摘要未提及",
+          "伪量化公式是通用分块 QDQ 形式的重构，块大小与格式细节以原文为准"
+        ]
+      }
+    },
+    "2d66048b20488b7d": {
+      "id": "2d66048b20488b7d",
+      "tldr": "用动作条件世界模型预测未来本体状态序列，让残差适配器提前修正基础策略的动作，把精确运动从命令跟随里解耦出来。",
+      "keyPoints": [
+        "基础策略只负责命令跟随式运动",
+        "世界模型从本体历史与基础动作预测未来物理状态序列",
+        "残差适配器按预测序列产生加性动作修正",
+        "两阶段训练：先学运动与动力学，冻结后再训适配器",
+        "地形整平、加速补偿、推挤恢复三任务精度与鲁棒性均提升"
+      ],
+      "why": "「先预测再修正」比「出错再纠正」更适合精细操作，是世界模型落地机器人控制的一条清晰、可复现路线。",
+      "difficulty": "medium",
+      "tags": [
+        "world-model",
+        "locomotion",
+        "residual-control",
+        "robotics",
+        "embodied"
+      ],
+      "entities": [
+        "LocoWM",
+        "action-conditioned world model",
+        "residual adapter",
+        "proprioception"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "LocoWM 的预动式残差适配",
+        "caption": "世界模型先把未来状态推演出来，适配器据此提前修正基础动作",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='LocoWM 从本体历史、基础策略、世界模型到残差适配器的四层结构'><rect x='60.0' y='20.0' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='41.6' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>本体历史</text><text x='406.0' y='41.6' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>proprioception</text><line x1='240.0' y1='53.2' x2='240.0' y2='55.2' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,62.2 236.4,55.2 243.6,55.2' fill='var(--line-1)'/><rect x='60.0' y='62.2' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='83.9' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>基础策略</text><text x='406.0' y='83.9' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>命令跟随</text><line x1='240.0' y1='95.5' x2='240.0' y2='97.5' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,104.5 236.4,97.5 243.6,97.5' fill='var(--line-1)'/><rect x='60.0' y='104.5' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='126.1' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>世界模型</text><text x='406.0' y='126.1' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>预测未来状态</text><line x1='240.0' y1='137.8' x2='240.0' y2='139.8' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,146.8 236.4,139.8 243.6,139.8' fill='var(--line-1)'/><rect x='60.0' y='146.8' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='168.4' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>残差适配器</text><text x='406.0' y='168.4' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>提前修正动作</text></svg>",
+        "spec": {
+          "type": "architecture",
+          "nodes": [
+            {
+              "label": "本体历史",
+              "detail": "proprioception"
+            },
+            {
+              "label": "基础策略",
+              "detail": "命令跟随"
+            },
+            {
+              "label": "世界模型",
+              "detail": "预测未来状态"
+            },
+            {
+              "label": "残差适配器",
+              "detail": "提前修正动作"
+            }
+          ]
+        },
+        "alt": "LocoWM 从本体历史、基础策略、世界模型到残差适配器的四层结构"
+      },
+      "concepts": [
+        {
+          "name": "Preactive Residual Adaptation（预动式残差适配）",
+          "readable": "不等偏差发生再修，而是用世界模型先推演几步之后的物理状态，提前给基础动作加上一个修正量。",
+          "analogy": "像开车上坡前先给油，而不是等车速掉下来再猛踩一脚。",
+          "analogyBreaksDown": "预测本身会错；当世界模型遇到分布外状态时，提前修正可能把误差提前引入，反而不如事后反馈稳。",
+          "mechanism": "动作条件世界模型以本体历史与基础动作为输入，输出未来状态序列；适配器以此为条件输出加性动作，把「会不会偏」变成「提前补多少」。",
+          "visual": "时间轴上三条线：基础动作、真实状态轨迹、预测状态轨迹；在真实偏差出现之前插入一个向上的修正箭头。",
+          "prerequisites": [
+            "模型预测控制",
+            "残差策略",
+            "本体感觉状态表示"
+          ],
+          "selfTest": [
+            "预动式与反应式残差的本质差别？",
+            "世界模型预测的到底是动作还是状态？",
+            "预测出错时会带来什么风险？"
+          ],
+          "formula": "a_t=a_t^{\\mathrm{base}}+\\pi_\\psi(\\hat{s}_{t+1:t+H})"
+        },
+        {
+          "name": "Two-Stage Freeze Training（两阶段冻结训练）",
+          "readable": "先把运动策略与动作条件动力学分别训好，再把两者冻结，只训练残差适配器，避免精确目标污染基础运动能力。",
+          "analogy": "像先把正楷写工整，再单独练签名的花体，两种目标分开练而不是混在一起。",
+          "analogyBreaksDown": "冻结也意味着基础策略自身的错误无法被纠正，适配器只能在给定动作分布附近做小修正，能力有上限。",
+          "mechanism": "阶段一学 locomotion 与动力学，阶段二冻结二者、只学适配器，把「会走」与「走得准」两种优化目标解耦。",
+          "visual": "两段横向条形：第一段两个模块同时高亮，第二段它们变灰、只剩适配器亮。",
+          "prerequisites": [
+            "多阶段训练与冻结策略",
+            "策略梯度或监督回归"
+          ],
+          "selfTest": [
+            "为什么端到端联合优化会让精度目标欠优化？",
+            "冻结基础模块的代价是什么？",
+            "适配器的输出叠加在哪里？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-preactive-residual-correction",
+          "name": "预动式残差修正（Preactive Residual Correction）",
+          "category": "worldmodel",
+          "latex": "a_t=a_t^{\\mathrm{base}}+\\pi_\\psi\\big(\\hat{s}_{t+1:t+H}\\,;\\,h_t\\big),\\qquad \\hat{s}_{t+1:t+H}=f_\\phi\\big(h_t,\\,a_t^{\\mathrm{base}}\\big)",
+          "symbols": [
+            [
+              "a_t^{\\mathrm{base}}",
+              "基础策略输出的命令跟随动作"
+            ],
+            [
+              "h_t",
+              "本体感觉历史编码"
+            ],
+            [
+              "f_\\phi",
+              "动作条件世界模型"
+            ],
+            [
+              "\\hat{s}_{t+1:t+H}",
+              "预测的未来 H 步物理状态序列"
+            ],
+            [
+              "\\pi_\\psi",
+              "残差适配器（只训练它）"
+            ],
+            [
+              "H",
+              "预测窗口长度"
+            ]
+          ],
+          "derivation": [
+            "基础策略先给出一个只考虑命令跟随的动作 a^base。",
+            "世界模型 f_φ 以本体历史与 a^base 为条件，滚动预测未来 H 步状态。",
+            "适配器 π_ψ 以预测序列为条件输出一个加性修正量。",
+            "两模块冻结后只优化 ψ，让修正贴合基础动作分布，最终动作是二者的和。"
+          ],
+          "analogy": "像老司机先按常规打方向，再根据「前面是个坑」的预判提前微调，而不是等车颠了才回正。",
+          "pitfalls": [
+            "H 太短就没有「提前」，太长则预测误差主导修正方向。",
+            "加性残差若不加幅度约束，会破坏基础策略的稳定性。",
+            "世界模型只见到基础策略的数据分布，适应性残差自己探索出的动作分布覆盖不到。"
+          ],
+          "code": "import torch, torch.nn as nn\n\nclass LocoWMAdapter(nn.Module):\n    def __init__(self, obs_dim, act_dim, state_dim, horizon, hidden=256):\n        super().__init__()\n        self.horizon = horizon\n        self.world_model = nn.GRU(obs_dim + act_dim, state_dim, batch_first=True)\n        self.adapter = nn.Sequential(\n            nn.Linear(obs_dim + horizon * state_dim, hidden), nn.SiLU(),\n            nn.Linear(hidden, act_dim), nn.Tanh())   # 有界残差\n\n    def forward(self, obs_hist, base_action):\n        # obs_hist: (B,T,obs_dim); base_action: (B,act_dim)\n        b, t, _ = obs_hist.shape\n        inp = torch.cat([obs_hist, base_action.unsqueeze(1).expand(b, t, -1)], -1)\n        _, h = self.world_model(inp)                     # 动作条件动力学\n        pred = h.squeeze(0)                              # 未来状态的紧凑表示\n        return base_action + self.adapter(torch.cat([obs_hist[:, -1], pred], -1))\n",
+          "sources": [
+            {
+              "title": "LocoWM: High-Precision Locomotion through World-Model-Guided Residual Adaptation",
+              "url": "https://arxiv.org/abs/2609.39179v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "基础策略负责命令跟随，世界模型以动作与本体历史为条件预测未来状态序列",
+          "残差适配器依据预测序列生成加性动作修正",
+          "两阶段训练：先学运动与动力学，冻结后单独训练适配器",
+          "在地形整平、加速补偿、推挤恢复上优于端到端与反应式残差基线",
+          "作者给出了项目主页与代码地址"
+        ],
+        "uncertain": [
+          "世界模型的具体架构（是否用 GRU/RSSM）与预测窗口长度摘要未给，代码示例是通用实现而非原文实现",
+          "残差是否有幅度约束、两阶段各自训练步数未说明",
+          "「improved control precision」未给具体数值指标"
+        ]
+      }
+    },
+    "d7f5135eaae78aaf": {
+      "id": "d7f5135eaae78aaf",
+      "tldr": "冰球防守任务中把 DreamerV3 教师蒸馏到 64 维对角线性递归策略即可匹配 GRU 与教师，非线性递归并非必需。",
+      "keyPoints": [
+        "任务：短暂丢失冰球追踪下的防守控制",
+        "教师递归状态重置后性能骤降，证明任务确实需要记忆",
+        "学生用 64 维对角线性递归，可选 rank-k 非线性创新",
+        "纯线性（k=0）即匹配 GRU 与教师，加大 k 无收益",
+        "结论限定在仿真任务、教师、状态维度与黑障时长内"
+      ],
+      "why": "世界模型策略常被默认需要复杂递归；这篇给出反例与明确边界，做具身控制时能省下大量参数与推理算力。",
+      "difficulty": "medium",
+      "tags": [
+        "world-model",
+        "recurrent",
+        "distillation",
+        "embodied",
+        "efficiency"
+      ],
+      "entities": [
+        "DreamerV3",
+        "GRU",
+        "diagonal linear recurrence",
+        "air hockey",
+        "RSSM"
+      ],
+      "diagram": {
+        "kind": "matrix",
+        "title": "黑障程度下的记忆需求对照",
+        "caption": "线性递归在全部测试黑障范围内与 GRU、教师持平，无记忆策略明显掉队",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='四类策略在不同冰球追踪丢失程度下的定性对照矩阵'><text x='167.0' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>低黑障</text><text x='285.0' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>中黑障</text><text x='403.0' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>高黑障</text><text x='98.0' y='55.8' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>*线性 k=0</text><text x='98.0' y='89.2' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>*GRU</text><text x='98.0' y='122.8' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>教师</text><text x='98.0' y='156.2' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>无记忆</text><rect x='108.0' y='34.0' width='118.0' height='33.5' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='167.0' y='55.8' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>匹配</text><rect x='226.0' y='34.0' width='118.0' height='33.5' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='285.0' y='55.8' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>匹配</text><rect x='344.0' y='34.0' width='118.0' height='33.5' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='403.0' y='55.8' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>匹配</text><rect x='108.0' y='67.5' width='118.0' height='33.5' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='167.0' y='89.2' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>匹配</text><rect x='226.0' y='67.5' width='118.0' height='33.5' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='285.0' y='89.2' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>匹配</text><rect x='344.0' y='67.5' width='118.0' height='33.5' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='403.0' y='89.2' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>匹配</text><rect x='108.0' y='101.0' width='118.0' height='33.5' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='167.0' y='122.8' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>最强</text><rect x='226.0' y='101.0' width='118.0' height='33.5' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='285.0' y='122.8' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>最强</text><rect x='344.0' y='101.0' width='118.0' height='33.5' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='403.0' y='122.8' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>最强</text><rect x='108.0' y='134.5' width='118.0' height='33.5' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='167.0' y='156.2' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>下降</text><rect x='226.0' y='134.5' width='118.0' height='33.5' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='285.0' y='156.2' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>下降</text><rect x='344.0' y='134.5' width='118.0' height='33.5' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='403.0' y='156.2' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>明显下降</text></svg>",
+        "spec": {
+          "type": "matrix",
+          "rows": [
+            "*线性 k=0",
+            "*GRU",
+            "教师",
+            "无记忆"
+          ],
+          "cols": [
+            "低黑障",
+            "中黑障",
+            "高黑障"
+          ],
+          "cells": [
+            [
+              "匹配",
+              "匹配",
+              "匹配"
+            ],
+            [
+              "匹配",
+              "匹配",
+              "匹配"
+            ],
+            [
+              "最强",
+              "最强",
+              "最强"
+            ],
+            [
+              "下降",
+              "下降",
+              "明显下降"
+            ]
+          ]
+        },
+        "alt": "四类策略在不同冰球追踪丢失程度下的定性对照矩阵"
+      },
+      "concepts": [
+        {
+          "name": "Diagonal Linear Recurrence（对角线性递归）",
+          "readable": "递归状态按 h_t = a ⊙ h_{t-1} + b ⊙ u_t 更新，每个维度独立、不跨维混合，参数量与计算量都远小于 GRU。",
+          "analogy": "像多条互不干扰的录音带各自衰减、各自录音，需要哪段就按衰减程度回放。",
+          "analogyBreaksDown": "维度之间不能交互，表达不了需要跨通道绑定的记忆（例如「球向左且速度快」这种联合模式），除非观测编码器先把交互做掉。",
+          "mechanism": "用逐元素衰减加逐元素写入构成递归，状态转移矩阵是对角的；非线性留给观测编码器与动作头，表达能力由 MLP 承担。",
+          "visual": "一条 64 格的状态条，每格上方画一条指数衰减曲线，写入时对应格被抬起。",
+          "prerequisites": [
+            "RNN 状态更新",
+            "状态空间模型/线性注意力的直觉",
+            "知识蒸馏"
+          ],
+          "selfTest": [
+            "对角线性递归比 GRU 少了哪些运算？",
+            "非线性被放在网络的哪个位置？",
+            "它在什么任务上会失效？"
+          ],
+          "formula": "h_t=a\\odot h_{t-1}+b\\odot u_t"
+        },
+        {
+          "name": "Teacher-State Reset Ablation（教师状态重置消融）",
+          "readable": "把教师的递归状态清零后再测一遍：如果性能明显下降，说明任务确实依赖记忆，而不是仅凭当前观测就能决定动作。",
+          "analogy": "像考试前把草稿纸清空：成绩立刻变差，就说明这道题真的需要中间过程。",
+          "analogyBreaksDown": "重置状态同时破坏了内部统计与归一化，下降未必全部来自「记忆缺失」，必须配合无记忆基线一起看。",
+          "mechanism": "在控制其他变量的前提下重置递归状态，构造「有记忆 vs 无记忆」的对照，用来判定记忆对该任务的必要性。",
+          "visual": "两根柱对比教师正常与教师重置状态，纵轴回报；重置后柱子大幅缩短。",
+          "prerequisites": [
+            "消融实验设计",
+            "DreamerV3 的 RSSM 隐状态"
+          ],
+          "selfTest": [
+            "为什么必须先做这个消融？",
+            "重置状态与直接训练无记忆策略有何差别？",
+            "还有哪些混杂因素会让性能下降？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-diagonal-linear-recurrence",
+          "name": "对角线性递归与低秩非线性创新（Diagonal Linear Recurrence）",
+          "category": "worldmodel",
+          "latex": "h_t=a\\odot h_{t-1}+b\\odot u_t+\\sum_{r=1}^{k}u_r\\,v_r^{\\top}\\phi(u_t),\\qquad k=0\\ \\Rightarrow\\ \\text{purely linear}",
+          "symbols": [
+            [
+              "h_t",
+              "t 时刻 64 维递归状态"
+            ],
+            [
+              "a",
+              "逐元素衰减系数"
+            ],
+            [
+              "b",
+              "逐元素写入系数"
+            ],
+            [
+              "u_t",
+              "观测编码器输出（非线性）"
+            ],
+            [
+              "\\phi",
+              "非线性激活"
+            ],
+            [
+              "k",
+              "非线性创新项的秩，k=0 表示纯线性"
+            ],
+            [
+              "u_r v_r^\\top",
+              "秩 1 的分量，叠加成 rank-k 修正"
+            ]
+          ],
+          "derivation": [
+            "先写对角线性部分 a ⊙ h_{t-1}，让每个状态维度独立衰减。",
+            "加上写入项 b ⊙ u_t，把当前观测压进状态。",
+            "若要引入非线性递归，用 rank-k 低秩项 u_r v_r^⊤ φ(u_t) 做修正，避免满矩阵的参数量。",
+            "令 k = 0 即退化成纯线性递归，用来检验「非线性递归是否必要」。"
+          ],
+          "analogy": "像给每条录音带配一个可调的衰减旋钮，另外再挂 k 个联动开关；实测发现不挂开关也够用。",
+          "pitfalls": [
+            "非线性放在递归里还是放在观测编码器里，效果并不等价。",
+            "k 增大不代表更强：本文实测增加 k 没有可测收益。",
+            "64 维、该教师、该黑障时长的结论不能直接外推到别的任务。"
+          ],
+          "code": "import torch, torch.nn as nn\n\nclass DiagLinearRecurrence(nn.Module):\n    def __init__(self, d_in, d_state=64, k=0):\n        super().__init__()\n        self.log_a = nn.Parameter(torch.zeros(d_state))   # sigmoid 后作为衰减系数\n        self.b = nn.Linear(d_in, d_state)\n        self.U = nn.Parameter(torch.randn(d_state, k) * 0.01) if k else None\n        self.V = nn.Linear(d_in, k, bias=False) if k else None\n\n    def forward(self, u_seq, h=None):\n        # u_seq: (B,T,d_in)  观测编码器输出\n        b, t, _ = u_seq.shape\n        h = h if h is not None else u_seq.new_zeros(b, self.log_a.numel())\n        a = torch.sigmoid(self.log_a)\n        outs = []\n        for i in range(t):\n            u = u_seq[:, i]\n            h = a * h + self.b(u)\n            if self.U is not None:\n                h = h + (self.U @ self.V(u).transpose(0, 1)).transpose(0, 1)\n            outs.append(h)\n        return torch.stack(outs, 1), h\n",
+          "sources": [
+            {
+              "title": "Linear Recurrent Memory Suffices to Distil a World-Model Policy for Robot Air Hockey",
+              "url": "https://arxiv.org/abs/2609.39151v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "任务是在短暂丢失冰球追踪下的仿真冰球防守控制",
+          "DreamerV3 教师在追踪丢失时优于无记忆策略",
+          "重置教师的递归状态会显著降低性能，说明任务需要记忆",
+          "学生策略状态维度 64，采用对角线性递归加可选 rank-k 非线性创新",
+          "五个匹配随机种子下 k=0 的纯线性模型与 GRU 基线、教师相当",
+          "增大非线性创新的 rank 没有测到收益"
+        ],
+        "uncertain": [
+          "矩阵中的「匹配/下降」是对摘要定性结论的可视化，原文未给逐档数值",
+          "递归方程是按其「对角线性 + rank-k 非线性创新」的描述重构，非原文照抄",
+          "测试集是 fresh split 且在所有模型与分析冻结后才打开，具体成绩需查原文"
+        ]
+      }
+    },
+    "d5b06f5694d9123e": {
+      "id": "d5b06f5694d9123e",
+      "tldr": "解耦语义与像素编码，32 倍压缩下达 29.79 PSNR 与 3.37 gFID，扩散收敛更快。",
+      "keyPoints": [
+        "语义编码器负责宏观高压缩，像素编码器保留低层细节",
+        "ImageNet 512×512 上实现 32 倍空间压缩",
+        "PSNR 高 13.5%、gFID 降 54.9%，均相对 DC-AE",
+        "吞吐与基线相当，扩散模型训练收敛更快",
+        "1.6B DiT 上 GenEval 0.84、DPG-Bench 86.007"
+      ],
+      "why": "高压缩 tokenizer 决定 latent 扩散的训练成本与画质上限；做文生图/图像生成的岗位，选型与复现都绕不开这条权衡。",
+      "difficulty": "hard",
+      "tags": [
+        "generative",
+        "tokenizer",
+        "autoencoder",
+        "diffusion",
+        "image-generation",
+        "compression"
+      ],
+      "entities": [
+        "DC-SAE",
+        "DC-AE",
+        "semantic encoder",
+        "pixel-level encoder",
+        "DiT",
+        "ImageNet",
+        "GenEval",
+        "DPG-Bench"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "DC-SAE 的解耦编码结构",
+        "caption": "语义编码器把图压到高压缩比，像素编码器补回细节，紧凑潜变量再交给扩散模型生成",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='DC-SAE 由语义编码器、像素编码器、紧凑潜变量与 DiT 扩散生成四层构成的架构图'><rect x='60.0' y='20.0' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='41.6' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>语义编码器</text><text x='406.0' y='41.6' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>宏观高压缩</text><line x1='240.0' y1='53.2' x2='240.0' y2='55.2' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,62.2 236.4,55.2 243.6,55.2' fill='var(--line-1)'/><rect x='60.0' y='62.2' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='83.9' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>像素编码器</text><text x='406.0' y='83.9' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>保留低层细节</text><line x1='240.0' y1='95.5' x2='240.0' y2='97.5' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,104.5 236.4,97.5 243.6,97.5' fill='var(--line-1)'/><rect x='60.0' y='104.5' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='126.1' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>紧凑潜变量</text><text x='406.0' y='126.1' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>32× 空间压缩</text><line x1='240.0' y1='137.8' x2='240.0' y2='139.8' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,146.8 236.4,139.8 243.6,139.8' fill='var(--line-1)'/><rect x='60.0' y='146.8' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='168.4' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>DiT 扩散生成</text><text x='406.0' y='168.4' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>收敛更快</text></svg>",
+        "spec": {
+          "type": "architecture",
+          "nodes": [
+            {
+              "label": "语义编码器",
+              "detail": "宏观高压缩"
+            },
+            {
+              "label": "像素编码器",
+              "detail": "保留低层细节"
+            },
+            {
+              "label": "紧凑潜变量",
+              "detail": "32× 空间压缩"
+            },
+            {
+              "label": "DiT 扩散生成",
+              "detail": "收敛更快"
+            }
+          ]
+        },
+        "alt": "DC-SAE 由语义编码器、像素编码器、紧凑潜变量与 DiT 扩散生成四层构成的架构图"
+      },
+      "concepts": [
+        {
+          "name": "Decoupled Semantic-Pixel Encoding（语义与像素的解耦编码）",
+          "readable": "普通高压缩 VAE 只用一个编码器同时兼顾语义与像素，压得越狠细节丢得越多。DC-SAE 把两件事拆成两路：语义编码器给出紧凑潜变量，像素级编码器专门保住低层细节。",
+          "analogy": "像做一张海报的两种素材：一份是压到极小的内容索引，另一份单独存高清纹理贴图，出图时把两份合起来用。",
+          "analogyBreaksDown": "两个素材文件是分开存的，DC-SAE 的两路信息最后必须汇进同一个潜空间才被解码器使用；一旦像素通路的信息进不了紧凑潜变量，重建照样是糊的。",
+          "mechanism": "把高压缩拆成宏观架构设计与像素级编码两条通路：语义编码器提供利于扩散学习的紧凑语义表征，像素编码器补回低层细节，二者共同支撑高保真重建与更快的扩散收敛。",
+          "visual": "画两条并列支路：上方蓝色方块串逐级变窄，表示语义编码器降采样到高压缩比；下方橙色细网格表示像素编码器一直保留细节；两支末端汇入一个标着 32× 的窄长潜变量条。",
+          "prerequisites": [
+            "VAE / 自编码器基础",
+            "潜空间扩散模型（LDM）",
+            "自监督预训练的语义编码器"
+          ],
+          "selfTest": [
+            "为什么单个高压缩 VAE 编码器难以同时兼顾语义和像素细节？",
+            "像素级编码器如果不接入同一个潜空间，会出什么问题？",
+            "两路解耦之后，扩散模型训练的对象变成了什么？"
+          ],
+          "formula": "z=\\phi\\big(E_{\\mathrm{sem}}(x),\\,E_{\\mathrm{pix}}(x)\\big),\\qquad \\hat{x}=D(z)"
+        },
+        {
+          "name": "Compression-Fidelity-Convergence Tradeoff（压缩率、保真度与收敛速度的权衡）",
+          "readable": "提高空间压缩率可以让扩散模型在更短的潜序列上训练与推理，更省算力；但潜变量承载的信息变少，逐像素保真度下降，扩散也变得更难学、收敛更慢。",
+          "analogy": "像把长视频压成很小的文件：压得越狠越省流量，画面越糊，而且播放器要花更久才能把画面补回去。",
+          "analogyBreaksDown": "视频压缩是一次性编解码，扩散模型还要在这个潜空间上做多步迭代训练；训练难度还随噪声调度与时间步变化，不是单纯的「文件变小」问题。",
+          "mechanism": "高压缩缩短潜序列、提升生成吞吐，却抬高了扩散拟合潜分布的难度；语义编码器提升潜表征表达力、像素编码器补回细节，使高压缩、高保真与快收敛在同一模型里同时成立。",
+          "visual": "画一个三角形，三个顶点分别标注压缩率、保真度、收敛速度；DC-AE 与语义自编码器的色块各贴一条边，DC-SAE 的色块覆盖三角形中部，表示三项同时被兼顾。",
+          "prerequisites": [
+            "率失真（rate-distortion）直觉",
+            "扩散模型训练动力学",
+            "PSNR 与 FID 指标含义"
+          ],
+          "selfTest": [
+            "为什么压缩率提高会让扩散模型收敛更慢？",
+            "「高压缩」与「高保真」在本方法里分别由哪个部件负责？",
+            "如果只看 gFID 不看 PSNR，可能漏判什么？"
+          ],
+          "formula": "\\max_{r}\\ \\mathrm{PSNR}(r)\\quad \\mathrm{s.t.}\\quad r=32,\\ \\ T_{\\mathrm{conv}}(r)\\le T_{\\mathrm{base}}"
+        },
+        {
+          "name": "Semantic Representation Autoencoder（语义表征自编码器）",
+          "readable": "用预训练的语义编码器替换 VAE 编码器，让潜特征本身带更强的语义信息，从而加快扩散训练。但这类做法通常只能做到中等压缩，而且会丢掉像素级细节。",
+          "analogy": "像不抄原稿，而是先让人写一份内容摘要，再训练模型从摘要还原全文：有摘要学得快，但摘要里本来就没写的字句复原不出来。",
+          "analogyBreaksDown": "摘要理论上还能扩写回原文，语义编码器丢掉的高频细节在潜空间里根本没有对应信息，再强的解码器也补不回来——这正是 DC-SAE 要额外加像素编码器的原因。",
+          "mechanism": "以自监督预训练的语义编码器替换 VAE 编码器，使潜表征具备语义表达力，扩散模型更容易拟合；代价是压缩率受限、像素级细节在潜空间中被丢弃。",
+          "visual": "画一组对照折线：横轴是空间压缩率，纵轴是重建保真度；蓝色曲线表示语义表征自编码器，中等压缩后就快速下滑；橙色曲线表示 DC-SAE，在高压缩端仍保持较高。",
+          "prerequisites": [
+            "自监督/CLIP 类语义编码器",
+            "VAE 潜空间与重建损失",
+            "扩散模型收敛性"
+          ],
+          "selfTest": [
+            "语义编码器为什么能加快扩散模型训练？",
+            "这类方法的两个已知短板是什么？",
+            "DC-SAE 相对它多加了哪个部件来补短板？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-latent-diffusion-objective",
+          "name": "潜空间扩散训练目标（Latent Diffusion Objective）",
+          "category": "generative",
+          "latex": "\\mathcal{L}(\\theta)=\\mathbb{E}_{x,\\,\\epsilon,\\,t}\\Big\\|\\epsilon-\\epsilon_\\theta\\big(z_t,\\,t,\\,c\\big)\\Big\\|_2^2,\\qquad z=E(x),\\quad z_t=\\sqrt{\\bar\\alpha_t}\\,z+\\sqrt{1-\\bar\\alpha_t}\\,\\epsilon",
+          "symbols": [
+            [
+              "x",
+              "训练图像"
+            ],
+            [
+              "E",
+              "图像编码器（高压缩 tokenizer，如 DC-SAE）"
+            ],
+            [
+              "z",
+              "紧凑潜变量，空间尺寸为原图的 1/r"
+            ],
+            [
+              "\\epsilon",
+              "标准高斯噪声"
+            ],
+            [
+              "t",
+              "扩散时间步"
+            ],
+            [
+              "\\bar\\alpha_t",
+              "累积噪声调度系数"
+            ],
+            [
+              "z_t",
+              "第 t 步加噪后的潜变量"
+            ],
+            [
+              "\\epsilon_\\theta",
+              "去噪网络（如 1.6B DiT）"
+            ],
+            [
+              "c",
+              "条件（类别标签或文本）"
+            ]
+          ],
+          "derivation": [
+            "先用高压缩编码器把图像映射成紧凑潜变量 z，把扩散的建模对象从像素搬到更短的序列上。",
+            "按噪声调度对 z 加噪得到 z_t，让网络在每个噪声水平上都见到训练样本。",
+            "让网络预测注入的噪声 ε，回归目标就是这一项 MSE，等价于在潜空间上做去噪得分匹配。",
+            "压缩率 r 越高，潜序列越短、训练与推理越省，但 z 承载的信息越少，同一个目标更难拟合、收敛更慢——这正是 DC-SAE 要缓解的矛盾。"
+          ],
+          "analogy": "像先把大图缩成小缩略图再学修图：缩略图越小越省事，但细节丢得越多，修图模型要花更久才能学会还原。",
+          "pitfalls": [
+            "高压缩造成的信息损失无法靠更长训练补回，损失下降不等于重建变好。",
+            "潜变量的缩放因子（latent scale）不校准，会让噪声预测目标与激活尺度不匹配。",
+            "PSNR 衡量逐像素重建、gFID 衡量生成分布质量，只看其中一个会误判 tokenizer 的好坏。",
+            "像素归一化范围与 PSNR 里的 MAX 取值不一致时，PSNR 数字无法跨论文比较。"
+          ],
+          "code": "import torch\nimport torch.nn.functional as F\n\n\ndef latent_diffusion_loss(eps_net, encoder, x, alphas_bar, cond=None, num_steps=1000):\n    # x: (B,3,H,W); encoder: 冻结的高压缩潜编码器（DC-SAE 的压缩通路）\n    with torch.no_grad():\n        z = encoder(x)                                     # (B,C,h,w)，h = H / 32\n    b = z.shape[0]\n    t = torch.randint(0, num_steps, (b,), device=z.device)\n    eps = torch.randn_like(z)                              # 目标噪声\n    a = alphas_bar.to(z.device)[t].view(b, 1, 1, 1)\n    z_t = a.sqrt() * z + (1.0 - a).sqrt() * eps            # 前向加噪\n    eps_hat = eps_net(z_t, t, cond)                        # 预测噪声\n    return F.mse_loss(eps_hat, eps)\n",
+          "sources": [
+            {
+              "title": "DC-SAE: Deep Compression Semantic Autoencoder for Faster Diffusion Convergence",
+              "url": "https://arxiv.org/abs/2609.39222"
+            }
+          ]
+        },
+        {
+          "id": "f-compression-psnr-gfid",
+          "name": "空间压缩率与 PSNR/gFID 指标（Compression Ratio, PSNR and gFID）",
+          "category": "generative",
+          "latex": "r=\\frac{H}{h}=\\frac{W}{w}=32,\\qquad \\mathrm{PSNR}=10\\log_{10}\\frac{\\mathrm{MAX}^2}{\\mathrm{MSE}},\\qquad \\mathrm{gFID}=\\big\\|\\mu_r-\\mu_g\\big\\|_2^2+\\mathrm{Tr}\\Big(\\Sigma_r+\\Sigma_g-2\\big(\\Sigma_r\\Sigma_g\\big)^{1/2}\\Big)",
+          "symbols": [
+            [
+              "r",
+              "空间压缩率，原图边长与潜变量边长之比（像素数之比为 r^2）"
+            ],
+            [
+              "H\\times W",
+              "原图像素尺寸（本文为 512×512）"
+            ],
+            [
+              "h\\times w",
+              "潜变量尺寸（r=32 时为 16×16）"
+            ],
+            [
+              "\\mathrm{MAX}",
+              "像素最大值（通常取 1 或 255）"
+            ],
+            [
+              "\\mathrm{MSE}",
+              "重建与真值的均方误差"
+            ],
+            [
+              "\\mu_r,\\Sigma_r",
+              "真实图像特征的均值与协方差"
+            ],
+            [
+              "\\mu_g,\\Sigma_g",
+              "生成图像特征的均值与协方差"
+            ]
+          ],
+          "derivation": [
+            "空间压缩率定义为原图边长与潜变量边长之比，DC-SAE 在 512×512 上取到 32（潜变量 16×16）。",
+            "PSNR 把重建的均方误差取对数，MSE 越小分数越高，衡量的是逐像素保真度。",
+            "gFID 用真实与生成图像特征分布之间的 Fréchet 距离，衡量的是生成质量与分布距离。",
+            "把这两组指标放在同一压缩率、同一吞吐下比较，才能判断高压缩是否真的同时保住了重建与生成。"
+          ],
+          "analogy": "PSNR 像逐题对答案的准确率，gFID 像把全班成绩分布拿来对比：一个看单张图像素对得准不准，一个看整体分布像不像。",
+          "pitfalls": [
+            "PSNR 对模糊不敏感，解码器输出偏糊仍可能拿到不低的分数。",
+            "gFID 依赖特征提取器与评测样本量，不同实现的数值不可直接横向比较。",
+            "比较时必须固定压缩率与吞吐；压缩率不同的两个 tokenizer，PSNR 不具可比性。"
+          ],
+          "code": "import torch\n\n\ndef compression_ratio(img_hw, latent_hw):\n    # DC-SAE @ 512x512: 512 / 16 = 32 倍空间压缩（每个空间维度各降 32 倍）\n    assert img_hw[0] / latent_hw[0] == img_hw[1] / latent_hw[1], \"各向同性下采样\"\n    return img_hw[0] / latent_hw[0]\n\n\ndef psnr(x, x_hat, max_val=1.0):\n    # 29.79 dB 对应 MSE ≈ 10 ** (-2.979) ≈ 1.05e-3\n    mse = torch.mean((x - x_hat) ** 2)\n    return float(10.0 * torch.log10(torch.tensor(max_val ** 2) / mse.clamp(min=1e-12)))\n\n\nassert abs(compression_ratio((512, 512), (16, 16)) - 32.0) < 1e-9\n",
+          "sources": [
+            {
+              "title": "DC-SAE: Deep Compression Semantic Autoencoder for Faster Diffusion Convergence",
+              "url": "https://huggingface.co/papers/2609.39222"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "高压缩 tokenizer 在重建保真度与生成效率之间存在根本权衡，压缩越狠扩散训练越难收敛",
+          "语义表征自编码器用预训练语义编码器替换 VAE 编码器来加速扩散训练，但通常限于中等压缩且丢失像素级细节",
+          "DC-SAE 由宏观架构设计与像素级编码器两部分组成，前者借语义编码器提高压缩率，后者保留低层细节",
+          "在 ImageNet 512×512 上达到 32 倍空间压缩，PSNR 29.79、gFID 3.37，相对 DC-AE 分别提升 13.5% 与 54.9%",
+          "吞吐与基线相当且扩散训练收敛更快；1.6B 参数 DiT 配 DC-SAE 在 GenEval 得 0.84、DPG-Bench 得 86.007"
+        ],
+        "uncertain": [
+          "公式为按摘要重建的通用形式：摘要未给出 DC-SAE 的损失组成与语义项/像素项加权方式，潜空间扩散目标与 PSNR/gFID 均为教科书通用写法",
+          "摘要末尾被截断（结尾为 text-to-image g），GenEval 0.84 与 DPG-Bench 86.007 的完整实验设定需查原文",
+          "「13.5% 与 54.9%」是相对提升还是绝对差值、对应哪个 DC-AE 基线变体，摘要未说明",
+          "32 倍空间压缩的具体下采样路径（层数与通道宽度）摘要未给；「comparable throughput」也没有具体数字"
+        ]
+      }
+    },
+    "9ae4c993750e49a5": {
+      "id": "9ae4c993750e49a5",
+      "tldr": "离线目标条件 RL 里，把目标表征做准几乎不改变成绩，把当前状态表征做好却让成功率翻倍以上。",
+      "keyPoints": [
+        "在确定性迷宫里构造精确的时间距离目标表征",
+        "系统性破坏该表征的几何质量，下游学习器保持不变",
+        "OGBench 导航与两种算法上成绩几乎不变",
+        "对当前状态做同样干预，成功率翻倍以上",
+        "随机傅里叶位置编码在最难的无地图任务上明显更好"
+      ],
+      "why": "RL 里普遍默认「表征越好越强」；这篇用严格消融指出瓶颈在状态通路，做 RL 与世界模型时能少走弯路。",
+      "difficulty": "medium",
+      "tags": [
+        "rl",
+        "goal-conditioned",
+        "representation",
+        "offline-rl",
+        "positional-encoding"
+      ],
+      "entities": [
+        "GCRL",
+        "OGBench",
+        "temporal distance",
+        "random Fourier features"
+      ],
+      "diagram": {
+        "kind": "matrix",
+        "title": "目标通路 vs 状态通路的敏感度",
+        "caption": "同样幅度的表征干预，只有状态侧造成了显著的成绩变化",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='目标表征与状态表征在同等干预下对下游成绩影响的对照矩阵'><text x='196.5' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是否施加干预</text><text x='373.5' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>对下游成绩的影响</text><text x='98.0' y='72.5' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>目标表征</text><text x='98.0' y='139.5' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>*当前状态表征</text><rect x='108.0' y='34.0' width='177.0' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='196.5' y='72.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是</text><rect x='285.0' y='34.0' width='177.0' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='373.5' y='72.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>几乎不变</text><rect x='108.0' y='101.0' width='177.0' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='196.5' y='139.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是</text><rect x='285.0' y='101.0' width='177.0' height='67.0' fill='none' stroke='var(--accent)' stroke-width='2.0'/><text x='373.5' y='139.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>成功率翻倍以上</text></svg>",
+        "spec": {
+          "type": "matrix",
+          "rows": [
+            "目标表征",
+            "*当前状态表征"
+          ],
+          "cols": [
+            "是否施加干预",
+            "对下游成绩的影响"
+          ],
+          "cells": [
+            [
+              "是",
+              "几乎不变"
+            ],
+            [
+              "是",
+              "*成功率翻倍以上"
+            ]
+          ]
+        },
+        "alt": "目标表征与状态表征在同等干预下对下游成绩影响的对照矩阵"
+      },
+      "concepts": [
+        {
+          "name": "Temporal-distance Goal Representation（时间距离目标表征）",
+          "readable": "用「从当前状态走到目标还要多少步」来表示目标，而不是用目标坐标；在确定性迷宫里这个距离可以精确计算。",
+          "analogy": "像导航里用「还有 15 分钟到」而不是「目的地在东经 116.4 度」来描述目标。",
+          "analogyBreaksDown": "只有确定性环境才能精确算时间距离；随机环境里同名状态之间的步数不确定，该表征会退化。",
+          "mechanism": "在确定性迷宫上构造精确的时间距离作为目标表征，使研究者能够精确控制它的几何质量，从而隔离「目标表征好坏」这个变量。",
+          "visual": "同一张迷宫图上画等值线，每条线是到目标步数相同的状态集合。",
+          "prerequisites": [
+            "目标条件 RL",
+            "值函数与距离函数",
+            "离线 RL 数据集"
+          ],
+          "selfTest": [
+            "时间距离目标表征的定义是什么？",
+            "为什么实验要选确定性迷宫？",
+            "它迁移到随机环境会怎样？"
+          ],
+          "formula": "d^{\\pi}(s,g)=\\mathbb{E}_{\\pi}\\Big[\\sum_{t\\ge 0}\\gamma^{t}\\mathbb{1}[s_t\\neq g]\\Big]"
+        },
+        {
+          "name": "State Pathway Bottleneck（状态通路的瓶颈）",
+          "readable": "决定成绩的是「当前状态怎么表示」而不是「目标怎么表示」；给状态换成随机傅里叶位置编码，最难任务就有显著提升。",
+          "analogy": "像考试失分不是题目没说清楚（目标），而是你连自己站在哪里都没搞明白（状态）。",
+          "analogyBreaksDown": "结论限于基于状态的离线导航任务；换成图像输入或需要精细区分目标的任务，未必成立。",
+          "mechanism": "对目标与状态施加同等强度的表征干预，比较下游成绩变化；只有状态侧出现显著差异，说明状态编码才是瓶颈。",
+          "visual": "两条并列敏感度曲线：目标表征那条接近水平，状态表征那条陡峭上升。",
+          "prerequisites": [
+            "位置编码",
+            "表征质量度量",
+            "消融实验设计"
+          ],
+          "selfTest": [
+            "为什么要把同样的干预分别施加到目标和状态上？",
+            "随机傅里叶特征为什么在这里有效？",
+            "这个结论的适用边界是什么？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-temporal-distance-goal",
+          "name": "时间距离目标表征（Temporal-distance Goal Representation）",
+          "category": "rl",
+          "latex": "d^{\\pi}(s,g)=\\mathbb{E}_{\\pi}\\!\\left[\\sum_{t=0}^{\\infty}\\gamma^{t}\\,\\mathbb{1}[s_t\\neq g]\\right],\\qquad \\phi(s,g)=d^{\\pi}(s,g)\\ \\ \\text{(deterministic)}",
+          "symbols": [
+            [
+              "s",
+              "当前状态"
+            ],
+            [
+              "g",
+              "目标状态"
+            ],
+            [
+              "\\gamma",
+              "折扣因子，控制远距离的权重"
+            ],
+            [
+              "\\mathbb{1}[\\cdot]",
+              "指示函数，未到达目标时为 1"
+            ],
+            [
+              "d^{\\pi}(s,g)",
+              "按策略 π 走到目标的期望折扣步数"
+            ],
+            [
+              "\\phi(s,g)",
+              "用作策略输入的目标表征"
+            ]
+          ],
+          "derivation": [
+            "先定义「走到目标所需的折扣步数」为期望的折扣指示函数之和。",
+            "在确定性转移下期望消失，它退化为最短路径长度，可以精确计算。",
+            "把这个标量（或由它导出的嵌入）当作目标表征喂给策略。",
+            "再人为破坏该表征的几何质量，用同一学习器比较成绩，隔离表征变量。"
+          ],
+          "analogy": "像用「还剩几站地铁」替代「目的地的经纬度」来描述目标，远近关系一目了然。",
+          "pitfalls": [
+            "折扣因子 γ 会改变距离度量本身的几何形状，不同 γ 的结论不可直接比较。",
+            "随机转移下「步数」不再是良定义的确定性量，该表征失去精确性。",
+            "破坏几何质量的具体方式会影响结论可比性，必须与状态侧使用同一套干预。"
+          ],
+          "code": "import numpy as np\nfrom collections import deque\n\ndef temporal_distance(goal, grid, blocked):\n    # grid: (H, W); blocked: set of obstacles -> BFS 得到每格到目标的步数\n    H, W = grid.shape\n    dist = np.full((H, W), np.inf)\n    dist[goal] = 0.0\n    q = deque([goal])\n    while q:\n        r, c = q.popleft()\n        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < H and 0 <= nc < W and (nr, nc) not in blocked:\n                if dist[nr, nc] > dist[r, c] + 1:\n                    dist[nr, nc] = dist[r, c] + 1\n                    q.append((nr, nc))\n    return dist   # phi(s, g) = dist[s]; 确定性环境下即时间距离\n\n\ndef fourier_features(x, B):\n    # 随机傅里叶位置编码: 状态的替代表示\n    proj = x @ B                     # B: (d, m) ~ N(0, sigma^2)\n    return np.concatenate([np.sin(proj), np.cos(proj)], axis=-1)\n",
+          "sources": [
+            {
+              "title": "Do Better Goal Representations Improve Goal-Conditioned Reinforcement Learning?",
+              "url": "https://arxiv.org/abs/2609.39901v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "在确定性迷宫中构造了精确的时间距离目标表征",
+          "在保持下游学习器不变的前提下系统破坏该表征的几何质量",
+          "在 OGBench 导航任务与两种算法上，目标表征质量大幅变化几乎没有影响成绩",
+          "对当前状态施加同样干预后成功率提升超过一倍",
+          "随机傅里叶位置编码在不使用地图信息、不改目标函数的前提下提升最难导航任务"
+        ],
+        "uncertain": [
+          "「成功率翻倍以上」未给具体数值与置信区间",
+          "破坏几何质量的具体手段（噪声、置换、降维）摘要未说明",
+          "结论限于基于状态的离线导航，摘要明确说 code 将发布，当前无法复现"
+        ]
+      }
+    },
+    "4de3fbdcfdb43eff": {
+      "id": "4de3fbdcfdb43eff",
+      "tldr": "语言与图像都切成连续块，用同一个流匹配向量场统一生成，150B token 即接近更大数据量的统一模型。",
+      "keyPoints": [
+        "不做视觉量化，语言与图像都留在连续嵌入空间",
+        "文本块与图像块拼成有序 hyperchunk，保留各自结构",
+        "共享 chunk-causal flow 主干，联合注意力做跨模态交互",
+        "模态各用独立 FFN，训练并行预测多个目标块",
+        "MF-1 在 GenEval 与三项视觉问答上分别为 82.8 / 75.3"
+      ],
+      "why": "统一多模态生成主流是离散 token 与混合目标两条路；这篇给出全连续第三条路，直接关系到你做统一理解生成模型的架构选型。",
+      "difficulty": "hard",
+      "tags": [
+        "multimodal",
+        "flow-matching",
+        "unified-model",
+        "generative",
+        "continuous"
+      ],
+      "entities": [
+        "Multimodal Flow",
+        "MF-1",
+        "Flow Matching",
+        "hyperchunk",
+        "GenEval",
+        "DPG-Bench"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "hyperchunk 统一连续建模",
+        "caption": "把文本与图像都切成连续块，按序拼好后由同一个向量场生成",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='文本与图像分别切块并拼成有序 hyperchunk，再交给共享 flow 主干'><rect x='12.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='61.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>文本</text><text x='61.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>连续嵌入</text><rect x='131.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='180.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>图像</text><text x='180.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>连续嵌入</text><rect x='250.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='299.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>hyperchunk</text><text x='299.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>有序拼接</text><rect x='369.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='418.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>共享 flow 主干</text><text x='418.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>单一向量场</text><line x1='111.0' y1='100.0' x2='243.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='250.0,100.0 243.0,103.6 243.0,96.4' fill='var(--line-1)'/><text x='180.5' y='90.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>分块</text><line x1='230.0' y1='100.0' x2='243.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='250.0,100.0 243.0,103.6 243.0,96.4' fill='var(--line-1)'/><text x='240.0' y='90.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>分块</text><line x1='349.0' y1='100.0' x2='362.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='369.0,100.0 362.0,103.6 362.0,96.4' fill='var(--line-1)'/><text x='359.0' y='90.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>Flow Matching</text></svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {
+              "label": "文本",
+              "detail": "连续嵌入"
+            },
+            {
+              "label": "图像",
+              "detail": "连续嵌入"
+            },
+            {
+              "label": "hyperchunk",
+              "detail": "有序拼接"
+            },
+            {
+              "label": "共享 flow 主干",
+              "detail": "单一向量场"
+            }
+          ],
+          "edges": [
+            {
+              "from": 0,
+              "to": 2,
+              "label": "分块"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": "分块"
+            },
+            {
+              "from": 2,
+              "to": 3,
+              "label": "Flow Matching"
+            }
+          ]
+        },
+        "alt": "文本与图像分别切块并拼成有序 hyperchunk，再交给共享 flow 主干"
+      },
+      "concepts": [
+        {
+          "name": "Hyperchunk（超块）",
+          "readable": "把一段文本 token 和一块图像 patch 都看成连续块，按阅读顺序排成一条序列；模型只需要对一种输入建模，不用为每种模态换目标函数。",
+          "analogy": "像把一段话和它的配图装进同一个「文档块」里按顺序排好，模型只处理一种输入，不再分两套流水线。",
+          "analogyBreaksDown": "文本是一维离散顺序、图像是二维空间结构；压进同一种块之后，图像的空间归纳偏置必须靠额外位置编码补回来。",
+          "mechanism": "文本块保持 token 顺序、图像块保持空间排布，按序拼成 hyperchunk；主干对整条块序列学一个向量场，模态差异交给各自的 FFN 承担。",
+          "visual": "横轴是 hyperchunk 序号，每块用色带表示模态（蓝=文本、橙=图像），块内小格表示 token/patch 数。",
+          "prerequisites": [
+            "Flow Matching 基础",
+            "多模态位置编码",
+            "因果注意力"
+          ],
+          "selfTest": [
+            "hyperchunk 与普通 token 序列的区别在哪？",
+            "为什么不需要先量化图像？",
+            "模态各自独立的 FFN 起什么作用？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "Chunk-causal Flow Matching（块因果流匹配）",
+          "readable": "训练时对同一序列并行预测多个目标块，推理时一次生成一个块并把它接回上下文，同时拿到训练并行性与推理因果性。",
+          "analogy": "像背课文：练习时允许你同时默写后面几段，考试时却只能一段接一段往下写。",
+          "analogyBreaksDown": "训练时各目标块彼此独立假设，推理时却依赖已生成的块，两者之间的差距就是暴露偏差。",
+          "mechanism": "对连续块施加块级因果掩码：块内可双向、跨块只能看前文；训练用 Flow Matching 回归多个目标块的向量场，推理按块自回归展开。",
+          "visual": "画一个三角因果掩码矩阵：块内是实心小方格，跨块右上三角留空表示不可见。",
+          "prerequisites": [
+            "连续归一化流 / Flow Matching",
+            "自回归生成",
+            "因果掩码"
+          ],
+          "selfTest": [
+            "块级因果与 token 级因果的差别？",
+            "为什么训练时可以并行预测多个块？",
+            "推理时单个块内部是双向还是单向？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-hyperchunk-flow-loss",
+          "name": "超块流匹配目标（Hyperchunk Flow Matching）",
+          "category": "multimodal",
+          "latex": "\\mathcal{L}(\\theta)=\\mathbb{E}_{t,\\,x_0,x_1}\\Big\\|v_\\theta\\big(x_t,t\\mid \\mathrm{ctx}\\big)-\\big(x_1-x_0\\big)\\Big\\|^2,\\qquad x_t=(1-t)\\,x_0+t\\,x_1",
+          "symbols": [
+            [
+              "t",
+              "流时间，采样自 [0,1]"
+            ],
+            [
+              "x_0",
+              "源噪声超块"
+            ],
+            [
+              "x_1",
+              "目标超块（真实文本/图像嵌入）"
+            ],
+            [
+              "x_t",
+              "线性插值得到的中间状态"
+            ],
+            [
+              "v_\\theta",
+              "网络学到的向量场"
+            ],
+            [
+              "\\mathrm{ctx}",
+              "块级因果可见的前序超块"
+            ]
+          ],
+          "derivation": [
+            "在噪声 x_0 与真实目标超块 x_1 之间做线性插值，得到中间状态 x_t。",
+            "条件流匹配的目标速度场就是直线方向 x_1 - x_0，回归它等价于最小化传输代价。",
+            "只对块级因果可见的前序超块条件化，保证训练与推理的可见性一致。",
+            "对多个目标块并行回归，梯度平均后等价于在整条块序列上学一个共享向量场。"
+          ],
+          "analogy": "像给每个超块画一条从噪声到目标的直线，模型只需要学「往哪个方向走、走多快」。",
+          "pitfalls": [
+            "t 的采样分布偏斜会让困难时间段欠训练。",
+            "块内双向而跨块因果，掩码写错就会泄漏未来信息，指标虚高。",
+            "不同模态的连续表征尺度不同，损失会被尺度大的模态主导。"
+          ],
+          "code": "import torch\n\ndef flow_matching_loss(v_net, x1, ctx, t=None):\n    # x1: (B,L,d) 目标超块序列; ctx: 前序超块(因果可见)\n    b = x1.shape[0]\n    if t is None:\n        t = torch.rand(b, 1, 1)\n    x0 = torch.randn_like(x1)                 # 源噪声\n    xt = (1 - t) * x0 + t * x1                # 线性插值路径\n    target = x1 - x0                          # 直线速度场\n    pred = v_net(xt, t.squeeze(-1), ctx)      # 条件于前序块\n    return ((pred - target) ** 2).mean()\n",
+          "sources": [
+            {
+              "title": "Multimodal Flow: Unified Flow Modeling of Language and Vision in Embedding Spaces",
+              "url": "https://arxiv.org/abs/2609.40362v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "语言与图像都建模为连续表征，不做视觉量化",
+          "文本块与图像块组织为有序连续 hyperchunk",
+          "主干是共享的 chunk-causal flow，靠联合注意力做跨模态交互",
+          "MF-1 在 0.6B/1.2B/1.6B 三档继续预训练均有提升",
+          "150B token 下 GenEval 平均 82.8、DPG-Bench 相关指标 75.3 组合"
+        ],
+        "uncertain": [
+          "损失函数的精确写法（是否含模态权重、时间采样分布）摘要未给，此处按条件流匹配通用形式重构",
+          "「平均分 82.8 / 75.3」的基准组合方式（哪些指标取平均）需查原文表格",
+          "推理时单块内部是否双向，摘要只说「hyperchunks sequentially」，未细说块内注意力"
+        ]
+      }
+    },
+    "f1959ffd8e7058e7": {
+      "id": "f1959ffd8e7058e7",
+      "tldr": "等时间预算与同一前沿主干下，开源最强 harness 相比最小 harness 单会话编码智能体并无优势。",
+      "keyPoints": [
+        "现代 MLE 智能体常堆叠多智能体编排器与专用检索子智能体",
+        "动机是长程循环里的进展停滞与 LLM 原语有限",
+        "更原始但更强的编码智能体用 read/write/bash 直连环境",
+        "等时间预算与同一主干下，开源最强 harness 无优势",
+        "大规模消融显示机制层在编码智能体设定下冗余"
+      ],
+      "why": "Agent 岗高频争论是「继续堆 harness 还是换更强主干」；这篇给出等预算、同主干下的对照结论，帮你判断工程复杂度该加到哪一层。",
+      "difficulty": "medium",
+      "tags": [
+        "agent",
+        "harness",
+        "mle",
+        "coding-agent",
+        "ablation"
+      ],
+      "entities": [
+        "autonomous MLE agent",
+        "minimal-harness coding agent",
+        "multi-agent orchestrator",
+        "retrieval subagent",
+        "read/write/bash primitives"
+      ],
+      "diagram": {
+        "kind": "matrix",
+        "title": "等预算下的 harness 对照",
+        "caption": "同一主干与等时间预算下，精雕机制层并没有换回更高成绩",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='最小 harness 与精雕 harness 在同一主干、等时间预算与机制层数上的对照矩阵'><text x='152.2' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>同一主干</text><text x='240.8' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>等时间预算</text><text x='329.2' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>机制层数</text><text x='417.8' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相对成绩</text><text x='98.0' y='72.5' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>*最小 harness</text><text x='98.0' y='139.5' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>精雕 harness</text><rect x='108.0' y='34.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='152.2' y='72.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是</text><rect x='196.5' y='34.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='240.8' y='72.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是</text><rect x='285.0' y='34.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='329.2' y='72.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>最少</text><rect x='373.5' y='34.0' width='88.5' height='67.0' fill='none' stroke='var(--accent)' stroke-width='2.0'/><text x='417.8' y='72.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>无优势</text><rect x='108.0' y='101.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='152.2' y='139.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是</text><rect x='196.5' y='101.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='240.8' y='139.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是</text><rect x='285.0' y='101.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='329.2' y='139.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>最多</text><rect x='373.5' y='101.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='417.8' y='139.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>无优势</text></svg>",
+        "spec": {
+          "type": "matrix",
+          "rows": [
+            "*最小 harness",
+            "精雕 harness"
+          ],
+          "cols": [
+            "同一主干",
+            "等时间预算",
+            "机制层数",
+            "相对成绩"
+          ],
+          "cells": [
+            [
+              "是",
+              "是",
+              "最少",
+              "*无优势"
+            ],
+            [
+              "是",
+              "是",
+              "最多",
+              "无优势"
+            ]
+          ]
+        },
+        "alt": "最小 harness 与精雕 harness 在同一主干、等时间预算与机制层数上的对照矩阵"
+      },
+      "concepts": [
+        {
+          "name": "Minimal-harness Coding Agent（最小 harness 编码智能体）",
+          "readable": "指 LLM 直接通过 read、write、bash 三个原语操作执行环境，不再叠加多智能体编排器或专用检索子智能体；论文用它作为单一会话的对照基线。",
+          "analogy": "像让一个熟练工程师直接坐到服务器前，能读文件、写文件、敲命令；不必先搭一整套项目管理系统再开工。",
+          "analogyBreaksDown": "真人的经验是内生且可迁移的；这里的全部能力来自 LLM 主干本身，换掉主干就等于换掉了智能体的能力来源。",
+          "mechanism": "把 LLM 接入执行环境的最小接口：读文件、写文件、跑命令，规划、检索与验证都留在同一个模型会话内完成，不拆成子智能体。",
+          "visual": "画一条时间轴，上面只有一个会话框，框内循环箭头依次标 read、write、bash；旁边对照画多智能体编排器的多层框。",
+          "prerequisites": [
+            "LLM 工具调用 / function calling",
+            "Agent 观察-动作循环",
+            "代码执行沙箱"
+          ],
+          "selfTest": [
+            "最小 harness 只给智能体哪三个原语？",
+            "它与多智能体编排器在结构上的差别是什么？",
+            "作者为什么用单一会话作为对照基线？"
+          ],
+          "formula": "\\pi_{\\text{agent}}(a_t\\mid o_t)=\\mathrm{LLM}_\\theta(\\mathrm{ctx}_t),\\qquad a_t\\in\\{\\texttt{read},\\texttt{write},\\texttt{bash}\\}"
+        },
+        {
+          "name": "Equal-budget Same-backbone Comparison（等预算同主干对照）",
+          "readable": "比较 harness 时必须同时固定两件事：给每种方案相同的时间预算，并让它们共用同一个前沿 LLM 主干，否则无法把差异归因给机制层。",
+          "analogy": "像比较两种学习方法：必须给同样的复习时间和同一本教材，否则分不清是方法好还是资料好。",
+          "analogyBreaksDown": "复习时间可以精确切分，真实系统的开销还包括排队、限流与并行度；固定 wall-clock 预算会掩盖这些维度。",
+          "mechanism": "在相同时间预算与相同前沿主干下，让开源最强 harness 与最小 harness 单会话跑同一批 MLE 任务，使 harness 复杂度成为唯一变量。",
+          "visual": "画两条等长的时间预算条，一条标「最小 harness 单会话」、一条标「多智能体 harness」，末端成绩条画成等高。",
+          "prerequisites": [
+            "受控实验与消融设计",
+            "wall-clock 时间预算",
+            "主干与 harness 的分层概念"
+          ],
+          "selfTest": [
+            "为什么必须同时固定时间预算与主干模型？",
+            "只固定主干而不固定时间，结论会怎样变？",
+            "「无优势」是在什么条件下得出的？"
+          ],
+          "formula": "S(B)=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}\\big[\\mathrm{solve}_i=1\\ \\wedge\\ \\tau_i\\le B\\big]"
+        },
+        {
+          "name": "Machinery Redundancy（机制层冗余）",
+          "readable": "多智能体编排器、专用检索子智能体这类机制层，在编码智能体设定下被大规模系统消融证明是冗余的：去掉之后成绩并不下降。",
+          "analogy": "像给已经会开车的司机再装一套副驾提示：车本身够好时，提示既不提速也不改路线。",
+          "analogyBreaksDown": "副驾提示还能在长途疲劳时兜底；摘要只在等时间预算与同一主干下比较基准成绩，兜底价值不体现在分数里。",
+          "mechanism": "用一系列大规模系统性消融逐一移除机制层，观察同主干同预算下的成绩变化，发现这些层次在编码智能体设定下被剥掉也不损失性能。",
+          "visual": "横向条形图：每移除一层机制画一根条，条长几乎不变；最后一根保留全部机制作为参照。",
+          "prerequisites": [
+            "消融实验设计",
+            "多智能体编排",
+            "检索增强与子智能体"
+          ],
+          "selfTest": [
+            "论文用什么手段判断机制层是否必要？",
+            "被点名的机制层有哪些？",
+            "冗余结论的适用条件是什么？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-budget-normalized-success",
+          "name": "等时间预算成功率（Time-budget-normalised Success Rate）",
+          "category": "agent",
+          "latex": "S(B)=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}\\!\\left[\\mathrm{solve}_i=1\\ \\wedge\\ \\tau_i\\le B\\right],\\qquad \\tau_i=\\sum_{t=1}^{T_i} c_t",
+          "symbols": [
+            [
+              "N",
+              "参与比较的 MLE 任务数量"
+            ],
+            [
+              "B",
+              "每个任务允许的 wall-clock 时间预算"
+            ],
+            [
+              "T_i",
+              "第 i 个任务的交互轮数"
+            ],
+            [
+              "c_t",
+              "第 t 轮读、写、执行所消耗的时间"
+            ],
+            [
+              "\\tau_i",
+              "第 i 个任务的实际耗时"
+            ],
+            [
+              "\\mathrm{solve}_i",
+              "第 i 个任务是否被解决（0/1）"
+            ],
+            [
+              "S(B)",
+              "预算 B 下的成功率"
+            ]
+          ],
+          "derivation": [
+            "先把「做得对」与「做得快」分开定义：solve 表示任务是否被解决。",
+            "把每一轮读、写、执行的时间累加，得到该任务的实际耗时 τ_i。",
+            "只有任务被解决且耗时不超过预算 B 时才计为成功，避免用无限时间换分数。",
+            "对全部任务取平均，得到可在不同 harness 之间直接比较的单一指标。"
+          ],
+          "analogy": "像限时考试：答对但超时不算分，这样比较两种做法的优劣才公平。",
+          "pitfalls": [
+            "预算 B 的取值会改变排名：B 很小时比的是速度，B 很大时机制层的开销被掩盖。",
+            "不同任务耗时量级差异大，直接平均会让慢任务主导结果。",
+            "时间统计口径（是否计入模型推理、是否计入排队）必须与对照方案完全一致。"
+          ],
+          "code": "def budget_success_rate(tasks, budget):\n    # tasks: [{\"solved\": bool, \"costs\": [每轮耗时, ...]}, ...]\n    hit = 0\n    for t in tasks:\n        tau = sum(t[\"costs\"])                     # 任务实际耗时\n        hit += int(bool(t[\"solved\"]) and tau <= budget)\n    return hit / len(tasks)                       # S(B)：等预算成功率\n",
+          "sources": [
+            {
+              "title": "How Much of a Harness Does a Strong Agent Need for Autonomous ML Engineering?",
+              "url": "https://arxiv.org/abs/2609.40303v1"
+            }
+          ]
+        },
+        {
+          "id": "f-harness-ablation-effect",
+          "name": "harness 消融效应估计（Harness Ablation Effect）",
+          "category": "agent",
+          "latex": "\\hat{\\Delta}=\\frac{1}{N}\\sum_{i=1}^{N}\\big(s_i^{\\text{min}}-s_i^{\\text{harness}}\\big),\\qquad \\mathrm{SE}(\\hat{\\Delta})=\\frac{\\sigma_d}{\\sqrt{N}},\\qquad \\sigma_d^2=\\frac{1}{N-1}\\sum_{i=1}^{N}\\big(d_i-\\hat{\\Delta}\\big)^2",
+          "symbols": [
+            [
+              "s_i^{\\text{min}}",
+              "最小 harness 单会话在第 i 个任务上的得分"
+            ],
+            [
+              "s_i^{\\text{harness}}",
+              "精雕 harness 在同一任务、同一主干上的得分"
+            ],
+            [
+              "d_i",
+              "两种方案在第 i 个任务上的配对差"
+            ],
+            [
+              "\\hat{\\Delta}",
+              "平均配对差，接近 0 表示 harness 没有带来优势"
+            ],
+            [
+              "\\sigma_d",
+              "配对差的标准差"
+            ],
+            [
+              "\\mathrm{SE}",
+              "均值估计的标准误"
+            ],
+            [
+              "N",
+              "配对任务数量"
+            ]
+          ],
+          "derivation": [
+            "对每个任务取两种方案的得分并作差，得到配对差 d_i，先消掉任务难度差异。",
+            "对全部任务求平均，得到 harness 带来的平均分数变化 Δ。",
+            "用配对差的标准差除以 √N 给出标准误，用来判断 Δ 是否只是随机噪声。",
+            "当 Δ 的置信区间跨过 0 时，说明精雕 harness 相对最小基线没有可测优势。"
+          ],
+          "analogy": "像同一批学生用两种教辅各做一遍同样的卷子，只看每人两次的分差，而不是比较两个班的平均分。",
+          "pitfalls": [
+            "不做配对而直接比两组平均分，任务难度差异会淹没 harness 的真实效应。",
+            "同一任务多次运行的随机性要一并估计，否则标准误会偏小、结论过于自信。",
+            "Δ≈0 只说明在当前基准与主干下无优势，不能外推到所有任务与所有预算。"
+          ],
+          "code": "import math\n\n\ndef harness_ablation_effect(minimal, harness):\n    # minimal / harness: 同一批任务上两种方案的得分, 一一配对\n    diffs = [a - b for a, b in zip(minimal, harness)]\n    n = len(diffs)\n    delta = sum(diffs) / n\n    var = sum((d - delta) ** 2 for d in diffs) / (n - 1)\n    se = math.sqrt(var / n)\n    ci = (delta - 1.96 * se, delta + 1.96 * se)\n    return delta, se, ci          # 置信区间跨 0 => 无显著优势\n",
+          "sources": [
+            {
+              "title": "How Much of a Harness Does a Strong Agent Need for Autonomous ML Engineering?",
+              "url": "https://arxiv.org/abs/2609.40303v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "现代自主 MLE 智能体常建立在多智能体编排器、专用检索子智能体等日益复杂的机制之上",
+          "通过 read、write、bash 直接访问执行环境的更原始编码智能体路线此前关注不足",
+          "在等时间预算与同一前沿 LLM 主干下，开源最强 harness 相比最小 harness 单会话没有优势",
+          "作者据此认为主干模型是性能的主要驱动，且大规模系统性消融显示机制层在编码智能体设定下冗余",
+          "结论是围绕强模型手工打磨 harness 对当前 MLE 基准回报很低"
+        ],
+        "uncertain": [
+          "摘要未给出任何基准名称、任务数、时间预算数值与分数，本模块的矩阵与曲线仅为定性可视化",
+          "「无优势」的统计口径（种子数、置信区间、显著性检验）摘要未说明，消融效应估计公式为按摘要重建的通用形式",
+          "等时间预算成功率公式为按摘要重建的通用形式，非原文公式",
+          "「此前关注不足」只说关注度，未给出文献计量证据；「大规模」的具体规模摘要未给"
+        ]
+      }
+    },
+    "ff26e0bb61fb7364": {
+      "id": "ff26e0bb61fb7364",
+      "tldr": "分块 KV 缓存压缩引入相位坐标，同一信息在不同相位检索难度不同，准确率最多差 40 个百分点。",
+      "keyPoints": [
+        "分块 KV 缓存压缩按固定步长压缩连续 token 窗口",
+        "相位即 token 相对压缩窗口边界的位置坐标",
+        "大开源模型长上下文检索准确率跨相位最多差 40 个百分点",
+        "平均基准分可能掩盖这种周期性的检索弱点",
+        "从头预训练多种压缩设计复现该现象，评估需跨相位"
+      ],
+      "why": "长上下文推理岗绕不开 KV 缓存压缩；这篇说明平均基准分会掩盖相位弱点，面试谈压缩方案时必须回答「在哪些相位评测」。",
+      "difficulty": "medium",
+      "tags": [
+        "kv-cache",
+        "long-context",
+        "compression",
+        "retrieval",
+        "phase-sensitivity"
+      ],
+      "entities": [
+        "chunked KV-cache compression",
+        "phase sensitivity",
+        "phase specialization",
+        "KV cache",
+        "causal interventions",
+        "idealized retrieval model"
+      ],
+      "diagram": {
+        "kind": "curve",
+        "title": "相位敏感的检索准确率",
+        "caption": "同一模型在不同相位上的检索准确率呈周期性起伏，波峰与波谷相差最多 40 个百分点（数值为示意）",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='分块 KV 压缩下检索准确率随相位做周期锯齿波动、而相位平均线掩盖波谷的曲线示意'><line x1='58.0' y1='26.0' x2='58.0' y2='148.0' stroke='var(--line-1)' stroke-width='1.4'/><line x1='58.0' y1='148.0' x2='456.0' y2='148.0' stroke='var(--line-1)' stroke-width='1.4'/><text x='52.0' y='30.0' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>1e+02</text><text x='52.0' y='152.0' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>0</text><polyline points='58.0,40.6 114.9,55.3 171.7,74.8 228.6,89.4 285.4,40.6 342.3,55.3 399.1,74.8 456.0,89.4' fill='none' stroke='var(--accent)' stroke-width='2'/><circle cx='58.0' cy='40.6' r='2.6' fill='var(--accent)'/><circle cx='114.9' cy='55.3' r='2.6' fill='var(--accent)'/><circle cx='171.7' cy='74.8' r='2.6' fill='var(--accent)'/><circle cx='228.6' cy='89.4' r='2.6' fill='var(--accent)'/><circle cx='285.4' cy='40.6' r='2.6' fill='var(--accent)'/><circle cx='342.3' cy='55.3' r='2.6' fill='var(--accent)'/><circle cx='399.1' cy='74.8' r='2.6' fill='var(--accent)'/><circle cx='456.0' cy='89.4' r='2.6' fill='var(--accent)'/><polyline points='58.0,65.0 114.9,65.0 171.7,65.0 228.6,65.0 285.4,65.0 342.3,65.0 399.1,65.0 456.0,65.0' fill='none' stroke='currentColor' stroke-width='2'/><circle cx='58.0' cy='65.0' r='2.6' fill='currentColor'/><circle cx='114.9' cy='65.0' r='2.6' fill='currentColor'/><circle cx='171.7' cy='65.0' r='2.6' fill='currentColor'/><circle cx='228.6' cy='65.0' r='2.6' fill='currentColor'/><circle cx='285.4' cy='65.0' r='2.6' fill='currentColor'/><circle cx='342.3' cy='65.0' r='2.6' fill='currentColor'/><circle cx='399.1' cy='65.0' r='2.6' fill='currentColor'/><circle cx='456.0' cy='65.0' r='2.6' fill='currentColor'/><text x='58.0' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位0</text><text x='114.9' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位1</text><text x='171.7' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位2</text><text x='228.6' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位3</text><text x='285.4' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位4</text><text x='342.3' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位5</text><text x='399.1' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位6</text><text x='456.0' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位7</text><line x1='58.0' y1='184.0' x2='76.0' y2='184.0' stroke='var(--accent)' stroke-width='2'/><text x='81.0' y='188.0' font-size='13' text-anchor='start' fill='currentColor' font-weight='normal'>逐相位检索</text><line x1='162.0' y1='184.0' x2='180.0' y2='184.0' stroke='currentColor' stroke-width='2'/><text x='185.0' y='188.0' font-size='13' text-anchor='start' fill='currentColor' font-weight='normal'>相位平均</text><text x='52.0' y='16.0' font-size='13' text-anchor='start' fill='currentColor' font-weight='normal'>检索准确率（示意）</text></svg>",
+        "spec": {
+          "type": "curve",
+          "xLabels": [
+            "相位0",
+            "相位1",
+            "相位2",
+            "相位3",
+            "相位4",
+            "相位5",
+            "相位6",
+            "相位7"
+          ],
+          "series": [
+            {
+              "label": "逐相位检索",
+              "values": [
+                88.0,
+                76.0,
+                60.0,
+                48.0,
+                88.0,
+                76.0,
+                60.0,
+                48.0
+              ]
+            },
+            {
+              "label": "相位平均",
+              "values": [
+                68.0,
+                68.0,
+                68.0,
+                68.0,
+                68.0,
+                68.0,
+                68.0,
+                68.0
+              ]
+            }
+          ]
+        },
+        "alt": "分块 KV 压缩下检索准确率随相位做周期锯齿波动、而相位平均线掩盖波谷的曲线示意"
+      },
+      "concepts": [
+        {
+          "name": "Phase Coordinate（相位坐标）",
+          "readable": "分块 KV 压缩把每 W 个连续 token 的缓存压成更少条目，于是 token 在窗口内的偏移量成了一个新位置坐标；同一个 token 因为偏移不同，压缩后能留下的信息量也不同。",
+          "analogy": "像把一叠纸每 8 张装订成一册：夹在册子中间的那张最容易被压得看不清，贴在册子最上面或最下面的那张反而最显眼。",
+          "analogyBreaksDown": "装订只改变物理位置；相位改变的是注意力能否从压缩条目里重建出该 token 的信息，而且不同层、不同注意力头的相位偏好并不一致。",
+          "mechanism": "在固定步长 W 的分块压缩下，把 token 索引 i 的相位定义为 i mod W，即它相对压缩窗口边界的位置；窗口内多个 token 的 KV 被聚合成少量条目，使同一信息在不同相位的可恢复程度不同，形成周期性的检索强弱。",
+          "visual": "横轴为相位 0…W−1，纵轴为检索准确率；曲线呈周期锯齿，波峰波谷相差最多 40 个百分点，另用一条水平线标出相位平均值，落在波谷之上。",
+          "prerequisites": [
+            "Transformer 注意力与 KV 缓存",
+            "长上下文推理的显存瓶颈",
+            "取模与周期性的基本直觉"
+          ],
+          "selfTest": [
+            "相位坐标是由什么压缩操作引入的？",
+            "为什么同一份信息在不同相位会有不同可检索性？",
+            "相位和绝对位置编码是同一个概念吗？"
+          ],
+          "formula": "\\phi(i)=i\\bmod W"
+        },
+        {
+          "name": "Phase Sensitivity（相位敏感性）",
+          "readable": "使用分块 KV 压缩的模型，同一份信息在一个相位容易检索、在另一个相位却很难；这种随相位周期性起伏的检索表现差异就叫相位敏感性。",
+          "analogy": "像一排路灯每隔几盏就有一盏是暗的：你看得清看不清，取决于正好站在哪一盏下面，而不是路面本身有什么不同。",
+          "analogyBreaksDown": "路灯是固定的硬件缺陷；相位敏感性来自压缩后的信息聚合方式，可以随压缩设计、注意力组件与训练过程改变，并非不可逆的物理限制。",
+          "mechanism": "固定步长压缩让窗口不同位置的 token 被聚合成质量不同的缓存项，注意力的可恢复性因此随相位周期性变化；在采用该压缩的大开源模型上，长上下文检索准确率跨相位最多相差 40 个百分点。",
+          "visual": "把相位画成一个圆环，环上每个刻度用颜色深浅表示该相位的检索准确率，整体呈现明暗相间的环状条纹。",
+          "prerequisites": [
+            "KV 缓存压缩（分块/窗口压缩）",
+            "长上下文检索评测",
+            "注意力机制与缓存读取"
+          ],
+          "selfTest": [
+            "相位敏感性与「模型某些位置更差」有什么区别？",
+            "为什么相位平均分会掩盖这种效应？",
+            "换一种压缩设计就能完全消除它吗？"
+          ],
+          "formula": "\\Delta_{\\mathrm{phase}}=\\max_{\\phi}\\mathrm{Acc}(\\phi)-\\min_{\\phi}\\mathrm{Acc}(\\phi)"
+        },
+        {
+          "name": "Phase Specialization（相位专精）",
+          "readable": "用因果干预分析发现，不同注意力组件并不是平均地服务所有相位：某个组件在某个源相位上贡献特别大，换到别的相位就几乎不起作用。",
+          "analogy": "像流水线上几个人分工：甲只盯从左边送来的零件，乙只认右边的；谁在岗决定了哪一段传送带上的活能干好。",
+          "analogyBreaksDown": "工人的分工是明确设计出来的；这里的分工是训练中自然形成的，作者只用理想化检索模型说明梯度流动力学可能偏好这种锐利分工，并未证明真实模型必然如此。",
+          "mechanism": "对从头预训练的模型做因果干预，逐个屏蔽或替换注意力组件并观察不同源相位的检索表现，发现各组件对不同相位的贡献高度不对称；理想化检索模型的分析显示梯度流动力学可能偏好这种锐利的相位专精。",
+          "visual": "一张热力图：纵轴是注意力组件（层或头），横轴是源相位，格子颜色深浅表示该组件对该相位检索的贡献，呈现明显的列状条纹。",
+          "prerequisites": [
+            "因果干预/消融实验设计",
+            "注意力头功能分化",
+            "梯度流与训练动力学直觉"
+          ],
+          "selfTest": [
+            "为什么用因果干预而不是只看注意力权重？",
+            "相位专精对压缩方案选型意味着什么？",
+            "理想化检索模型的结论能直接外推到真实模型吗？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-phase-coordinate",
+          "name": "相位坐标与压缩步长（Phase Coordinate and Compression Stride）",
+          "category": "foundation",
+          "latex": "\\phi(i)=i\\bmod W\\in\\{0,1,\\dots,W-1\\},\\qquad n_{\\mathrm{cache}}=\\left\\lceil\\frac{L}{W}\\right\\rceil\\cdot k,\\qquad k\\ge 1,\\ \\ W>k",
+          "symbols": [
+            [
+              "i",
+              "token 在序列中的索引"
+            ],
+            [
+              "W",
+              "分块压缩的固定步长，即压缩窗口覆盖的连续 token 数"
+            ],
+            [
+              "\\phi(i)",
+              "第 i 个 token 的相位，即它相对压缩窗口边界的位置"
+            ],
+            [
+              "L",
+              "序列长度"
+            ],
+            [
+              "k",
+              "每个压缩窗口保留下来的缓存条目数"
+            ],
+            [
+              "n_{\\mathrm{cache}}",
+              "压缩后的缓存条目总数"
+            ]
+          ],
+          "derivation": [
+            "分块压缩以固定步长 W 切分连续 token，每个 token 因此落在一个压缩窗口内。",
+            "用索引对 W 取模就得到它相对窗口边界的偏移，这就是新的位置坐标「相位」。",
+            "每个窗口压成 k 条缓存项，W > k 才叫压缩，于是缓存条目数从 L 降到约 L/W·k。",
+            "缓存条目变少，窗口内不同位置的信息被聚合的强度不同，可恢复性遂随相位周期变化。"
+          ],
+          "analogy": "像把一长串座位每 W 个编成一个包厢、只留 k 个观察窗；你坐在包厢里的第几个座位，决定了你还能不能被看见。",
+          "pitfalls": [
+            "相位定义可以说成 i mod W，也可以说到最近窗口边界的距离，两者在 W 为偶数时得到的相位数是不同的。",
+            "把相位当成绝对位置编码来理解会出错：它是一个周期量，同一相位在整条序列上反复出现。",
+            "k 不变而增大 W 会同时放大压缩率与相位效应，两个变量被混在一起比较就无法归因。"
+          ],
+          "code": "import torch\n\n\ndef phase_of_token(seq_len: int, stride: int) -> torch.Tensor:\n    # 分块压缩步长 stride=W: 每个 token 的相位 = 它在压缩窗口内的偏移\n    i = torch.arange(seq_len)\n    return i % stride                      # (L,) 取值 0 .. W-1\n\n\ndef compressed_cache_len(seq_len: int, stride: int, keep_per_window: int = 1) -> int:\n    # 把每 stride 个连续 token 的缓存压成 keep_per_window 条\n    windows = (seq_len + stride - 1) // stride\n    return windows * keep_per_window\n\n\nif __name__ == \"__main__\":\n    print(phase_of_token(16, 4))                    # 相位 0,1,2,3 循环出现\n    print(compressed_cache_len(8192, 8, 1))         # 8192 -> 1024 条缓存项\n",
+          "sources": [
+            {
+              "title": "Periodic Weak Spots: Phase Sensitivity from Chunked KV-Cache Compression",
+              "url": "https://huggingface.co/papers/2609.36322"
+            }
+          ]
+        },
+        {
+          "id": "f-phase-average-gap",
+          "name": "相位平均准确率与最差相位差（Phase-averaged Accuracy and Worst-phase Gap）",
+          "category": "foundation",
+          "latex": "\\overline{\\mathrm{Acc}}=\\frac{1}{W}\\sum_{\\phi=0}^{W-1}\\mathrm{Acc}(\\phi),\\qquad \\mathrm{Acc}(\\phi)=\\mathbb{E}\\big[\\,\\mathrm{hit}\\mid \\phi(i)=\\phi\\,\\big],\\qquad \\Delta_{\\mathrm{phase}}=\\max_{\\phi}\\mathrm{Acc}(\\phi)-\\min_{\\phi}\\mathrm{Acc}(\\phi)\\ \\le\\ 40\\%",
+          "symbols": [
+            [
+              "W",
+              "压缩步长，也是相位取值个数"
+            ],
+            [
+              "\\phi",
+              "相位索引，取 0 到 W−1"
+            ],
+            [
+              "\\mathrm{Acc}(\\phi)",
+              "源 token 相位为 φ 时的检索准确率"
+            ],
+            [
+              "\\mathrm{hit}",
+              "该条检索样本是否成功（0/1）"
+            ],
+            [
+              "\\overline{\\mathrm{Acc}}",
+              "跨相位的平均准确率，即常见基准分"
+            ],
+            [
+              "\\Delta_{\\mathrm{phase}}",
+              "最好相位与最差相位的准确率之差"
+            ]
+          ],
+          "derivation": [
+            "把评测样本按源 token 的相位 φ 分桶，在每个桶内算检索成功率，得到 Acc(φ)。",
+            "对全部 W 个相位取平均，得到通常汇报的那个「平均基准分」。",
+            "再取各相位准确率的最大值与最小值之差，作为相位敏感性的标量指标。",
+            "摘要报告该差值在大开源模型上最多可达 40 个百分点，说明平均分可以掩盖系统性的位置性失败。"
+          ],
+          "analogy": "像用全班平均分评价一门课：平均 68 分看着还行，但如果每次换座位就有四成学生从会做变成不会做，这个平均分掩盖了大问题。",
+          "pitfalls": [
+            "只看平均准确率会完全看不到相位效应：高平均分与低最差相位可以同时存在。",
+            "各相位的样本数不均衡时，未加权的相位平均会被样本多的相位主导。",
+            "差值还要看样本量与置信区间，40 个百分点是「最多」而非所有设置下的典型值。",
+            "相位的定义（i mod W 还是到边界的距离）一变，分桶结果随之改变，指标不可跨定义比较。"
+          ],
+          "code": "import torch\n\n\ndef phase_accuracy(hits: torch.Tensor, phases: torch.Tensor, n_phase: int) -> torch.Tensor:\n    # hits: (N,) 每条检索样本是否命中(0/1); phases: (N,) 该样本源 token 的相位\n    acc = torch.full((n_phase,), float(\"nan\"))\n    for p in range(n_phase):\n        mask = phases == p\n        if mask.any():\n            acc[p] = hits[mask].float().mean()\n    return acc\n\n\ndef phase_average_and_gap(hits: torch.Tensor, phases: torch.Tensor, n_phase: int):\n    acc = phase_accuracy(hits, phases, n_phase)\n    valid = acc[~torch.isnan(acc)]                 # 忽略没有样本的相位\n    mean_acc = valid.mean().item()                 # 平均基准分\n    gap = (valid.max() - valid.min()).item()       # 最差相位差\n    return mean_acc, gap, acc\n\n\nif __name__ == \"__main__\":\n    hits = torch.tensor([1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0])\n    phases = torch.arange(hits.numel()) % 8                   # W = 8\n    print(phase_average_and_gap(hits, phases, 8))\n",
+          "sources": [
+            {
+              "title": "Periodic Weak Spots: Phase Sensitivity from Chunked KV-Cache Compression",
+              "url": "https://arxiv.org/abs/2609.36322"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "分块 KV 缓存压缩以固定步长把连续 token 窗口压成更少的缓存条目，从而降低长上下文推理的显存与注意力开销",
+          "压缩引入了新的位置坐标「相位」，即 token 相对压缩窗口边界的位置",
+          "在采用该压缩的大开源模型上，长上下文检索准确率跨相位最多相差 40 个百分点",
+          "作者从头预训练了一族 Transformer，覆盖多种 KV 压缩设计并复现了相位敏感性",
+          "因果干预显示不同注意力组件对不同源相位的贡献不对称，即存在相位专精",
+          "理想化检索模型的分析显示梯度流动力学可能偏好锐利的相位专精，因此评估压缩模型必须跨相位测量"
+        ],
+        "uncertain": [
+          "摘要未给出压缩步长 W、每窗口保留的缓存条目数或压缩比，f-phase-coordinate 是按「固定步长分块压缩」重建的通用形式",
+          "「在一个相位容易、在另一个相位困难」到「最多 40 个百分点」的量化口径摘要未说明，f-phase-average-gap 是按通用评测定义重建的指标形式",
+          "相位的确切定义（i mod W 还是到最近窗口边界的距离）摘要只说 position relative to compression-window boundaries，需查原文",
+          "曲线图中的数值为示意（按摘要的 40 个百分点差值构造的周期锯齿），非原文数据",
+          "「大开源模型」「多种 KV 压缩设计」「理想化检索模型」的具体模型名与压缩方案名摘要均未给出，此处不编造",
+          "「最多 40 个百分点」对应的模型、任务与基准名称摘要未给，无法核对实验设置与置信区间"
+        ]
+      }
+    },
+    "171b76b97d2612ff": {
+      "id": "171b76b97d2612ff",
+      "tldr": "只调 10 万个 bias 参数、用多数投票当奖励，Qwen2.5-7B 在 MATH-500 达 76.67%。",
+      "keyPoints": [
+        "测试时强化学习以往要优化大部分模型参数",
+        "冻结主干，只优化约 100K 的 bias 参数",
+        "奖励来自多数投票伪标签，完全不需要标签",
+        "MATH-500 上超过自家有标签的 bias 微调复现",
+        "可迁移到 4500 道留出题，并扩展到视觉与音频推理"
+      ],
+      "why": "面试常问「测试时算力该花在哪」；这篇给出极端受限条件下的有效配方，也说明了伪标签奖励何时可信。",
+      "difficulty": "medium",
+      "tags": [
+        "rl",
+        "test-time-adaptation",
+        "bias-tuning",
+        "pseudo-label",
+        "reasoning"
+      ],
+      "entities": [
+        "TTRL",
+        "Qwen2.5-7B",
+        "MATH-500",
+        "majority vote",
+        "MathVista",
+        "MMAU"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "无标签的 bias-only 测试时强化",
+        "caption": "同一题多次采样投票得到伪标签奖励，只在极小的 bias 子空间上更新",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='从无标签问题、多次采样、多数投票到只更新 bias 参数的四步流程'><rect x='12.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='61.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>无标签题</text><text x='61.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>MATH-500</text><rect x='131.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='180.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>多次采样</text><text x='180.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>rollout</text><rect x='250.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='299.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>多数投票</text><text x='299.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>伪标签奖励</text><rect x='369.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='418.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>只更新 bias</text><text x='418.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>约 100K 参数</text><line x1='111.0' y1='100.0' x2='124.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='131.0,100.0 124.0,103.6 124.0,96.4' fill='var(--line-1)'/><line x1='230.0' y1='100.0' x2='243.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='250.0,100.0 243.0,103.6 243.0,96.4' fill='var(--line-1)'/><line x1='349.0' y1='100.0' x2='362.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='369.0,100.0 362.0,103.6 362.0,96.4' fill='var(--line-1)'/><text x='359.0' y='90.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>策略优化</text></svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {
+              "label": "无标签题",
+              "detail": "MATH-500"
+            },
+            {
+              "label": "多次采样",
+              "detail": "rollout"
+            },
+            {
+              "label": "多数投票",
+              "detail": "伪标签奖励"
+            },
+            {
+              "label": "只更新 bias",
+              "detail": "约 100K 参数"
+            }
+          ],
+          "edges": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": ""
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": ""
+            },
+            {
+              "from": 2,
+              "to": 3,
+              "label": "策略优化"
+            }
+          ]
+        },
+        "alt": "从无标签问题、多次采样、多数投票到只更新 bias 参数的四步流程"
+      },
+      "concepts": [
+        {
+          "name": "Bias-only Subspace Tuning（只调偏置子空间）",
+          "readable": "把可训练参数限制在各层的 bias 项（约 10 万个），主干权重全部冻结，用极小的优化空间换取测试时的稳定适应。",
+          "analogy": "像不改造整台机器，只微调所有的对零旋钮来改变输出。",
+          "analogyBreaksDown": "偏置只能整体平移激活，表达不了需要重新组合特征的任务；任务若要求新的特征方向，这个子空间就不够用。",
+          "mechanism": "冻结主干只训 bias，等价于在激活空间上学一组可加性的平移/缩放（steering vector），参数极少、几乎不会灾难性遗忘。",
+          "visual": "每层画成一条水平线，线上只有一个小滑块（bias）可以移动，权重方块都是灰色锁定的。",
+          "prerequisites": [
+            "参数高效微调（LoRA 等）",
+            "测试时适应",
+            "梯度子空间直觉"
+          ],
+          "selfTest": [
+            "bias-only 与 LoRA 的可训练空间差别在哪？",
+            "为什么参数量能少好几个数量级？",
+            "什么类型的任务上它会失效？"
+          ],
+          "formula": "\\theta'=\\theta+\\Delta,\\qquad \\Delta\\in\\{\\text{bias terms only}\\},\\ \\ |\\Delta|\\approx 10^{5}"
+        },
+        {
+          "name": "Majority-vote Pseudo-label Reward（多数投票伪标签奖励）",
+          "readable": "对同一道题采样多条推理链，把出现次数最多的答案当成伪标签，用它构造奖励信号，不需要任何人工标注。",
+          "analogy": "像一群学生独立做题后对答案，票数最多的那个当标准答案，再用它互相批改。",
+          "analogyBreaksDown": "题目太难时多数票本身就错，奖励会把模型往错误方向推：一致性高不等于正确。",
+          "mechanism": "采样 rollout、抽取最终答案、按票数取众数作为伪标签，再用「是否与伪标签一致」构造 0/1 奖励，只在 bias 子空间上做策略优化。",
+          "visual": "一题下面画 8 条推理链，末尾答案聚成三堆，最大那堆着色标为「伪标签」。",
+          "prerequisites": [
+            "RLVR / RLHF 基础",
+            "自一致性采样",
+            "伪标签与噪声奖励"
+          ],
+          "selfTest": [
+            "伪标签奖励的噪声来自哪里？",
+            "为什么投票一致性会提升可靠性？",
+            "多数票犯错时会发生什么？"
+          ],
+          "formula": "\\hat{y}(x)=\\arg\\max_{a}\\textstyle\\sum_{i=1}^{K}\\mathbb{1}[\\mathrm{Ans}(y_i)=a]"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-majority-vote-pseudolabel",
+          "name": "多数投票伪标签奖励（Majority-vote Pseudo-label Reward）",
+          "category": "rl",
+          "latex": "\\hat{y}(x)=\\arg\\max_{a}\\sum_{i=1}^{K}\\mathbb{1}\\big[\\mathrm{Ans}(y_i)=a\\big],\\qquad r_i=\\mathbb{1}\\big[\\mathrm{Ans}(y_i)=\\hat{y}(x)\\big],\\qquad \\nabla_\\Delta J=\\mathbb{E}\\big[r_i\\,\\nabla_\\Delta\\log\\pi_\\Delta(y_i\\mid x)\\big]",
+          "symbols": [
+            [
+              "x",
+              "测试时的问题"
+            ],
+            [
+              "K",
+              "每题采样的推理链条数"
+            ],
+            [
+              "y_i",
+              "第 i 条采样推理链"
+            ],
+            [
+              "\\mathrm{Ans}(\\cdot)",
+              "从推理链抽取最终答案"
+            ],
+            [
+              "\\hat{y}(x)",
+              "多数投票得到的伪标签"
+            ],
+            [
+              "r_i",
+              "第 i 条链的 0/1 奖励"
+            ],
+            [
+              "\\Delta",
+              "只包含 bias 的参数增量"
+            ]
+          ],
+          "derivation": [
+            "对同一问题采样 K 条推理链，各自抽取最终答案。",
+            "统计每个答案的票数，取众数作为伪标签 ŷ。",
+            "把「答案与伪标签一致」定义为奖励 1，否则 0，完全不需要人工标签。",
+            "在 bias-only 子空间上做策略梯度更新，主干参数保持冻结。"
+          ],
+          "analogy": "像无标准答案的竞赛用「群体投票」当参考答案，再按是否与参考答案一致给分。",
+          "pitfalls": [
+            "K 太小时众数不稳定，奖励噪声会主导更新。",
+            "伪标签本身可能全票错误，需要一致性筛选或置信度门槛。",
+            "只在 bias 空间优化，限制了模型能修正的错误类型。"
+          ],
+          "code": "import torch\nfrom collections import Counter\n\ndef majority_reward(answers):\n    # answers: list[str] 同一题 K 条链抽取出的答案\n    label, _ = Counter(answers).most_common(1)[0]\n    return [1.0 if a == label else 0.0 for a in answers], label\n\n\ndef bias_only_params(model):\n    # 只把 bias 交给优化器, 主干冻结\n    for n, p in model.named_parameters():\n        p.requires_grad = n.endswith(\"bias\")\n    return [p for p in model.parameters() if p.requires_grad]\n\n\ndef reinforce_step(model, batch, rewards, optimizer, logps):\n    # logps: (K,) 每条链的对数概率之和; rewards: (K,)\n    adv = torch.tensor(rewards) - sum(rewards) / len(rewards)\n    loss = -(adv * logps).mean()\n    optimizer.zero_grad(); loss.backward(); optimizer.step()\n    return loss.item()\n",
+          "sources": [
+            {
+              "title": "Label-free steering: Compressing test-time reinforcement learning into bias-only subspaces",
+              "url": "https://huggingface.co/papers/2609.18587"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "方法冻结预训练主干，只优化约 100K 个 bias 参数",
+          "奖励来自多数投票伪标签，完全不使用标签",
+          "Qwen2.5-7B 在 MATH-500 上达到 76.67%，略高于作者自己的有标签 bias steering 复现",
+          "相比全参 TTRL 优化参数少约 76,000 倍",
+          "训练得到的 steering 向量迁移到 4,500 道留出的 MATH 题",
+          "同一流程也提升了 MathVista、AI2D、LogicVista、MMAU"
+        ],
+        "uncertain": [
+          "「76,000 倍」的分母口径（是否包含 embedding、是否按可训练参数量计算）需查原文",
+          "本条目来源是 Hugging Face papers 页面，未标注会议/期刊",
+          "bias 子空间可及梯度能量的度量方式摘要未给，公式为通用策略梯度形式的重构"
+        ]
+      }
+    },
+    "fb8063dfdeda93d7": {
+      "id": "fb8063dfdeda93d7",
+      "tldr": "按需剖析替代常开采集：免重启附着生产推理进程，TTFT 开销低于 0.5%，六个月定位 23% 轨迹的低效机制。",
+      "keyPoints": [
+        "常开详细剖析开销大，轻量采集又缺诊断信息",
+        "关键洞见：按需自适应剖析即可给出全栈证据",
+        "免引擎改动与重启，安全附着/分离运行中进程",
+        "活跃采集开销 TTFT 低于 0.5%、TPOT 7%",
+        "六月约 1.7 万轨迹、120+ 变体，23% 定位到低效"
+      ],
+      "why": "生产推理优化岗既要会定位性能问题，又不能让剖析本身拖慢服务；这套「按需采证 + 有界窗口」的取舍与 0.5%/7% 开销口径，是面试可直接引用的工程基线。",
+      "difficulty": "hard",
+      "tags": [
+        "profiling",
+        "llm-inference",
+        "production",
+        "observability",
+        "efficiency"
+      ],
+      "entities": [
+        "Herschel",
+        "model-as-a-service",
+        "on-demand profiling",
+        "time to first token",
+        "time per output token"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "Herschel 的按需剖析闭环",
+        "caption": "只在需要时附着到运行中进程，采完即分离，证据不足再扩大覆盖",
+        "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Herschel 从按需附着、有界窗口采集、跨进程重建到受控验证与评审的五层结构'><rect x='60.0' y='20.0' width='360.0' height='24.8' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='37.4' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>按需附着</text><text x='406.0' y='37.4' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>免重启 / 免改引擎</text><line x1='240.0' y1='44.8' x2='240.0' y2='46.8' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,53.8 236.4,46.8 243.6,46.8' fill='var(--line-1)'/><rect x='60.0' y='53.8' width='360.0' height='24.8' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='71.2' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>有界窗口采集</text><text x='406.0' y='71.2' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>典型 30 秒</text><line x1='240.0' y1='78.6' x2='240.0' y2='80.6' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,87.6 236.4,80.6 243.6,80.6' fill='var(--line-1)'/><rect x='60.0' y='87.6' width='360.0' height='24.8' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='105.0' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>算子与依赖重建</text><text x='406.0' y='105.0' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>跨进程全栈视图</text><line x1='240.0' y1='112.4' x2='240.0' y2='114.4' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,121.4 236.4,114.4 243.6,114.4' fill='var(--line-1)'/><rect x='60.0' y='121.4' width='360.0' height='24.8' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='138.8' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>参考修复建议</text><text x='406.0' y='138.8' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>对应低效机制</text><line x1='240.0' y1='146.2' x2='240.0' y2='148.2' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,155.2 236.4,148.2 243.6,148.2' fill='var(--line-1)'/><rect x='60.0' y='155.2' width='360.0' height='24.8' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='172.6' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>受控验证与评审</text><text x='406.0' y='172.6' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>专家复核后部署</text></svg>",
+        "spec": {
+          "type": "architecture",
+          "nodes": [
+            {
+              "label": "按需附着",
+              "detail": "免重启 / 免改引擎"
+            },
+            {
+              "label": "有界窗口采集",
+              "detail": "典型 30 秒"
+            },
+            {
+              "label": "算子与依赖重建",
+              "detail": "跨进程全栈视图"
+            },
+            {
+              "label": "参考修复建议",
+              "detail": "对应低效机制"
+            },
+            {
+              "label": "受控验证与评审",
+              "detail": "专家复核后部署"
+            }
+          ]
+        },
+        "alt": "Herschel 从按需附着、有界窗口采集、跨进程重建到受控验证与评审的五层结构"
+      },
+      "concepts": [
+        {
+          "name": "On-Demand Adaptive Profiling（按需自适应剖析）",
+          "readable": "不常开采集：只在需要诊断时附着到选定的运行中进程，采完即分离；若发现证据不足，再自动扩大采集覆盖范围。",
+          "analogy": "像家里漏水不装全屋水表，而是拎着测漏仪挨个点位去听，听不清就多贴几个探头，查完就收走。",
+          "analogyBreaksDown": "测漏仪不会改变水管压力；剖析器要占 CPU、内存与带宽，附着动作本身就可能改变被观测进程的时序与延迟。",
+          "mechanism": "剖析器在不改引擎、不重启的前提下附着/分离选定进程，并按调查进展自适应调节采集覆盖，从而用有界窗口拿到全栈证据，而不是一直开着采集。",
+          "visual": "时间轴上一条服务负载曲线，只在三处高亮标出 30 秒采集窗，每个窗内标注「附着 → 采集 → 分离」。",
+          "prerequisites": [
+            "服务化推理架构",
+            "进程内探针与采样的基本概念",
+            "性能剖析基础"
+          ],
+          "selfTest": [
+            "「按需」与「常开」在成本结构上的根本差别是什么？",
+            "为什么必须做到免重启、免改引擎才能用于生产？",
+            "自适应扩大覆盖是为了解决哪种失败情形？"
+          ],
+          "formula": "\\mathrm{ovh}=\\rho\\cdot c_{\\mathrm{sample}},\\qquad \\rho=\\frac{K\\,w}{T}"
+        },
+        {
+          "name": "Cross-process Operator Reconstruction（跨进程算子执行重建）",
+          "readable": "把各进程里零散的算子执行片段按调用关系重新拼成一条完整链路，并接上跨进程依赖，才能判断低效究竟出在哪个环节。",
+          "analogy": "像把事故现场散落在多个摄像头里的片段按时间轴对齐拼起来，才看得清是谁先动的手。",
+          "analogyBreaksDown": "拼接依赖时钟同步与请求标识；跨机时钟偏差或采样缺失会让片段错位，从而给出错误的因果顺序。",
+          "mechanism": "按请求标识与算子边界重建算子执行序列，再补上跨进程依赖，形成全栈视图，用于判定低效机制并匹配适用的参考修复。",
+          "visual": "泳道图：横轴是时间，三条进程泳道，用同一个请求 ID 的连线把算子块串成一条穿越泳道的路径。",
+          "prerequisites": [
+            "分布式追踪 / span 模型",
+            "推理引擎的算子调度",
+            "时钟同步的基本概念"
+          ],
+          "selfTest": [
+            "为什么单个进程内的剖析不足以定位低效机制？",
+            "重建算子执行需要哪两类关键信息？",
+            "拼接错位会导致什么错误结论？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "Bounded-window Evidence Budget（有界窗口证据预算）",
+          "readable": "采集只发生在固定长度的短窗口里（典型 30 秒），而不是一直开着；用占空比而不是总时长来度量观测成本。",
+          "analogy": "像体检只做几个 30 秒的采样片段，而不是 24 小时全监护——窗口挑得准，信息量就够用。",
+          "analogyBreaksDown": "窗口外的偶发长尾故障会被整段漏掉，采到的是有偏样本，其故障率不能直接当成整体故障率。",
+          "mechanism": "把采集限制在长度为 w 的窗口内，用窗口数 K 与观测期 T 的比值控制常开成本，证据不足时再追加窗口而不是改成全量追踪。",
+          "visual": "条形时间轴：全长 T 画成灰底，上面叠 K 个 30 秒的彩色窗口条，右下角标注占空比 K·w/T。",
+          "prerequisites": [
+            "采样与占空比",
+            "长尾延迟与分位数",
+            "开销预算思维"
+          ],
+          "selfTest": [
+            "为什么用占空比而不是采集总量描述成本？",
+            "窗口长度 30 秒这个量级意味着什么取舍？",
+            "有界窗口会系统性漏掉哪类问题？"
+          ],
+          "formula": "\\mathcal{E}=K\\,w\\,b,\\qquad \\rho=\\frac{K\\,w}{T}"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-amortized-profiling-overhead",
+          "name": "分摊剖析开销（Amortized Profiling Overhead）",
+          "category": "engineering",
+          "latex": "\\mathrm{ovh}=\\rho\\cdot c_{\\mathrm{sample}},\\qquad \\rho=\\frac{K\\,w}{T},\\qquad \\mathrm{ovh}_{\\mathrm{TTFT}}<0.5\\%,\\quad \\mathrm{ovh}_{\\mathrm{TPOT}}<7\\%",
+          "symbols": [
+            [
+              "\\rho",
+              "采集占空比：活跃窗口总时长 / 观测期总时长"
+            ],
+            [
+              "K",
+              "观测期内的采集窗口个数"
+            ],
+            [
+              "w",
+              "单个窗口长度，摘要给出典型值 30 秒"
+            ],
+            [
+              "T",
+              "观测期总时长"
+            ],
+            [
+              "c_{\\mathrm{sample}}",
+              "窗口内单位时间的相对采集成本"
+            ],
+            [
+              "\\mathrm{ovh}_{\\mathrm{TTFT}}",
+              "首 token 时间上的活跃采集相对开销"
+            ],
+            [
+              "\\mathrm{ovh}_{\\mathrm{TPOT}}",
+              "每输出 token 时间上的活跃采集相对开销"
+            ]
+          ],
+          "derivation": [
+            "用窗口个数乘窗口长度 K·w 得到活跃采集总时长，它是唯一可调的分子。",
+            "再除以观测期总时长 T，把「采多久」化成无量纲的占空比 ρ，便于跨部署比较。",
+            "乘以窗口内单位时间的相对采集成本 c_sample，就得到分摊到整体服务上的开销 ovh。",
+            "把同一占空比分别代入首 token 与每 token 输出的延迟口径，即得摘要给出的 0.5% 与 7% 两个上界。"
+          ],
+          "analogy": "像电费只按空调实际开机时长乘以功率算，而不是按整个夏天算；开机时段挑得准，账就不会失控。",
+          "pitfalls": [
+            "把「窗口内开销」当成「全局开销」：真正的成本必须乘占空比才是分摊值。",
+            "TTFT 与 TPOT 的开销口径不同，不能用一个比例互相套用（摘要给的是 <0.5% 与 7%）。",
+            "c_sample 随采集粒度非线性增长，占空比减半不等于开销减半。"
+          ],
+          "code": "import numpy as np\n\n\ndef duty_cycle(horizon_s, window_s=30.0, n_windows=10):\n    # 有界窗口：K 个 w 秒窗口摊到 T 秒观测期上\n    max_windows = max(int(horizon_s // window_s), 1)\n    k = min(int(n_windows), max_windows)\n    return k, k * window_s / horizon_s\n\n\ndef amortized_overhead(horizon_s, window_s=30.0, n_windows=10,\n                       cost_ttft=0.004, cost_tpot=0.06):\n    # 分摊开销 = 占空比 * 窗口内单位时间相对成本\n    k, rho = duty_cycle(horizon_s, window_s, n_windows)\n    return {\"K\": k, \"rho\": rho,\n            \"ovh_ttft\": rho * cost_ttft,\n            \"ovh_tpot\": rho * cost_tpot}\n\n\nif __name__ == \"__main__\":\n    for T in (600.0, 3600.0, 86400.0):\n        r = amortized_overhead(T)\n        print(\"T=%.0fs K=%d rho=%.4f ttft=%.3f%% tpot=%.3f%%\"\n              % (T, r[\"K\"], r[\"rho\"], 100 * r[\"ovh_ttft\"], 100 * r[\"ovh_tpot\"]))\n    # 常开追踪的对照：占空比恒为 1，开销不随观测期增长而摊薄\n    always_on = 1.0 * 0.06\n    print(\"always-on tpot overhead = %.3f%%\" % (100 * always_on))\n",
+          "sources": [
+            {
+              "title": "Herschel: Continuous Optimization of Production LLM Inference through On-Demand Profiling",
+              "url": "https://arxiv.org/abs/2609.40247v1"
+            }
+          ]
+        },
+        {
+          "id": "f-bounded-window-evidence-budget",
+          "name": "有界窗口证据预算与低效命中率（Bounded-window Evidence Budget）",
+          "category": "engineering",
+          "latex": "\\mathcal{E}=K\\,w\\,b,\\qquad \\rho=\\frac{K\\,w}{T},\\qquad \\eta=\\frac{N_{\\mathrm{ineff}}}{N_{\\mathrm{trace}}}=23\\%,\\qquad N_{\\mathrm{trace}}\\approx 1.7\\times10^{4}",
+          "symbols": [
+            [
+              "\\mathcal{E}",
+              "观测期内采集到的证据总量"
+            ],
+            [
+              "K",
+              "采集窗口个数"
+            ],
+            [
+              "w",
+              "单个窗口长度，摘要给出典型值 30 秒"
+            ],
+            [
+              "b",
+              "窗口内单位时间产出的证据量（每秒条数）"
+            ],
+            [
+              "\\rho",
+              "占空比 K·w/T，即成本预算约束"
+            ],
+            [
+              "\\eta",
+              "低效命中率：定位到低效模式的轨迹占比，摘要给 23%"
+            ],
+            [
+              "N_{\\mathrm{trace}}",
+              "观测期内累计轨迹数，摘要给约 17,000"
+            ],
+            [
+              "N_{\\mathrm{ineff}}",
+              "其中定位到低效模式的轨迹数"
+            ]
+          ],
+          "derivation": [
+            "每个窗口按每秒 b 条产出证据，K 个窗口合起来给出总证据量 E = K·w·b。",
+            "证据不能无限采，占空比 ρ = K·w/T 就是成本预算约束，需要在预算内挑窗口而不是全量追踪。",
+            "把观测期内的产出概括成命中率 η = N_ineff / N_trace，它衡量这套采证流程是否真能定位低效。",
+            "代入摘要的六个月口径 N_trace ≈ 1.7 万与 η = 23%，命中率本身就是评估系统产出的核心指标。"
+          ],
+          "analogy": "像质检不是全检而是按批抽检：抽检次数决定成本，抽中缺陷的比例决定这套抽检方案值不值。",
+          "pitfalls": [
+            "把 23% 当成「低效发生率」：它只是被采集与判定覆盖到的轨迹占比，存在分母口径歧义。",
+            "命中率与占空比不是单调关系，加窗口未必线性提高 η，要防止只报好看的比值。",
+            "证据量 E 大不等于可诊断，缺少跨进程依赖时仍拼不出机制。"
+          ],
+          "code": "def evidence_budget(horizon_s, window_s=30.0, n_windows=10, evi_per_s=50.0):\n    # E = K * w * b, 同时报告占空比预算\n    k = min(int(n_windows), max(int(horizon_s // window_s), 1))\n    evidence = k * window_s * evi_per_s\n    return {\"K\": k, \"evidence\": evidence, \"rho\": k * window_s / horizon_s}\n\n\ndef inefficiency_yield(n_trace=17000, eta=0.23):\n    # 摘要口径：约 1.7 万条轨迹，23% 定位到低效模式\n    return round(n_trace * eta)\n\n\nif __name__ == \"__main__\":\n    print(evidence_budget(86400.0))\n    print(\"ineff traces ~\", inefficiency_yield())\n",
+          "sources": [
+            {
+              "title": "Herschel: Continuous Optimization of Production LLM Inference through On-Demand Profiling",
+              "url": "https://arxiv.org/abs/2609.40247v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "Herschel 是面向生产 LLM 推理的持续优化系统（continuous optimization）",
+          "关键洞见是按需自适应剖析能在不常开采集的前提下提供丰富全栈证据",
+          "可安全附着/分离选定的运行中进程，无需引擎改动或重启",
+          "活跃采集开销低于 0.5%（TTFT）与 7%（TPOT），典型窗口约 30 秒",
+          "重建算子执行与跨进程依赖以定位低效机制，并给出参考修复建议",
+          "六个月收集约 17,000 条轨迹，覆盖 120+ 模型变体与 10+ 加速器类型，23% 轨迹发现低效模式",
+          "代表发现包括重构同步、移除无用计算与改进算子实现"
+        ],
+        "uncertain": [
+          "「低于 0.5% / 7%」的测量口径（基数、负载形态、硬件与并发配置）摘要未给；两个公式均为按摘要重建的通用成本形式（公式为按摘要重建的通用形式）",
+          "17,000 条轨迹与 23% 的分母口径（是否同一批轨迹、是否经人工确认）摘要未说明",
+          "AI agent 实施与测试引擎/内核改动的受控条件、基准与回滚机制摘要未给",
+          "「applicable reference fixes」修复库如何构建与匹配，摘要未说明",
+          "「over 10 accelerator types」的具体厂商与型号未列出，不得据此推断供应商"
         ]
       }
     }

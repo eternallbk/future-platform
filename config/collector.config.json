@@ -22,7 +22,8 @@
   },
   "limits": {
     "perChannel": 30,
-    "maxNewPerRun": 400
+    "maxNewPerRun": 400,
+    "perCategoryPerRun": 45
   },
   "scoring": {
     "freshnessHalfLifeDays": 7.0,
@@ -48,7 +49,53 @@
     "minStars": 40,
     "lookbackDays": 30
   },
-  "categories": {},
+  "categories": {
+    "job": {
+      "keywords": [
+        "内推",
+        "实习生"
+      ],
+      "keywordRemove": [
+        "intern"
+      ]
+    },
+    "trend": {
+      "keywords": [
+        "开源榜",
+        "模型发布"
+      ],
+      "keywordRemove": [
+        "state of",
+        "review"
+      ]
+    },
+    "foundation": {
+      "keywords": [
+        "kv-cache",
+        "归一化",
+        "long-context",
+        "positional encoding"
+      ],
+      "keywordRemove": [
+        "theory",
+        "architecture",
+        "基础"
+      ]
+    },
+    "generative": {
+      "keywords": [
+        "diffusion transformer"
+      ],
+      "keywordRemove": [
+        "dit"
+      ]
+    },
+    "rl": {
+      "keywords": [
+        "goal-conditioned"
+      ]
+    }
+  },
   "retention": {
     "archiveAfterDays": 90,
     "keepDayFiles": 400

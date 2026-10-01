@@ -268,6 +268,70 @@ def check_proposals(rep: Report):
                f"{', '.join(f.name for f in files[-3:])}")
 
 
+def check_collection_quality(rep: Report, index, manifest):
+    """Is the corpus still pointed at the goal (algorithms / job hunting)?
+
+    WHY: the integrity checks above only prove the FILES are consistent. A corpus
+    can be perfectly consistent and still be useless - e.g. if one talkative channel
+    floods a category, or the relevance gate drifts so low that everything is
+    "relevant", or items start arriving with no summary. Those are the failure modes
+    that actually reduce the workbench's value, so they are asserted here too.
+    """
+    items = (index or {}).get("items") or []
+    if not items:
+        return
+
+    # 1. Category concentration. One category dominating means either over-collection
+    #    from one channel or a mis-tuned keyword set.
+    from collections import Counter
+    cats = Counter(i.get("category") for i in items)
+    total = len(items)
+    top_cat, top_n = cats.most_common(1)[0]
+    share = top_n / total
+    if share > 0.30 and top_cat not in ("agent",):
+        rep.warn(f"category '{top_cat}' holds {share:.0%} of the corpus "
+                 f"({top_n}/{total}) - possible over-collection or keyword drift")
+    else:
+        rep.ok(f"category balance acceptable (largest: {top_cat} {share:.0%})")
+
+    # 2. Relevance spread. If nearly everything scores high, the score stops
+    #    discriminating and the ranking cannot surface the best items.
+    rels = [float(i.get("relevanceScore") or 0) for i in items]
+    high = sum(1 for r in rels if r >= 70) / max(1, len(rels))
+    low = sum(1 for r in rels if r < 30) / max(1, len(rels))
+    if high > 0.60:
+        rep.warn(f"{high:.0%} of items score >=70 - the relevance score is no longer "
+                 f"discriminating; consider raising minRelevance or reweighting")
+    else:
+        rep.ok(f"relevance spread is discriminating (>=70: {high:.0%}, <30: {low:.0%})")
+
+    # 3. Summary coverage - a card without an explanation cannot be deep-read.
+    no_sum = sum(1 for i in items if not str(i.get("summary") or "").strip())
+    if no_sum:
+        rep.warn(f"{no_sum} item(s) have no summary at all - they cannot be explained "
+                 f"or deep-read (run with the summary backfill enabled)")
+    else:
+        rep.ok("every item carries a summary")
+
+    # 4. Feedback loop. Without feedback.json, ranking never adapts to the reader.
+    fb = load(DATA / "feedback.json", rep)
+    if isinstance(fb, dict) and (fb.get("byCategory") or fb.get("byChannel")):
+        n_star = fb.get("starredCount", 0)
+        rep.ok(f"learning signals active ({n_star} starred, "
+               f"{len(fb.get('byCategory') or {})} categories) - ranking follows your study")
+    else:
+        rep.warn("no learning signals: ranking is purely keyword-based. Use "
+                 "「写出学习信号」on the 进度与统计 page to let it follow your interests")
+
+    # 5. Deep-read coverage trend, so a stalled agent layer is visible.
+    enrich = load(DATA / "enrichment.json", rep) or {}
+    n_enr = enrich.get("count") or len(enrich.get("byId") or {})
+    if n_enr:
+        rep.ok(f"deep-read coverage {n_enr}/{total} = {n_enr / total:.1%}")
+    else:
+        rep.warn("no deep-read enrichment yet - layer 2 may not be running")
+
+
 def build_report() -> Report:
     rep = Report()
     check_all_json(rep)
@@ -278,6 +342,7 @@ def build_report() -> Report:
     check_index(rep, index, taxonomy, manifest)
     check_runs(rep, manifest)
     check_proposals(rep)
+    check_collection_quality(rep, index, manifest)
     rep.metrics["generatedAt"] = datetime.now(CST).isoformat(timespec="seconds")
     return rep
 

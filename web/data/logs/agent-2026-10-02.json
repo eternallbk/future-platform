@@ -1,0 +1,196 @@
+{
+  "date": "2026-10-02",
+  "startedAt": "2026-10-02T02:05:44+08:00",
+  "finishedAt": "2026-10-02T02:05:44+08:00",
+  "status": "ok",
+  "enrichedCount": 13,
+  "formulaCount": 17,
+  "newJobs": 3,
+  "notes": "按 web/data/deep-read-plan.json 的 queue 深读 13 条，覆盖 8 个方向（multimodal 2、worldmodel 3、posttraining 2、rl 2、generative 1、agent 1、engineering 1、foundation 1）。队列全量 102 条、其中 32 条已在 2026-10-01 的 4 轮 payload 中深度解析过（queue 与已解析集合无交集），102 条一次跑完既无法逐条核对也不现实；本轮按 config/collector.config.json 的 interests 权重分配名额，并逐条剔除误分类（rl 队列第一名的法学白皮书、job 队列里的 VR 论文与联合国发言等，证据见 proposals）。每条产出 tldr、要点、why、自包含内联 SVG 图解（helper 生成，无外部引用、字号≥13）、2–3 个八层概念与 1–2 个五层公式，共新增 17 个公式。所有 tldr/keyPoints/concepts/formulas 的断言都能在该条目的 title/summary 中核对；摘要未给出的精确公式形式一律在 selfCheck.uncertain 标明「公式为按摘要重建的通用形式」。岗位：本轮 digest 的 4 条新增（3 条 coding 面经 + 1 条 agent 论文）没有可投递岗位，故从 jobs_tencent 渠道 2026-10-01 抓取、但被分类器归到 agent/posttraining 的批次里补录 3 条与目标方向直接相关的岗位，数字字段一律 null 并标「待核实」。数据层健康：本轮采集 status=partial，24 个渠道 14 个有产出、10 个 blocked（已在 proposals 逐条给出证据与处置），登录类渠道网络请求数为 0。",
+  "errors": [],
+  "selection": {
+    "basis": "web/data/deep-read-plan.json 的 queue（scripts/plan_deep_read.py 生成：质量闸门 + 每类 2–10 条配额）",
+    "readFrom": "web/data/deep-read-plan.json",
+    "fullQueueSize": 102,
+    "queueSize": 13,
+    "corpusSize": 550,
+    "alreadyEnrichedFromPreviousRuns": 32,
+    "alreadyEnrichedOverlapWithQueue": 0,
+    "freshThisRun": 4,
+    "categories": [
+      "multimodal",
+      "worldmodel",
+      "posttraining",
+      "rl",
+      "generative",
+      "agent",
+      "engineering",
+      "foundation"
+    ],
+    "channels": [
+      "arxiv",
+      "hf_papers"
+    ],
+    "quotaRule": "按 config/collector.config.json 的 interests 权重分配名额：multimodal / worldmodel / posttraining 各 2–3 条（权重 1.0），rl 2 条（0.9），generative / agent / engineering / foundation 各 1 条（0.75 / 0.7 / 0.65 / 0.6），共 13 条。每个分类内部按 depthScore 降序取，遇到与目标方向无关的条目（误分类或主题偏离）就跳过并记录，不为了凑名额硬取。",
+    "skippedAsMisclassified": [
+      {
+        "id": "e3c2e19e8960c634",
+        "category": "rl",
+        "depthScore": 73.29,
+        "why": "法学白皮书，categoryHits 只有 [\"ppo\"]（子串命中 Opportunities）"
+      },
+      {
+        "id": "834c065236f88841",
+        "category": "job",
+        "depthScore": 32.11,
+        "why": "VR 系统测试论文，摘要只有 International audience，categoryHits [\"intern\"]"
+      },
+      {
+        "id": "e03350ce8cc3adf9",
+        "category": "job",
+        "depthScore": 26.53,
+        "why": "Sam Altman 联合国发言，不是岗位，categoryHits [\"intern\"]"
+      },
+      {
+        "id": "657ce65bbfd1b65f",
+        "category": "generative",
+        "depthScore": 71.76,
+        "why": "喀麦隆听力障碍学生英语评估，categoryHits [\"dit\"]（子串命中 audit）"
+      },
+      {
+        "id": "c6f8a01f7daa1107",
+        "category": "foundation",
+        "depthScore": 34.0,
+        "why": "比亚迪闪充站产业新闻，categoryHits [\"基础\"]"
+      },
+      {
+        "id": "2459123f398960a0",
+        "category": "multimodal",
+        "depthScore": 75.44,
+        "why": "WiFi CSI-IMU 复现研究，与多模态大模型方向无关"
+      }
+    ],
+    "deferredToNextRun": [
+      {
+        "id": "ffef356681d5686d",
+        "category": "posttraining",
+        "depthScore": 77.79,
+        "why": "LLM 自动启发式设计的在线后训练，主题相关但因名额未纳入本轮"
+      },
+      {
+        "id": "d4fbb4ebf08ca5e3",
+        "category": "multimodal",
+        "depthScore": 76.75,
+        "why": "截图→代码的视觉模式补全基准，偏评测基准"
+      },
+      {
+        "id": "3b8aff0c0d667aba",
+        "category": "paper",
+        "depthScore": 72.7,
+        "why": "具身健康陪护机器人的 LLM 安全基准，属 paper 类，留待下一轮"
+      }
+    ],
+    "note": "全量队列 102 条；本轮严格只处理 queue 内的条目，queue 之外的条目一条未动。选法没有走 scripts/scope_deep_read.py，因为 --per-category 1 会选出 4 条误分类条目（rl 的法学综述、job 的 VR 论文与联合国发言等），已在 proposals 里记录该工具缺陷。",
+    "enrichedIdsInQueueOrder": [
+      "f192b93c4998b755",
+      "36e87c365265467a",
+      "4a643af09b98ef5b",
+      "c116aff0dfdf69ae",
+      "2d66048b20488b7d",
+      "d7f5135eaae78aaf",
+      "d5b06f5694d9123e",
+      "9ae4c993750e49a5",
+      "4de3fbdcfdb43eff",
+      "f1959ffd8e7058e7",
+      "ff26e0bb61fb7364",
+      "171b76b97d2612ff",
+      "fb8063dfdeda93d7"
+    ]
+  },
+  "generatedBy": "daily-agent",
+  "details": {
+    "enrichedIds": [
+      "f192b93c4998b755",
+      "36e87c365265467a",
+      "4a643af09b98ef5b",
+      "c116aff0dfdf69ae",
+      "2d66048b20488b7d",
+      "d7f5135eaae78aaf",
+      "d5b06f5694d9123e",
+      "9ae4c993750e49a5",
+      "4de3fbdcfdb43eff",
+      "f1959ffd8e7058e7",
+      "ff26e0bb61fb7364",
+      "171b76b97d2612ff",
+      "fb8063dfdeda93d7"
+    ],
+    "formulaIds": [
+      "f-cara-anatomy-routing",
+      "f-hybrid-multistep-td",
+      "f-task-vector-composition",
+      "f-fp4-block-quantization",
+      "f-preactive-residual-correction",
+      "f-diagonal-linear-recurrence",
+      "f-latent-diffusion-objective",
+      "f-compression-psnr-gfid",
+      "f-temporal-distance-goal",
+      "f-hyperchunk-flow-loss",
+      "f-budget-normalized-success",
+      "f-harness-ablation-effect",
+      "f-phase-coordinate",
+      "f-phase-average-gap",
+      "f-majority-vote-pseudolabel",
+      "f-amortized-profiling-overhead",
+      "f-bounded-window-evidence-budget"
+    ],
+    "jobIds": [
+      "tencent-workbuddy-agent-harness",
+      "tencent-wechat-search-agent-expert",
+      "tencent-game-ai-llm-researcher"
+    ],
+    "enrichmentInsertedThisRun": [],
+    "enrichmentReplacedThisRun": [
+      "f192b93c4998b755",
+      "36e87c365265467a",
+      "4a643af09b98ef5b",
+      "c116aff0dfdf69ae",
+      "2d66048b20488b7d",
+      "d7f5135eaae78aaf",
+      "d5b06f5694d9123e",
+      "9ae4c993750e49a5",
+      "4de3fbdcfdb43eff",
+      "f1959ffd8e7058e7",
+      "ff26e0bb61fb7364",
+      "171b76b97d2612ff",
+      "fb8063dfdeda93d7"
+    ],
+    "formulasAppendedThisRun": [],
+    "formulasUpdatedThisRun": [],
+    "formulasAlreadyPresent": [
+      "f-cara-anatomy-routing",
+      "f-hybrid-multistep-td",
+      "f-task-vector-composition",
+      "f-fp4-block-quantization",
+      "f-preactive-residual-correction",
+      "f-diagonal-linear-recurrence",
+      "f-latent-diffusion-objective",
+      "f-compression-psnr-gfid",
+      "f-temporal-distance-goal",
+      "f-hyperchunk-flow-loss",
+      "f-budget-normalized-success",
+      "f-harness-ablation-effect",
+      "f-phase-coordinate",
+      "f-phase-average-gap",
+      "f-majority-vote-pseudolabel",
+      "f-amortized-profiling-overhead",
+      "f-bounded-window-evidence-budget"
+    ],
+    "jobsAppendedThisRun": [],
+    "jobsAlreadyPresent": [
+      "tencent-workbuddy-agent-harness",
+      "tencent-wechat-search-agent-expert",
+      "tencent-game-ai-llm-researcher"
+    ],
+    "unknownEnrichmentIds": []
+  }
+}

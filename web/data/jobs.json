@@ -907,6 +907,43 @@
       "deadline": null
     },
     {
+      "id": "tencent-game-ai-llm-researcher",
+      "company": "腾讯 游戏（TEG）",
+      "shortName": "腾讯",
+      "tier": "A",
+      "title": "游戏AI-LLM大模型算法研究员",
+      "directions": [
+        "post-training",
+        "rl",
+        "multimodal"
+      ],
+      "cities": [
+        "北京"
+      ],
+      "pay": null,
+      "duration": null,
+      "conversion": null,
+      "open": true,
+      "applyUrl": "http://careers.tencent.com/jobdesc.html?postId=2079104731317448704",
+      "seasonality": null,
+      "highlights": [
+        "LLM 在游戏场景落地：智能 NPC 对话、决策交互、陪玩",
+        "JD 原文覆盖数据合成、SFT、蒸馏、DPO、GRPO、RAG 与多模态 LLM（游戏盘面状态）"
+      ],
+      "process": [],
+      "notes": "社招/研究员岗，非实习。由 daily-agent 于 2026-10-02 从 jobs_tencent 渠道 2026-10-01 抓取的批次中补录：该条目在 items/index.json 中被分到 posttraining 而非 job（id daa5c212055ef3bb）。日薪、名额、截止时间未获取到，待核实。岗位原文发布日期 2026-09-24。",
+      "confidence": "low",
+      "sources": [
+        {
+          "title": "游戏AI-LLM大模型算法研究员（腾讯招聘岗位页）",
+          "url": "http://careers.tencent.com/jobdesc.html?postId=2079104731317448704"
+        }
+      ],
+      "postedAt": "2026-09-24T00:00:00+08:00",
+      "deadline": null,
+      "relevance": 79
+    },
+    {
       "id": "tencent-native-multimodal-researcher",
       "company": "腾讯 云智能（CSIG）",
       "shortName": "腾讯",
@@ -1016,6 +1053,43 @@
       "relevance": 79,
       "postedAt": "2026-08-03T00:00:00+08:00",
       "deadline": null
+    },
+    {
+      "id": "tencent-wechat-search-agent-expert",
+      "company": "腾讯 微信（WXG 搜一搜）",
+      "shortName": "腾讯",
+      "tier": "A",
+      "title": "微信搜索-Agent算法专家",
+      "directions": [
+        "agent",
+        "post-training",
+        "rl"
+      ],
+      "cities": [
+        "北京"
+      ],
+      "pay": null,
+      "duration": null,
+      "conversion": null,
+      "open": true,
+      "applyUrl": "http://careers.tencent.com/jobdesc.html?postId=2062097072978575360",
+      "seasonality": null,
+      "highlights": [
+        "参与微信搜索 Search Agent（DeepSearch/DeepResearch）与真实世界复杂任务的 Agentic 能力优化",
+        "JD 原文点名 Mid-Train、SFT、GRM、PRM、RLVR、Agentic RL、Agent 自进化、Context/Memory"
+      ],
+      "process": [],
+      "notes": "社招/专家岗，非实习。由 daily-agent 于 2026-10-02 从 jobs_tencent 渠道 2026-10-01 抓取的批次中补录：该条目在 items/index.json 中被分到 agent 而非 job（id 5aec0871892e1d9c）。日薪、名额、截止时间未获取到，待核实。岗位原文发布日期 2026-09-22。",
+      "confidence": "low",
+      "sources": [
+        {
+          "title": "微信搜索-Agent算法专家（腾讯招聘岗位页）",
+          "url": "http://careers.tencent.com/jobdesc.html?postId=2062097072978575360"
+        }
+      ],
+      "postedAt": "2026-09-22T00:00:00+08:00",
+      "deadline": null,
+      "relevance": 79
     },
     {
       "id": "xpeng-world-model",
@@ -1135,6 +1209,41 @@
       "relevance": 75,
       "postedAt": "2026-09-20T00:00:00+08:00",
       "deadline": null
+    },
+    {
+      "id": "tencent-workbuddy-agent-harness",
+      "company": "腾讯 云智能（CSIG）",
+      "shortName": "腾讯",
+      "tier": "A",
+      "title": "WorkBuddy-Agent Harness 算法工程师",
+      "directions": [
+        "agent"
+      ],
+      "cities": [
+        "深圳"
+      ],
+      "pay": null,
+      "duration": null,
+      "conversion": null,
+      "open": true,
+      "applyUrl": "http://careers.tencent.com/jobdesc.html?postId=2098252450778759168",
+      "seasonality": null,
+      "highlights": [
+        "负责 WorkBuddy Harness 的整体效果与能力优化，以用户真实任务表现为反馈迭代",
+        "研究+工程复合型：需要从 0 到 1 定义问题与评测标准，并搭建配套评测数据集"
+      ],
+      "process": [],
+      "notes": "社招/工程师岗，非实习。由 daily-agent 于 2026-10-02 从 jobs_tencent 渠道 2026-10-01 抓取的批次中补录：该条目在 items/index.json 中被分到 agent 而非 job（id ad7ee6cb2ac86747），原因与分类问题已在提案中记录。日薪、名额、截止时间未获取到，待核实。岗位原文发布日期 2026-09-21。",
+      "confidence": "low",
+      "sources": [
+        {
+          "title": "WorkBuddy-Agent Harness 算法工程师（腾讯招聘岗位页）",
+          "url": "http://careers.tencent.com/jobdesc.html?postId=2098252450778759168"
+        }
+      ],
+      "postedAt": "2026-09-21T00:00:00+08:00",
+      "deadline": null,
+      "relevance": 71
     },
     {
       "id": "megvii",
@@ -4479,6 +4588,17 @@
         "trip-ai-app-intern"
       ],
       "at": "2026-10-01T18:58:34+08:00",
+      "note": "本文件由 scripts/build_jobs_json.py 从 research/jobs_kb.json 整体重建，重建会丢掉这里追加的岗位。"
+    },
+    {
+      "date": "2026-10-02",
+      "by": "daily-agent",
+      "addedIds": [
+        "tencent-workbuddy-agent-harness",
+        "tencent-wechat-search-agent-expert",
+        "tencent-game-ai-llm-researcher"
+      ],
+      "at": "2026-10-02T02:04:12+08:00",
       "note": "本文件由 scripts/build_jobs_json.py 从 research/jobs_kb.json 整体重建，重建会丢掉这里追加的岗位。"
     }
   ]

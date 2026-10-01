@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-02T00:02:29+08:00",
+ "generatedAt": "2026-10-02T01:58:36+08:00",
  "generatedBy": "plan_deep_read.py",
  "policy": {
   "perCategoryMin": 2,
@@ -26,60 +26,54 @@
   ]
  },
  "totals": {
-  "corpus": 536,
-  "alreadyEnriched": 19,
-  "candidates": 517,
-  "skimmed": 47,
-  "selected": 103,
-  "categories": 13
+  "corpus": 550,
+  "alreadyEnriched": 32,
+  "candidates": 518,
+  "skimmed": 49,
+  "selected": 102,
+  "categories": 12
  },
  "perCategory": {
   "agent": {
    "quota": 7,
    "picked": 7,
-   "candidates": 125,
+   "candidates": 128,
    "categoryWeight": 0.6
   },
   "coding": {
    "quota": 10,
    "picked": 10,
-   "candidates": 18,
+   "candidates": 19,
    "categoryWeight": 1.0
-  },
-  "course": {
-   "quota": 6,
-   "picked": 1,
-   "candidates": 1,
-   "categoryWeight": 0.55
   },
   "engineering": {
    "quota": 7,
    "picked": 7,
-   "candidates": 26,
+   "candidates": 25,
    "categoryWeight": 0.65
   },
   "foundation": {
    "quota": 8,
    "picked": 8,
-   "candidates": 13,
+   "candidates": 12,
    "categoryWeight": 0.7
   },
   "generative": {
    "quota": 9,
    "picked": 9,
-   "candidates": 34,
+   "candidates": 33,
    "categoryWeight": 0.85
   },
   "job": {
    "quota": 6,
    "picked": 6,
-   "candidates": 25,
+   "candidates": 24,
    "categoryWeight": 0.5
   },
   "multimodal": {
    "quota": 10,
    "picked": 10,
-   "candidates": 48,
+   "candidates": 47,
    "categoryWeight": 1.0
   },
   "paper": {
@@ -97,77 +91,23 @@
   "rl": {
    "quota": 9,
    "picked": 9,
-   "candidates": 17,
+   "candidates": 16,
    "categoryWeight": 0.9
   },
   "trend": {
    "quota": 6,
    "picked": 6,
-   "candidates": 39,
+   "candidates": 42,
    "categoryWeight": 0.45
   },
   "worldmodel": {
    "quota": 10,
    "picked": 10,
-   "candidates": 44,
+   "candidates": 43,
    "categoryWeight": 1.0
   }
  },
  "queue": [
-  {
-   "id": "2f84c181617f7429",
-   "title": "One Signal Theory - A Conceptual Architecture for Context Management in Large Language Models via Synthetic Affective Signal Modulation of Attention",
-   "category": "foundation",
-   "channel": "s2",
-   "relevanceScore": 95.0,
-   "depthScore": 78.98,
-   "url": "https://doi.org/10.5281/zenodo.23068062",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 42.75,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 7.000000000000001,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "ce4c4e04726b1248",
-   "title": "Leveraging vision language models for digit recognition on digital measuring devices: a comparative analysis",
-   "category": "multimodal",
-   "channel": "s2",
-   "relevanceScore": 71.0,
-   "depthScore": 78.95,
-   "url": "https://doi.org/10.11591/eei.v15i5.11769",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 31.95,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 7.000000000000001,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "9ca183eb8171af98",
-   "title": "RoboCoach: World Models as Active Coaches for Compositional Robot Skills",
-   "category": "worldmodel",
-   "channel": "hf_papers",
-   "relevanceScore": 67.0,
-   "depthScore": 78.15,
-   "url": "https://huggingface.co/papers/2609.39685",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 30.150000000000002,
-    "content": 18.0,
-    "code": 8.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
   {
    "id": "f192b93c4998b755",
    "title": "Learning Where to Look: Anatomical Grounding and Guided Attention for Cardiac MRI Vision-Language Models",
@@ -179,24 +119,6 @@
    "hasSummary": true,
    "scoreBreakdown": {
     "relevance": 30.105000000000004,
-    "content": 18.0,
-    "code": 8.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "0cba51532f6021bd",
-   "title": "RATIO: Reasoning Analysis and Token-level Inference Optimization for Quantized Reasoning Models",
-   "category": "posttraining",
-   "channel": "arxiv",
-   "relevanceScore": 66.8,
-   "depthScore": 78.06,
-   "url": "https://arxiv.org/abs/2609.39801v1",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 30.06,
     "content": 18.0,
     "code": 8.0,
     "peer": 0.0,
@@ -385,24 +307,6 @@
    }
   },
   {
-   "id": "2e1f908ff2f8f54c",
-   "title": "Regulating the Frontier: Model-Level Evidence from the EU AI Act",
-   "category": "paper",
-   "channel": "s2",
-   "relevanceScore": 65.2,
-   "depthScore": 74.81,
-   "url": "https://doi.org/10.17613/8rga5-9wc04",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 29.340000000000003,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 7.000000000000001,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
    "id": "d1b0187f93cee313",
    "title": "DynaHarness: A Dynamic Physical Harness for Self-Evolving Robot Agents",
    "category": "worldmodel",
@@ -475,6 +379,24 @@
    }
   },
   {
+   "id": "80e720320cc4294f",
+   "title": "Ready2Blend: From Natural-Language Instructions to Composable Alignment Prompts",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "relevanceScore": 58.2,
+   "depthScore": 74.19,
+   "url": "https://arxiv.org/abs/2609.39365v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.19,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "5b906eb7f347d41b",
    "title": "MEND: Label-Free Detection, Localisation, and Correction of Latent Hallucination in World Models",
    "category": "worldmodel",
@@ -487,42 +409,6 @@
     "relevance": 26.1,
     "content": 18.0,
     "code": 8.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "63e2ea5d702c742c",
-   "title": "Quantum Algorithms for Computational Fluid Dynamics",
-   "category": "generative",
-   "channel": "arxiv",
-   "relevanceScore": 66.9,
-   "depthScore": 73.42,
-   "url": "https://arxiv.org/abs/2609.39962v1",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 30.105000000000004,
-    "content": 18.0,
-    "code": 8.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "77e544498b6fdcba",
-   "title": "Patient-Centered Treatment Planning for Chronic Multimorbidity: A Hierarchical Reinforcement Learning Framework for Preference Modeling",
-   "category": "rl",
-   "channel": "arxiv",
-   "relevanceScore": 80.9,
-   "depthScore": 73.35,
-   "url": "https://arxiv.org/abs/2609.39911v1",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 36.405,
-    "content": 18.0,
-    "code": 0.0,
     "peer": 0.0,
     "trust": 7.000000000000001,
     "material": 15.0
@@ -871,6 +757,24 @@
    }
   },
   {
+   "id": "0168f52ec886ea9c",
+   "title": "MemLife: Curating and Reasoning over Long-Term Egocentric Video Memories",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "relevanceScore": 65.1,
+   "depthScore": 69.3,
+   "url": "https://arxiv.org/abs/2609.40195v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.294999999999998,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "10c6cb7bbc88ceef",
    "title": "ATLAS: Aligned Transport of Latent Structure for Reliable World Model Planning",
    "category": "worldmodel",
@@ -883,24 +787,6 @@
     "relevance": 28.62,
     "content": 18.0,
     "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "324ee823fef4dbb4",
-   "title": "From Given to Gathered Evidence: Agentic Learning for Longitudinal Medical Reasoning",
-   "category": "agent",
-   "channel": "arxiv",
-   "relevanceScore": 74.5,
-   "depthScore": 68.48,
-   "url": "https://arxiv.org/abs/2609.39566v1",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 33.525,
-    "content": 18.0,
-    "code": 8.0,
     "peer": 0.0,
     "trust": 7.000000000000001,
     "material": 15.0
@@ -1069,6 +955,24 @@
    }
   },
   {
+   "id": "2464bfdb1f99b200",
+   "title": "GLARE: Generating Listening Heads with Appropriate Reactions",
+   "category": "generative",
+   "channel": "arxiv",
+   "relevanceScore": 65.2,
+   "depthScore": 65.18,
+   "url": "https://arxiv.org/abs/2609.40317v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.340000000000003,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "d81df02863d8fdbc",
    "title": "TERRA: Terrain-Aware Reconstruction, Retargeting and Control for Musculoskeletal Locomotion",
    "category": "rl",
@@ -1117,6 +1021,24 @@
     "relevance": 29.384999999999998,
     "content": 18.0,
     "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "b1dbc9cc24709fe3",
+   "title": "Systematically Exploring the Capabilities of GPT-6 Astra as Embodied Policies",
+   "category": "worldmodel",
+   "channel": "hf_papers",
+   "relevanceScore": 55.2,
+   "depthScore": 64.84,
+   "url": "https://huggingface.co/papers/2609.38537",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 24.840000000000003,
+    "content": 18.0,
+    "code": 0.0,
     "peer": 0.0,
     "trust": 7.000000000000001,
     "material": 15.0
@@ -1177,6 +1099,24 @@
    }
   },
   {
+   "id": "6eeb8b8a088c51e2",
+   "title": "Learning from Research: Toward Lifelong Agent Harness Evolution",
+   "category": "agent",
+   "channel": "arxiv",
+   "relevanceScore": 81.1,
+   "depthScore": 64.26,
+   "url": "https://arxiv.org/abs/2609.40169v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 36.495,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "4d26991c192e8192",
    "title": "KUAISHOU Explorer LLM-Rec Challenge 2026: Reasoning Generative Recommendation",
    "category": "paper",
@@ -1189,24 +1129,6 @@
     "relevance": 25.56,
     "content": 18.0,
     "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "5edfee114f60afd1",
-   "title": "vllm-project/vllm - A high-throughput and memory-efficient inference and serving engine for LLMs",
-   "category": "engineering",
-   "channel": "github",
-   "relevanceScore": 95.0,
-   "depthScore": 64.22,
-   "url": "https://github.com/vllm-project/vllm",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 42.75,
-    "content": 1.9200000000000002,
-    "code": 8.0,
     "peer": 0.0,
     "trust": 7.000000000000001,
     "material": 15.0
@@ -1259,6 +1181,42 @@
    "hasSummary": true,
    "scoreBreakdown": {
     "relevance": 24.795,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "a20e7ddaf78a22bd",
+   "title": "Who Said What, and Will It Be Remembered? Evaluating Persistent Speaker Attribution Across Meetings",
+   "category": "paper",
+   "channel": "hf_papers",
+   "relevanceScore": 54.3,
+   "depthScore": 63.15,
+   "url": "https://huggingface.co/papers/2609.39344",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 24.435,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "a1020975a27a34ad",
+   "title": "Reinforcement Learning-Guided Graph Transformations for SpTRSV Optimization",
+   "category": "rl",
+   "channel": "arxiv",
+   "relevanceScore": 57.1,
+   "depthScore": 63.07,
+   "url": "https://arxiv.org/abs/2609.40159v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 25.695,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -1429,24 +1387,6 @@
    }
   },
   {
-   "id": "38b311baeaddf577",
-   "title": "DeepSeek 开源算子工具大礼包，联手华为昇腾，手撕 CUDA 绑定！",
-   "category": "coding",
-   "channel": "leiphone",
-   "relevanceScore": 56.8,
-   "depthScore": 58.56,
-   "url": "https://leiphone.com/category/yanxishe/UUIfK7eeFE9Ws1JI.html",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 25.56,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
-    "material": 15.0
-   }
-  },
-  {
    "id": "04fcddde1afe9558",
    "title": "Kimi 和 DeepSeek，为什么出现在同一张模型架构图里？",
    "category": "foundation",
@@ -1537,6 +1477,24 @@
    }
   },
   {
+   "id": "736d6d6aef93f413",
+   "title": "alibaba/rtp-llm - RTP-LLM: Alibaba's high-performance LLM inference engine for diverse applications.",
+   "category": "engineering",
+   "channel": "github",
+   "relevanceScore": 71.2,
+   "depthScore": 54.76,
+   "url": "https://github.com/alibaba/rtp-llm",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 32.04,
+    "content": 1.64,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "c6f8a01f7daa1107",
    "title": "2000座高速闪充站落成，比亚迪如何扛住国庆车流？",
    "category": "foundation",
@@ -1555,21 +1513,21 @@
    }
   },
   {
-   "id": "aa59255c96356e14",
-   "title": "Polymer informatics: A review of ai-driven structure-property modeling and material design",
-   "category": "trend",
-   "channel": "s2",
-   "relevanceScore": 71.2,
-   "depthScore": 49.95,
-   "url": "https://doi.org/10.13374/j.issn2095-9389.2026.01.24.001",
+   "id": "c3cf36c4c3c1ec3b",
+   "title": "世界制造业大会丨国轩高科重磅发布低空飞行高功率电池等三大创新成果",
+   "category": "foundation",
+   "channel": "leiphone",
+   "relevanceScore": 56.4,
+   "depthScore": 51.37,
+   "url": "https://leiphone.com/category/industrynews/DOdBNcP5frSITM4c.html",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 32.04,
+    "relevance": 25.38,
     "content": 18.0,
     "code": 0.0,
-    "peer": 7.000000000000001,
-    "trust": 7.000000000000001,
-    "material": 0.0
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
    }
   },
   {
@@ -1652,6 +1610,24 @@
    "relevanceScore": 51.1,
    "depthScore": 41.34,
    "url": "https://nowcoder.com/discuss/932994497917517824",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 3.3400000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "34943744e1ea5edd",
+   "title": "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 41.34,
+   "url": "https://nowcoder.com/discuss/932638301494738944",
    "hasSummary": true,
    "scoreBreakdown": {
     "relevance": 22.995,
@@ -1771,17 +1747,35 @@
    }
   },
   {
-   "id": "040ac851698f9ed8",
-   "title": "27届大疆面试凉经+1，今年秋招太难了......",
-   "category": "coding",
-   "channel": "nowcoder",
-   "relevanceScore": 51.0,
-   "depthScore": 41.29,
-   "url": "https://nowcoder.com/discuss/934744716044664832",
+   "id": "a5e7ff8d18dc7fe8",
+   "title": "Artificial intelligence-based automated scoring of the mouse grimace scale: a systematic review.",
+   "category": "trend",
+   "channel": "s2",
+   "relevanceScore": 63.2,
+   "depthScore": 41.31,
+   "url": "https://doi.org/10.1097/pr9.0000000000001497",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 22.95,
-    "content": 3.3400000000000003,
+    "relevance": 28.44,
+    "content": 10.52,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "0be84424ddbe168c",
+   "title": "9月秋招个人总结",
+   "category": "coding",
+   "channel": "nowcoder",
+   "relevanceScore": 51.1,
+   "depthScore": 41.3,
+   "url": "https://nowcoder.com/discuss/935309819861270528",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 22.995,
+    "content": 3.3,
     "code": 0.0,
     "peer": 0.0,
     "trust": 0.0,
@@ -1825,24 +1819,6 @@
    }
   },
   {
-   "id": "e6171b12b44b3aee",
-   "title": "LANTERN: Illuminating Hidden Mathematical Knowledge in Language Models",
-   "category": "job",
-   "channel": "hf_papers",
-   "relevanceScore": 47.1,
-   "depthScore": 36.96,
-   "url": "https://huggingface.co/papers/2609.32264",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 21.195,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 0.0
-   }
-  },
-  {
    "id": "51de29aa6be4a013",
    "title": "全球开源前二，阶跃终于回来了",
    "category": "trend",
@@ -1857,24 +1833,6 @@
     "code": 0.0,
     "peer": 0.0,
     "trust": 0.0,
-    "material": 0.0
-   }
-  },
-  {
-   "id": "e82ba51d6a4c33e2",
-   "title": "mbzuai-oryx/Awesome-LLM-Post-training - Awesome Reasoning LLM Tutorial/Survey/Guide",
-   "category": "course",
-   "channel": "github",
-   "relevanceScore": 50.1,
-   "depthScore": 33.12,
-   "url": "https://github.com/mbzuai-oryx/Awesome-LLM-Post-training",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 22.545,
-    "content": 2.84,
-    "code": 8.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
     "material": 0.0
    }
   },
@@ -1940,6 +1898,24 @@
    "relevanceScore": 59.4,
    "depthScore": 24.06,
    "url": "https://nowcoder.com/discuss/933058120102739968",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.73,
+    "content": 3.3400000000000003,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "38a5c854ac8c0e6f",
+   "title": "招聘岗位确实在收缩",
+   "category": "job",
+   "channel": "nowcoder",
+   "relevanceScore": 59.4,
+   "depthScore": 24.06,
+   "url": "https://nowcoder.com/discuss/935301800335245312",
    "hasSummary": true,
    "scoreBreakdown": {
     "relevance": 26.73,
@@ -2216,6 +2192,20 @@
    "why": "看起来不是手撕题（本文归类可能错误）"
   },
   {
+   "id": "a0ce233932cca827",
+   "title": "简历模板拿走不谢",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "d44c4c2a9174e06b",
+   "title": "极兔后端一面",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
    "id": "b4b07c88825ecc6b",
    "title": "9月也快结束了 ，然后9月初才结束差不多三个月的出差,也就是几个月没回去了，前几天中秋节回家了一趟待来几天，给老妈发了几百的过节费，给老爸买了两条烟，然后又去外婆家买了一些过节的礼",
    "category": "coding",
@@ -2235,24 +2225,10 @@
    "category": "coding",
    "rule": "category-mismatch",
    "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "7c37d4c2e1e684be",
-   "title": "springboot启动时会自动读取环境变量的配置吗",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "646008786510a2fb",
-   "title": "面试官：“讲一下你怎么把接口性能从15.8秒优化到 300毫秒的？”",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
   }
  ],
  "skimByRule": {
-  "category-mismatch": 44,
+  "category-mismatch": 46,
   "referral-code": 3
  }
 }

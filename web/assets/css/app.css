@@ -5,6 +5,25 @@
    ========================================================================= */
 
 /* ==========================================================================
+   0. GLOBAL OVERFLOW GUARDS
+   =========================================================================
+   Three separate layout bugs in this project had the SAME root cause: a flex or
+   grid item defaults to `min-width: auto`, which refuses to shrink below its
+   content width. Any long data-derived string (a 200-character salary note, a
+   Chinese company name, a timestamp) therefore widened its container, escaped
+   into an ancestor with `overflow: hidden`, and was silently clipped - which is
+   why they were invisible in review and only found by measuring
+   (scripts/audit-layout.mjs).
+
+   Rather than patch each site, these two rules make shrinking the default for
+   every flex/grid child, and let long unbroken text wrap. Components that DO
+   want a fixed intrinsic width (badges, tags, icons) opt back out with
+   `flex: 0 0 auto`.
+   ========================================================================= */
+* { min-width: 0; }
+* { overflow-wrap: break-word; }
+
+/* ==========================================================================
    1. APP SHELL
    ========================================================================= */
 #app {
@@ -624,6 +643,14 @@ select.select {
 .kcard-src { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--fg-2); }
 .kcard-src:hover { color: var(--accent); }
 .kcard-meta { display: flex; align-items: center; gap: var(--sp-2); margin-left: auto; }
+/* The knowledge card footer packs source, difficulty, "深读/仅摘要" state, a
+   sparkline and the score into one row. Measured with scripts/audit-layout.mjs
+   the 仅摘要 tag was being crushed to 47px while needing 126px, so the text was
+   silently clipped mid-glyph. The tags must keep their intrinsic width; only the
+   card body text is allowed to truncate. */
+.kcard-meta > .tag,
+.kcard-foot > .tag { flex: 0 0 auto; white-space: nowrap; }
+.kcard-meta > * { min-width: 0; }
 .kcard-actions { display: flex; align-items: center; gap: 2px; }
 
 .icon-btn {
