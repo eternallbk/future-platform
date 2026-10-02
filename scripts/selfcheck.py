@@ -403,6 +403,65 @@ def check_redundancy(rep: Report):
     }
 
 
+def check_knowledge_quality(rep: Report, index, manifest):
+    """Is the corpus the KIND of material this workbench exists to accumulate?
+
+    WHY this is separate from check_collection_quality: that function asks whether the
+    corpus is healthy (balanced, summarised, deduplicated). This one asks whether it is
+    USEFUL for its stated purpose - 核心/关键/扩展知识、算法深度解析、面经、八股、
+    领域算法知识点、岗位. Measured before this check existed: 62% of the corpus was
+    research papers while algorithm problems were 0.2% and fundamentals 0.6%, because
+    the sources are overwhelmingly paper feeds. Nothing was "wrong" - the workbench was
+    simply accumulating the wrong mix, and no assertion noticed.
+
+    Kept as WARNINGS, not errors: a thin category is a signal to add sources, not a
+    data-integrity failure. The point is that it stops being invisible.
+    """
+    items = (index or {}).get("items") or []
+    if not items:
+        return
+    n = len(items)
+    kt = Counter(str(i.get("knowledgeType") or "other") for i in items)
+    zh = {
+        "method": "算法深度解析/论文", "interview": "面经/面试", "coding": "算法题/手撕",
+        "fundamentals": "八股/基础", "job": "岗位/招聘", "project": "框架/项目",
+        "news": "资讯", "opinion": "观点/吐槽", "other": "未归类",
+    }
+    rep.metrics["knowledgeTypes"] = dict(kt.most_common())
+    share = {k: v / n for k, v in kt.items()}
+    rep.ok("知识类型分布：" + "、".join(
+        f"{zh.get(k, k)}={v}" for k, v in kt.most_common(6)))
+
+    # Material this workbench is FOR. Floors are deliberately modest: they catch
+    # "effectively empty", they do not enforce a target mix.
+    floors = {"coding": 0.01, "fundamentals": 0.03, "interview": 0.05, "job": 0.03}
+    thin = [(k, share.get(k, 0.0)) for k, f in floors.items() if share.get(k, 0.0) < f]
+    if thin:
+        rep.warn("求职类内容偏薄：" + "、".join(
+            f"{zh[k]}仅 {share.get(k, 0) * 100:.1f}%（{kt.get(k, 0)} 条，期望 >={floors[k] * 100:.0f}%）"
+            for k, _ in thin)
+            + " -> 这不是数据错误，而是采集渠道覆盖不足，需补题库/面经类来源")
+    else:
+        rep.ok("求职类内容覆盖达标（算法题/八股/面经/岗位）")
+
+    # The reader explicitly does not want news; if it grows, something regressed.
+    news_share = share.get("news", 0.0) + share.get("opinion", 0.0)
+    if news_share > 0.08:
+        rep.warn(f"资讯/观点类占 {news_share:.1%}"
+                 f"（{kt.get('news', 0) + kt.get('opinion', 0)} 条）"
+                 f" - 读者明确不要这类内容，检查证据闸门是否被放宽")
+    else:
+        rep.ok(f"资讯/观点类占比健康（{news_share:.1%}）")
+
+    # Research papers dominate because the sources are paper feeds. Not wrong, but a
+    # corpus that is nearly all papers is not a job-hunting workbench, so it is
+    # reported as context instead of being silently accepted.
+    paper_share = share.get("method", 0.0)
+    if paper_share > 0.70:
+        rep.warn(f"论文/深度解析占 {paper_share:.0%}，语料以论文为主 "
+                 f"-> 若与积累面经/算法题的目标不符，应收窄论文类渠道或提高其门槛")
+
+
 def build_report() -> Report:
     rep = Report()
     check_all_json(rep)
@@ -414,6 +473,7 @@ def build_report() -> Report:
     check_runs(rep, manifest)
     check_proposals(rep)
     check_collection_quality(rep, index, manifest)
+    check_knowledge_quality(rep, index, manifest)
     check_redundancy(rep)
     rep.metrics["generatedAt"] = datetime.now(CST).isoformat(timespec="seconds")
     return rep

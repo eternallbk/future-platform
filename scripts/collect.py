@@ -256,6 +256,18 @@ CHANNEL_SPECS = {
     "qbitai":         {"tier": "P1", "mode": "rss",    "timeout": 20, "retries": 1, "backup": ["leiphone"]},
     "rsshub":         {"tier": "P2", "mode": "rss",    "timeout": 25, "retries": 1, "backup": ["zhihu"]},
     "nowcoder":       {"tier": "P1", "mode": "html",   "timeout": 25, "retries": 1, "backup": []},
+    # 牛客「试题广场」编程题/算法题 via the sitemap the site declares in robots.txt.
+    #
+    # WHY a separate channel: measured, the corpus had 0.2% algorithm problems and
+    # 0.6% fundamentals against 62% research papers, because every other source is a
+    # paper or code feed. The reader explicitly wants 算法题/手撕/八股 to accumulate,
+    # and no amount of scoring can create material that was never collected.
+    #
+    # COMPLIANCE: robots.txt disallows only /search, /nccommon and /ab/ab-test-flow.
+    # This channel reads the DECLARED sitemap (sitemap/question/sitemap*.xml) and the
+    # questionTerminal pages it points at - i.e. exactly what the site tells crawlers
+    # to index - and it does not touch the disallowed paths.
+    "nowcoder_questions": {"tier": "P0", "mode": "html", "timeout": 25, "retries": 1, "backup": []},
     # zhihu: DISABLED.
     #
     # The only reachable feed is a general hot list (mirror rss.injahow.cn), and a
@@ -1358,6 +1370,176 @@ def collect_zhihu(cfg, log, limit):
     return []
 
 
+def collect_nowcoder_questions(cfg, log, limit):
+    """牛客试题广场的编程题/算法题（题目陈述 + 时间/空间限制）。
+
+    Source of truth is the sitemap the site DECLARES in robots.txt
+    (`sitemap/question/sitemap*.xml`), so this reads exactly what 牛客 asks crawlers
+    to index. Each `questionTerminal` page carries a real problem statement:
+
+        [编程题]小月的亮灯
+        热度指数：7  时间限制：C/C++ 2秒，其他语言4秒  空间限制：C/C++ 256M
+        小月在一条刻度线上布置了 盏灯，状态用…
+
+    That is precisely the 算法题 material the workbench was missing. Parsing is
+    deliberately conservative: only a `[编程题]`/`[问答题]` marker plus the statement
+    body is accepted, so a page-template change yields zero items rather than garbage.
+    """
+    out = []
+    # Bound the work: the sitemap index points at shards, and the site also publishes
+    # flat lists per subject. `questionurl1.txt` is 2.5 MB / 45k lines holding BOTH
+    # /practice/ programming problems (2,970 of them) and /discuss/ threads (42,030),
+    # so it is cached for a week rather than re-downloaded every run.
+    page_urls: list[str] = []
+    cache = DATA_DIR / "cache" / "nowcoder-question-list.txt"
+    fresh_enough = False
+    try:
+        if cache.exists():
+            age_h = (time.time() - cache.stat().st_mtime) / 3600.0
+            fresh_enough = age_h < 24 * 7
+    except OSError:
+        fresh_enough = False
+    if not fresh_enough:
+        try:
+            _s, body, _ct = http_get(
+                "https://www.nowcoder.com/sitemap/question/questionurl1.txt",
+                timeout=40, cfg=cfg, log=log, retries=1)
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            cache.write_bytes(body)
+            log("nowcoder_questions: refreshed the published question list", "info")
+        except Exception as e:
+            log(f"nowcoder_questions list refresh failed ({e}); using cache if present",
+                "warn")
+    if cache.exists():
+        try:
+            # Only programming problems: an objective question is 八股 and is handled by
+            # the sitemap shard below, while /discuss/ belongs to the interview channel.
+            for line in cache.read_text("utf-8", "replace").splitlines():
+                u = line.strip().split("?")[0]
+                if "/practice/" in u:
+                    page_urls.append(u)
+        except Exception as e:
+            log(f"nowcoder_questions cache read failed: {e}", "warn")
+
+    # The sitemap shard adds 客观题 (八股) which the practice list does not contain.
+    shard_urls = [
+        "https://www.nowcoder.com/sitemap/question/sitemap1.xml",
+        "https://www.nowcoder.com/sitemap/question/sitemap0212.xml",
+    ]
+    for sm in shard_urls:
+        try:
+            _s, body, _ct = http_get(sm, timeout=20, cfg=cfg, log=log, retries=1)
+            text = body.decode("utf-8", "replace")
+        except Exception as e:
+            log(f"nowcoder_questions sitemap failed ({sm}): {e}", "warn")
+            continue
+        for loc in re.findall(r"<loc>([^<]+)</loc>", text):
+            clean = loc.split("?")[0].strip()
+            if "questionTerminal" in clean:
+                page_urls.append(clean)
+
+    # The sitemap shard is stable, so rotate through it rather than always taking the
+    # same head: a rotating offset means the library keeps growing day over day.
+    #
+    # The published list is PROGRESSIVE (it opens with beginner warm-ups like 判断字母
+    # and 及格分数), and a beginner drill is not what an aspiring algorithm-intern
+    # candidate needs. Skipping the first tenth of each list biases the sample toward
+    # the substantive end while still rotating, so coverage keeps advancing.
+    if page_urls:
+        skip = len(page_urls) // 10
+        page_urls = page_urls[skip:]
+        day_off = int(now_cst().strftime("%j")) * 7
+        page_urls = page_urls[day_off % len(page_urls):] + page_urls[:day_off % len(page_urls)]
+
+    seen = set()
+    # Fetching a candidate page is not enough to keep it: the content filter rejects
+    # hardware exercises and anything with no algorithm/ML signal, so the crawler must
+    # look at more candidates than the number of items it wants. 6x is the measured
+    # ratio needed to fill a batch from an arbitrary slice of the problem set.
+    scan_budget = max(limit * 6, limit + 12)
+    scanned = 0
+    for url in page_urls:
+        if len(out) >= limit or scanned >= scan_budget:
+            break
+        scanned += 1
+        if url in seen:
+            continue
+        seen.add(url)
+        try:
+            _s, body, _ct = http_get(url, timeout=20, cfg=cfg, log=log, retries=1)
+            page = body.decode("utf-8", "replace")
+        except Exception as e:
+            log(f"nowcoder_questions page failed: {e}", "warn")
+            continue
+
+        title_m = re.search(r"<title>([^<]+)</title>", page)
+        title = clean_text(title_m.group(1), 160) if title_m else ""
+        # Strip the site suffix the page title carries ("…_牛客题霸_牛客网").
+        title = re.sub(r"_+牛客(题霸|网)?_*牛客网\s*$", "", title).strip(" _-")
+        title = re.sub(r"_+牛客题霸\s*$", "", title).strip(" _-")
+        marker = re.search(r"\[(编程题|问答题|单选题|多选题)\]\s*([^<\n]{2,120})", page)
+        if marker:
+            kind_zh = marker.group(1)
+            if not title:
+                title = clean_text(marker.group(2), 160)
+        else:
+            kind_zh = ""
+        if not title:
+            continue
+
+        # Statement body: the visible text right after the metadata block.
+        body_text = re.sub(r"<script[^>]*>.*?</script>", " ", page, flags=re.S)
+        body_text = re.sub(r"<style[^>]*>.*?</style>", " ", body_text, flags=re.S)
+        body_text = clean_text(re.sub(r"<[^>]+>", " ", body_text), 1200)
+        # Trim the site chrome so the summary starts at the actual problem.
+        cut = body_text.find("空间限制")
+        if cut > 0:
+            body_text = body_text[cut:]
+            body_text = re.sub(r"^空间限制[^ ]*[^。]*?[，。:：]\s*", "", body_text)
+        statement = clean_text(body_text, 600)
+        if len(statement) < 40:
+            continue                      # template change: refuse to invent content
+
+        # Relevance filter: skip explicit hardware-design exercises and anything with
+        # no algorithm/ML signal at all. Position-based sampling cannot do this (the
+        # problem set is ordered by category, so a slice can be entirely FPGA).
+        hay = f"{title} {statement}"
+        if PROBLEM_EXCLUDE_RE.search(hay):
+            continue
+        if not PROBLEM_RELEVANT_RE.search(hay):
+            continue
+
+        limits = ""
+        lim_m = re.search(r"时间限制[：:]\s*([^ 空]{2,40})", page)
+        if lim_m:
+            limits = clean_text(lim_m.group(1), 40)
+        hot_m = re.search(r"热度指数[：:]\s*(\d+)", page)
+
+        out.append({
+            "sourceId": "nowcoder_questions", "channel": "nowcoder_questions",
+            "externalId": url.rsplit("/", 1)[-1],
+            "title": f"[{kind_zh or '编程题'}] {title}",
+            "summary": statement,
+            "url": url,
+            "publishedAt": iso(now_cst()),
+            "lang": "zh",
+            "tags": ["算法题", "牛客", kind_zh or "编程题"],
+            # NOTE: deliberately NOT setting `kind`. `kind` is authoritative and would
+            # force every item to one knowledge type, but this channel yields BOTH
+            # 编程题 (algorithm problems) and 单选题 (八股: probability, ML metrics,
+            # inference engineering). Letting classify_knowledge_type() judge from the
+            # title's [编程题]/[单选题] marker puts each in the right bucket - the
+            # reader wants those tracked separately.
+            "qualitySignals": {
+                "hotIndex": int(hot_m.group(1)) if hot_m else 0,
+                "timeLimit": limits,
+            },
+            "codeAvailable": True,
+        })
+    log(f"nowcoder_questions -> {len(out)} items", "info" if out else "warn")
+    return out
+
+
 def collect_nowcoder(cfg, log, limit):
     """Nowcoder public discussion pages.
 
@@ -1655,6 +1837,7 @@ COLLECTORS = {
     "machineheart": collect_machineheart, "qbitai": collect_qbitai, "leiphone": collect_leiphone,
     "hf_blog_rss": collect_hf_blog_rss, "openai_rss": collect_openai_rss,
     "rsshub": collect_rsshub, "zhihu": collect_zhihu, "nowcoder": collect_nowcoder,
+    "nowcoder_questions": collect_nowcoder_questions,
     "jobs_bytedance": collect_jobs_bytedance, "jobs_tencent": collect_jobs_tencent,
     "jobs_alibaba": collect_jobs_alibaba, "jobs_zhipu": collect_jobs_zhipu,
     "jobs_moonshot": collect_jobs_moonshot, "jobs_deepseek": collect_jobs_deepseek,
@@ -1784,25 +1967,288 @@ def classify(item: dict, cfg: dict):
     return best[0], (hits.get(best[0]) or [])[:12]
 
 
+# ============================================================================
+# 6b. KNOWLEDGE TYPE - what KIND of material is this?
+# ============================================================================
+#
+# WHY THIS EXISTS (the reader's complaint, restated as an engineering problem):
+#   "很多资讯和采集的论文等是一看最新或关联就放进来了"
+#
+#   The old ranking gave a category match at most 40 points, freshness alone 30, and
+#   the source tier a flat 12 - so a single generic keyword hit plus recency was
+#   enough to clear the bar. Measured on the 664-item corpus: **55% of items entered
+#   on exactly ONE keyword**, and only 7.4% of the corpus was actual mechanism-level
+#   technical material while 14.2% was interview chatter. In other words the score
+#   measured "is this recent and roughly on-topic", not "is this worth accumulating".
+#
+#   The workbench is supposed to ACCUMULATE: 核心/关键/扩展知识、算法深度解析、
+#   岗位与面经、八股、领域算法知识点. So scoring now asks two independent questions:
+#     1. how strong is the category evidence (specificity x count, not a flat +8 each)
+#     2. what TYPE of material is this (depth is worth more than news, by design)
+#
+#   Order matters. `method` is tested before `news` because a release note WITH a
+#   mechanism explanation should count as depth; `news` is tested before `interview`
+#   so an acquisition story is not mistaken for a write-up just because it says
+#   "engineer".
+KNOWLEDGE_TYPE_RULES: list[tuple[str, "re.Pattern"]] = [
+    # 核心/关键/扩展知识 · 算法深度解析
+    ("method", re.compile(
+        r"机制|原理|推导|架构|设计选择|为什么|深入|剖析|重新思考|解构|"
+        r"we propose|we present|we introduce|we show|our method|novel\s+\w*\s*method|"
+        r"mechanism|principle|derivation|architecture|rethink|revisit|"
+        r"analysis of|understanding|unified framework|theorem|proof", re.I)),
+    # 算法题 · 手撕
+    ("coding", re.compile(
+        r"手撕|手写|算法题|题解|leetcode|刷题|动态规划|双指针|并查集|单调栈|回溯|贪心|"
+        r"binary search|two pointers|sliding window|union find|backtracking|"
+        r"coding (?:problem|interview|question)", re.I)),
+    # 面经 · 面试
+    ("interview", re.compile(
+        r"面经|面试|一面|二面|三面|hr面|挂经|凉经|oc\b|offer|offer选择|"
+        r"interview (?:experience|questions?|process)|onsite", re.I)),
+    # 八股 · 基础 · 领域知识点
+    ("fundamentals", re.compile(
+        r"八股|必考|高频考点|常见问题|基础|入门|教程|速查|cheat ?sheet|"
+        r"transformer|attention|batchnorm|\bbn\b|dropout|softmax|交叉熵|反向传播|"
+        r"梯度|优化器|adam|损失函数|kv.?cache|quantization|归一化", re.I)),
+    # 岗位 · 招聘
+    ("job", re.compile(
+        r"实习|招聘|岗位|校招|社招|内推|jd\b|job description|"
+        r"we are hiring|engineer \(m/f/d\)|internship|research intern", re.I)),
+    # 纯资讯/融资/发布公告（不积累价值）
+    ("news", re.compile(
+        r"raises \$|raised \$|funding round|series [a-e]\b|acquires|acquisition|"
+        r"\bipo\b|earnings|valued at|partnership|"
+        r"announces|introducing|launch(?:es|ed)? (?:new|the)|press release|"
+        r"reimagining|expands? (?:to|into)|now available|generally available", re.I)),
+    # 观点/求职吐槽/泛化提问（低信息量）
+    ("opinion", re.compile(
+        r"吐槽|求建议|求助|怎么选|该不该|有没有人|想问一下|想请大家|"
+        r"rant|opinion|thoughts on|should i|advice", re.I)),
+]
+
+# Keywords that are the CATEGORY NAME rather than a discriminating term. They are
+# legitimate for classification (a paper about multimodal models IS multimodal) but
+# they are weak EVIDENCE of value, so a single such hit is not enough on its own.
+GENERIC_KEYWORDS = {
+    "multimodal", "multi-modal", "vlm", "mllm", "lvlm", "vision-language",
+    "multimodal llm", "agent", "agentic", "llm", "large language model",
+    "post-training", "post training", "training", "model", "benchmark",
+    "reinforcement learning", "diffusion", "world model", "reasoning",
+    "foundation model", "generative", "inference", "memory", "alignment",
+}
+
+# Title-level signals that decide the knowledge type outright. Titles are short and
+# deliberate, so a 面经/挂经 in the title is far stronger evidence than any phrase that
+# happens to appear inside a long abstract.
+EXPLICIT_INTERVIEW = re.compile(
+    r"面经|挂经|凉经|笔经|面試|面试题|面试经验|"
+    r"(?:^|[\s【\[（(])(一面|二面|三面|四面|hr面|1面|2面|3面|初面|终面)", re.I)
+EXPLICIT_CODING = re.compile(
+    r"手撕|手写代码|算法题|题解|刷题|leetcode|力扣|"
+    r"\[编程题\]|"
+    r"binary search|two pointers|sliding window|union find|backtracking", re.I)
+
+# 八股/基础 markers. A 牛客 单选题 about probability, ML metrics or inference
+# engineering is fundamentals material, not an algorithm problem, and the workbench
+# tracks those separately - so these markers are tested explicitly (and BEFORE the
+# coding patterns) rather than left to the generic text patterns.
+EXPLICIT_FUNDAMENTALS = re.compile(
+    r"\[单选题\]|\[多选题\]|\[问答题\]|八股|必考|高频考点|"
+    r"以下哪(?:个|项)|下列说法|关于.{0,12}的说法", re.I)
+
+# Generic utility tools: a CLI gadget, a wallpaper picker, a phone tracker. These are
+# the items the reader means by "与求职面试算法题、各领域实际技术无关的资讯" when they
+# arrive from a code host. Note this is deliberately narrow - it must NOT catch a
+# framework like diffusers, which is how an earlier, broader rule went wrong.
+GENERIC_TOOL_RE = re.compile(
+    r"\b(?:wallpaper|screenshot tool|password manager|bookmark manager|"
+    r"file manager|download manager|terminal emulator|dotfiles|"
+    r"awesome[- ]list|curated list of|a list of links|"
+    r"track(?:s|ing)? (?:location|phone|mobile)|spyware|adblock|"
+    r"emoji picker|color picker|font picker|timer app|todo app)\b", re.I)
+
+# 牛客题霸 is a big graded set that includes HARDWARE tracks (FPGA/数字电路: 优先编码器、
+# 译码器、时序电路、触发器). Those are real 编程题 but they are irrelevant to an
+# algorithm-intern candidate, and position-based sampling cannot separate them because
+# the set is ordered by category: measured, one slice returned eleven consecutive
+# FPGA problems. So candidate problems are filtered by CONTENT.
+#
+# The allow-list is deliberately about algorithms and ML/DL implementation, and the
+# reject-list is about hardware design. Unknown material is kept (a new topic should be
+# discovered, not silently dropped) - only explicit hardware signals are excluded.
+PROBLEM_RELEVANT_RE = re.compile(
+    r"链表|二叉树|二叉搜索树|树的遍历|前序|中序|后序|层序|栈|队列|堆|哈希|散列|"
+    r"排序|查找|二分|双指针|滑动窗口|递归|回溯|动态规划|贪心|分治|并查集|"
+    r"图|最短路径|拓扑|最小生成树|字符串|数组|矩阵|位运算|位操作|前缀和|差分|"
+    r"单调栈|字典树|trie|kmp|背包|排列|组合|子集|子序列|最长|回文|括号|"
+    r"大数|进制|质数|最大公约数|最小公倍数|概率|期望|随机|"
+    r"矩阵乘|卷积|激活|softmax|attention|transformer|梯度|反向传播|"
+    r"神经网络|损失|优化器|归一化|注意力|量化|推理|吞吐|显存|"
+    r"torch|numpy|python|c\+\+|javascript|链表|排序算法",
+    re.I)
+PROBLEM_EXCLUDE_RE = re.compile(
+    r"编码器|译码器|触发器|时序电路|逻辑电路|门电路|寄存器|计数器|"
+    r"多路器|数据选择器|全加器|半加器|奇偶校验|verilog|vhdl|fpga|"
+    r"状态转移|卡诺图|布尔|与非门|或非门|d触发器|t触发器|jk触发器|cmos|"
+    r"走线|管脚|时钟树|复位信号|亚稳态",
+    re.I)
+
+EVIDENCE_KEYS = ("category", "categoryEvidence", "knowledge")
+
+
+def classify_knowledge_type(item: dict, cat: str) -> str:
+    """One of: job, interview, coding, fundamentals, method, news, opinion, other.
+
+    ORDER IS THE DESIGN. First match wins, and the ordering encodes what calibrating
+    this on the real 664-item corpus taught:
+
+      · A RESEARCH PAPER MUST BE CLASSIFIED AS RESEARCH. An earlier ordering tested
+        `interview` before `method`, and since paper abstracts routinely contain the
+        words "interview", "scaling" and "benchmark", genuine papers came back as
+        interview material - RPTune, Adaptive Reward Routing and Homomorphic Advantage
+        Operator were all labelled `interview`. So the SOURCE and the venue are checked
+        first, before any text pattern.
+      · A RELEASE NOTE THAT EXPLAINS A MECHANISM IS DEPTH, so `method` is still tested
+        before `news`; and `news` before `interview`, so an acquisition story full of
+        the word "engineer" is not mistaken for a write-up.
+    """
+    kind = str(item.get("kind") or "")
+    if kind == "job":
+        return "job"
+
+    chan = str(item.get("sourceId") or item.get("channel") or "")
+    title = str(item.get("title") or "")
+
+    # --- 1. explicit interview/coding titles win outright -------------------------
+    if EXPLICIT_INTERVIEW.search(title):
+        return "interview"
+    # Fundamentals BEFORE coding: a 牛客 title is "[单选题] …以下哪项…", so the
+    # multiple-choice marker must be tested before the generic "以下哪项" phrasing or
+    # every 八股 question lands in the algorithm-problem bucket.
+    if EXPLICIT_FUNDAMENTALS.search(title):
+        return "fundamentals"
+    if EXPLICIT_CODING.search(title):
+        return "coding"
+
+    # --- 2. authoritative source signals -----------------------------------------
+    if item.get("peerReviewed") or chan in ("arxiv", "hf_papers", "s2", "openalex",
+                                            "crossref", "openreview"):
+        return "method"
+    if chan.startswith("jobs_"):
+        return "job"
+    if chan in ("boss", "lagou", "shixiseng"):
+        return "job"          # login-walled job boards: only postings are imported
+
+    # --- 3. code projects are learning resources, not noise -----------------------
+    # IMPORTANT calibration lesson: an earlier version of the evidence gate rejected
+    # `huggingface/diffusers`, `mlc-ai/web-llm` and `genkit` because a README does not
+    # read like a mechanism explanation. But a widely-used framework IS legitimate
+    # 扩展知识 - you learn the field's tooling from it. So a repo is treated as a
+    # knowledge type of its own, and only explicitly generic utility tools are
+    # excluded by the gate later.
+    is_repo = (chan in ("github", "gh_trending")
+               or bool(item.get("stars")) or "github.com" in str(item.get("url") or ""))
+    if is_repo:
+        blob_r = " ".join([title, str(item.get("summary") or "")[:300]])
+        if GENERIC_TOOL_RE.search(blob_r):
+            return "other"            # CLI gadget / wallpaper / tracker: not knowledge
+        return "project"
+
+    # --- 4. text patterns over title + summary -----------------------------------
+    blob = " ".join([title, str(item.get("summary") or "")[:400],
+                     " ".join(item.get("tags") or [])])
+    for name, pat in KNOWLEDGE_TYPE_RULES:
+        if pat.search(blob):
+            return name
+    # A long abstract from a research category is research material even when it
+    # avoids every phrase above.
+    if cat in ("multimodal", "posttraining", "worldmodel", "generative", "rl",
+               "foundation") and len(str(item.get("summary") or "")) >= 300:
+        return "method"
+    return "other"
+
+
+def category_evidence(cat_hits: list, cfg: dict) -> float:
+    """Category match strength, weighted by how DISCRIMINATING each keyword is.
+
+    The old formula was `8.0 * len(hits)`: five generic hits scored the same as five
+    specific ones, and a single generic hit still collected 8 points on a 100-point
+    scale. Now each hit is worth 5-14 points depending on specificity, so weak
+    evidence cannot carry an item on its own.
+    """
+    if not cat_hits:
+        return 0.0
+    total = 0.0
+    for kw in cat_hits:
+        low = str(kw).lower()
+        if low in GENERIC_KEYWORDS or len(low) <= 3:
+            total += 5.0                 # the category's own name: weak evidence
+        elif re.search(r"[\u4e00-\u9fff]", low) or "-" in low or " " in low:
+            total += 12.0                # multi-word / CJK terms are specific
+        else:
+            total += 8.0
+    return min(45.0, total)
+
+
+def knowledge_value(item: dict, ktype: str, cfg: dict) -> float:
+    """How much is this worth ACCUMULATING in a job-hunting study workbench?
+
+    Deliberately opinionated and data-driven from the reader's own statement: they
+    want depth, interview material, fundamentals and postings, and they explicitly do
+    not want news that merely happens to be recent or adjacent.
+    """
+    table = (cfg.get("scoring") or {}).get("knowledgeValue") or {}
+    default = {"method": 16.0, "coding": 14.0, "interview": 14.0,
+               "fundamentals": 12.0, "job": 13.0,
+               # A widely-used framework/implementation is legitimate 扩展知识: it is
+               # how you learn the field's tooling. Ranked just under research.
+               "project": 10.0,
+               "other": 2.0, "news": -6.0, "opinion": -10.0}
+    return float(table.get(ktype, default.get(ktype, 0.0)))
+
+
+def weak_enough_ok(cat_hits: list, cfg: dict) -> bool:
+    """Is single/weak keyword evidence acceptable for low-value material?
+
+    Opinion pieces and rants have some value in a job-hunt context (a 面经 can read
+    like a rant), but only when they carry depth-type evidence. This keeps the gate
+    readable instead of nesting the same condition twice at the call site.
+    """
+    return any(str(h).lower() not in GENERIC_KEYWORDS for h in (cat_hits or []))
+
+
 def score_item(item, cfg, tier, cat_hits):
     sc = cfg.get("scoring") or {}
     parts = {}
-    parts["category"] = min(40.0, 8.0 * len(cat_hits))
-    # An item that matched NO category keyword already loses the whole 40-point
-    # category component (len(cat_hits) == 0). Apply one more explicit penalty so
-    # unclassified items rank below every genuinely classified item instead of
-    # merely tying with the weakest matches. They stay searchable, but they cannot
-    # crowd the dashboard or the digest.
+    # Category evidence: specificity-weighted instead of a flat 8/keyword, so one
+    # generic hit (the category's own name) can no longer carry an item on its own.
+    parts["category"] = category_evidence(cat_hits, cfg)
+    # What KIND of material this is - the reader's actual priority, as data.
+    ktype = classify_knowledge_type(item, item.get("category") or "")
+    parts["knowledge"] = knowledge_value(item, ktype, cfg)
+    # An item that matched NO category keyword loses the category component entirely
+    # and takes an extra penalty, so it ranks below every genuinely classified item.
     if not cat_hits:
         parts["unclassified"] = -12.0
 
+    # Freshness. Lowered from 30 to a maximum of 22 and made type-aware: recency is a
+    # TIE-BREAKER, not the main reason to admit something. News decays fast by design
+    # (it is worth little next week anyway), while a mechanism write-up stays useful
+    # for months, so depth keeps its freshness credit much longer.
     hl = float(sc.get("freshnessHalfLifeDays", 7.0))
+    if ktype in ("method", "fundamentals"):
+        hl *= 4.0                      # reference material: relevant for months
+    elif ktype in ("interview", "job", "coding"):
+        hl *= 1.5                      # perishable, but worth a little more than news
+    elif ktype == "news":
+        hl *= 0.4                      # news is stale almost immediately
     ts = parse_ts(item.get("publishedAt"))
     if ts and hl > 0:
         age = max(0.0, (now_cst() - ts).total_seconds() / 86400.0)
-        parts["freshness"] = 30.0 * (0.5 ** (age / hl))
+        parts["freshness"] = 22.0 * (0.5 ** (age / hl))
     else:
-        parts["freshness"] = 6.0
+        parts["freshness"] = 4.0
 
     parts["source"] = 12.0 * float((sc.get("sourceTierWeight") or {}).get(tier, 0.7))
 
@@ -1898,6 +2344,7 @@ def normalize(raw, cfg, tier):
     cat, hits = classify(item, cfg)
     item["category"] = cat
     item["categoryHits"] = hits
+    item["knowledgeType"] = classify_knowledge_type(item, cat)
     rel, breakdown = score_item(item, cfg, tier, hits)
     item["relevanceScore"] = rel
     item["relevanceBreakdown"] = breakdown
@@ -2034,6 +2481,9 @@ def build_all_items(state, fresh, cfg=None):
             # the learning-signal bonus. It must survive the rebuild or the ranking
             # change is invisible and unauditable.
             "relevanceBreakdown",
+            # knowledgeType drives the ranking weight and the reader-facing label;
+            # without it in this whitelist every rebuild would silently drop it.
+            "knowledgeType",
             "keyPoints", "why", "url", "canonicalUrl", "sources", "authors", "publishedAt",
             "fetchedAt", "lang", "tags", "entities", "difficulty", "relevanceScore",
             "qualitySignals", "venue", "ccf", "peerReviewed", "codeAvailable", "stars",
@@ -2869,6 +3319,10 @@ def run(args) -> int:
 
     fresh, updated, dup_count, dropped, blocked = [], [], 0, 0, 0
     unclassified_dropped = 0
+    news_dropped = 0
+    opinion_dropped = 0
+    weak_dropped = 0
+    offtopic_dropped = 0
     min_rel = float((cfg.get("scoring") or {}).get("minRelevance", 0) or 0)
     # Default True: keep unclassified items out of the corpus (see the gate below).
     drop_unclassified = bool((cfg.get("limits") or {}).get("dropUnclassified", True))
@@ -2913,6 +3367,43 @@ def run(args) -> int:
         # "not good enough" from "matched nothing".
         if drop_unclassified and item.get("category") == "unclassified":
             unclassified_dropped += 1
+            continue
+        # --- evidence gate: "related enough" is not the same as "worth keeping" ---
+        #
+        # The reader's complaint was that items entered merely because they looked
+        # recent or loosely related. A score threshold alone cannot express that,
+        # because the score mixes in freshness and source tier, so a recent P0 item
+        # with one generic keyword still clears any reasonable bar. This gate asks the
+        # question directly: is there ENOUGH evidence that this belongs in a
+        # job-hunting study library?
+        #
+        # SCOPE, and why it matters: the gate only judges WEAK material. The knowledge
+        # types that are substantive BY DEFINITION - interview write-ups, mechanism
+        # explanations, algorithm problems, fundamentals, real frameworks - are never
+        # rejected for matching few keywords. An earlier version applied the
+        # single-generic-keyword rule to everything and threw away genuine 面经 such as
+        # "面了一轮Agent岗，我把问过的问题整理成了文章" (its only keyword was `agent`).
+        # Where the material is unspecific (`other`), weak evidence is all there is, so
+        # that is where the rule belongs.
+        ktype = item.get("knowledgeType") or "other"
+        hits = item.get("categoryHits") or []
+        SUBSTANTIVE = ("method", "interview", "coding", "fundamentals", "project", "job")
+        if ktype not in SUBSTANTIVE:
+            if not hits:
+                # Nothing matched any tracked direction and the type is unknown: this
+                # is the "latest/adjacent news" case the reader described.
+                if ktype == "news":
+                    news_dropped += 1
+                elif ktype == "opinion":
+                    opinion_dropped += 1
+                else:
+                    offtopic_dropped += 1
+                continue
+            if len(hits) == 1 and str(hits[0]).lower() in GENERIC_KEYWORDS:
+                weak_dropped += 1
+                continue
+        if ktype == "opinion" and not weak_enough_ok(hits, cfg):
+            opinion_dropped += 1
             continue
         cid = deduper.lookup(item)
         if cid:
@@ -2999,13 +3490,24 @@ def run(args) -> int:
     state["hashes"] = deduper.hashes
 
     log(f"deduped: new={len(fresh)} updated={len(updated)} duplicate_hits={dup_count} "
-        f"dropped={dropped} blocklisted={blocked} unclassified={unclassified_dropped}", "ok")
+        f"dropped={dropped} blocklisted={blocked} unclassified={unclassified_dropped} "
+        f"news={news_dropped} opinion={opinion_dropped} weakEvidence={weak_dropped} "
+        f"offTopic={offtopic_dropped}", "ok")
     if blocked:
         log(f"  {blocked} item(s) skipped by the blocklist (removed earlier by "
             f"prune_items.py / dedupe_deep.py); they will not come back", "info")
     if unclassified_dropped:
         log(f"  {unclassified_dropped} item(s) matched NO category keyword and were not "
             f"stored (off-topic news cannot serve any direction)", "info")
+    # Report what the evidence gate rejected, per knowledge type, so the effect of the
+    # rule is visible in the log rather than something you have to infer from counts.
+    rejected = {"news": news_dropped, "opinion": opinion_dropped,
+                "weakEvidence": weak_dropped, "offTopic": offtopic_dropped}
+    if any(rejected.values()):
+        log("  evidence gate rejected: " + ", ".join(
+            f"{k}={v}" for k, v in rejected.items() if v), "info")
+        log("    (news/opinion/单一通用关键词 未经深度证据支撑时不入库；"
+            "若某类被大量拒绝，应检查关键词或知识类型规则，而不是放宽门槛)", "info")
 
     duration = round(time.time() - t0, 1)
     ok_channels = sum(1 for r in results.values() if r["status"] == "ok")
@@ -3307,6 +3809,7 @@ def rescore_all(cfg, log) -> int:
             changed_cat += 1
         item["category"] = cat
         item["categoryHits"] = hits
+        item["knowledgeType"] = classify_knowledge_type(item, cat)
         rel, breakdown = score_item(item, cfg, spec["tier"], hits)
         if abs(float(rel) - float(item.get("relevanceScore") or 0)) > 0.05:
             changed_score += 1
