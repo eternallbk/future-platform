@@ -1,0 +1,629 @@
+{
+  "batchId": "backfill-02",
+  "mode": "backfill",
+  "date": "2026-10-03",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
+  "items": [
+    {
+      "id": "99fb8b7ff588817d",
+      "title": "longxiang-ai/awesome-video-diffusions - A curated and auto-updated collection of video diffusion / video generation papers from arXiv, covering text-to-video, image-to-video, controllable generation, world models, video editing, and 16+ research categories.",
+      "category": "generative",
+      "channel": "github",
+      "url": "https://github.com/longxiang-ai/awesome-video-diffusions",
+      "sources": [
+        {
+          "url": "https://github.com/longxiang-ai/awesome-video-diffusions",
+          "name": "github"
+        }
+      ],
+      "tags": [
+        "arxiv",
+        "arxiv-papers",
+        "awesome",
+        "awesome-list",
+        "controllable-generation",
+        "diffusion-models",
+        "image-to-video",
+        "research-paper",
+        "Python"
+      ],
+      "summary": "A curated and auto-updated collection of video diffusion / video generation papers from arXiv, covering text-to-video, image-to-video, controllable generation, world models, video editing, and 16+ research categories.",
+      "authors": [
+        "longxiang-ai"
+      ],
+      "publishedAt": "2026-09-30T16:29:24+08:00",
+      "knowledgeType": "project",
+      "why": "归属「生成式模型」方向；命中关键词 diffusion、text-to-video、video generation；GitHub 45 stars；疑似附带开源实现",
+      "relevanceScore": 84.6,
+      "qualitySignals": {
+        "stars": 45,
+        "forks": 3,
+        "codeAvailable": true
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "missing": [
+        "formulas"
+      ],
+      "backfillWeight": 1.0,
+      "existingEnrichment": {
+        "id": "99fb8b7ff588817d",
+        "tldr": "一个自动更新的视频扩散/视频生成论文合集，按 16+ 主题分类收录 arXiv 工作。",
+        "keyPoints": [
+          "从 arXiv 持续收录视频扩散与视频生成论文",
+          "覆盖文生视频、图生视频、可控生成、世界模型、视频编辑等",
+          "共 16+ 个研究分类，由脚本自动更新而非人工逐条维护",
+          "本质是分类索引，不含新的实验结论或指标数值"
+        ],
+        "why": "视频生成与世界模型是 2026 求职热区，这类自动合集适合快速建立方向地图并跟踪新论文。",
+        "difficulty": "easy",
+        "tags": [
+          "awesome-list",
+          "video-generation",
+          "diffusion",
+          "survey"
+        ],
+        "entities": [
+          "arXiv",
+          "longxiang-ai/awesome-video-diffusions",
+          "text-to-video",
+          "image-to-video",
+          "world models"
+        ],
+        "diagram": {
+          "kind": "flow",
+          "title": "自动合集的数据流",
+          "caption": "记住一点：它的价值在分类体系与自动更新，不在结论或评测。",
+          "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='自动更新的视频扩散论文合集流程：arXiv 抓取、主题分类、生成列表、供人检索'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>arXiv 新论文</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>自动抓取</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>主题分类 16+ 类</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>含可控生成与世界模型</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>生成 awesome 列表</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>脚本刷新</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>研究者按类检索</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>跟踪前沿</text>\n</svg>",
+          "alt": "流程：arXiv 新论文被抓取，归入 16+ 主题分类，生成自动刷新的 awesome 列表，供研究者按类检索。"
+        },
+        "concepts": [
+          {
+            "name": "自动更新的论文索引 (Auto-updated Survey Index)",
+            "readable": "它不是一篇论文，而是一个由脚本定期刷新的清单：把 arXiv 上的视频生成工作按人工设定的主题分类归位，让你不必每天手动检索就能看到一个子方向的全貌。",
+            "analogy": "像小区门口那块自动刷新的公告栏：物业按「维修、活动、缴费」等栏目把新通知钉上去，你路过就能按栏目找；但公告栏本身不判断哪条通知更重要。",
+            "analogyBreaksDown": "公告栏的栏目通常互不重叠且有物业审核，而这里的论文标签可以同时属于多个类别，收录标准也未必公开，更没有任何质量或同行评审过滤。",
+            "mechanism": "关键设计是把检索与分类分离：检索交给脚本对 arXiv 持续执行，分类由固定的 16+ 主题模板承担。固定模板保证了长期一致性，也意味着无法自适应地发现新子方向或按影响力排序。",
+            "visual": "画一棵三层的树：根是 arXiv 视频生成，第二层是 16+ 类别方框，第三层是论文叶子；叶子可以同时挂在两个方框下，方框大小代表该类别当前收录量。",
+            "prerequisites": [
+              "arXiv 检索基本操作",
+              "扩散模型与视频生成的基础术语"
+            ],
+            "selfTest": [
+              "这个仓库提供的是索引还是方法？",
+              "它覆盖哪些主题类别，更新方式是什么？",
+              "为什么不能把它当成文献综述来引用？"
+            ],
+            "formula": ""
+          }
+        ],
+        "formulas": [],
+        "selfCheck": {
+          "claims": [
+            "该仓库是视频扩散/视频生成论文的合集（collection）",
+            "论文来源为 arXiv",
+            "覆盖 text-to-video、image-to-video、可控生成、世界模型、视频编辑等 16+ 研究类别",
+            "合集为自动更新（auto-updated）",
+            "仓库标注为 Python 项目且代码可用"
+          ],
+          "uncertain": [
+            "收录论文总数、更新频率与分类判定方式需查仓库 README 核实",
+            "是否含评测排行榜、代码链接或按年份的时间线，摘要未说明",
+            "「16+ 研究分类」的具体类别清单摘要未完整给出"
+          ]
+        },
+        "teaching": {
+          "progressive": [
+            {
+              "level": "一句话",
+              "text": "一个自动更新的视频生成论文清单，按主题分好类方便查。"
+            },
+            {
+              "level": "入门",
+              "text": "仓库从 arXiv 收录视频扩散与视频生成相关论文，自动整理成分类清单，覆盖文生视频、图生视频、可控生成、世界模型、视频编辑等 16+ 类别，省去每天手动刷 arXiv 的功夫。"
+            },
+            {
+              "level": "进阶",
+              "text": "它是索引而不是方法：价值在分类体系与自动更新机制。使用时要自己判断收录标准与时效，因为它不提供实验对比、不排序影响力，也不筛选代码质量，类别之间还可能重叠。"
+            },
+            {
+              "level": "专家",
+              "text": "对求职者的正确用法是把它当领域地图：先按 16+ 类别定位自己方向的位置，再挑代表论文精读、复现。它的边界是只覆盖 arXiv 预印本、无同行评审过滤、分类模板固定，因此不能替代系统文献综述，也不能用来横向比较方法指标。"
+            }
+          ],
+          "socratic": [
+            {
+              "q": "已经有了 arXiv 搜索，为什么还需要这种合集？",
+              "a": "搜索要求你先想出关键词，而分类清单把同一方向的工作聚在一起，便于看出一个子方向的全貌与演化脉络。"
+            },
+            {
+              "q": "为什么说它不能当作综述使用？",
+              "a": "它只做收录与分类，没有对方法、指标做统一对比，也没有评审环节，收录标准未必透明，缺少质量过滤。"
+            }
+          ],
+          "mechanism": "机制上是把 arXiv 的检索结果映射到人工设定的 16+ 主题分类，再由脚本定期刷新列表。这样做的价值是持续覆盖与极低维护成本；代价是分类粒度固定、无法按质量或影响力排序，也不解决一篇文章跨多类别的问题。",
+          "boundary": "只覆盖 arXiv 预印本，未经同行评审；分类重叠、可能漏收非 arXiv 工作；需要横向指标对比、复现清单或时间线统计时都不够用，必须自己二次筛选。",
+          "analogyBoundary": "「自动刷新的公告栏」类比会让人以为栏目互斥、每条都经过审核；实际上论文标签可重叠、收录标准未必公开，也不保证论文质量或可复现性。",
+          "misconceptions": [
+            "以为 awesome list 本身是研究成果或含实验结论",
+            "以为「被收录」等于经过质量或同行评审筛选",
+            "把它当成完整文献综述直接引用"
+          ],
+          "ownAnalysis": "（推断）这类自动合集在求职准备中的真实价值是方向覆盖度检查表：对照 16+ 类别看自己简历缺哪块，再定向补读。但它不提供引用数、会议归属或影响力排序，需要配合这些信号自己二次筛选；另外「自动更新」也意味着列表可能包含尚未验证的预印本，引用前要回到原文核对。",
+          "officialNotes": [],
+          "interviewAnswer": "这是 longxiang-ai 维护的视频扩散与视频生成论文合集，从 arXiv 自动更新，分成文生视频、图生视频、可控生成、世界模型、视频编辑等 16+ 类别。我的用法是当领域地图：先用分类确认自己覆盖了哪些子方向，再挑代表论文精读和复现。它本身不含实验对比，也不做质量过滤，所以不能替代综述，引用结论要回到原论文。",
+          "studyPath": {
+            "prerequisites": [
+              "扩散模型与视频生成的基本概念",
+              "arXiv 检索与论文速读方法"
+            ],
+            "nextSteps": [
+              "按分类挑 3 篇代表论文精读并写方法笔记",
+              "持续跟踪可控生成与世界模型两条线",
+              "用引用数与代码可用性给收录论文做二次排序"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "cbfe6087f9c43604",
+      "title": "deepset-ai/haystack - Open-source AI orchestration framework for building context-engineered, production-ready LLM applications. Design modular pipelines and agent workflows with explicit control over retrieval, routing, memory, and generation. Built for scalable agents, RAG, multimodal applications, semantic search, and conversational systems.",
+      "category": "agent",
+      "channel": "github",
+      "url": "https://github.com/deepset-ai/haystack",
+      "sources": [
+        {
+          "url": "https://github.com/deepset-ai/haystack",
+          "name": "github"
+        }
+      ],
+      "tags": [
+        "agent-framework",
+        "agentic-ai",
+        "agentic-rag",
+        "agents",
+        "ai",
+        "ai-agents",
+        "context-engineering",
+        "framework",
+        "Python"
+      ],
+      "summary": "Open-source AI orchestration framework for building context-engineered, production-ready LLM applications. Design modular pipelines and agent workflows with explicit control over retrieval, routing, memory, and generation. Built for scalable agents, RAG, multimodal applications, semantic search, and conversational systems.",
+      "authors": [
+        "deepset-ai"
+      ],
+      "publishedAt": "2026-09-30T22:51:51+08:00",
+      "knowledgeType": "project",
+      "why": "归属「Agent 理论与实践」方向；命中关键词 agent、agentic、memory；GitHub 26635 stars；疑似附带开源实现",
+      "relevanceScore": 73.8,
+      "qualitySignals": {
+        "stars": 26642,
+        "forks": 3220,
+        "codeAvailable": true
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "missing": [
+        "formulas"
+      ],
+      "backfillWeight": 1.0,
+      "existingEnrichment": {
+        "id": "cbfe6087f9c43604",
+        "tldr": "Haystack：开源 LLM 应用编排框架，用模块化 pipeline 显式控制检索、路由、记忆与生成。",
+        "keyPoints": [
+          "开源 AI 编排框架，目标是构建经上下文工程、可上生产的 LLM 应用。",
+          "以模块化 pipeline 与 agent 工作流为组织方式。",
+          "对检索、路由、记忆与生成提供显式控制，而非藏在黑盒里。",
+          "面向可扩展 agent、RAG、多模态应用、语义检索与对话系统。"
+        ],
+        "why": "工业 RAG 与 Agent 岗几乎都在用编排框架，读懂它的组件与显式控制模型是上手真实项目的最短路径。",
+        "difficulty": "easy",
+        "tags": [
+          "agent-framework",
+          "rag",
+          "orchestration",
+          "python",
+          "context-engineering"
+        ],
+        "entities": [
+          "Haystack",
+          "deepset-ai",
+          "RAG",
+          "LLM pipelines",
+          "agents"
+        ],
+        "diagram": {
+          "kind": "architecture",
+          "title": "Haystack 的模块化编排分层",
+          "caption": "记住这张图：把 LLM 应用拆成可替换组件，用 pipeline 显式规定数据怎么流。",
+          "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Haystack 模块化编排分层图'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>应用层</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>RAG 问答与语义检索</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>编排层</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>模块化 pipeline 与路由</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>组件层</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>检索与生成与记忆可替换</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>上下文工程</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>显式控制进入模型的内容</text>\n</svg>",
+          "spec": {
+            "type": "architecture",
+            "nodes": [
+              {
+                "label": "应用层",
+                "detail": "RAG、语义检索、对话系统与多模态应用"
+              },
+              {
+                "label": "编排层",
+                "detail": "模块化 pipeline 与 agent 工作流、路由"
+              },
+              {
+                "label": "组件层",
+                "detail": "检索、记忆、生成等可替换模块"
+              },
+              {
+                "label": "上下文工程",
+                "detail": "显式控制送入模型的内容"
+              }
+            ],
+            "edges": [
+              {
+                "from": 0,
+                "to": 1,
+                "label": "以 pipeline 组织"
+              },
+              {
+                "from": 1,
+                "to": 2,
+                "label": "按模块装配"
+              },
+              {
+                "from": 2,
+                "to": 3,
+                "label": "决定上下文构成"
+              },
+              {
+                "from": 1,
+                "to": 0,
+                "label": "面向生产部署"
+              }
+            ]
+          },
+          "alt": "四层架构：应用层、编排层、组件层与上下文工程，展示 Haystack 用模块化 pipeline 显式控制检索、路由、记忆与生成。"
+        },
+        "concepts": [
+          {
+            "name": "模块化 Pipeline 编排 Modular Pipeline Orchestration",
+            "readable": "Haystack 把 LLM 应用拆成一个个独立组件：取文档的、切块的、做检索的、做路由的、生成答案的。你把这些组件连成一张有向图（pipeline），数据按边从上游流到下游。要换向量库或换模型，只替换对应节点，其他部分不动。",
+            "analogy": "像用标准接口的音响套装：功放、唱机、音箱各自独立，想升级音箱只换音箱，线材和功放都不用动。套装组合式的一体机反而升级时得整台扔掉。",
+            "analogyBreaksDown": "音响的接口是行业标准且信号语义单一，而 pipeline 节点之间的数据结构更松，换一个检索组件后返回字段可能对不上，仍需要改下游的连接与适配代码；组件兼容性并不像硬件那样有强制标准。",
+            "mechanism": "关键设计是把「控制流」显式写成图，而不是藏在某段长提示词或某个不可见的 agent 循环里。这样检索、路由、记忆、生成各自可观测、可替换、可单独测试，问题定位从「模型答错了」变成「第几个节点输出了什么」，这是它声称可上生产的原因。",
+            "visual": "画一张有向无环图：左侧是查询输入，中间并排画检索节点、路由节点、记忆节点，右侧是生成节点与答案输出。每个节点画成圆角矩形并标注输入输出字段名，边用箭头连接。用不同底色区分「可替换组件」与「框架固定逻辑」，突出替换点。",
+            "prerequisites": [
+              "Python 包管理与虚拟环境",
+              "RAG 的基本流程（切块、嵌入、检索、生成）",
+              "LLM API 调用的基本形态"
+            ],
+            "selfTest": [
+              "模块化 pipeline 相比把所有逻辑写在一段提示词里，主要优势是什么？",
+              "如果要更换向量数据库，按这种架构需要改动哪些部分？",
+              "为什么「显式控制」对生产环境的故障定位特别重要？"
+            ],
+            "formula": ""
+          },
+          {
+            "name": "上下文工程 Context Engineering",
+            "readable": "指在设计阶段就明确规定「什么内容、以什么顺序、以多大篇幅进入模型的上下文」，而不是随手把检索结果拼进提示词。Haystack 把检索、路由与记忆都做成可控节点，等于把上下文的组装过程变成可检查、可调优的显式步骤。",
+            "analogy": "像给编辑交稿前排版：不是把所有素材一股脑塞进版面，而是决定哪条放头条、哪条做侧栏、哪条删掉。版面的说服力取决于取舍，而不是素材总量。",
+            "analogyBreaksDown": "排版的效果可以靠读者反馈直接判断，而上下文的取舍效果要通过模型输出间接推断，且存在大量与任务无关的冗余内容照样能答对的情况，使得「少了会更好」这一直觉并不总成立。",
+            "mechanism": "关键设计是把上下文的每个来源（检索片段、记忆、工具返回）都做成带明确输入输出的节点，从而能单独计量与替换。它解决的是 RAG 系统里最难排查的一类问题：答案错了到底是检索没召回，还是召回后被无关内容淹没了。",
+            "visual": "画一条横向的容量条代表上下文窗口，分成若干彩色区块：系统指令、对话记忆、检索片段、工具返回、用户问题。旁边并排画出「显式控制」与「全塞进去」两种分配，后者把大量灰色冗余块挤进来，挤掉了关键片段。",
+            "prerequisites": [
+              "提示工程的基本经验",
+              "检索召回与排序的评价指标",
+              "上下文窗口与成本的基本权衡"
+            ],
+            "selfTest": [
+              "上下文工程与提示工程的区别在哪？",
+              "为什么说「检索没召回」和「召回被淹没」需要不同的排查手段？",
+              "上下文里内容越多是否越容易答对？为什么？"
+            ],
+            "formula": ""
+          }
+        ],
+        "formulas": [],
+        "selfCheck": {
+          "claims": [
+            "该项目自述为开源 AI 编排框架，用于构建经上下文工程、可上生产的 LLM 应用。",
+            "该项目自述支持设计模块化 pipeline 与 agent 工作流。",
+            "该项目自述对检索、路由、记忆与生成提供显式控制。",
+            "该项目自述面向可扩展 agent、RAG、多模态应用、语义检索与对话系统。"
+          ],
+          "uncertain": [
+            "仓库摘要为简短项目介绍，未给出任何实现细节、基准数值或对比结论，因此本文不含公式与定量断言。",
+            "许可证、活跃维护状态、依赖与版本要求等工程细节需核对仓库页面，摘要未提及。",
+            "摘要列出的能力（多模态、记忆、路由）在具体版本中的成熟度无法从摘要判断。"
+          ]
+        },
+        "teaching": {
+          "progressive": [
+            {
+              "level": "一句话",
+              "text": "一个把 LLM 应用拆成可替换零件、再连成流水线的开源框架。"
+            },
+            {
+              "level": "入门",
+              "text": "做 LLM 应用时，检索、切块、路由、记忆、生成这些步骤常常被写成一团。Haystack 把它们拆成独立组件，再连成有向图式的 pipeline，数据从上游流到下游。好处是换向量库或换模型时只动对应节点，出问题时也能看出是哪一步的输入输出不对。"
+            },
+            {
+              "level": "进阶",
+              "text": "它的定位是编排框架：既支持模块化 pipeline，也支持 agent 工作流，并强调对检索、路由、记忆与生成有显式控制，也就是所谓上下文工程。这意味着上下文的组装过程是可见的步骤，而不是塞进一大段提示词里靠模型自己找。适用场景包括可扩展 agent、RAG、多模态应用、语义检索与对话系统。"
+            },
+            {
+              "level": "专家",
+              "text": "把它和端到端 agent 框架对比：后者把控制流交给模型的自主循环，写起来快但难以定位失败环节；Haystack 选择显式的图结构，牺牲一部分灵活性换取可观测性与可替换性，这让它更适合需要上生产的 RAG 与检索型系统。代价是你要自己设计好节点边界与数据契约，节点划分不当会带来大量胶水代码。判断是否采用它，关键看你的系统是「检索与路由逻辑为主」还是「开放式自主决策为主」。"
+            }
+          ],
+          "socratic": [
+            {
+              "q": "如果不用框架，自己用函数串起检索与生成，会缺什么？",
+              "a": "短期能跑通，但缺少统一的组件接口与数据契约，换模型或换检索器要改多处代码，也缺少对每一步输入输出的观测，生产环境定位问题会变得很慢。"
+            },
+            {
+              "q": "为什么「显式控制」比让模型自主决定检索更好用？",
+              "a": "显式控制让检索、路由、记忆成为可单独测试与替换的步骤。模型自主决策灵活但在出错时难以复现和归因，且成本和延迟不可控，不适合需要稳定性的生产系统。"
+            }
+          ],
+          "mechanism": "它的设计动因是 LLM 应用的主要故障不在模型本身，而在上下文组装：该召回的没召回、召回了却被无关内容挤掉、路由走错分支。把这些环节做成显式的、有明确输入输出的节点，等于给系统装了观测点，每个环节都能单独评测和替换，从而把不可调试的端到端黑盒拆成可定位的流水线。",
+          "boundary": "当任务需要高度开放的自主决策、步骤无法预先枚举时，显式图结构会成为束缚，你得不断为模型的新行为加节点，反而不如自主 agent 循环。对只需要单次 LLM 调用的极简应用，引入框架的抽象成本高于收益。仓库摘要未给出版本与性能信息，选型前需要自行验证维护状态与生态成熟度。",
+          "analogyBoundary": "音响套装的类比假设接口有强制标准、信号语义单一。pipeline 节点之间的数据契约由框架约定而非物理强制，替换组件后字段结构可能不匹配，仍需适配代码；组件越多，胶水与版本冲突的风险也越高。",
+          "misconceptions": [
+            "把 Haystack 当成又一个 agent 自主循环框架；它的重点恰恰是把控制流显式化，而非交给模型自主决定。",
+            "以为用了框架就自动获得生产可用性；上下文策略、评测与监控仍要自己设计。",
+            "把「多模态」「记忆」等摘要列出的能力当成开箱即用的成熟功能，具体版本成熟度需自行核实。"
+          ],
+          "ownAnalysis": "（推断）Haystack 与 LangChain 属于同一类定位，差别在编排哲学：它更强调显式 pipeline 与可观测控制，LangChain 早期更偏向链式与 agent 抽象，这种取向差异决定了调试体验。可疑处在于仓库摘要极简，没有任何版本、性能或对比信息，单凭摘要无法判断其当前相对同类框架的优势；并且「显式控制」在组件数量增长后同样会带来图复杂度上升的问题，需要靠约定与工具链缓解。",
+          "officialNotes": [
+            {
+              "position": "项目自述为用于构建上下文工程化、可上生产 LLM 应用的开源 AI 编排框架，支持模块化 pipeline 与 agent 工作流，并对检索、路由、记忆与生成提供显式控制。",
+              "source": "https://github.com/deepset-ai/haystack"
+            }
+          ],
+          "interviewAnswer": "Haystack 是 deepset 开源的一个 LLM 应用编排框架。它的核心设计是模块化 pipeline：把检索、路由、记忆、生成拆成独立组件，连成有向图，数据按边流动。相比把逻辑写进一大段提示词，这种方式换组件更容易，也更可观测，因为每一步的输入输出都能单独检查。它强调上下文工程，也就是显式决定什么内容进入模型上下文。适用场景是 RAG、语义检索、多模态应用和对话系统这类检索与路由逻辑为主的系统；如果是开放式自主决策，显式图结构反而会变成束缚。",
+          "studyPath": {
+            "prerequisites": [
+              "Python 与包管理",
+              "RAG 基本流程（切块、嵌入、检索、生成）",
+              "提示工程与上下文窗口常识"
+            ],
+            "nextSteps": [
+              "浏览仓库 README 与示例 pipeline，跑通一个最小 RAG",
+              "对比 LangChain、LlamaIndex 的编排抽象差异",
+              "补充检索评测与上下文压缩的工程实践"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "f92d0f5913e59e39",
+      "title": "sgl-project/sglang - SGLang is a high-performance serving framework for large language models and multimodal models.",
+      "category": "engineering",
+      "channel": "github",
+      "url": "https://github.com/sgl-project/sglang",
+      "sources": [
+        {
+          "url": "https://github.com/sgl-project/sglang",
+          "name": "github"
+        }
+      ],
+      "tags": [
+        "attention",
+        "blackwell",
+        "cuda",
+        "deepseek",
+        "diffusion",
+        "glm",
+        "gpt-oss",
+        "inference",
+        "Python"
+      ],
+      "summary": "SGLang is a high-performance serving framework for large language models and multimodal models.",
+      "authors": [
+        "sgl-project"
+      ],
+      "publishedAt": "2026-10-01T00:09:26+08:00",
+      "knowledgeType": "project",
+      "why": "归属「工程与系统」方向；命中关键词 inference、serving、sglang、cuda；GitHub 36685 stars；疑似附带开源实现",
+      "relevanceScore": 82.8,
+      "qualitySignals": {
+        "stars": 36718,
+        "forks": 9275,
+        "codeAvailable": true
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "missing": [
+        "formulas"
+      ],
+      "backfillWeight": 1.0,
+      "existingEnrichment": {
+        "id": "f92d0f5913e59e39",
+        "tldr": "SGLang：面向 LLM 与多模态模型的高性能推理服务框架，GitHub 开源。",
+        "keyPoints": [
+          "定位：LLM 与多模态模型的高性能服务框架。",
+          "在 GitHub 开源，采集层标注代码可获取。",
+          "标签覆盖 attention、cuda、blackwell 等方向。",
+          "标签含 deepseek、glm、gpt-oss、diffusion。",
+          "采集层相关度 84.8，为本批四条最高。"
+        ],
+        "why": "服务框架是推理工程岗必修课；看懂「高性能」背后的吞吐—延迟权衡，才能做部署选型与压测。",
+        "difficulty": "medium",
+        "tags": [
+          "inference",
+          "cuda",
+          "attention",
+          "blackwell",
+          "diffusion",
+          "deepseek"
+        ],
+        "entities": [
+          "SGLang",
+          "DeepSeek",
+          "GLM",
+          "gpt-oss"
+        ],
+        "diagram": {
+          "kind": "architecture",
+          "title": "SGLang 的定位分层",
+          "caption": "本图只呈现摘要与标签给出的范围，不代表具体调度实现。",
+          "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='SGLang 定位分层：模型层、服务层、负载线索、硬件线索'><rect x='40' y='16' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>模型层：LLM 与多模态</text><text x='424' y='40' font-size='13' text-anchor='end' fill='currentColor'>摘要的定位对象</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='40' y='70' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>服务层：SGLang</text><text x='424' y='94' font-size='13' text-anchor='end' fill='currentColor'>高性能服务框架</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='40' y='124' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>负载线索：标签</text><text x='424' y='148' font-size='13' text-anchor='end' fill='currentColor'>deepseek / glm / gpt-oss</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='40' y='178' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>硬件线索：标签</text><text x='424' y='202' font-size='13' text-anchor='end' fill='currentColor'>cuda / blackwell / attention</text></svg>",
+          "spec": {
+            "type": "architecture",
+            "nodes": [
+              {
+                "label": "模型层",
+                "detail": "大语言模型与多模态模型（摘要原文）"
+              },
+              {
+                "label": "服务层",
+                "detail": "SGLang 高性能服务框架，GitHub 开源"
+              },
+              {
+                "label": "负载线索",
+                "detail": "标签指向 deepseek / glm / gpt-oss / diffusion"
+              },
+              {
+                "label": "硬件线索",
+                "detail": "标签指向 cuda / blackwell / attention"
+              }
+            ],
+            "edges": [
+              {
+                "from": 0,
+                "to": 1,
+                "label": "被服务"
+              },
+              {
+                "from": 1,
+                "to": 2,
+                "label": "承载"
+              },
+              {
+                "from": 2,
+                "to": 3,
+                "label": "落到硬件"
+              }
+            ]
+          },
+          "alt": "四层结构自上而下：模型层（LLM 与多模态）、服务层（SGLang）、标签给出的负载线索、标签给出的硬件线索。"
+        },
+        "concepts": [
+          {
+            "name": "推理服务框架（Inference Serving Framework）",
+            "readable": "模型训练完之后，真正对外提供服务的那一层软件。它决定请求怎么排队、怎么合并成批、KV 缓存怎么复用、显存怎么分配，从而决定同一个模型能扛多少并发、延迟多少。",
+            "analogy": "像写字楼的电梯调度系统：电梯（GPU）就那几部，调度算法决定高峰期大家等多久；调度不改变你要去的楼层，也就是不改变模型输出。",
+            "analogyBreaksDown": "电梯乘客彼此独立且需求可预测，而 LLM 请求的长度与耗时差异极大——一个长上下文请求可能占用几十倍时间，调度更像「每单体积随机的货运」；另外服务框架要管显存这个硬上限，电梯类比里没有对应物。",
+            "mechanism": "关键设计选择是「批处理 vs 延迟」的权衡：把多路请求拼批能提高 GPU 利用率（吞吐），但先到的请求必须等待凑批（尾延迟上升）。摘要未说明 SGLang 采用何种策略，这里只描述所有服务框架共有的取舍。",
+            "visual": "画一张双轴图：横轴是并发请求数，左纵轴是每秒生成 token 数（吞吐），右纵轴是 P99 延迟；同一框架画两条曲线，再叠加不同批处理窗口大小下的若干组点，展示窗口越大吞吐越高、P99 越差。",
+            "prerequisites": [
+              "Transformer 前向计算过程",
+              "KV 缓存是什么",
+              "吞吐、延迟与尾延迟的定义"
+            ],
+            "selfTest": [
+              "为什么不批处理时 GPU 利用率低？",
+              "首 token 延迟与每 token 延迟分别受什么影响？",
+              "长上下文请求为什么会拉低并发能力？"
+            ],
+            "formula": ""
+          },
+          {
+            "name": "多模态服务负载（Multimodal Serving Workload）",
+            "readable": "服务框架要同时承载两类负载：视觉编码器对图像或视频做一次较重的编码，语言模型再自回归解码。两者算力与显存特征不同，混在一起会带来纯文本场景没有的调度麻烦。",
+            "analogy": "像一个厨房同时接「现炒的菜」和「提前炖好的汤」：出锅时间不同、灶台占用方式不同，硬排在同一条流水线上就会互相堵。",
+            "analogyBreaksDown": "厨房里菜品可以分窗口排队互不干扰，而多模态请求在 GPU 上往往共享同一份显存池，图像编码产生的显存峰值会直接挤掉并发的文本请求，这种耦合在厨房类比里不存在。",
+            "mechanism": "关键取舍是编码与解码要不要分池调度：图像编码适合大 batch、次数少，解码是长尾的小步推进。摘要没有给出 SGLang 的任何实现细节，因此这里只指出问题的存在，不声称它的解法。",
+            "visual": "画一条时间轴：上方是图像编码（短而高的算力块），下方是逐 token 解码（长而低的小块），用颜色区分；再把两类任务分别串行调度与混合调度画成上下两条时间轴，直观看出 GPU 空转发生在哪里。",
+            "prerequisites": [
+              "视觉编码器（ViT）基本结构",
+              "自回归解码流程",
+              "批处理与显存占用的关系"
+            ],
+            "selfTest": [
+              "多模态请求为什么比纯文本更容易打乱批处理？",
+              "为什么图像编码适合大 batch 而解码不适合？",
+              "显存峰值最可能出现在哪一步，为什么？"
+            ],
+            "formula": ""
+          }
+        ],
+        "formulas": [],
+        "selfCheck": {
+          "claims": [
+            "SGLang 的定位是面向大语言模型与多模态模型的高性能服务框架（摘要原文）。",
+            "入口为 GitHub 仓库，采集层标注代码可获取。",
+            "标签覆盖 attention、cuda、blackwell、diffusion、deepseek、glm、gpt-oss、inference。",
+            "采集层相关度 84.8、深度分 60.25，相关度为本批四条最高。"
+          ],
+          "uncertain": [
+            "摘要未给吞吐、延迟、显存等任何性能数字，「高性能」的宣称待查仓库文档与 benchmark。",
+            "支持的硬件后端、模型清单与部署方式均未在摘要中出现，待核实。",
+            "（推断）连续批处理、KV 缓存复用、前缀缓存等常见机制未出现在摘要里，本条只作通用背景描述。"
+          ]
+        },
+        "teaching": {
+          "progressive": [
+            {
+              "level": "一句话",
+              "text": "SGLang 是一个跑大模型和多模态模型的高性能服务框架。"
+            },
+            {
+              "level": "入门",
+              "text": "它的角色是「推理服务员」：模型权重已经训练好，SGLang 负责把用户请求高效地送到 GPU 上算完再返回。摘要只给出这一定位——高性能、支持 LLM 与多模态模型，并放在 GitHub 开源；具体调度与缓存设计需要看仓库文档。"
+            },
+            {
+              "level": "进阶",
+              "text": "从工程角度，服务框架的价值在于把「单次前向」变成「多路请求共享一次前向」：常见手段包括连续批处理、KV 缓存复用与算子优化，但摘要完全没有提这些机制，本条的相关描述属于通用背景。标签里的 attention、cuda、blackwell 指向底层算子与硬件优化方向，deepseek、glm、gpt-oss、diffusion 指向它宣称覆盖的模型族。"
+            },
+            {
+              "level": "专家",
+              "text": "评估一个服务框架要看四条曲线：吞吐随并发的变化、首 token 与总延迟的分布、长上下文下的显存占用、前缀复用率对成本的影响。摘要只告诉你 SGLang 定位在这条赛道上，没有任何曲线数据，因此面试中引用它时应说「它是主流开源服务框架之一」，而不是断言它某项指标领先。"
+            }
+          ],
+          "socratic": [
+            {
+              "q": "为什么不能只看「高性能」这句话就选型？",
+              "a": "因为吞吐与延迟是两条轴：批处理拉高吞吐会推高单请求延迟，在线对话与离线批推的最优工作点完全不同，必须看具体曲线。"
+            },
+            {
+              "q": "多模态支持会给服务框架带来什么额外负担？",
+              "a": "视觉编码器与自回归解码的计算特性不同，输入长度和显存峰值差异大，统一服务要处理两种负载的调度与显存碎片，这是纯文本框架没有的问题。"
+            }
+          ],
+          "mechanism": "服务框架之所以必须存在，是因为单请求推理会把 GPU 算力浪费在等待上：算力远超访存带宽能喂饱的量，只有把多路请求拼成批次、复用已有 KV 缓存，才能把硬件吃满。摘要没有描述 SGLang 的具体做法，所以这里只能回答「为什么需要服务框架」这个通用问题，而不是它的实现。",
+          "boundary": "本条边界很清楚：摘要只有一句话，没有模型清单、没有 benchmark、没有版本与硬件要求，因此支撑不了任何选型结论。另外「高性能」通常有前提——特定硬件、特定模型、特定序列长度下测得，跨场景未必成立，必须自行复现。",
+          "analogyBoundary": "「餐厅服务员」的类比只讲了分工，没讲代价：真实服务里批处理会把不同请求绑在同一次前向，先到的请求要等后到的凑批，于是吞吐提升换来了尾延迟；类比也掩盖了 KV 缓存占显存、长上下文请求会挤掉并发这一关键约束。",
+          "misconceptions": [
+            "把服务框架当成推理加速库，以为它会改模型权重或改变输出质量。",
+            "看到「支持多模态」就以为文本与视觉负载可以无差别共用同一套调度。",
+            "把「高性能」当作跨硬件、跨模型的普适结论。"
+          ],
+          "ownAnalysis": "（推断）从标签组合（blackwell、cuda、attention）看，这个仓库紧跟新硬件与注意力内核优化；标签里同时出现 deepseek、glm、gpt-oss、diffusion，说明它把「新模型发布即能服务」当作卖点，这在工程岗面试里是可展开的运维视角。可疑处：作为流水线卡片，本条摘要信息量几乎为零，任何深入结论都必须回到 README 与 benchmark 页面核实。",
+          "officialNotes": [
+            {
+              "position": "仓库自述：SGLang is a high-performance serving framework for large language models and multimodal models.",
+              "source": "https://github.com/sgl-project/sglang"
+            }
+          ],
+          "interviewAnswer": "我会这样介绍 SGLang：它是开源的高性能推理服务框架，目标是把 LLM 和多模态模型的请求高效地摊到 GPU 上。选型时我不看「高性能」这种形容词，而是自己压测四条曲线——吞吐随并发、首 token 与尾延迟、长上下文显存、前缀缓存命中率，再和同赛道框架在相同硬件与模型上对比。它对新模型与新硬件的跟进速度，也是工程上很实际的加分项。",
+          "studyPath": {
+            "prerequisites": [
+              "Transformer 推理与前向计算",
+              "KV 缓存与批处理概念",
+              "CUDA 与显存的基本常识"
+            ],
+            "nextSteps": [
+              "读 SGLang 仓库文档与相关论文",
+              "在同一硬件上与其他服务框架对比",
+              "压测并画出吞吐—延迟曲线"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

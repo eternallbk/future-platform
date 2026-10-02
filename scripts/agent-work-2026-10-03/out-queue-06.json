@@ -1,0 +1,1010 @@
+{
+  "batchId": "queue-06",
+  "entries": [
+    {
+      "id": "a2675c908b72c1ca",
+      "tldr": "关键词式工具调用评测会误判：600M 与 1B 在宽松指标上几乎打平，廉价严格诊断能把它们完全分开。",
+      "keyPoints": [
+        "宽松工具调用指标上 600M 得 0.660、1B 得 0.650，几乎打平",
+        "逐字复现训练样例：600M 有 6/6 生成合法调用，1B 各检查点均 0/6",
+        "首 token 探针把 1B 失败定位为缺失触发先验（约 1e-4~1e-5）",
+        "该先验被网页为主的多阶段课程训练抹掉",
+        "定向 SFT 后 269 行语料合法率 0.100→0.959；238 条未见提示 0.536 超 600M 的 0.428"
+      ],
+      "why": "对做后训练与小模型落地的求职者：先证明模型真的会调用工具再谈指标，否则 SFT 与评测结论都站不住。",
+      "difficulty": "medium",
+      "tags": [
+        "tool-use",
+        "sft",
+        "evaluation",
+        "small-models",
+        "diagnostics",
+        "post-training"
+      ],
+      "entities": [
+        "661.6M Spanish security LM",
+        "1,109M curriculum LM",
+        "first-token probe",
+        "tool-SFT",
+        "B4"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "廉价诊断阶梯",
+        "caption": "先用分钟级严格诊断确认工具调用是真的，再相信宽松指标给的分数。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='廉价工具调用诊断阶梯四层流程'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>宽松指标</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>B4 0.660 对 0.650 打平</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>逐字复现</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>600M 6/6，1B 0/6</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>首 token 探针</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>触发先验 1e-4~1e-5 被抹掉</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>定向 SFT 修复</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>269 行合规率 0.100 到 0.959</text>\n</svg>",
+        "alt": "四层流程：宽松指标打平，逐字复现分开两模型，首 token 探针定位缺失先验，定向 SFT 修复到 0.959。"
+      },
+      "concepts": [
+        {
+          "name": "Tool-Use Claim Gate（工具调用声明准入门槛）",
+          "readable": "在相信某个小模型会调用工具之前，先设一道低成本门槛：用严格诊断把假阳性筛掉，再接受宽松基准给出的分数。",
+          "analogy": "像用酒精测试仪复核一句我没喝酒：先看能不能走直线（宽松指标人人过关），再吹一口气看数值。",
+          "analogyBreaksDown": "酒精测试有一次性物理真值；工具调用是多步序列，模型可能触发对但参数错，或参数对却在不该调时调，单一门槛覆盖不到这些失败模式。",
+          "mechanism": "把评测拆成阶梯：先看宽松指标是否区分得开模型，再用训练样例逐字复现要求真实调用，最后用首 token 对数概率区分缺的是触发先验还是格式能力。",
+          "visual": "横轴为诊断成本（分钟级 CPU 到 GPU 小时），纵轴为判别力；宽松指标是一条几乎水平的线，逐字复现与首 token 探针把两条模型曲线明显拉开。",
+          "prerequisites": [
+            "语言模型解码与对数概率基础",
+            "SFT 与特殊 token 概念",
+            "会读基准指标"
+          ],
+          "selfTest": [
+            "宽松指标打平为什么不能直接推出能力相当？",
+            "三步阶梯各能排除哪一类假阳性？",
+            "为什么修复后仍要报告误触发率？"
+          ],
+          "formula": "p_\\theta(t_{\\mathrm{trig}}\\mid x)=\\mathrm{softmax}(W h_1)[t_{\\mathrm{trig}}]"
+        },
+        {
+          "name": "First-Token Probe（首 token 先验探针）",
+          "readable": "只看模型解码第一步时给出触发 token 的概率，用来判断它到底有没有该调工具这个先验，而不是会不会写格式。",
+          "analogy": "像看一个人接电话前手有没有往口袋伸：看第一步的动作，而不是等他聊完再回头评价。",
+          "analogyBreaksDown": "伸手只是必要条件，工具调用还要求后续参数合法且结果可用；首步概率高但整个调用仍可能失败。",
+          "mechanism": "在提示末尾取第一个位置的 logits 做 softmax，读取触发 token 的概率；这个量与训练课程是否保留触发先验直接相关，成本远低于完整评测。",
+          "visual": "一条横向的概率轴，词表里触发 token 用一个标记点表示；正常模型该点靠右（约 1e-2 量级），被抹掉先验的 1B 该点压到最左端（1e-4~1e-5）。",
+          "prerequisites": [
+            "softmax 与 logits 含义",
+            "自回归解码逐步生成",
+            "特殊 token 与工具调用格式"
+          ],
+          "selfTest": [
+            "为什么取第一个解码位置而不是整句似然？",
+            "首步概率低可能由哪些原因造成？",
+            "修复后这个概率不变说明什么？"
+          ],
+          "formula": "p_\\theta(t_{\\mathrm{trig}}\\mid x)=\\mathrm{softmax}(W h_1)[t_{\\mathrm{trig}}]"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-first-token-trigger-prior",
+          "name": "首 token 触发先验探针（First-Token Trigger Prior Probe）",
+          "category": "posttraining",
+          "latex": "p_\\theta(t_{\\mathrm{trig}}\\mid x)=\\Big[\\mathrm{softmax}\\big(W h_1(x)\\big)\\Big]_{t_{\\mathrm{trig}}}",
+          "symbols": [
+            [
+              "x",
+              "输入提示与工具调用上下文"
+            ],
+            [
+              "h_1(x)",
+              "解码第一步的隐状态"
+            ],
+            [
+              "W",
+              "隐状态到词表的输出投影"
+            ],
+            [
+              "t_trig",
+              "触发工具调用的起始 token"
+            ],
+            [
+              "p_theta",
+              "模型在首步就吐出触发 token 的概率"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：动机。若模型从未学会该调工具了，它在第一步就不会把触发 token 的概率抬起来，而宽松的字符串匹配指标看不出这一点。",
+            "第 2 步：在提示末尾做一次前向，取第一个解码位置的 logits，经 softmax 得到整张词表上的分布。",
+            "第 3 步：读出触发 token 的概率。摘要报告 1B 的该概率约为 1e-4~1e-5，说明缺的是触发先验，而不是格式写不出来。",
+            "第 4 步：修复后再测该概率。摘要的嵌入漂移检查显示触发 token 的 tied embedding 未变、bf16 表 97.7% 位级相同，说明增益来自周边网络而非词向量。"
+          ],
+          "analogy": "像观察一个人接电话前有没有伸手去口袋：只看第一步的动作，不必等整通电话打完。",
+          "pitfalls": [
+            "把首步概率低当成分词或词表问题，实际是训练课程把先验洗掉了",
+            "用整句似然代替首步概率，格式与长度因素会把信号稀释",
+            "假定触发 token 只有一个字符串，工具名或特殊标记可能是多个候选"
+          ],
+          "code": "import torch, torch.nn.functional as F\nlogits = model(input_ids).logits[0, -1]      # 第一个解码位置\np = F.softmax(logits.float(), dim=-1)\nprint('trigger prior =', float(p[trigger_token_id]))",
+          "sources": [
+            {
+              "title": "Keyword Harnesses Fail Open: A Cheap Diagnostic Ladder for Tool-Use Claims in Small Language Models",
+              "url": "https://arxiv.org/abs/2610.02142v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "一对共享解码器、分词器与特殊 token 的西班牙语安全模型：661.6M（约 65% 代码与技术文本，无专门 SFT）与 1,109M（网页为主的多阶段课程，6B token 工具 SFT）",
+          "宽松工具调用指标 B4：600M 得 0.660，1B 得 0.650",
+          "逐字复现训练样例：600M 在 6/6 例子上生成带泛化参数的合法调用，1B 在所有检查点上 0/6",
+          "首 token 探针把 1B 的失败定位为缺失先验，概率约 1e-4~1e-5，该先验被网页为主的训练阶段抹掉",
+          "定向 SFT 配置为多样语料、5 倍更高学习率、2,202 步、约 3.3 GPU 小时，token 量比失败阶段少三个数量级",
+          "269 行语料合法生成率 0.100 提升到 0.959（600M 为 0.926）；238 条未见提示上 0.536 对 0.428，p = 0.004",
+          "嵌入漂移检查：触发 token 的 tied embedding 未移动，bf16 词表 97.7% 位级相同",
+          "两模型都过度触发：负向提示下不发起调用直接回答的比例为 600M 0.09、修复后 1B 0.17"
+        ],
+        "uncertain": [
+          "摘要中『prob. 1e-4--1e-5 on )』处被截断，该概率所对应的具体 token 或位置需核对原文",
+          "诊断阶梯的正式步骤命名与判据阈值未在摘要给出，本文按宽松指标、逐字复现、首 token 探针、定向 SFT 四步复述",
+          "公式为按摘要语义重建的通用形式，需核对原文",
+          "codeAvailable 标记为 true，但本条目 sources 中没有代码链接，实现是否公开待核实",
+          "多样化语料带来过度触发抑制的收益，摘要自承因种子敏感仍属假设"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "宽松指标说两个模型一样行，严格检查发现其中一个根本不会调工具。"
+          },
+          {
+            "level": "入门",
+            "text": "作者对比一对共享解码器、分词器和特殊 token 的西班牙语安全模型：600M 与 1B。在宽松的工具调用指标上二者几乎打平（0.660 对 0.650）。但把训练样例逐字重放，600M 有 6/6 生成合法调用，1B 在所有检查点上是 0/6，说明宽松指标给出了假阳性。"
+          },
+          {
+            "level": "进阶",
+            "text": "诊断阶梯分三步：先看宽松指标能否区分模型，再用训练样例逐字复现要求真实调用，最后用首 token 概率探针定位失败环节。探针显示 1B 缺的是触发先验（约 1e-4~1e-5），该先验被网页为主的多阶段课程训练抹掉。定向 SFT 用 2,202 步、约 3.3 GPU 小时、比失败阶段少三个数量级的 token 完成修复，269 行语料合法生成率从 0.100 升到 0.959。"
+          },
+          {
+            "level": "专家",
+            "text": "关键在于把会不会调工具拆成触发先验、格式生成、参数泛化三个可分别观测的能力。1B 的问题不是格式：修复时嵌入漂移检查显示触发 token 的 tied embedding 有 97.7% 位级不变，说明变化发生在周边网络而非词向量。修复后 238 条未见提示 0.536 超过 600M 的 0.428（p=0.004），但两者仍过度触发，负向提示下不调用直接回答的比例只有 0.09 与 0.17，说明安装格式与抑制误触发是两个问题；摘要也承认语料多样性带来的抑制收益因种子敏感仍是假设。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "如果不做逐字复现这一步会怎样？",
+            "a": "只看宽松指标会得出两个模型能力相当的结论，而 1B 实际上从未产出合法调用，后续 SFT 与评测都会建立在假阳性上。"
+          },
+          {
+            "q": "把首 token 探针换成整句似然行不行？",
+            "a": "整句似然把格式、参数和长度混在一起，看不出缺的是该不该调这一先验，也就无法解释为什么补一小批数据能修好。"
+          }
+        ],
+        "mechanism": "设计动机是让诊断成本与判别力匹配：宽松字符串匹配几乎免费但判别力差，完整人工评测准确却昂贵。首 token 概率既便宜又直接对应触发先验，而触发先验恰好会被网页为主的多阶段课程稀释，因此探针能把失败归因到训练课程而不是评测噪声。",
+        "boundary": "该阶梯针对小模型、格式可枚举的工具调用声明；面对开放式 agent 任务（长程规划、多工具组合）时逐字复现并不适用。摘要也只在一个架构对的西班牙语安全模型上演示，能否外推到更大模型或英文场景未经验证。",
+        "analogyBoundary": "酒精测试仪的类比假定存在一次性真值判定；工具调用是多步序列，模型可能触发正确但参数错，也可能参数对却在不该调时调，单次门槛覆盖不到这些失败模式。",
+        "misconceptions": [
+          "宽松指标高就说明会调工具：本案例中 1B 得 0.650 却 0/6 真调用。",
+          "修复靠改词表或重训 embedding：触发 token 嵌入 97.7% 位级不变，变化在周边网络。",
+          "合规率上去就等于工具调用可靠：两个模型都严重过度触发。"
+        ],
+        "ownAnalysis": "（推断）这条工作的方法论价值大于模型本身：它把关键词评测 fail open 具体化为一个可复现的假阳性案例，并给出触发先验缺失这一可检验的因果解释。可疑处在于修复配方包含多个同时变化的因素（语料多样性、5 倍学习率、2,202 步），摘要自承多样性带来的抑制收益因种子敏感仍属假设，因此哪一步真正起作用尚未分离。此外修复后仍过度触发，说明评测应同时报告漏触发与误触发两侧。",
+        "officialNotes": [
+          {
+            "position": "这套诊断阶梯只需分钟级 CPU 时间，应作为小模型工具调用声明的准入门槛",
+            "source": "arXiv 2610.02142v1 摘要"
+          }
+        ],
+        "interviewAnswer": "我关注小模型工具调用评测的可信度。这篇给了一个假阳性案例：600M 和 1B 在宽松指标上 0.660 对 0.650，但逐字复现训练样例时 600M 有 6/6 合法调用、1B 是 0/6。首 token 探针显示 1B 缺触发先验，被网页为主的课程训练抹掉了；定向 SFT 用少三个数量级的 token、约 3.3 GPU 小时修到 0.959，未见提示 0.536 反超 600M。所以我在报告工具调用能力前会先跑严格诊断。",
+        "studyPath": {
+          "prerequisites": [
+            "SFT 与特殊 token",
+            "语言模型解码与对数概率",
+            "基准指标解读"
+          ],
+          "nextSteps": [
+            "复现首 token 探针脚本",
+            "研究触发 token 与工具调用格式设计",
+            "调研误触发与过度调用评测"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ffccce0f53a7f7d2",
+      "tldr": "CARM 用 token 对数概率比的绝对值均值做序列级掩码，阻止正负漂移互相抵消，数学与代码基准各涨约 3 分。",
+      "keyPoints": [
+        "实践中 rollout 与训练引擎不同，采样回答会 off-policy，需要序列级掩码",
+        "常见规则用长度归一化的概率比几何平均，带符号对数比会跨位置抵消",
+        "CARM 先对每个 token 的对数比取绝对值再平均，暴露双向漂移",
+        "证明被接受的回答满足越界比例与平均越界距离的联合上界",
+        "AIME 系 mean@16 最多提升 3.13 点，四个代码基准 pass@1 平均提升 2.88 点"
+      ],
+      "why": "做 RLHF 或 RLVR 后训练的求职者需知道：掩码规则直接决定哪些轨迹进梯度，CARM 给出可证明的漂移控制。",
+      "difficulty": "hard",
+      "tags": [
+        "rl",
+        "post-training",
+        "off-policy",
+        "masking",
+        "reasoning"
+      ],
+      "entities": [
+        "CARM",
+        "geometric-mean masking",
+        "AIME 2024/2025/2026",
+        "BeyondAIME"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "CARM 掩码判据",
+        "caption": "关键是先取绝对值再平均，否则正负漂移会互相抵消、把最危险的样本判成最合规。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='CARM 序列级掩码四层流程'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>rollout 采样</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>与训练引擎版本不同</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>逐 token 概率比</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>带符号对数比可正可负</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>掩码判据</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>几何平均抵消，CARM 取绝对值</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>序列级接受</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>越界比例与距离有联合界</text>\n</svg>",
+        "alt": "四层流程：rollout 采样偏离训练引擎，逐 token 概率比有正负，掩码判据从几何平均改为绝对值均值，最终接受集合带联合界。"
+      },
+      "concepts": [
+        {
+          "name": "Off-Policy Drift Cancellation（off-policy 漂移抵消）",
+          "readable": "采样引擎与训练引擎不同，采样出的回答已经偏离当前策略；若把每个 token 的对数概率比带符号求平均，一升一降会互相抵消，漂移被藏起来。",
+          "analogy": "像查账只看净流水：一边进 100 一边出 100，净额是 0，但钱其实已经动过了。",
+          "analogyBreaksDown": "收支可以精确相消，概率漂移不是金额：少量大幅越界的 token 与大量轻微越界在绝对值均值下不可区分，判据本身仍是有损的。",
+          "mechanism": "把长度归一化的判据从带符号对数比均值换成绝对值均值，让任何方向的偏离都累加；再配一个可证明的联合界，把越界比例与越界距离同时控制住。",
+          "visual": "一根从 -1 到 +1 的数轴，两个 token 的对数比一个落在 +0.8、一个落在 -0.8；带符号平均把它们拉到 0 附近（绿区），绝对值平均把条形长度相加推到红区。",
+          "prerequisites": [
+            "重要性采样与概率比",
+            "PPO 或 GRPO 类 RL 微调流程",
+            "off-policy 校正的基本直觉"
+          ],
+          "selfTest": [
+            "带符号对数比在什么情况下会互相抵消？",
+            "为什么抵消会让掩码放行最差的样本？",
+            "取绝对值失去了什么信息？"
+          ],
+          "formula": "M(\\tau)=\\mathbb{1}\\!\\left[\\frac{1}{T}\\sum_{t=1}^{T}\\left|\\log\\frac{\\pi_\\theta(y_t\\mid y_{<t})}{\\pi_\\mu(y_t\\mid y_{<t})}\\right|\\le\\delta\\right]"
+        },
+        {
+          "name": "Sequence-Level Masking（序列级掩码）",
+          "readable": "对整条回答做一次 0/1 决定，判断它是否参与这次优化，而不是逐个 token 缩放或裁剪梯度。",
+          "analogy": "像老师批改小组作业：要么整组计入成绩，要么整组不计，而不是给每个组员打不同的折扣。",
+          "analogyBreaksDown": "小组作业里成员贡献本可分别评价；序列级掩码恰恰放弃了这种精细度，一条回答里少数关键 token 的问题会否决整条样本。",
+          "mechanism": "序列级判据把优化目标限制在一个可证明的接受集合内，避免逐 token 权重带来的方差；代价是丢弃整条样本、降低有效 batch。",
+          "visual": "一叠候选回答卡片，每张上有一根掩码状态条；通过阈值的整张卡片变实色进入梯度，未通过的整张变虚色丢弃。",
+          "prerequisites": [
+            "策略梯度损失构成",
+            "ratio 与 clip 的作用",
+            "批大小对训练稳定性的影响"
+          ],
+          "selfTest": [
+            "序列级掩码与 token 级裁剪的区别是什么？",
+            "丢弃样本过多会带来什么后果？",
+            "为什么它需要配合可证明的接受条件？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-carm-abs-logratio-mask",
+          "name": "CARM 绝对值对数比序列掩码（Cancellation-Aware Response Mask）",
+          "category": "rl",
+          "latex": "M(\\tau)=\\mathbb{1}\\!\\left[\\frac{1}{T}\\sum_{t=1}^{T}\\left|\\log\\frac{\\pi_\\theta(y_t\\mid y_{<t})}{\\pi_\\mu(y_t\\mid y_{<t})}\\right|\\le\\delta\\right]",
+          "symbols": [
+            [
+              "\\tau",
+              "一条采样回答（序列）"
+            ],
+            [
+              "y_t",
+              "第 t 个采样 token"
+            ],
+            [
+              "\\pi_\\theta",
+              "当前训练策略"
+            ],
+            [
+              "\\pi_\\mu",
+              "产生该回答的 rollout 策略"
+            ],
+            [
+              "T",
+              "回答长度，用于长度归一化"
+            ],
+            [
+              "\\delta",
+              "可接受的平均越界幅度阈值"
+            ],
+            [
+              "M(\\tau)",
+              "序列级掩码，1 表示该回答参与优化"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：动机。rollout 引擎与训练引擎不一致会让回答 off-policy，需要决定整条回答是否进入优化。",
+            "第 2 步：常见规则取长度归一化的概率比几何平均，等价于对 log 比求带符号均值；正负项会互相抵消，掩盖双向漂移。",
+            "第 3 步：CARM 改为先取每个 token 对数比的绝对值再平均，使任何方向的偏离都单调累加，抵消不再可能。",
+            "第 4 步：给出联合界，被接受回答中落在预设区间外的样本 token 比例与它们的平均对数距离同时被约束，严格度因此可控。"
+          ],
+          "analogy": "像盘点库存时不看净增减，而把每一次进出货的绝对值都记一笔，避免大进大出被净额掩盖。",
+          "pitfalls": [
+            "把 CARM 当成重要性采样权重：它是 0/1 序列掩码，不缩放梯度",
+            "以为取绝对值等于放宽阈值：恰恰相反，抵消不再帮忙，掩码更难通过",
+            "忽略丢弃率：更严格的判据会减少有效样本，需与 batch 大小一起权衡"
+          ],
+          "code": "import torch\nlogp_new = policy.logprobs(tokens)      # 训练引擎\nlogp_old = rollout.logprobs(tokens)     # rollout 引擎\nlr = (logp_new - logp_old).abs()        # 关键：先取绝对值\nmask = (lr.mean() <= delta).float()     # 序列级硬掩码\nloss = -(mask * advantage).mean()",
+          "sources": [
+            {
+              "title": "CARM: Cancellation-Aware Response Masking for LLM Reinforcement Learning",
+              "url": "https://arxiv.org/abs/2610.02039v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "RL 已广泛用于 LLM 后训练，在数学推理与代码生成上有明显收益",
+          "实际系统中策略更新以及 rollout 与训练引擎的差异会让采样回答 off-policy",
+          "序列级掩码通过决定整条回答是否参与优化来处理这种不匹配",
+          "常见掩码规则使用采样 token 概率比的长度归一化几何平均，其带符号对数比会跨位置抵消，掩盖双向策略漂移",
+          "CARM 在平均之前对每个 token 的对数比取绝对值，防止相反的概率变化相消",
+          "作者证明被接受的回答满足越界样本 token 比例与其边界外平均对数距离的联合界",
+          "在 AIME 2024/2025/2026 与 BeyondAIME 上，mean@16 相对几何平均掩码最多提升 3.13 个百分点",
+          "四个代码基准上的平均 pass@1 相对最强被测基线提升 2.88 个百分点"
+        ],
+        "uncertain": [
+          "掩码阈值 delta 的具体取值与选取规则摘要未给出，公式中记为通用阈值",
+          "几何平均掩码基线的长度归一化实现细节未给出",
+          "联合界的具体数学形式为按摘要语义重建，需核对原文定理表述",
+          "mean@16 的采样条数与评测配置未给出",
+          "3.13 与 2.88 分属『最多』与『平均』表述，逐基准数值未列出"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "序列级掩码不该让正负概率漂移互相抵消，CARM 先取绝对值再平均。"
+          },
+          {
+            "level": "入门",
+            "text": "RL 后训练里采样引擎与训练引擎往往不是同一版本，采样出的回答会 off-policy。常见做法是按整条回答算一个长度归一化的概率比几何平均，超过阈值就丢掉。但每个 token 的对数比有正有负，平均起来会互相抵消，漂移被藏了起来。"
+          },
+          {
+            "level": "进阶",
+            "text": "CARM 对每个 token 的对数概率比先取绝对值再求平均，这样任何方向的漂移都会累加。作者证明被接受的回答满足一个联合界：越出预设区间的 token 比例与越界后的平均对数距离都被控制住。在 AIME 2024/2025/2026 与 BeyondAIME 上，mean@16 相比几何平均掩码最多提升 3.13 个百分点，四个代码基准平均 pass@1 比最强基线高 2.88 点。"
+          },
+          {
+            "level": "专家",
+            "text": "差异的根源是几何平均作用在带符号对数比上：一个 token 概率升、另一个降，平均后仍可能接近 0，掩码会放行一条已经严重 off-policy 的轨迹。取绝对值把判据从带符号平均漂移换成漂移幅度，代价是丢失方向信息且更严格。收益不只在数学域，四个代码基准平均 pass@1 高 2.88 点；但摘要未给阈值选择规则（待核实），实际部署要自己校准严格度与有效样本量的取舍，还需关注丢弃率对 batch 的影响。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "如果不取绝对值会怎样？",
+            "a": "正负对数比在求和时抵消，一条大幅双向漂移的回答看起来仍然接近 on-policy，会被掩码错误放行。"
+          },
+          {
+            "q": "直接把阈值调小为什么不够？",
+            "a": "抵消现象与阈值无关，缩小阈值只会同时砍掉大量合规样本，判据本身仍然看不见双向漂移。"
+          }
+        ],
+        "mechanism": "设计动机是掩码判据必须对两个方向都偏敏感。带符号对数比在抵消后趋近 0，恰好把最危险的样本判成最合规；取绝对值把判据换成漂移幅度之和，并让接受集合带一个可证明的联合界，使严格度可以被推理而不只是被调参。",
+        "boundary": "CARM 是序列级硬掩码，回答越长逐 token 累加越大因而越保守，可能丢弃样本、降低有效 batch；摘要未报告阈值与丢弃率的敏感性（待核实）。若 rollout 与训练策略几乎一致，收益会退化到与几何平均掩码相当。",
+        "analogyBoundary": "记账类比里收支确实不该相互抵消，但概率漂移不是金额：少量大幅越界的 token 与大量轻微越界在绝对值均值下不可区分，判据仍是有损的。",
+        "misconceptions": [
+          "CARM 是重要性采样权重：它是 0/1 序列级掩码，不缩放梯度。",
+          "取绝对值等于放宽阈值：恰恰相反，抵消不再帮忙，掩码更难通过。",
+          "提升来自代码域的特殊处理：方法对数学与代码使用同一判据。"
+        ],
+        "ownAnalysis": "（推断）CARM 与逐 token 裁剪的思路互补：后者限制单 token 梯度幅度，前者决定整条序列是否入梯度。可疑处是绝对值均值对少数极端 token 很敏感，可能被长尾 token 主导，而摘要未给对数比分布诊断；理论上给了联合界，但界与实测收益之间的紧致程度未知。",
+        "officialNotes": [
+          {
+            "position": "CARM 是理论上可证且有效的响应级 off-policy 控制方法，在数学推理与代码生成上均带来提升",
+            "source": "arXiv 2610.02039v1 摘要"
+          }
+        ],
+        "interviewAnswer": "RL 后训练里 rollout 和训练引擎不一致会产生 off-policy 样本。常见掩码用长度归一化的概率比几何平均，但带符号对数比会跨位置抵消，双向漂移被藏住。CARM 先对每个 token 的对数比取绝对值再平均，并证明被接受的回答满足越界比例与平均越界距离的联合界。AIME 2024/2025/2026 加 BeyondAIME 上 mean@16 最多提升 3.13 点，四个代码基准 pass@1 平均提升 2.88 点。",
+        "studyPath": {
+          "prerequisites": [
+            "重要性采样与 ratio",
+            "PPO/GRPO 类 RL 微调流程",
+            "off-policy 校正基础"
+          ],
+          "nextSteps": [
+            "推导联合界",
+            "对比 clip 与掩码的取舍",
+            "在自有 pipeline 上做丢弃率消融"
+          ]
+        }
+      }
+    },
+    {
+      "id": "6a22b0c8beb59101",
+      "tldr": "学一个动作条件化的网络世界模型当评估器，让编码 agent 迭代设计算法：141 个设置中 138 个不逊于最强基线。",
+      "keyPoints": [
+        "复杂系统里动作效果滞后，候选算法须靠结果打分，模拟成本成瓶颈",
+        "提出动作条件化网络世界模型，学网络受干预后随时间的扩散动力学",
+        "世界模型作为快速评估器，嵌进编码 agent 的算法设计闭环",
+        "闭环反馈含完整 rollout、动作级 credit 与替代干预的反事实探针",
+        "141 个设置中 138 个追平或超过最强基线，rollout 最多快 14.5 倍"
+      ],
+      "why": "世界模型求职向：把扩散式环境模型当廉价的打分函数，是 agent 驱动算法与策略搜索的常见范式，值得会读会写。",
+      "difficulty": "hard",
+      "tags": [
+        "world-model",
+        "diffusion",
+        "complex-systems",
+        "algorithm-design",
+        "agent"
+      ],
+      "entities": [
+        "Network World Model",
+        "Monte Carlo simulation",
+        "coding agent",
+        "diffusion models"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "网络世界模型闭环",
+        "caption": "把学出来的扩散动力学当快速评估器，算法设计才能在每个时间预算里试更多候选。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='网络世界模型算法设计闭环四层结构'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>候选算法</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>编码 agent 生成可执行算法</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>动作序列</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>选点播种、免疫等干预</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>网络世界模型</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>动作条件扩散预测后续结果</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>打分与改进</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>rollout 加 credit 加反事实</text>\n</svg>",
+        "alt": "四层闭环：编码 agent 产出候选算法，动作序列作用于网络，动作条件扩散世界模型预测结果，再用 rollout、动作级 credit 与反事实探针改进算法。"
+      },
+      "concepts": [
+        {
+          "name": "Action-Conditioned Network World Model（动作条件网络世界模型）",
+          "readable": "一个学过网络扩散动力学的模型：给定当前网络状态和一组干预动作，直接预测之后会演化成什么样，不必真的跑模拟。",
+          "analogy": "像天气预报表：不真的等一天，输入气压与风向就能推出明天下不下雨。",
+          "analogyBreaksDown": "天气预报由物理方程驱动，这里的表是从数据里学出来的；遇到训练分布外的拓扑或干预，它会给出一份自信但错误的预报。",
+          "mechanism": "把动作作为条件输入去噪网络，而不是对每个候选重新模拟；条件是动作序列而非噪声，因此同一模型可以服务不同候选算法，成为通用评估器。",
+          "visual": "左侧网络图（节点与边），中间一个条件箭头标注动作，右侧输出演化后的网络状态热力图；同一模型框内画多条并列的输出路径表示不同动作。",
+          "prerequisites": [
+            "扩散模型的去噪训练目标",
+            "图上的传播或扩散过程",
+            "条件生成的基本概念"
+          ],
+          "selfTest": [
+            "为什么动作要作为条件而不是重新模拟？",
+            "世界模型的偏差会怎样影响最终算法？",
+            "这种模型在什么分布外会失效？"
+          ],
+          "formula": "\\mathcal{L}(\\theta)=\\mathbb{E}_{t,G_0,\\varepsilon,\\mathbf{a}}\\big\\|\\varepsilon-\\varepsilon_\\theta(G_t,t,\\mathbf{a})\\big\\|_2^2"
+        },
+        {
+          "name": "Algorithm Design Loop（算法设计闭环）",
+          "readable": "让编码 agent 不断写出可执行算法、用评估器给结果打分，再按反馈改写算法的迭代流程；每一轮都要能把结果归因到具体动作。",
+          "analogy": "像教练带队员改动作：每次训练完看录像，指出哪一步没做好，下一轮只改那一步。",
+          "analogyBreaksDown": "教练看的是真实录像，这里的录像来自世界模型的预测，闭环可能被模型自身的系统偏差带偏。",
+          "mechanism": "闭环提供三种粒度的反馈：完整 rollout 给终局结果，动作级 credit 指出哪一步动作有效，反事实探针比较替代干预的后果；三者共同把稀疏的终局奖励变密。",
+          "visual": "一个环形箭头，环上是写算法、选动作、模型评估、三种反馈四个节点；反馈箭头粗细不同，表示信号密度不同。",
+          "prerequisites": [
+            "强化学习中的信用分配",
+            "编码 agent 与可执行程序搜索",
+            "反事实推理的基本含义"
+          ],
+          "selfTest": [
+            "只有终局分数时 agent 会缺什么？",
+            "反事实探针给出的是哪一类信息？",
+            "闭环被模型偏差带偏会有什么表现？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-action-conditioned-network-diffusion",
+          "name": "动作条件网络扩散目标（Action-Conditioned Network Diffusion Objective）",
+          "category": "worldmodel",
+          "latex": "\\mathcal{L}(\\theta)=\\mathbb{E}_{t,\\,G_0,\\,\\varepsilon,\\,\\mathbf{a}}\\Big[\\big\\|\\varepsilon-\\varepsilon_\\theta(G_t,\\,t,\\,\\mathbf{a})\\big\\|_2^2\\Big],\\quad G_t=\\sqrt{\\bar\\alpha_t}\\,G_0+\\sqrt{1-\\bar\\alpha_t}\\,\\varepsilon",
+          "symbols": [
+            [
+              "G_0",
+              "初始网络状态（节点与连边特征）"
+            ],
+            [
+              "G_t",
+              "加噪到第 t 步的网络状态"
+            ],
+            [
+              "\\mathbf{a}",
+              "作用在网络上的干预动作序列"
+            ],
+            [
+              "\\varepsilon_\\theta",
+              "以动作与时间为条件的去噪网络"
+            ],
+            [
+              "\\bar\\alpha_t",
+              "噪声日程的累计系数"
+            ],
+            [
+              "t",
+              "扩散时间步"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：动机。要快速评估候选算法，需要一个能预测干预后网络演化的代理模型，而不是每次都跑蒙特卡洛模拟。",
+            "第 2 步：把网络状态按标准扩散前向过程加噪得到 G_t，保持动作作为额外条件输入，使模型知道施加了什么干预。",
+            "第 3 步：训练去噪网络预测所加噪声，损失是条件扩散的均方误差；动作仅出现在条件位，不参与加噪。",
+            "第 4 步：推理时以动作条件化地从噪声逐步去噪，得到该动作之后的结果预测，并把它作为候选算法的分数来源。"
+          ],
+          "analogy": "像给沙盘装上干预开关：同一套沙盘，拨到不同开关位置就能看到不同战况，不必真的重新搭一次战场。",
+          "pitfalls": [
+            "把动作当成加噪信号：动作只在条件位，噪声过程与动作无关",
+            "忽略分布外风险：训练分布之外的拓扑或扩散模型预测不可信",
+            "忘记计入世界模型的训练与推理成本，只引用加速比"
+          ],
+          "code": "import torch, torch.nn.functional as F\neps = torch.randn_like(G0)\nt = torch.randint(0, T, (B,))\nab = alphabar[t].sqrt()\nGt = ab * G0 + (1 - ab).sqrt() * eps\npred = eps_net(Gt, t, action)          # action 作条件\nloss = F.mse_loss(pred, eps)",
+          "sources": [
+            {
+              "title": "Network World Models as Environments for Algorithm Design on Complex Systems",
+              "url": "https://arxiv.org/abs/2610.01048v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "世界模型模拟环境并预测其随动作的变化，已被用于机器人等真实应用",
+          "复杂系统的动作效果不是即时的：为传播活动选种子节点、为流行病免疫节点，单步本身改变很小，重要的是随后若干步展开的结果",
+          "设计选择动作以最大化任务期望表现的算法本质上是迭代的，每个候选都必须用其产生的结果来打分",
+          "获取该结果一直依赖模拟，当候选要在大量采样轨迹上评估时成本成为瓶颈",
+          "作者提出动作条件化的网络世界模型，学习网络在干预下随时间的扩散动力学，施加动作并预测随后的结果",
+          "该模型作为快速评估器用于算法设计闭环，编码 agent 借助完整 rollout、动作级 credit 与替代干预的反事实探针设计并改进可执行算法",
+          "在八个网络任务与五个扩散模型上，设计出的算法在 141 个设置中的 138 个追平或超过最强已报告基线",
+          "rollout 相比蒙特卡洛模拟最多快 14.5 倍；代码将在接收后放出"
+        ],
+        "uncertain": [
+          "五个扩散模型具体是哪些、八个网络任务具体是什么，摘要未列出",
+          "14.5 倍加速的测量口径（单步还是整条 rollout、是否包含世界模型推理开销）未给出",
+          "编码 agent 使用的基座模型与提示策略未给出",
+          "公式为按摘要重建的通用动作条件去噪目标，需核对原文",
+          "摘要称代码将在接收后放出，当前没有可访问的代码链接"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "先学一个便宜的网络世界模型，再让 agent 用它反复试算法。"
+          },
+          {
+            "level": "入门",
+            "text": "在传播、免疫这类复杂系统里，选哪些节点动手，效果要很多步之后才显现，所以设计算法必须不断用结果给候选打分。传统做法靠蒙特卡洛模拟，候选多、轨迹多时成本爆炸。作者学了一个动作条件化的网络世界模型，输入动作就能预测之后的演化结果，把它当作快速评估器。"
+          },
+          {
+            "level": "进阶",
+            "text": "世界模型学的是网络在干预下的扩散动力学：给定当前网络状态和一组动作，预测后续结果。它嵌进一个算法设计闭环，编码 agent 生成并改写可执行算法，用完整 rollout、动作级 credit 和反事实探针三种反馈迭代。八个网络任务、五个扩散模型、141 个设置里 138 个追平或超过最强已报告基线，rollout 比蒙特卡洛模拟快最多 14.5 倍。"
+          },
+          {
+            "level": "专家",
+            "text": "关键设计是把结果与动作解耦成可条件化的预测：动作作为条件输入而不是触发重新模拟，因此同一模型能服务不同候选算法。代价是世界模型误差会进入设计闭环，偏差可能让 agent 选中在真实环境中不划算的算法，而摘要未报告模型误差与最终算法质量的相关性（待核实）。与机器人世界模型相比，这里建模的是网络拓扑上的扩散过程而非像素画面，动作空间是节点集合而非连续控制；跨拓扑与跨扩散模型的泛化边界摘要也未说明。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么不能直接用蒙特卡洛模拟打分？",
+            "a": "每个候选算法都要在大量采样轨迹上求期望，模拟成本随候选数与轨迹数增长，成为设计闭环的瓶颈。"
+          },
+          {
+            "q": "为什么不让 agent 直接写算法、只给最终分数？",
+            "a": "只有标量终局奖励时 agent 无法判断哪一步动作起了作用；动作级 credit 与替代干预的反事实探针提供了更密的信号。"
+          }
+        ],
+        "mechanism": "算法设计本质是对动作选择策略做迭代搜索，每一步都要评估结果。把评估器换成学过动力学的代理模型，才能在同样的时间预算里尝试更多候选；动作条件化保证评估器服务任意候选算法，不必为每个候选重训一次环境模型。",
+        "boundary": "世界模型只在训练分布内的网络与扩散过程上可信；跨拓扑、跨扩散模型或分布外干预时预测偏差会误导搜索，摘要未给这类失效实验（待核实）。另外 14.5 倍是相对蒙特卡洛模拟的 rollout 加速，不含训练世界模型本身的成本。",
+        "analogyBoundary": "沙盘推演类比忽略了沙盘本身是学出来的：若沙盘系统性低估某类动作，agent 会自信地选错方案，而真实沙盘不会偏。",
+        "misconceptions": [
+          "世界模型替代了算法：它只是评估器，被优化的是 agent 设计的算法。",
+          "14.5 倍就是端到端加速：世界模型的训练成本未计入。",
+          "扩散模型在这里是生成器：它是环境动力学，动作是条件而不是噪声。"
+        ],
+        "ownAnalysis": "（推断）这条工作把世界模型到算法设计闭环的思路从机器人域迁到网络科学域，动作空间变成离散节点集合，比连续控制更适合反事实探针。可疑处在于 138/141 的漂亮数字缺少模型误差与算法质量的相关分析，闭环稳定性（世界模型被搜索过程利用）也未讨论；编码 agent 的具体模型与提示策略摘要没有给出。",
+        "officialNotes": [
+          {
+            "position": "动作条件网络世界模型可作算法设计闭环中的快速评估器，代码将在接收后放出",
+            "source": "arXiv 2610.01048v1 摘要"
+          }
+        ],
+        "interviewAnswer": "复杂系统里的干预效果是延迟的，设计算法只能靠反复评估结果，而蒙特卡洛模拟太贵。这篇学了一个动作条件化的网络世界模型，预测网络在干预下随时间的扩散动力学，把它当快速评估器放进算法设计闭环，配合完整 rollout、动作级 credit 和反事实探针让编码 agent 迭代。八个任务、五个扩散模型、141 个设置中 138 个追平或超过最强基线，rollout 最多快 14.5 倍。",
+        "studyPath": {
+          "prerequisites": [
+            "扩散模型去噪目标",
+            "复杂网络上的扩散模型",
+            "强化学习中的信用分配"
+          ],
+          "nextSteps": [
+            "复现动作条件扩散预测",
+            "分析世界模型误差如何影响搜索",
+            "把闭环迁移到其他环境模型"
+          ]
+        }
+      }
+    },
+    {
+      "id": "eebff77cf06b8b95",
+      "tldr": "iSEE 用三个自监督组件让 slot 在遮挡中保住身份与位置：重现后 86% 归位，定位距 SoTA 4.1 mAP。",
+      "keyPoints": [
+        "物体永久性（遮挡中保住身份与位置）是跟踪、预测与规划的基础",
+        "有标签跟踪器靠框与可见性标签；slot attention 无标签但遮挡即丢槽",
+        "组件一：slot 注意力与自身历史比较，暴露物体何时被隐藏",
+        "组件二：外观与位置分成两条流，外观留住用于重识别，位置继续演化",
+        "组件三：walker 只靠物体重现的位置学习隐藏期间的位置"
+      ],
+      "why": "想进世界模型或视频表征方向的：无标签永久性是能规划的前置能力，且位置流可直接充当世界模型的动作接口。",
+      "difficulty": "medium",
+      "tags": [
+        "object-permanence",
+        "self-supervised",
+        "slot-attention",
+        "video-representation",
+        "world-model"
+      ],
+      "entities": [
+        "iSEE",
+        "SlotContrast",
+        "RAM",
+        "LA-CATER",
+        "slot attention"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "iSEE 三组件结构",
+        "caption": "无标签的永久性来自三件事：发现被遮挡、把身份与位置拆开、只用重现作监督。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='iSEE 物体永久性框架四层结构'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>视频帧分槽</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>slot attention 绑定物体</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>物体证据建模</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>注意力对比自身历史判遮挡</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>外观位置分离</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>外观留身份，位置继续演化</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>重现监督</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>walker 仅在重现处受监督</text>\n</svg>",
+        "alt": "四层结构：视频帧经 slot attention 分槽，证据建模判断遮挡，外观与位置分成两流，walker 仅在物体重现的位置接受监督。"
+      },
+      "concepts": [
+        {
+          "name": "Object Permanence（物体永久性）",
+          "readable": "物体被挡住看不见时，仍然记得它是谁、大概在哪里，等它再次出现时能认出来并接上原来的轨迹。",
+          "analogy": "像玩捉迷藏：同伴躲到树后你仍知道他在树后，等他探出头你一眼认出是他。",
+          "analogyBreaksDown": "捉迷藏里藏的人一定还在且会再出现；模型面对的目标可能真的离场，或被别的槽吞并，重现假设本身可能不成立。",
+          "mechanism": "把永久性拆成三件事：检测何时被遮挡、在遮挡期间保持位置连续、用外观保证重现时能匹配回同一个槽；三者用不同的自监督信号分别训练。",
+          "visual": "横轴为时间帧，纵轴为物体位置；一条实线表示可见段的轨迹，中间遮挡段画虚线延续，重现帧处画一个连接点把虚线接回实线。",
+          "prerequisites": [
+            "目标跟踪基本概念",
+            "遮挡与重识别问题",
+            "自监督表征学习"
+          ],
+          "selfTest": [
+            "永久性包含哪三个子问题？",
+            "为什么不能用可见性标签替代？",
+            "物体不再出现时方法会怎样？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "Slot Attention（槽注意力）",
+          "readable": "把一帧视频的视觉特征竞争性地分配给若干个槽向量，每个槽倾向于绑定一个物体，并在帧间跟随它。",
+          "analogy": "像一群记者争抢采访名额：每个名额（槽）最终只能绑定一个对象，下一场活动还尽量跟同一个人。",
+          "analogyBreaksDown": "记者有外部身份记录，槽没有任何身份标签；一旦目标被遮挡，槽的注意力被背景或其他物体抢走，绑定关系就断了。",
+          "mechanism": "用迭代的注意力竞争让槽互相排斥、分摊输入；这种软分配在无标签下能自动出现物体分组，但对输入缺失（遮挡）没有记忆机制。",
+          "visual": "一帧图像上方画横向的注意力热力图，每个槽一条，亮区不重叠；遮挡帧处对应槽的亮区消失。",
+          "prerequisites": [
+            "注意力机制",
+            "无监督物体发现",
+            "视频表征学习"
+          ],
+          "selfTest": [
+            "槽之间为什么需要竞争？",
+            "slot attention 为什么在遮挡下失效？",
+            "要补上永久性最少需要加什么？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-reappearance-walker-loss",
+          "name": "重现驱动的位置监督损失（Reappearance-Only Walker Loss）",
+          "category": "worldmodel",
+          "latex": "\\mathcal{L}_{\\text{walker}}=\\frac{1}{|\\mathcal{R}|}\\sum_{t\\in\\mathcal{R}}\\big\\|\\hat{p}(t)-p^{\\text{obs}}(t)\\big\\|_1,\\quad \\mathcal{R}=\\{\\text{物体重现的帧}\\}",
+          "symbols": [
+            [
+              "\\mathcal{R}",
+              "物体重新出现的帧集合，是唯一有监督的位置"
+            ],
+            [
+              "\\hat{p}(t)",
+              "walker 预测的隐藏位置"
+            ],
+            [
+              "p^{\\text{obs}}(t)",
+              "重现时观测到的物体位置"
+            ],
+            [
+              "t",
+              "帧索引"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：动机。无标签条件下唯一免费的真值是物体重新出现时的位置，其余时刻的位置都看不到。",
+            "第 2 步：先用物体证据建模判断该槽对应物体从哪一帧开始被遮挡，把可见帧与隐藏帧分开。",
+            "第 3 步：walker 在遮挡期间持续输出位置预测，但只在重现帧与观测位置比较，形成上面的重塑损失。",
+            "第 4 步：反向传播把位置连续性要求传回隐藏段，使位置流在没有逐帧标签时也能保持物理连续。"
+          ],
+          "analogy": "像寻宝游戏里只能在地图上标出宝藏重新露出的那一个点，靠它反推中间被遮住的那段路线必须连续。",
+          "pitfalls": [
+            "在可见帧也加位置损失：那等于引入标签，失去自监督意义",
+            "把消失当成遮挡：物体不再重现时该损失没有信号，会误判为仍在隐藏",
+            "混淆两条流：外观流用于重识别，位置流才是被这条损失训练的对象"
+          ],
+          "code": "import torch\npred = walker(hidden_positions)        # 遮挡期间的位置预测\nreappear = mask_reappearance(frames)   # 只在重现帧为 True\nloss = (pred[reappear] - obs_pos[reappear]).abs().mean()\nloss.backward()",
+          "sources": [
+            {
+              "title": "iSEE: Object Permanence Through Self-Supervision",
+              "url": "https://arxiv.org/abs/2610.01201v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "物体永久性指在物体被遮挡时保持其身份与位置，是能跟踪、预测与规划的视频表征的核心",
+          "达到永久性的跟踪器依赖框、跟踪身份与可见性标签",
+          "自监督的物体中心方法通过 slot attention 在无标签下发现物体，把视频表示为绑定物体并跨帧跟随的槽",
+          "这些槽在遮挡下会丢失，使永久性无法实现",
+          "推理永久性很难，因为需要检测物体何时被遮挡、在重现时重新识别、并仅以重现为学习线索保持隐藏位置的连续",
+          "iSEE 的三个组件是物体证据建模（slot 注意力与其自身过去比较，揭示物体何时被隐藏）、外观-位置分离（两条槽流，外观保持用于重识别而位置继续变化）、重现中的永久性（walker 跟随隐藏位置，只在物体重现处训练）",
+          "在 LA-CATER static 上，iSEE 在 86% 的遮挡后把重现物体送回它自己的槽，SlotContrast 为 32%",
+          "遮挡期间的定位与有标签 SoTA RAM 相差 4.1 mAP；两条流支持下游规划，位置流可作为世界模型的动作"
+        ],
+        "uncertain": [
+          "86% 与 32% 的具体评测口径（遮挡事件定义、归位判定规则）未在摘要给出",
+          "4.1 mAP 的指标定义与 RAM 的对比配置未给出",
+          "walker 的具体形式与损失形式未给出，公式为按摘要语义重建，需核对原文",
+          "摘要提到一个项目页链接，但该链接不在本条目 sources 列表中，故未引用为公式来源（待核实）",
+          "codeAvailable 标记为 true，但本条目 sources 中没有代码链接"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "让模型自己发现东西被挡住但还在，不需要任何标注。"
+          },
+          {
+            "level": "入门",
+            "text": "物体永久性指物体被遮挡时仍能记住它是谁、在哪里，这是跟踪、预测和规划的基础。有标签的跟踪器靠框和可见性标注来学；自监督的 slot attention 不用标签，能把视频分成若干槽并让槽跟随物体，但遮挡一来槽就丢，永久性无从谈起。"
+          },
+          {
+            "level": "进阶",
+            "text": "iSEE 用三个组件补上永久性：一是物体证据建模，把槽当前的注意力与它自己的过去比较，判断物体何时被藏住；二是外观-位置分离，两条槽流让外观被保留用于重识别，位置在被遮挡期间继续演化；三是只以重现为学习线索，一个 walker 跟着隐藏物体的位置，训练信号只来自物体重新出现的位置。LA-CATER static 上 86% 的遮挡后能回到自己的槽，SlotContrast 只有 32%。"
+          },
+          {
+            "level": "专家",
+            "text": "难点在于没有任何标签时，被遮挡、离开画面、被误分到别的槽三种情况必须区分开，而唯一可靠的监督是重现时刻。把外观从位置中拆出来是关键取舍：外观要跨帧保持才能重识别，位置要持续变化才符合物理运动，共用一个槽会让两种梯度互相拉扯。摘要报告遮挡中定位与有标签 SoTA RAM 相差 4.1 mAP，位置流还能充当世界模型的动作，说明该表征可直接对接下游规划，而不只是可视化好看。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么不直接用有标签跟踪器？",
+            "a": "框、身份与可见性标签获取成本高且域受限；目标是完全无标签地获得永久性表征，便于扩展到没有标注的视频。"
+          },
+          {
+            "q": "为什么必须把外观和位置分成两条流？",
+            "a": "共用一个槽时，遮挡期间外观要稳定、位置要变化，两种梯度会冲突；分开后外观流负责重识别，位置流负责连续运动。"
+          }
+        ],
+        "mechanism": "自监督下唯一免费的真值是物体在哪里重新出现。要利用它必须先在遮挡发生时刻就识别出来（证据建模），再让位置在遮挡期间保持连续（位置流），并把外观稳住以便重现时匹配回同一个槽（外观流），三者缺一不可。",
+        "boundary": "监督信号只在重现处；若物体被遮挡后不再出现（离场或长时消失），walker 学不到该情形，可能把消失误判为隐藏。摘要只在 LA-CATER static 上报告结果，动态场景与多物体严重遮挡下的表现未给出（待核实）。",
+        "analogyBoundary": "捉迷藏的类比假定藏的人一定还在并且会再出现；模型面对的目标可能真的离场或被别的槽吞并，重现假设本身可能不成立。",
+        "misconceptions": [
+          "slot attention 本身就保证永久性：槽在遮挡下会丢失，这正是本文要修的问题。",
+          "用重现监督等于开了标签：只用重现时的位置作监督，不是逐帧标注。",
+          "位置流只是可视化技巧：它被当作世界模型的动作来使用。"
+        ],
+        "ownAnalysis": "（推断）把永久性拆成何时遮挡、外观是谁、位置在哪三个可分别自监督的子问题，是本文最可迁移的设计，也解释了为什么只加一个模块不够。可疑处是 86% 归位率定义在特定数据集与遮挡事件上，摘要未给基线口径细节；与 RAM 的 4.1 mAP 差距意味着无标签可替代有标签这一结论还需要更多数据集支撑。",
+        "officialNotes": [
+          {
+            "position": "iSEE 无需任何标签即同时满足遮挡检测、重现重识别与位置连续三项要求，位置流可作为世界模型的动作",
+            "source": "arXiv 2610.01201v1 摘要"
+          }
+        ],
+        "interviewAnswer": "物体永久性是无标签视频表征的硬骨头，slot attention 一遇遮挡就丢槽。iSEE 用三个组件解决：把槽的注意力与自己的历史比较来判断物体是否被藏住；把外观和位置拆成两条流，外观用于重识别、位置在遮挡期间继续演化；再用一个 walker 跟着隐藏位置，只用物体重现的位置做监督。LA-CATER static 上 86% 的遮挡能回到自己的槽，SlotContrast 只有 32%，遮挡中定位与有标签 SoTA 差 4.1 mAP。",
+        "studyPath": {
+          "prerequisites": [
+            "slot attention",
+            "自监督视频表征",
+            "遮挡与重识别基本概念"
+          ],
+          "nextSteps": [
+            "实现证据建模中的历史比较",
+            "把位置流接入世界模型做规划",
+            "评测长时消失与多物体遮挡"
+          ]
+        }
+      }
+    },
+    {
+      "id": "99373303e219b8c5",
+      "tldr": "FutureWorlds 用多样束搜索造候选未来与候选专属记忆，MemSPO 优化；LPIPS 最多降 20.84%。",
+      "keyPoints": [
+        "机器人世界模型预测动作条件下的未来，但备选预测难变学习信号",
+        "候选太相似缺可比性，分叉轨迹又要各自维持历史",
+        "用多样束搜索构造兼顾置信度与多样性的候选未来",
+        "候选专属有界记忆让生成与策略打分共用同一段历史",
+        "MemSPO 把视频轨迹奖励转成组内相对优势；三数据集 LPIPS 降 9.12%~20.84%"
+      ],
+      "why": "多模态与世界模型求职向：把文本 RLVR 的组内相对优势迁到视频世界模型，是当下热门交叉点，值得会讲会做。",
+      "difficulty": "hard",
+      "tags": [
+        "world-model",
+        "reinforcement-learning",
+        "video-prediction",
+        "robotics",
+        "policy-optimization"
+      ],
+      "entities": [
+        "FutureWorlds",
+        "MemSPO",
+        "RT-1",
+        "BridgeV2",
+        "RoboCasa",
+        "diverse beam search"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "FutureWorlds 学习闭环",
+        "caption": "候选未来必须既多样又各带历史，组内相对优势才有意义。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='FutureWorlds 世界模型四层结构'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>动作条件输入</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>当前场景加动作</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>多样束搜索</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>置信度与多样性折中的候选</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>候选专属有界记忆</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>各自维护历史，生成打分同源</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>MemSPO 更新</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>轨迹奖励转组内相对优势</text>\n</svg>",
+        "alt": "四层结构：动作条件输入经多样束搜索得到多条候选未来，每条候选维护专属有界记忆，MemSPO 把轨迹奖励转成组内相对优势更新世界模型。"
+      },
+      "concepts": [
+        {
+          "name": "Group-Relative Advantage（组内相对优势）",
+          "readable": "同一初始条件下生成多条候选未来，各自拿一个奖励，然后看某条比这组的平均好多少、标准差多少倍，而不是看它的绝对分数。",
+          "analogy": "像选秀比赛：同一题目下多位选手各演一遍，评委比较组内相对表现，比只给一个人打绝对分更能看出好坏。",
+          "analogyBreaksDown": "选秀里评委看到的是同一场表演；这里每条候选未来各自延续不同历史，评委看到的上下文其实不同，绝对可比性有限。",
+          "mechanism": "减去组内均值、除以组内标准差，把奖励的绝对尺度消掉，只保留相对排序信息，省去训练一个价值网络来估计基线。",
+          "visual": "同一初始帧下并排五条候选轨迹，每条末端画一个奖励条形；均值画一条水平虚线，高于虚线越多、条形越亮的候选得到越大的正优势。",
+          "prerequisites": [
+            "策略梯度与基线的作用",
+            "GRPO 类组内采样思路",
+            "自回归视频生成基础"
+          ],
+          "selfTest": [
+            "为什么减去组内均值可以省掉价值网络？",
+            "候选全都一样好时优势会怎样？",
+            "上下文不同为什么削弱可比性？"
+          ],
+          "formula": "A_i=\\frac{R_i-\\operatorname{mean}(\\{R_j\\}_{j=1}^{G})}{\\operatorname{std}(\\{R_j\\}_{j=1}^{G})+\\epsilon}"
+        },
+        {
+          "name": "Bounded Candidate-Specific Memory（候选专属有界记忆）",
+          "readable": "为每条候选未来单独保存一份固定容量的场景状态记忆，让生成这条未来时的条件和之后给它打分时的条件完全一致。",
+          "analogy": "像给每位选手配一个固定大小的储物柜，只放他这一路演出的道具，避免几个人共用一个柜子拿错东西。",
+          "analogyBreaksDown": "储物柜只涉及取用正确性；有界记忆还会压缩与遗忘，长期历史可能被截断，摘要未说明容量不足时的影响。",
+          "mechanism": "候选一旦分叉就拥有不同历史，共用一份状态会让生成分布与打分分布错配、优势估计失真；有界控制显存，同时保证同源。",
+          "visual": "多条候选轨迹各自连到一个固定宽度的小方块（记忆），方块上有一条容量刻度线表示上限，轨迹之间不共享方块。",
+          "prerequisites": [
+            "自回归生成中的 KV 或状态缓存",
+            "上下文长度与显存权衡",
+            "策略优化中的条件一致性"
+          ],
+          "selfTest": [
+            "为什么候选之间不能共享历史？",
+            "记忆有界会带来什么风险？",
+            "生成与打分同源为什么重要？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-memspo-group-relative-advantage",
+          "name": "MemSPO 组内相对优势（Memory-Conditioned Search-Guided Group-Relative Advantage）",
+          "category": "worldmodel",
+          "latex": "A_i=\\frac{R_i-\\operatorname{mean}\\big(\\{R_j\\}_{j=1}^{G}\\big)}{\\operatorname{std}\\big(\\{R_j\\}_{j=1}^{G}\\big)+\\epsilon}",
+          "symbols": [
+            [
+              "R_i",
+              "第 i 条候选未来的视频轨迹奖励"
+            ],
+            [
+              "G",
+              "同一初始条件下候选未来条数"
+            ],
+            [
+              "A_i",
+              "第 i 条候选的组内相对优势"
+            ],
+            [
+              "\\epsilon",
+              "数值稳定项"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：动机。世界模型需要从相对质量中学习，而单条轨迹的绝对奖励尺度差异大，直接当权重不稳定。",
+            "第 2 步：用多样束搜索在同一初始条件下采样 G 条候选未来，使它们既可比又不至于几乎相同。",
+            "第 3 步：每条候选在自己那份有界记忆下生成，保证计算奖励与打分时看到的条件一致。",
+            "第 4 步：对组内奖励做均值方差归一化得到优势，用它作为策略优化信号更新世界模型，代替额外的价值网络。"
+          ],
+          "analogy": "像班级里按名次进步给反馈：不看绝对分数，只看你比同班平均高多少、稳定程度如何。",
+          "pitfalls": [
+            "把 MemSPO 说成新的策略梯度算法：它沿用组内相对优势，重点是候选构造与记忆配套",
+            "忽略候选同质性：候选几乎一样时标准差趋零，优势变成噪声",
+            "忘记记忆有界的影响：长期历史被压缩后，条件一致性只在预算内成立"
+          ],
+          "code": "import torch\nR = rewards_of_candidates            # 形状 [G]\nadv = (R - R.mean()) / (R.std() + 1e-6)\nlogp = policy.logprob(candidates)     # 各候选在其记忆下的对数概率\nloss = -(adv.detach() * logp).mean()\nloss.backward()",
+          "sources": [
+            {
+              "title": "FutureWorlds: Learning Robotic World Models from Alternative Futures",
+              "url": "https://arxiv.org/abs/2610.01019v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "机器人世界模型预测动作条件下的未来场景，是理解动作结果的基础",
+          "把替代预测变成有用的学习信号很难：相似候选限制有信息的质量比较，而发散轨迹要求持续维护各自的历史",
+          "FutureWorlds 统一了候选构造、历史维护与从相对质量学习三件事",
+          "它建立在多模态离散自回归模型之上，强化学习时用多样束搜索构造兼顾置信度与多样性的候选未来",
+          "候选专属的有界记忆保存场景状态，确保生成与策略打分使用匹配的历史",
+          "作者提出 MemSPO，把视频轨迹奖励转换为组内相对优势来优化世界模型",
+          "在 RT-1、BridgeV2、RoboCasa 上，32 帧预测的 LPIPS 相对各数据集最强基线分别降低 14.78%、20.84%、9.12%",
+          "在固定评测配置下，仅 200 次 MemSPO 更新就进一步改善生成质量并支持超出训练视野的继续预测",
+          "记忆消融、解码敏感性分析与光流评测显示收益不止于视觉质量，还包括更准的运动预测与更一致的物体状态"
+        ],
+        "uncertain": [
+          "MemSPO 的组内相对优势是否含标准差归一化与 KL 项，摘要只说转换为组内相对优势，公式为通用重建，需核对原文",
+          "多样束搜索的超参与候选组大小未给出",
+          "200 次更新所对应的学习率与 batch 配置未给出",
+          "三个 LPIPS 降幅分别相对各数据集最强基线，跨数据集不可直接比较",
+          "摘要提到 GitHub 项目页与代码，但该链接不在本条目 sources 列表中，输出未引用"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "从多条候选未来里学哪个更好，而不是只学像不像。"
+          },
+          {
+            "level": "入门",
+            "text": "机器人世界模型要预测动作之后的画面。但如果只让模型拟合单一未来，就学不到候选之间的好坏差别：候选太像就没有可比性，差异太大又各自需要记住自己的历史。FutureWorlds 先把候选未来构造出来并各自维护历史，再用相对质量作为学习信号。"
+          },
+          {
+            "level": "进阶",
+            "text": "框架统一了三件事：候选构造、历史维护、从相对质量学习。它建在多模态离散自回归模型上，强化学习时用多样束搜索生成既可信又多样的候选未来；候选专属的有界记忆保存各自的场景状态，保证生成和策略打分看到同一段历史；MemSPO 把视频轨迹奖励转成组内相对优势来优化世界模型。RT-1 上 32 帧预测的 LPIPS 相对最强基线降 14.78%，BridgeV2 与 RoboCasa 分别降 20.84% 与 9.12%。"
+          },
+          {
+            "level": "专家",
+            "text": "核心取舍是可比性与多样性的张力：候选分布太窄，组内相对优势几乎全是噪声；候选发散，每条轨迹的历史又必须独立保存，显存与一致性成本上升。有界记忆把历史压进固定预算，使生成与打分同源，避免策略优化时看到与生成时不一致的条件。摘要显示在固定评测配置下 200 次 MemSPO 更新就能同时改善生成质量并支持超出训练视野的预测，光流评测也说明运动预测与物体状态一致性有改善，而不只是 LPIPS 变好。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么不能只用一个候选加回归损失？",
+            "a": "回归损失只告诉模型该像哪个未来，无法表达这条未来比那条更好；组内相对优势需要在同一条件下有多个候选才算得出来。"
+          },
+          {
+            "q": "为什么要给每个候选单独的记忆？",
+            "a": "候选一旦分叉，它们的历史就不同；共用一份历史会让生成时的条件与打分时的条件不一致，优势估计随之失真。"
+          }
+        ],
+        "mechanism": "从相对质量学习要求同一初始条件下存在多条可比候选，且每条候选的打分基于它自己的历史。因此必须在采样阶段就引入多样性（多样束搜索），在结构上为每条候选分配有界记忆，再把奖励变成组内相对优势，才能把哪条未来更好变成稳定梯度。",
+        "boundary": "收益依赖候选组内确实存在质量差异；若多样束搜索给出的候选几乎同质，组内相对优势退化为噪声。摘要提到 200 次更新即有效，但更长训练是否会因记忆有界而丢失长期历史未给出（待核实）。评测集中在 RT-1、BridgeV2、RoboCasa 三个机器人数据集，跨具身泛化未知。",
+        "analogyBoundary": "选秀比赛的类比里评委看到同一场表演，这里每条候选未来各自延续不同历史，评委看到的上下文不同，绝对可比性其实有限。",
+        "misconceptions": [
+          "MemSPO 是全新的 RL 算法：它把轨迹奖励转成组内相对优势，重点是候选构造与记忆的配合。",
+          "候选越多越好：候选发散会抬高历史维护与一致性成本。",
+          "LPIPS 下降就等于物理更准：需要光流评测才能支持运动预测更准的说法。"
+        ],
+        "ownAnalysis": "（推断）FutureWorlds 把文本 RLVR 里流行的组内相对优势搬到视频世界模型，并补上候选各自的历史这一视频特有的缺口，思路与 GRPO 一脉相承。可疑处是 14.78%、20.84%、9.12% 的降幅都相对各自数据集的最强基线，跨数据集不能直接比较；多样束搜索的超参与有界记忆容量对结果的敏感性摘要也没有展开。",
+        "officialNotes": [
+          {
+            "position": "多样束搜索、候选专属有界记忆与 MemSPO 三者结合可同时改善生成质量并支持超出训练视野的预测",
+            "source": "arXiv 2610.01019v1 摘要"
+          }
+        ],
+        "interviewAnswer": "训练视频世界模型通常只有拟合损失，学不到候选未来的相对好坏。FutureWorlds 先用多样束搜索构造既可信又多样的候选未来，再为每条候选维护有界记忆，保证生成和策略打分看到一致的历史，最后用 MemSPO 把轨迹奖励转成组内相对优势。RT-1、BridgeV2、RoboCasa 上 32 帧 LPIPS 分别降 14.78%、20.84%、9.12%，200 次更新就能改善生成并外推到更远的视野。",
+        "studyPath": {
+          "prerequisites": [
+            "自回归视频或多模态生成",
+            "GRPO 类组内相对优势",
+            "束搜索与多样性采样"
+          ],
+          "nextSteps": [
+            "复现多样束搜索的候选构造",
+            "研究有界记忆的容量取舍",
+            "把 MemSPO 用到其他生成式世界模型"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,151 @@
+{
+  "batchId": "queue-11",
+  "mode": "full",
+  "date": "2026-10-03",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
+  "items": [
+    {
+      "id": "2760b3ea24e31fe2",
+      "title": "DyRAD: Radar Novel View Synthesis for Dynamic Driving Scenes",
+      "category": "paper",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.39841",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.39841",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.39841",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Reconstructing dynamic driving scenes from recorded sensor data supports closed-loop evaluation of autonomous driving systems by synthesizing observations beyond the original trajectory. Unlike cameras and LiDAR, radar measures radial velocity directly through Doppler. Yet existing radar novel-view synthesis fails to exploit this capability: methods addressing dynamic scenes reconstruct only range-azimuth tensors, while methods that render Doppler assume static scenes. Moreover, because radar processing spreads each reflection across multiple bins, existing representations absorb this spread into scene geometry, causing it to render incorrectly when the viewpoint moves. We present DyRAD, which models dynamic driving scenes using static background reflectors and motion-tracked dynamic point reflectors to render complete range-azimuth-Doppler (RAD) tensors. Reflector velocities are derived from object tracks and projected onto the line of sight, making Doppler both a rendered output and supervision for those tracks. Crucially, we render reflectors through a fixed analytic point-spread function (PSF) derived from the radar's signal-processing chain, preventing sensor-induced spread from being baked into the scene representation. Beyond improving scene reconstruction, this separation also enables zero-shot sensor-configuration transfer, allowing the same reconstructed scene to be rendered under different radar specifications without refitting. We evaluate DyRAD on RADIal, Boreas, and a synthetic benchmark across both on-path poses and displaced viewpoints untested by prior work. On RADIal, DyRAD recovers radar detections in 90.7% of reference-detected objects, compared with 26.9% for the strongest baseline.",
+      "authors": [
+        "Merav Keidar",
+        "Tomer Borreda",
+        "Rajalakshmi Nandakumar",
+        "Or Litany"
+      ],
+      "publishedAt": "2026-09-29T12:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「论文与前沿」方向；命中关键词 benchmark；社区热度 5",
+      "relevanceScore": 63.5,
+      "qualitySignals": {
+        "upvotes": 17
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 63.5,
+      "planDepthScore": 57.12
+    },
+    {
+      "id": "c68ae3f5745b08f4",
+      "title": "从海拉鲁到现实世界：视频模型如何理解「变化」",
+      "category": "worldmodel",
+      "channel": "leiphone",
+      "url": "https://leiphone.com/category/yanxishe/NGx4Ckx3MbUWlIs3.html",
+      "sources": [
+        {
+          "url": "https://leiphone.com/category/yanxishe/NGx4Ckx3MbUWlIs3.html",
+          "name": "leiphone"
+        }
+      ],
+      "tags": [
+        "资讯",
+        "AI",
+        "中文媒体"
+      ],
+      "summary": "HiDream-O1-Video 的三场世界回应测试。 作者丨Reah 编辑丨李 娜 在《塞尔达传说：旷野之息》中，玩家点燃一片草地，火焰会沿着草叶蔓延，热空气随之升起。此时展开滑翔帆，林克便能借助上升气流离开地面。雷雨中装备金属武器可能招来闪电，降雨又会让攀爬变得困难。海拉鲁并没有追求照片级的视觉拟真，却通过一组稳定、可组合的规则，让玩家感受到一个世界正在持续运行。 这种体验的关键是无论世界里有多少种物体，系统都会回应玩家的行动，并且符合物理规律。规则稳定，玩家才有可能根据经验作出预测；多条规则相互作用，又会产生未被逐一写死的解法。一个可信的虚拟世界，因而同时包含状态、变化、交互与反馈。 素材出自抖音博主「丑丑鱼-主机游戏」 《塞尔达》当然不是机器学习语境中的世界模型。前者的规则主要由设计师与工程师显式构建，后者则试图从数据和交互中学习状态、行动与后果之间的关系。两者机制不同，但指向了同一种直观体验：一个世界之所以成立，肯定不是因为它看起来真实，关键是它能够对行动作出符合人们物理世界的回应。 这也是理解世界模型的一个有效入口。世界模型不是更大规模的视频生成器，也不是把图像、视频、三维空间和机器人排列在同一张矩阵图里。它需要形成对世界状态及其变化规律的表征，并进一步支持预测、规划或行动。 智象（HiDream.ai）将新发布的 HiDream-O1-Video-1.0 (下文简称为HiDream V1)定义为“更懂真实世界的视频生成模型”，并把它放在“一个 UiT( Unified Transformer)、四大模型同源演进”的世界模型路线中。按照官方介绍，模型具备前置多模态意图理解、5—20 秒动态时长、1080P 输出、物理变化生成和原生音画等能力。Video 在这套叙事中的作用，是让静态空间进入时间：模型不仅要呈现世界是什么样，还要表达一个动作发生后，世界将如何变化。 不过，视频模型本身并不是完整的世界模型，一段符合常识的成片也不能证明模型已经形成了可泛化的物理认知。要判断更懂真实世界是否超越传播口号，仍然需要回到可观察的输出。 比如在下面这个场景中，拉环尚未弹开",
+      "authors": [],
+      "publishedAt": "2026-09-30T16:09:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「世界模型」方向；命中关键词 世界模型、机器人；中文来源，贴近国内求职语境",
+      "relevanceScore": 75.8,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 75.8,
+      "planDepthScore": 57.04
+    },
+    {
+      "id": "ee2e59c46b3f17f3",
+      "title": "Relative Transitions, Not Absolute Destinations: A Transfer-and-Ground Framework for Target-Trajectory-Free Human Mobility Generation",
+      "category": "rl",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.02033v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.02033v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.LG"
+      ],
+      "summary": "Individual mobility trajectories support urban analysis and location-based services, yet most trajectory generators require observations from their deployment city. This assumption excludes precisely the cities where trajectories are unavailable even though points of interest (POIs) and their attributes can be obtained from public maps. We study target-trajectory-free generation: learning from POIs and trajectories in source cities while utilizing only POI coordinates and categories in a target city, with no target trajectory or trajectory-derived statistic available for training, model selection, or generation. Existing trajectory generators typically predict absolute destinations, entangling reusable movement behavior with city-specific POI identities and spatial layouts. Our core insight is to replace this city-bound output with context-conditioned relative transitions. We propose Nomad, a transfer-and-ground framework that separates learning how people move from determining where those movements are realized. Specifically, a history-conditioned flow-matching model learns from source trajectories a transition prior over semantic displacement between POI contexts, geographic displacement, and elapsed time; at inference, a behavior graph and an exploration--return walk ground sampled transitions onto the target POI map. This factorization enables a direct test of representation level transferability without assuming invariance of the full mobility distribution. Extensive experiments across ten cities and 14 transfers show that Nomad outperforms adaptation baselines in trajectory fidelity and downstream utility, lowering the average error over the best baseline of each metric by about 15% in distributional fidelity and about 3% in downstream utility.",
+      "authors": [
+        "Yidi Wang",
+        "Yunhe Zhang",
+        "Bangchao Deng",
+        "Dingqi Yang",
+        "Pengyang Wang"
+      ],
+      "publishedAt": "2026-10-02T00:49:30+08:00",
+      "knowledgeType": "method",
+      "why": "归属「强化学习」方向；命中关键词 exploration",
+      "relevanceScore": 66.4,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 66.4,
+      "planDepthScore": 57.02
+    },
+    {
+      "id": "1787bd32264be89f",
+      "title": "Personalized Image Generation with Reasoning and Reflection",
+      "category": "generative",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2610.00737",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2610.00737",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.00737",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Personalized image generation has remained narrowly focused on conditional synthesis from curated visual exemplars, rather than capturing who a user is. In practice, however, a user's personal context is much richer, comprising reviews, posts, images, captions, and metadata accumulated over time. A truly personalized generator should leverage this history to produce images aligned with the user's lifestyle and aesthetic preferences. To this end, we introduce the first unified benchmark for personalized image generation from user histories. The benchmark comprises two complementary tasks and a multi-axis evaluation protocol that assesses target fidelity, visual quality, user distinguishability, semantic alignment with the user's history, and task-specific utility. Grounded in real-world e-commerce and social media settings, the benchmark includes: (1) Personalized Scene Generation, which places a given object in a scene that reflects a user's preferences and lifestyle, motivated by personalized product presentation; and (2) Personalized Creative Generation, which generates a novel image on a specified topic that is faithful to a user's aesthetic and visual identity, motivated by social media content creation. We further propose PEARL, which couples a multimodal reasoner with a frozen image generator in an interleaved reason-reflect loop optimized with differential data reward. Across both tasks, PEARL outperforms strong baselines, achieving an average improvement of 15% across personalization metrics.",
+      "authors": [
+        "Bo Ni",
+        "Ngoc N. Tran",
+        "Qinwen Ge",
+        "Franck Dernoncourt",
+        "Seunghyun Yoon",
+        "Samyadeep Basu",
+        "Sungchul Kim",
+        "Puneet Mathur",
+        "Nedim Lipka",
+        "Tong Yu",
+        "Yu Wang",
+        "Ryan A. Rossi"
+      ],
+      "publishedAt": "2026-09-30T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「生成式模型」方向；命中关键词 image generation",
+      "relevanceScore": 69.5,
+      "qualitySignals": {
+        "upvotes": 0
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 69.5,
+      "planDepthScore": 56.95
+    }
+  ]
+}

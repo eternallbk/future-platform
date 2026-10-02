@@ -1,0 +1,6 @@
+{
+  "date": "2026-10-03",
+  "status": "ok",
+  "notes": "按 web/data/deep-read-plan.json 的清单执行，未自行另挑条目。队列 94 条：66 条深读（14 个 full 批次），28 条按证据剔除，逐条理由写在 scripts/agent-work-2026-10-03/skips.json —— off-domain 21 条（法学/教育学/医学影像/精神病学/无线感知/生物特征识别/蛋白质设计/控制理论/统计物理/量子光学/量子化学/神经科学/数学艺术/分布式系统/数据库客户端）、noise 3 条（2 条牛客求职吐槽 + 1 条 Codex 海外手机号 SEO 导流文）、job 2 条（腾讯『游戏AI-RL』与『WorkBuddy-Agent Harness』，已存在于 jobs.json）、placeholder 1 条（inbox 字节 JD 的 URL 是 https://jobs.bytedance.com/xxx 占位符）、truncated 1 条（面经摘要被采集层截断）。被剔除条目仍留在卡片库可搜索、参与去重。回填 6 条全部补齐：都只缺 formulas，由 scripts/build_agent_payload.py 深合并进已有 enrichment，已有 tldr/概念/图解/teaching 未被改写或删除。全部 72 条通过 scripts/validate_agent_out.py --strict（errors=0、warnings=0；初版有 1 个编造的项目页 URL 与 30 处超长/缺 xmlns 预警，已按规则修正）。本轮新增公式 112 个，与既有 155 个公式 id 零冲突（含把两条卡片重复使用的 f-rag-cosine-topk 拆成 f-genkit-rag-topk）。公式中相当一部分是按摘要重建的通用形式，已在各条 selfCheck.uncertain 标注『需核对原文』。岗位无新增。",
+  "errors": []
+}

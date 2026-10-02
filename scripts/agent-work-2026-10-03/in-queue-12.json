@@ -1,0 +1,155 @@
+{
+  "batchId": "queue-12",
+  "mode": "full",
+  "date": "2026-10-03",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
+  "items": [
+    {
+      "id": "4b9f93bba7c4e1a6",
+      "title": "Counterfactual Video Generation Enables Scalable Humanoid Loco-Manipulation",
+      "category": "generative",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.38172",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.38172",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.38172",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Teaching humanoids loco-manipulation skills, such as carrying diverse objects, via visual imitation is a promising path toward generalist robots. However, collecting diverse, high-quality interaction videos, such as clips that clearly show a person's full body and unoccluded interactions with objects, poses a practical barrier to scaling this approach. We propose PRISM, a real-to-sim-to-real framework that overcomes this limitation by amplifying a handful of real videos into a large, diverse training set. PRISM first generates hundreds of diverse \"counterfactual\" human-object interaction videos via video-to-video (V2V) generation from a few exemplar real videos. Our contact-anchored real-to-sim pipeline then reconstructs both human and object motions, retargeting this imperfect video data into physically plausible trajectories. The intra-class variability across these counterfactual videos lets us train a single policy that generalizes to unseen objects within each category. We demonstrate the full pipeline by deploying this policy on a real robot without any real-world fine-tuning. Using only onboard depth observations, our humanoid picks up, carries, and drops objects, including boxes, barrels, bins, and balls, across novel instances, sizes, and initial configurations.",
+      "authors": [
+        "Zihan Wang",
+        "Zhen Wu",
+        "Pieter Abbeel",
+        "Rocky Duan",
+        "Jitendra Malik",
+        "Carmelo Sferrazza",
+        "C. Karen Liu",
+        "Guanya Shi",
+        "Angjoo Kanazawa"
+      ],
+      "publishedAt": "2026-09-29T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「生成式模型」方向；命中关键词 video generation",
+      "relevanceScore": 69.0,
+      "qualitySignals": {
+        "upvotes": 0
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 69.0,
+      "planDepthScore": 56.77
+    },
+    {
+      "id": "9802701805b37556",
+      "title": "Adaptive Reward Routing: Dynamic Multi-Reward Optimization for Joint Audio-Video Diffusion via Forward-Process RL",
+      "category": "generative",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.37200",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.37200",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.37200",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Multi-reward guided reinforcement learning (i.e., RL) offers a promising way to improve joint audio-video diffusion models along several complementary objectives, including modality-specific quality, cross-modal semantic alignment, and temporal synchronization. Its effectiveness, however, depends on two quantities that change during training: where reward-driven updates should act, and how competing rewards should be combined. Existing methods tend to rely on fixed routing and reward weights, failing to track evolving model functions. To address these limitations, we propose Adaptive Reward Routing to jointly adapt update locations and reward coordination during forward-process RL (i.e., DiffusionNFT) of joint audio-video diffusion models. Our method consists of two components. (i) Cross-Modal Influence-Guided Routing (Localizing Updates): We use bidirectional cross-attention responses as an efficient proxy for evolving cross-modal influence, dynamically reweighting token-aware losses and scaling gradients across cross-modal layers without additional model interventions. (ii) Preference-Preserving Modality-Aware Reweighting (Coordinating Rewards): We preserve predefined weights as preference priors and use branch-specific reward-gradient interactions as residual corrections after warm-up. This resolves evolving conflicts without letting dominant rewards suppress weak but essential objectives. Extensive experiments demonstrate consistent improvements in modality quality, semantic consistency, and audio-video synchronization over strong RL baselines. Ablations and mechanism analyses further validate the complementary benefits of adaptive update routing and reward coordination.",
+      "authors": [
+        "Songlin Yang",
+        "Xiaotong Zhao",
+        "Jiacheng Zhang",
+        "Zhe Wang",
+        "Toyota Li",
+        "Eric Liu",
+        "Alan Zhao",
+        "Anyi Rao"
+      ],
+      "publishedAt": "2026-09-29T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「生成式模型」方向；命中关键词 diffusion；社区热度 95",
+      "relevanceScore": 68.0,
+      "qualitySignals": {
+        "upvotes": 97
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 68.0,
+      "planDepthScore": 56.41
+    },
+    {
+      "id": "3024b1b3d6f0b3b3",
+      "title": "Homomorphic Advantage Operator: Stabilizing Reinforcement Learning Under Fully Homomorphic Encryption Constraints",
+      "category": "rl",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.02074v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.02074v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.AI",
+        "cs.CR"
+      ],
+      "summary": "Privacy-preserving machine learning presents significant deployment challenges on the cloud for intelligent systems with confidential data. Fully Homomorphic Encryption (FHE) offers a compelling solution for secure computation, preserving data confidentiality of cloud computations. However, applying FHE to reinforcement learning (RL) requires replacing non-linear operations with polynomial approximations, which diverge catastrophically due to a unique recursive error phenomenon known as the Bellman drift. This article introduces the Homomorphic Advantage Operator (HAO), a stabilization framework designed to prevent polynomial approximation divergence in FHE-based deep RL. HAO adapts the zero-mean centering projection from advantage-based value estimation directly to temporal-difference (TD) targets. This linear projection annihilates the uniform state-value baseline that drives the Bellman drift, maintaining per-state action rankings while requiring zero additional non-linear multiplicative depth and avoiding expensive ciphertext bootstrapping. The proposed HAO framework was evaluated using a three-tier experimental methodology, including a tabular Markov Decision Process (MDP), an encrypted CartPole environment using real CKKS cryptographic operations, and a 20-node logistics routing benchmark with dense continuous features. The results demonstrate that the proposed HAO strictly bounds network pre-activations within the safe polynomial approximation domain. The proposed HAO RL agents achieved 0% boundary breaches across all random seeds used, whereas regularization alone (L2 weight decay and gradient clipping) breached the bound on 3 of 5 seeds and the unstabilized baseline did so in 83.8% of episodes. Finally, HAO agents improve optimal policy accuracy by 18.0 percent",
+      "authors": [
+        "Abid Mohamed Nadhir",
+        "Ahmad Al Hanbali",
+        "Beggas Mounir"
+      ],
+      "publishedAt": "2026-10-02T01:14:32+08:00",
+      "knowledgeType": "method",
+      "why": "归属「强化学习」方向；命中关键词 reinforcement learning",
+      "relevanceScore": 63.4,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 63.4,
+      "planDepthScore": 55.92
+    },
+    {
+      "id": "7d4462ca7e3eb405",
+      "title": "Bellman Meets Lyapunov: Unsupervised Reinforcement Learning via Mastering Chaos",
+      "category": "rl",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.02012v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.02012v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.LG"
+      ],
+      "summary": "Reinforcement learning (RL) is a powerful paradigm for training agents, yet its success rests on domain expertise of human engineers who design informative reward signals for every new task. Unsupervised RL aims to reduce this engineering with intrinsic motivation (IM): reward signals that emerge from the agent environment interaction itself. Existing IM objectives, however, involve the selection of information variables, which re-introduces domain expertise the field has sought to eliminate. We introduce Forward CIP (F-CIP), an RL-native formulation of the Controllable Information Production (CIP) objective, which is defined by the system's dynamics alone and requires no such selection. We prove that F-CIP is compatible with RL and demonstrate its effectiveness with existing algorithms. Training agents with F-CIP results in unsupervised discovery of primitive behaviors such as balancing and maintaining controllability, which are essential for more complex robot behaviors. Paired with a simple forward-velocity reward, our method produces coordinated gaits such as hopping and running which otherwise require reward engineering to learn.",
+      "authors": [
+        "Tristan Shah",
+        "Wooyoung Chung",
+        "Volodomyr Makarenko",
+        "Juan Wachs",
+        "Stas Tiomkin"
+      ],
+      "publishedAt": "2026-10-02T00:38:03+08:00",
+      "knowledgeType": "method",
+      "why": "归属「强化学习」方向；命中关键词 reinforcement learning",
+      "relevanceScore": 63.4,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 63.4,
+      "planDepthScore": 55.92
+    }
+  ]
+}

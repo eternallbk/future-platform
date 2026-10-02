@@ -1,0 +1,157 @@
+{
+  "batchId": "queue-14",
+  "mode": "full",
+  "date": "2026-10-03",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
+  "items": [
+    {
+      "id": "ac2524af5b9231f7",
+      "title": "ddalcu/mlx-serve - Native LLM inference server for Apple Silicon. OpenAI + Anthropic API compatible. No Python. Zig backend, Swift frontend macOS app with chat, music, voice, video generation.",
+      "category": "generative",
+      "channel": "github",
+      "url": "https://github.com/ddalcu/mlx-serve",
+      "sources": [
+        {
+          "url": "https://github.com/ddalcu/mlx-serve",
+          "name": "github"
+        }
+      ],
+      "tags": [
+        "agent",
+        "anthropic-api",
+        "apple-silicon",
+        "claude-code",
+        "deepseek-v4",
+        "diffusion",
+        "gguf",
+        "image-generation",
+        "Zig"
+      ],
+      "summary": "Native LLM inference server for Apple Silicon. OpenAI + Anthropic API compatible. No Python. Zig backend, Swift frontend macOS app with chat, music, voice, video generation.",
+      "authors": [
+        "ddalcu"
+      ],
+      "publishedAt": "2026-09-30T15:05:33+08:00",
+      "knowledgeType": "project",
+      "why": "归属「生成式模型」方向；命中关键词 diffusion、video generation；GitHub 1671 stars；疑似附带开源实现",
+      "relevanceScore": 73.3,
+      "qualitySignals": {
+        "stars": 1710,
+        "forks": 176,
+        "codeAvailable": true
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 73.3,
+      "planDepthScore": 49.97
+    },
+    {
+      "id": "92c09201f9fa3e53",
+      "title": "spiceai/spiceai - Add a real-time analytics node to your operational database. Spice is a portable, accelerated SQL query, search, and LLM-inference engine in Rust for data-grounded AI apps and agents.",
+      "category": "engineering",
+      "channel": "github",
+      "url": "https://github.com/spiceai/spiceai",
+      "sources": [
+        {
+          "url": "https://github.com/spiceai/spiceai",
+          "name": "github"
+        }
+      ],
+      "tags": [
+        "artificial-intelligence",
+        "data",
+        "data-federation",
+        "developers",
+        "full-text-search",
+        "infrastructure",
+        "llm-inference",
+        "machine-learning",
+        "Rust"
+      ],
+      "summary": "Add a real-time analytics node to your operational database. Spice is a portable, accelerated SQL query, search, and LLM-inference engine in Rust for data-grounded AI apps and agents.",
+      "authors": [
+        "spiceai"
+      ],
+      "publishedAt": "2026-10-01T00:17:26+08:00",
+      "knowledgeType": "project",
+      "why": "归属「工程与系统」方向；命中关键词 inference；GitHub 3097 stars；疑似附带开源实现",
+      "relevanceScore": 62.4,
+      "qualitySignals": {
+        "stars": 3098,
+        "forks": 231,
+        "codeAvailable": true
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 62.4,
+      "planDepthScore": 42.48
+    },
+    {
+      "id": "b1ec28947f12f9bd",
+      "title": "kunal-kushwaha/DSA-Bootcamp-Java — This repository consists of the code samples, assignments, and notes f",
+      "category": "course",
+      "channel": "github_algo",
+      "url": "https://github.com/kunal-kushwaha/DSA-Bootcamp-Java",
+      "sources": [
+        {
+          "url": "https://github.com/kunal-kushwaha/DSA-Bootcamp-Java",
+          "name": "github_algo"
+        }
+      ],
+      "tags": [
+        "GitHub",
+        "算法仓库",
+        "数据结构",
+        "算法"
+      ],
+      "summary": "This repository consists of the code samples, assignments, and notes for the Java data structures & algorithms + interview preparation bootcamp of WeMakeDevs.｜23928 stars｜Java｜最近更新 2024-08-18｜主题：algorithms、competitive-programming、data-structures、faang-interview、faang-preparation、faang-questions、google-interview、interview-preparation",
+      "authors": [],
+      "publishedAt": "2024-08-18T08:21:57Z",
+      "knowledgeType": "fundamentals",
+      "why": "归属「课程与仓库」方向；命中关键词 仓库；GitHub 23928 stars；疑似附带开源实现",
+      "relevanceScore": 48.0,
+      "qualitySignals": {
+        "stars": 23928
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 48.0,
+      "planDepthScore": 41.65
+    },
+    {
+      "id": "7f653843af9f1aba",
+      "title": "Show HN: TensorZero – open-source data and learning flywheel for LLMs",
+      "category": "engineering",
+      "channel": "hn",
+      "url": "https://github.com/tensorzero/tensorzero",
+      "sources": [
+        {
+          "url": "https://github.com/tensorzero/tensorzero",
+          "name": "hn"
+        },
+        {
+          "url": "https://news.ycombinator.com/item?id=41557020",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Hi HN! We're Gabriel & Viraj, and we're excited to open source TensorZero. To be a little cheeky, TensorZero is an open-source platform that helps LLM applications graduate from API wrappers into defensible AI products. 1. Integrate our model gateway 2. Send metrics or feedback 3. Unlock compounding improvements in quality, cost, and latency It enables a data & learning flywheel for LLMs by unifying: • Inference: one API for all LLMs, with <1ms P99 overhead • Observability: inference & feedback → your database • Optimization: better prompts, models, inference strategies • Experimentation: built-in A/B testing, routing, fallbacks Our goal is to help engineers build, manage, and optimize the next generation of LLM applications: AI systems that learn from real-world experience. In addition to",
+      "authors": [
+        "GabrielBianconi"
+      ],
+      "publishedAt": "2024-09-16T03:25:03+08:00",
+      "knowledgeType": "project",
+      "why": "归属「工程与系统」方向；命中关键词 inference、latency；社区热度 49",
+      "relevanceScore": 48.2,
+      "qualitySignals": {
+        "upvotes": 49,
+        "comments": 2
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 48.2,
+      "planDepthScore": 36.25
+    }
+  ]
+}

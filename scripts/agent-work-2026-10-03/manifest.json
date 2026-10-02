@@ -1,0 +1,235 @@
+{
+  "date": "2026-10-03",
+  "generatedAt": "2026-10-03T02:31:20+08:00",
+  "generatedBy": "scripts/plan_agent_batches.py",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "sourcePlan": {
+    "file": "web/data/deep-read-plan.json",
+    "generatedAt": "2026-10-03T02:29:11+08:00",
+    "queueTotal": 94,
+    "backfillTotal": 6
+  },
+  "excluded": 28,
+  "queueToProcess": 66,
+  "backfillToProcess": 6,
+  "batches": [
+    {
+      "batchId": "queue-01",
+      "mode": "full",
+      "count": 5,
+      "input": "in-queue-01.json",
+      "output": "out-queue-01.json",
+      "ids": [
+        "c97a5a7e82e644b9",
+        "84dc5ede05e7bd20",
+        "34583f8e3d5d4c78",
+        "9e9baefb2a456ef3",
+        "a0eba0aa1c5bae4d"
+      ]
+    },
+    {
+      "batchId": "queue-02",
+      "mode": "full",
+      "count": 5,
+      "input": "in-queue-02.json",
+      "output": "out-queue-02.json",
+      "ids": [
+        "ca33c1c95f651461",
+        "7be70fc8379e7991",
+        "806ec4de46376616",
+        "1c0c06f03796d16e",
+        "250593b8b2b6a7ad"
+      ]
+    },
+    {
+      "batchId": "queue-03",
+      "mode": "full",
+      "count": 5,
+      "input": "in-queue-03.json",
+      "output": "out-queue-03.json",
+      "ids": [
+        "277441ea3ddc25e9",
+        "30480cd0e3a058a6",
+        "98ecc61a0f6c206b",
+        "dd3ee83684a019cf",
+        "8a60bc7ca8f1e1b9"
+      ]
+    },
+    {
+      "batchId": "queue-04",
+      "mode": "full",
+      "count": 5,
+      "input": "in-queue-04.json",
+      "output": "out-queue-04.json",
+      "ids": [
+        "fe8effbbe5b24d57",
+        "622683b4a1f31b43",
+        "527f4b1f6ad840c7",
+        "8be496c85ad5ec3b",
+        "6e9fe3c163df33a0"
+      ]
+    },
+    {
+      "batchId": "queue-05",
+      "mode": "full",
+      "count": 5,
+      "input": "in-queue-05.json",
+      "output": "out-queue-05.json",
+      "ids": [
+        "a237aabcd4ae8069",
+        "6fa3fa31816e0d5b",
+        "e1903dd600f227bc",
+        "4f5b506dfea832c7",
+        "d94ed02fbc3c269b"
+      ]
+    },
+    {
+      "batchId": "queue-06",
+      "mode": "full",
+      "count": 5,
+      "input": "in-queue-06.json",
+      "output": "out-queue-06.json",
+      "ids": [
+        "a2675c908b72c1ca",
+        "ffccce0f53a7f7d2",
+        "6a22b0c8beb59101",
+        "eebff77cf06b8b95",
+        "99373303e219b8c5"
+      ]
+    },
+    {
+      "batchId": "queue-07",
+      "mode": "full",
+      "count": 5,
+      "input": "in-queue-07.json",
+      "output": "out-queue-07.json",
+      "ids": [
+        "249413542592e5b7",
+        "03cc95f58cdf7d9d",
+        "3192f3e121d782ee",
+        "9e285061cb75920c",
+        "a9ac6f5d38bf0a3c"
+      ]
+    },
+    {
+      "batchId": "queue-08",
+      "mode": "full",
+      "count": 5,
+      "input": "in-queue-08.json",
+      "output": "out-queue-08.json",
+      "ids": [
+        "75ce314787189989",
+        "c5702c5feb87be26",
+        "b5b41c240c3c8cc6",
+        "ee167de8caea4748",
+        "071d08582672f10b"
+      ]
+    },
+    {
+      "batchId": "queue-09",
+      "mode": "full",
+      "count": 5,
+      "input": "in-queue-09.json",
+      "output": "out-queue-09.json",
+      "ids": [
+        "a61bf1c90a479e68",
+        "44bfa5cd4d38d970",
+        "b23fa633aed23b9e",
+        "b1dbc9cc24709fe3",
+        "d6bcc8f5d8cb2993"
+      ]
+    },
+    {
+      "batchId": "queue-10",
+      "mode": "full",
+      "count": 5,
+      "input": "in-queue-10.json",
+      "output": "out-queue-10.json",
+      "ids": [
+        "ca54e0e87014d24a",
+        "ae5f1b9da8e383f0",
+        "bc031c1e6dc62d26",
+        "7397e6533ba9328b",
+        "7c2cfefa9fa6ab63"
+      ]
+    },
+    {
+      "batchId": "queue-11",
+      "mode": "full",
+      "count": 4,
+      "input": "in-queue-11.json",
+      "output": "out-queue-11.json",
+      "ids": [
+        "2760b3ea24e31fe2",
+        "c68ae3f5745b08f4",
+        "ee2e59c46b3f17f3",
+        "1787bd32264be89f"
+      ]
+    },
+    {
+      "batchId": "queue-12",
+      "mode": "full",
+      "count": 4,
+      "input": "in-queue-12.json",
+      "output": "out-queue-12.json",
+      "ids": [
+        "4b9f93bba7c4e1a6",
+        "9802701805b37556",
+        "3024b1b3d6f0b3b3",
+        "7d4462ca7e3eb405"
+      ]
+    },
+    {
+      "batchId": "queue-13",
+      "mode": "full",
+      "count": 4,
+      "input": "in-queue-13.json",
+      "output": "out-queue-13.json",
+      "ids": [
+        "23a2fc68ba96e9ac",
+        "3cc4365e8f7535f1",
+        "09f51ee819492fa5",
+        "3a84cc26c0af785b"
+      ]
+    },
+    {
+      "batchId": "queue-14",
+      "mode": "full",
+      "count": 4,
+      "input": "in-queue-14.json",
+      "output": "out-queue-14.json",
+      "ids": [
+        "ac2524af5b9231f7",
+        "92c09201f9fa3e53",
+        "b1ec28947f12f9bd",
+        "7f653843af9f1aba"
+      ]
+    },
+    {
+      "batchId": "backfill-01",
+      "mode": "backfill",
+      "count": 3,
+      "input": "in-backfill-01.json",
+      "output": "out-backfill-01.json",
+      "ids": [
+        "0b3e16ecf4f67dcb",
+        "28f899c9d5f4731d",
+        "97fae90c627e5adb"
+      ]
+    },
+    {
+      "batchId": "backfill-02",
+      "mode": "backfill",
+      "count": 3,
+      "input": "in-backfill-02.json",
+      "output": "out-backfill-02.json",
+      "ids": [
+        "99fb8b7ff588817d",
+        "cbfe6087f9c43604",
+        "f92d0f5913e59e39"
+      ]
+    }
+  ],
+  "missingItemIds": [],
+  "unknownSkipIds": []
+}

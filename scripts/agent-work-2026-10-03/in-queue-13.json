@@ -1,0 +1,155 @@
+{
+  "batchId": "queue-13",
+  "mode": "full",
+  "date": "2026-10-03",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
+  "items": [
+    {
+      "id": "23a2fc68ba96e9ac",
+      "title": "OTRetarget: Joint Robot and Object Motion Retargeting via Optimal Transport",
+      "category": "rl",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.36602",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.36602",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.36602",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Transferring human motion to humanoid robots requires adapting the demonstrated motion to the robot morphology while preserving interactions with the environment. This is particularly challenging for loco-manipulation tasks, where contacts with the ground and manipulated objects must remain consistent despite differences in body proportions. Yet, skeletal motion alone does not fully describe these interactions, and fixing object trajectories limits the adaptation to a new embodiment. In this paper, we introduce OTR ETARGET, a unified approach to jointly retarget robot and multi-object motion from human demonstrations. Our approach represents surface interactions through signed distances, closest surface points, and relative directions, and uses entropic optimal transport to transfer these quantities across human, robot, and object geometries. We incorporate the resulting interaction targets into a constrained inverse kinematics formulation that balances contact preservation with motion style and jointly optimizes robot and object poses at each frame. This formulation accommodates robot-object and object-object interactions without rescaling the scene or the demonstration. We validate the proposed approach on OMOMO, where it achieves a robot- object interaction Jaccard score of 87% and a depth error of 8.7 mm, compared with 28% and 29.3 mm for OmniRetarget. Finally, we demonstrate transfer to a physical G1 humanoid using whole-body policies trained with reinforcement learning on the retargeted references, across motions including two-handed box pick-and-place onto a table.",
+      "authors": [
+        "Guillaume Besset",
+        "Erwann Carn",
+        "Timothée Carecchio",
+        "Valentin Tordjman-Levavasseur",
+        "Fabian Schramm",
+        "Yann de Mont-Marin",
+        "Justin Carpentier",
+        "Ajay Suresha Sathya"
+      ],
+      "publishedAt": "2026-09-29T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「强化学习」方向；命中关键词 reinforcement learning；社区热度 2",
+      "relevanceScore": 62.8,
+      "qualitySignals": {
+        "upvotes": 2
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 62.8,
+      "planDepthScore": 55.7
+    },
+    {
+      "id": "3cc4365e8f7535f1",
+      "title": "huihut/interview — 📚 C/C++ 技术面试基础知识总结，包括语言、程序库、数据结构、算法、系统、网络、链接装载库等知识及面试经验、招聘、内推等信息。This",
+      "category": "job",
+      "channel": "github_algo",
+      "url": "https://github.com/huihut/interview",
+      "sources": [
+        {
+          "url": "https://github.com/huihut/interview",
+          "name": "github_algo"
+        }
+      ],
+      "tags": [
+        "GitHub",
+        "算法仓库",
+        "八股",
+        "C++",
+        "计算机基础"
+      ],
+      "summary": "📚 C/C++ 技术面试基础知识总结，包括语言、程序库、数据结构、算法、系统、网络、链接装载库等知识及面试经验、招聘、内推等信息。This repository is a summary of the basic knowledge of recruiting job seekers and beginners in the direction of C/C++ technology, including language, program library, data structure, algorithm, system, network, link loading library, in｜38236 stars｜C++｜最近更新 2026-09-17｜主题：algorithm、c、cpp、data-structures、database、interview、interview-practice、interview-preparation",
+      "authors": [],
+      "publishedAt": "2026-09-17T07:18:55Z",
+      "knowledgeType": "fundamentals",
+      "why": "归属「岗位与招聘」方向；命中关键词 招聘、内推；GitHub 38236 stars；疑似附带开源实现；中文来源，贴近国内求职语境",
+      "relevanceScore": 70.7,
+      "qualitySignals": {
+        "stars": 38236
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 70.7,
+      "planDepthScore": 54.16
+    },
+    {
+      "id": "09f51ee819492fa5",
+      "title": "Tacit-TTS: From Autoregressive Decoding to Masked Prediction for Efficient Transcript-Free Voice Cloning",
+      "category": "engineering",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.38658",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.38658",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.38658",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "TTS systems with autoregressive semantic modeling have demonstrated strong zero-shot voice cloning performance and rich expressive variation, but their sequential decoding incurs substantial latency. Non-autoregressive alternatives offer much faster generation, yet often rely on more restrictive reference conditioning, such as requiring transcripts of the reference speech during inference. We present Tacit-TTS, an efficient transcript-free zero-shot voice cloning system distilled from IndexTTS2. Our model replaces autoregressive text-to-semantic decoding with masked non-autoregressive generation, introduces training-free acoustic length estimation, and accelerates the flow-matching renderer through ReFlow distillation. Across two English and two Mandarin datasets, Tacit-TTS achieves competitive zero-shot quality while generating speech over 10x faster than IndexTTS2 for utterances longer than 5 seconds. Its transcript-free conditioning further supports cross-lingual and non-lexical references. We validate this capability using references from eight other languages, infant babble, and synthetic gibberish, where transcript-dependent systems often degrade or fail due to unreliable ASR transcripts.",
+      "authors": [
+        "Jian Chen",
+        "You Zhang",
+        "Mark Vinton"
+      ],
+      "publishedAt": "2026-09-29T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「工程与系统」方向；命中关键词 inference、latency；社区热度 9",
+      "relevanceScore": 72.1,
+      "qualitySignals": {
+        "upvotes": 9
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 72.1,
+      "planDepthScore": 52.96
+    },
+    {
+      "id": "3a84cc26c0af785b",
+      "title": "Generalization Is Stability, Not Accuracy: Multi-Axis Evaluation of LLMs",
+      "category": "foundation",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2610.01428",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2610.01428",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.01428",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Generalization in large language models (LLMs) is the ability to produce consistent and semantically stable outputs when the same input is expressed in different ways. Existing work typically evaluates generalization through aggregate accuracy on a single prompt format, task, or set of variations, which conflates robustness with overall benchmark performance. In this work, we show generalization evaluation at the level of individual examples, across multiple input variants, and across different aspects of model behavior, focusing on variability rather than reducing performance to a score that can be improved through narrow training or other ways that obfuscate generalization evaluation. Following this view, we introduce the Stability-Aware Generalization Objective (SAGO), a framework that measures how much model behavior changes for the same input under different variations and benchmarks, capturing variability across several dimensions including generation consistency, internal activations, confidence, and response mirroring. We show that many commonly used models exhibit statistically significant and consistent generalization instability: no model generalizes uniformly, behavioral axes capture independent failure modes, and cross-dataset variation can reverse model rankings.",
+      "authors": [
+        "Nagham Omar",
+        "Mahmoud Jabarin",
+        "Maya Rozenshtein",
+        "Rom Himelstein",
+        "Avi Mendelson",
+        "Amit LeVi"
+      ],
+      "publishedAt": "2026-10-01T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「基础理论」方向；命中关键词 generalization；社区热度 4",
+      "relevanceScore": 67.3,
+      "qualitySignals": {
+        "upvotes": 5
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 67.3,
+      "planDepthScore": 52.57
+    }
+  ]
+}

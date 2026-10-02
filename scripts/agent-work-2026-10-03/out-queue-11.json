@@ -1,0 +1,433 @@
+{
+  "batchId": "queue-11",
+  "entries": [
+    {
+      "id": "2760b3ea24e31fe2",
+      "tldr": "用静态背景反射体加轨迹驱动的动态点反射体渲染完整距离-方位-多普勒张量，RADIal 上回收 90.7% 参考检出目标。",
+      "keyPoints": [
+        "雷达靠多普勒直接测径向速度，但已有动态雷达新视角合成只重建距离-方位张量",
+        "既有表征把雷达点扩散写进场景几何，视角一变就渲染错",
+        "DyRAD 用固定解析 PSF 渲染反射体，不让传感器扩散烘进场景",
+        "反射体速度由目标轨迹投影到视线，多普勒既是输出也是轨迹监督",
+        "RADIal 上回收 90.7% 参考检出目标，最强基线为 26.9%"
+      ],
+      "why": "自动驾驶闭环评测需要能换视角、换配置的雷达仿真；把传感器 PSF 与场景解耦、零样本迁移传感器配置的思路，可直接迁移到多传感器合成数据管线。",
+      "difficulty": "hard",
+      "tags": ["radar", "novel-view-synthesis", "autonomous-driving", "doppler", "sensor-simulation"],
+      "entities": ["DyRAD", "RADIal", "Boreas", "range-azimuth-Doppler (RAD)", "point-spread function (PSF)"],
+      "diagram": {
+        "kind": "architecture",
+        "title": "DyRAD 渲染流程",
+        "caption": "记住：场景里只存与传感器无关的反射体，传感器扩散交给固定解析 PSF。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='DyRAD 四层渲染流程：场景表示、视线投影求速度、固定解析 PSF 渲染、输出完整 RAD 张量'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>场景表示</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>静态背景 + 轨迹动态</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>速度投影到视线</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>多普勒有物理来源</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>固定解析 PSF 渲染</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>扩散不写进几何</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>完整 RAD 张量</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>RADIal 回收 90.7%</text></svg>",
+        "alt": "竖排四层流程图：场景用静态背景与轨迹驱动的动态反射体表示，速度投影到视线得到多普勒，经固定解析 PSF 渲染，输出完整距离-方位-多普勒张量。"
+      },
+      "concepts": [
+        {
+          "name": "Radar Point Spread Function (PSF)",
+          "readable": "雷达信号处理链会把一个点反射的能量摊到多个距离、方位、多普勒格子里；这个摊开的形状就是 PSF，由波形与处理链决定，与场景内容无关。",
+          "analogy": "像用一支毛边笔点一个点：你心里想点的是一个针尖大小的点，落到纸上却晕开一圈。那圈晕开的形状取决于笔和纸，不取决于你想点什么。",
+          "analogyBreaksDown": "毛边笔的晕开随下笔力度变化，而雷达 PSF 在给定波形与处理链后是固定的；类比也掩盖了它在距离、方位、多普勒三个维上形状不同、且随目标速度展宽的事实。",
+          "mechanism": "把 PSF 从可学习的场景几何里拿出来，作为固定解析算子套在反射体上；这样传感器扩散不会被当成场景结构，换视角或换雷达配置时都不需要重新拟合。",
+          "visual": "横轴为距离、纵轴为多普勒的二维热力图：一个理想反射体应是一个被已知形状模糊后的亮斑而非锐点，颜色深浅代表能量，模糊核固定不变。",
+          "prerequisites": ["雷达距离-多普勒处理与 FFT", "神经渲染或新视角合成的基本概念", "多普勒效应的物理含义"],
+          "selfTest": ["为什么把 PSF 学进场景几何会在视角移动时出错？", "PSF 固定这一假设在什么条件下成立？", "多普勒在 DyRAD 里同时承担哪两个角色？"],
+          "formula": "I(r,a,d)=\\sum_k A_k\\,h(r-r_k,\\;a-a_k,\\;d-d_k)"
+        },
+        {
+          "name": "Range-Azimuth-Doppler Tensor",
+          "readable": "雷达一帧的三种测量堆成一个三维张量：距离、方位角、多普勒即径向速度。它比只有距离-方位的张量多了速度这一维，因此能区分静止杂波与运动目标。",
+          "analogy": "像监控画面里每个像素都额外贴上速度标签：不只看到有人在哪，还知道他正朝你冲过来还是掉头走开。",
+          "analogyBreaksDown": "视频像素的位置是精确的，而雷达张量里每个反射会沿三个维度同时扩散，格点亮度不是干净的存在标记；多普勒还只是径向分量，横向运动完全看不见。",
+          "mechanism": "把多普勒作为可渲染输出，就要求场景表征显式存反射体速度；DyRAD 用目标轨迹投影到视线补上这个量，使速度维可解释，也能反过来监督轨迹。",
+          "visual": "画一个三维格子，三个轴是距离、方位、多普勒：静态背景反射体落在零多普勒平面上，动态目标在非零多普勒处出现亮斑，颜色深浅代表能量。",
+          "prerequisites": ["FFT 与雷达距离-多普勒处理", "坐标系变换与视线投影几何"],
+          "selfTest": ["RAD 张量比距离-方位张量多出的那一维由什么物理量构成？", "只渲染距离-方位张量的方法为什么无法表达运动？", "零多普勒平面上的能量主要来自什么？"],
+          "formula": ""
+        },
+        {
+          "name": "Zero-Shot Sensor-Configuration Transfer",
+          "readable": "同一份重建场景不改任何参数就能换成另一套雷达规格来渲染，因为传感器特性被隔离在固定的 PSF 里，场景只存与传感器无关的反射体。",
+          "analogy": "像同一份菜谱换不同牌子的烤箱都能烤：菜谱写的是食材和步骤，烤箱的脾气单独写在另一张纸上。",
+          "analogyBreaksDown": "换烤箱只需调温度和时间，而换雷达配置会同时改变距离分辨率、多普勒模糊与 PSF 形状，某些配置下原本可分辨的反射体会合并，迁移并非总是无损。",
+          "mechanism": "把「场景是什么」与「传感器怎么看」解耦：场景用与传感器无关的反射体表示，渲染时再套目标配置的解析 PSF，因此不必在目标配置上重新拟合。",
+          "visual": "左侧一份共享的场景反射体点云，右侧两条并列渲染管线套用不同 PSF 参数，输出两张规格不同但结构一致的 RAD 热力图。",
+          "prerequisites": ["雷达波形与分辨率参数的基本概念", "表示解耦与域迁移的常见思路"],
+          "selfTest": ["零样本换配置在表示层面成立的原因是什么？", "哪类传感器参数变化最可能破坏这种迁移？", "为什么作者说这种解耦让可迁移性变得可直接检验？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-radar-psf-rendering",
+          "name": "雷达点扩散函数渲染（Radar PSF Rendering）",
+          "category": "engineering",
+          "latex": "I(r,a,d)=\\sum_{k=1}^{K} A_k\\, h\\!\\left(r-r_k,\\; a-a_k,\\; d-d_k\\right)",
+          "symbols": [["I(r,a,d)", "渲染出的距离-方位-多普勒张量强度"], ["k", "第 k 个反射体（静态背景或运动跟踪的动态点）"], ["A_k", "反射体幅度"], ["(r_k,a_k,d_k)", "反射体的距离、方位、多普勒坐标"], ["h(·)", "由雷达信号处理链导出的固定解析点扩散函数"]],
+          "derivation": ["第 1 步：动机。雷达处理会把单个反射的能量扩散到多个 bin，若把这种扩散当作场景几何去学习，视角一变渲染就错。", "第 2 步：表示。把场景拆成静态背景反射体与轨迹跟踪的动态点反射体，每个反射体只保留幅度、位置与速度参数。", "第 3 步：渲染。每个反射体经固定解析 PSF 摊开并叠加，得 I = Σ_k A_k h(Δr, Δa, Δd)。", "第 4 步：速度维。多普勒坐标由反射体速度投影到视线得到，因此渲染结果可反过来监督目标轨迹。"],
+          "analogy": "像画星空：星星本身是点，望远镜的衍射决定了照片里亮斑的形状；先存星星位置，再按镜头特性摊开，而不是把亮斑当成星星的形状去记。",
+          "pitfalls": ["把 PSF 摊开的亮斑当成场景几何去拟合，换视角即失效", "忽略多普勒只是径向速度投影，横向运动不可见", "把零样本迁移说成对任意雷达配置都无损"],
+          "code": "import torch, torch.nn.functional as F\n\ndef render_rad(centers, amps, psf, shape=(64, 64, 32)):\n    # centers: [K,3] 为 (距离, 方位, 多普勒) 整数格点\n    vol = torch.zeros(shape)\n    for c, a in zip(centers, amps):\n        vol[c[0], c[1], c[2]] += a\n    return F.conv3d(vol[None, None], psf[None, None], padding=1)[0, 0]",
+          "sources": [{"title": "DyRAD: Radar Novel View Synthesis for Dynamic Driving Scenes", "url": "https://huggingface.co/papers/2609.39841"}]
+        },
+        {
+          "id": "f-doppler-los-projection",
+          "name": "多普勒视线投影（Doppler Line-of-Sight Projection）",
+          "category": "engineering",
+          "latex": "v_r=\\frac{\\mathbf{v}\\cdot(\\mathbf{p}-\\mathbf{o})}{\\lVert \\mathbf{p}-\\mathbf{o}\\rVert}",
+          "symbols": [["v", "反射体（被跟踪目标）的速度矢量"], ["p", "反射体位置"], ["o", "雷达位置"], ["(p-o)/‖p-o‖", "雷达指向反射体的视线单位矢量"], ["v_r", "径向速度，决定多普勒 bin"]],
+          "derivation": ["第 1 步：动机。RAD 张量的多普勒维需要每个反射体的径向速度，摘要说明该速度由目标轨迹导出。", "第 2 步：跟踪给出世界坐标系下的速度 v 与位置 p。", "第 3 步：构造从雷达到反射体的视线单位矢量 u = (p-o)/‖p-o‖。", "第 4 步：做点积得径向速度 v_r = v·u，再映射到对应的多普勒 bin；接近与远离给出相反符号。"],
+          "analogy": "像站在路边听车：只有朝你开来或离你而去的那个速度分量会让音调变高变低，横向开过去的车音调几乎不变。",
+          "pitfalls": ["把速度大小直接当成多普勒，忽略视线夹角", "忘记多普勒有符号，接近与远离落在不同半边", "横向运动在多普勒上接近零，不能据此判断目标静止"],
+          "code": "import torch\n\ndef radial_velocity(v, p, o):\n    los = p - o\n    u = los / los.norm(dim=-1, keepdim=True)\n    return (v * u).sum(-1)   # v_r = v · u",
+          "sources": [{"title": "DyRAD: Radar Novel View Synthesis for Dynamic Driving Scenes", "url": "https://arxiv.org/abs/2609.39841"}]
+        }
+      ],
+      "selfCheck": {
+        "claims": ["雷达通过多普勒直接测量径向速度。", "已有的动态场景雷达新视角合成方法只重建距离-方位张量，而渲染多普勒的方法假设场景静态。", "雷达处理会把每个反射扩散到多个 bin，已有表示把这种扩散吸收进场景几何，导致视角移动时渲染错误。", "DyRAD 用静态背景反射体与运动跟踪的动态点反射体渲染完整 RAD 张量，反射体速度由目标轨迹投影到视线。", "PSF 是来自雷达信号处理链的固定解析函数，这一分离使零样本传感器配置迁移成为可能。", "在 RADIal 上 DyRAD 回收 90.7% 参考检出目标，最强基线为 26.9%；评测还覆盖 Boreas 与合成基准，包含位移视角。"],
+        "uncertain": ["渲染张量的精确合成形式（卷积还是逐 bin 叠加）摘要未给出，公式为按摘要重建的通用形式，需核对原文", "PSF 的具体解析形式与参数化方式摘要未说明", "位移视角与零样本换配置的定量结果摘要未报告", "90.7% 与 26.9% 的评测协议细节（目标匹配阈值等）摘要未说明"]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "给自动驾驶的雷达做「换个视角重新拍」的仿真，而且连速度维一起渲染对。"},
+          {"level": "入门", "text": "雷达不只测距离和方向，还能靠多普勒直接测径向速度。已有方法要么只重建距离-方位图，要么只给静态场景渲多普勒。DyRAD 把场景拆成静态背景反射体和带轨迹的动态点反射体，渲染出完整的距离-方位-多普勒张量。"},
+          {"level": "进阶", "text": "关键设计是把传感器造成的扩散从场景里拿出来：雷达处理会把一个反射摊到多个 bin，之前的方法把这层扩散当成几何学进去，视角一变就渲染错。DyRAD 改用信号处理链导出的固定解析 PSF 渲染反射体，并把目标轨迹速度投影到视线得到多普勒，使多普勒既是输出也监督轨迹；副作用是同一场景可零样本换雷达配置。"},
+          {"level": "专家", "text": "与只重建距离-方位张量的动态雷达方法相比，DyRAD 保留了多普勒这一直接速度测量；与只渲多普勒的静态方法相比，它由轨迹驱动动态反射体。在表示层与传感器解耦后，可迁移性无需在目标配置上重拟合即可检验，并在位移视角这一前人未测的设置上评测。RADIal 上参考检出目标的雷达检测回收率 90.7%，最强基线 26.9%。适用边界是轨迹质量与 PSF 固定假设。"}
+        ],
+        "socratic": [
+          {"q": "不把 PSF 固定成解析形式会怎样？", "a": "传感器扩散会被当作场景几何拟合，训练视角下看起来对，视角一移动这层假几何就渲染错，换雷达配置还必须重新拟合。"},
+          {"q": "为什么多普勒要来自目标轨迹，而不是让网络自由预测？", "a": "摘要的设定是速度由轨迹投影到视线得到，这样多普勒有物理来源；同时它又能反过来当作轨迹的监督信号，避免速度维变成无约束的自由变量。"}
+        ],
+        "mechanism": "必须这样设计是因为雷达测量的张量里混着传感器效应：同一组反射体在不同雷达配置下的形状不同。若把这种效应学进场景，场景就绑死在一种传感器和一个视角上。把 PSF 固定为解析算子、场景只存与传感器无关的反射体，才让「场景是什么」与「雷达怎么看」分开，从而支持位移视角与零样本换配置。",
+        "boundary": "依赖可靠的目标跟踪为动态反射体定速度，跟踪失败或目标未被跟踪时多普勒无从得到；PSF 固定假设要求信号处理链已知且不变；渲染质量受限于反射体式表示，对复杂散射、多径与杂波的处理能力摘要未说明。",
+        "analogyBoundary": "「先存星星再按镜头摊开」的类比忽略了多普勒维：速度造成的展宽与观察视角强相关，而镜头模糊是一次成像、与观察角度无关。",
+        "misconceptions": ["以为雷达新视角合成就是相机新视角合成换个传感器，忽略多普勒是直接测量", "以为把 PSF 一起学进去更端到端、效果更好", "以为 90.7% 是整体检测精度，它其实是参考检出目标中被回收的比例"],
+        "ownAnalysis": "摘要明确把「PSF 被吸收进几何」指为视角移动时渲染错误的根因，这个诊断与传感器仿真里常见的「把仪器响应当成被测对象」是同一类错误（推断）。把多普勒同时用作渲染输出与轨迹监督，构成一个闭环结构，是这条工作里最值得迁移的设计（推断）。需注意摘要没有报告位移视角下的具体数值，也没说明零样本换配置在多大的参数跨度上仍成立。",
+        "officialNotes": [{"position": "DyRAD 用静态背景反射体与运动跟踪的动态点反射体渲染完整 RAD 张量，反射体速度由目标轨迹投影到视线，PSF 来自雷达信号处理链且保持固定，因而支持零样本传感器配置迁移。", "source": "https://huggingface.co/papers/2609.39841"}],
+        "interviewAnswer": "我关注 DyRAD 对雷达新视角合成的两点改动。第一，它渲染完整的距离-方位-多普勒张量，把雷达独有的径向速度测量用起来；第二，它不把 PSF 的扩散学进场景几何，而是用信号处理链导出的固定解析 PSF 渲染反射体，所以换视角不会渲染错，还能零样本换雷达配置。多普勒由目标轨迹投影到视线得到，同时反过来监督轨迹。RADIal 上参考检出目标的回收率从基线的 26.9% 提到 90.7%。",
+        "studyPath": {
+          "prerequisites": ["雷达距离-多普勒处理与 FFT", "神经辐射场与新视角合成", "多目标跟踪基础"],
+          "nextSteps": ["读原文实验设置，核对位移视角与换配置的定量结果", "对比把 PSF 学进几何的基线，理解误差来源", "熟悉 RADIal 与 Boreas 的数据格式与标注"]
+        }
+      }
+    },
+    {
+      "id": "c68ae3f5745b08f4",
+      "tldr": "借《塞尔达》三场世界回应测试追问：HiDream-O1-Video 是否真懂世界变化，视频模型不等于世界模型。",
+      "keyPoints": [
+        "海拉鲁规则由设计师显式写死，世界模型则从数据与交互学状态-行动-后果",
+        "可信虚拟世界需要状态、变化、交互与反馈，规则稳定才能被预测",
+        "智象把它定位为「更懂真实世界的视频生成模型」，属 UiT 同源演进路线",
+        "官方称支持前置多模态意图理解、5—20 秒、1080P、物理变化生成与原生音画",
+        "但符合常识的成片不能证明已具备可泛化物理认知，仍需看可观察输出"
+      ],
+      "why": "世界模型岗位高频问「视频生成是否等于世界模型」；这条中文材料给出可复述的判断标准与国产模型路线，适合作为面试开场。",
+      "difficulty": "easy",
+      "tags": ["world-model", "video-generation", "hidream", "multimodal", "chinese-media"],
+      "entities": ["HiDream-O1-Video-1.0", "智象（HiDream.ai）", "UiT (Unified Transformer)", "《塞尔达传说：旷野之息》"],
+      "diagram": {
+        "kind": "flow",
+        "title": "世界回应判断链",
+        "caption": "记住：判断世界模型要看它能否稳定回应行动，而不是画面是否逼真。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='竖排四层判断链：三场世界回应测试、规则稳定且可组合、状态变化交互反馈、可观察输出验证'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>三场回应测试</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>看模型如何回应行动</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>规则稳定可组合</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>玩家才能形成预测</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>状态变化交互反馈</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>可信世界的四要素</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>可观察输出验证</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>成片不等于物理认知</text></svg>",
+        "alt": "竖排四层流程图：从三场世界回应测试，到规则稳定且可组合，到状态变化交互与反馈，最后落到可观察输出验证。"
+      },
+      "concepts": [
+        {
+          "name": "World Model",
+          "readable": "对世界状态及其变化规律形成表征，并能支持预测、规划或行动，而不只是生成看起来合理的画面。",
+          "analogy": "像玩桌游时那本裁判手册：任何新动作都能查规则、给出判罚；而视频生成器更像一叠拍好的精彩集锦，看着热闹却答不出没拍过的动作。",
+          "analogyBreaksDown": "裁判手册是人工写死的，世界模型要从数据里学，学到的可能是相关性而非真规则；类比还暗示存在一本完备手册，而物理规律未必能被有限规则写完。",
+          "mechanism": "判断口径从「输出像不像」转向「状态与行动后果的关系是否可泛化」：只有学到转移关系，才能在不出真机的情况下推演不同动作的结果，这正是规划与决策需要的能力。",
+          "visual": "横轴是时间步，纵轴是世界状态；一条实线是真实轨迹，一条虚线是模型在想象中滚动的预测，两条线的分叉速度代表模型是否抓住变化规律。",
+          "prerequisites": ["视频扩散或自回归生成模型基础", "基于模型的强化学习与规划概念"],
+          "selfTest": ["世界模型与视频生成器的判断标准差别在哪？", "为什么状态表征不一定等于像素？", "规则稳定为什么比画面逼真更关键？"],
+          "formula": "s_{t+1}\\sim p_\\theta(s_{t+1}\\mid s_t,\\,a_t)"
+        },
+        {
+          "name": "Rule Stability and Composability",
+          "readable": "世界里的规则要稳定到能被经验预测，又要能互相组合，从而产生设计师没有逐条写死的解法。",
+          "analogy": "像厨房里的基本操作：知道火会加热、油会起烟，你就能自己组合出煎炒焖炸，而不是只会照着菜谱点某一道菜。",
+          "analogyBreaksDown": "厨房操作基本可逆、后果可控，而虚拟世界里的规则组合可能产生爆炸式状态，学习式模型也无法保证组合后仍然符合物理。",
+          "mechanism": "规则稳定让玩家形成可迁移的预期，可组合让有限规则覆盖大量情境；这两条一起，才使「世界感」来自可预测的交互反馈而非画面细节。",
+          "visual": "一张二维方格图：横纵轴各列若干基本规则，格子里填入两条规则叠加后的结果，颜色越深表示相互作用越强。",
+          "prerequisites": ["交互式系统的状态-动作建模", "组合泛化的基本直觉"],
+          "selfTest": ["只有稳定但不可组合的规则会出现什么问题？", "可组合性为什么能产生没被写死的解法？", "学习式模型的规则完备性如何检验？"],
+          "formula": ""
+        },
+        {
+          "name": "Observable Output Evaluation",
+          "readable": "不靠官方口号或单段成片判定能力，而是回到可观察、可复现的输出上逐项验证宣称。",
+          "analogy": "像验车不看销售说辞，而是亲自打火、踩刹车、试空调，逐项看仪表和手感。",
+          "analogyBreaksDown": "验车有标准项目与合格线，而这里的回应测试由评测者自行设计，缺少统一阈值，选哪些场景本身就带主观性。",
+          "mechanism": "把能力宣称翻译成可观察的测试场景，是为了防止用传播口径替代证据；摘要也据此指出，一段符合常识的成片不能证明可泛化的物理认知。",
+          "visual": "左侧一列官方宣称能力，右侧一格一格对应可观察测试与勾选状态，未通过的格子留空并标出待补证据。",
+          "prerequisites": ["评测协议与基准设计常识", "模型能力边界的常见失效模式"],
+          "selfTest": ["为什么单段成功样例不构成能力证据？", "定性回应测试缺什么才无法下结论？", "如何为物理一致性设计可复现测试？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-world-model-transition-planning",
+          "name": "世界模型的状态转移与规划（World Model Transition and Planning）",
+          "category": "worldmodel",
+          "latex": "s_{t+1}\\sim p_\\theta(s_{t+1}\\mid s_t,a_t),\\qquad \\hat{a}=\\arg\\max_{a}\\;\\mathbb{E}\\Big[\\sum_{k} r(s_{t+k})\\Big]",
+          "symbols": [["s_t", "世界状态表征"], ["a_t", "动作或交互"], ["p_θ", "学到的状态转移模型"], ["r(·)", "回报或任务目标"], ["â", "据想象轨迹规划出的动作"]],
+          "derivation": ["第 1 步：文章定义世界模型要对世界状态及其变化规律形成表征。", "第 2 步：把「状态-行动-后果」的关系写成条件分布 p_θ(s_{t+1}|s_t, a_t)，而不是只生成观测。", "第 3 步：有了转移模型，就能在不与环境交互的情况下滚动预测多个时间步。", "第 4 步：以累积回报最大化为目标挑选动作，转移模型因此支持规划与行动。"],
+          "analogy": "像下棋时在脑子里推演：先记住盘面状态，再按规则试走几步，挑出最有利的一手，不必真的落子。",
+          "pitfalls": ["把画面逼真当成世界模型的判断标准", "以为状态必须等于像素，忽略潜在状态表征", "把规则由人工写死的游戏引擎当成学习到的世界模型"],
+          "code": "import torch\n\ndef rollout(model, s0, policy, horizon=5):\n    s, traj = s0, []\n    for _ in range(horizon):\n        a = policy(s)      # 选动作\n        s = model(s, a)    # s_{t+1} ~ p_θ(·|s_t, a_t)\n        traj.append((s, a))\n    return traj",
+          "sources": [{"title": "从海拉鲁到现实世界：视频模型如何理解「变化」", "url": "https://leiphone.com/category/yanxishe/NGx4Ckx3MbUWlIs3.html"}]
+        }
+      ],
+      "selfCheck": {
+        "claims": ["文章围绕 HiDream-O1-Video 的三场世界回应测试展开。", "《塞尔达》的规则主要由设计师与工程师显式构建，机器学习语境的世界模型则从数据和交互中学习状态、行动与后果之间的关系。", "智象把 HiDream-O1-Video-1.0 定义为「更懂真实世界的视频生成模型」，并放在一个 UiT、四大模型同源演进的路线中。", "官方介绍的能力包括前置多模态意图理解、5—20 秒动态时长、1080P 输出、物理变化生成与原生音画。", "文章认为视频模型本身不是完整世界模型，一段符合常识的成片不能证明模型已具备可泛化的物理认知。"],
+        "uncertain": ["三场回应测试的具体场景、判定标准与是否有量化结果摘要未给出（摘要末尾截断在拉环场景）", "HiDream V1 的真实物理一致性水平无法从这篇定性报道判断，需核对官方技术报告", "摘要未给出模型参数量、训练数据规模与开源情况"]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "视频生成得好看不等于懂世界，关键看它会不会稳定地回应你的动作。"},
+          {"level": "入门", "text": "文章用三个测试看 HiDream-O1-Video 会不会像《塞尔达》那样回应玩家的行动。海拉鲁的规则是人写的，但规则稳定且可组合，玩家才能预测和利用。世界模型要类似地从数据和交互中学状态、行动与后果的关系。"},
+          {"level": "进阶", "text": "作者强调世界模型不是更大规模的视频生成器：它要对世界状态及其变化规律形成表征，并支持预测、规划或行动。智象把 HiDream V1 定位为更懂真实世界的视频生成模型，宣称有前置多模态意图理解、5—20 秒动态时长、1080P、物理变化生成与原生音画，并放在 UiT 同源演进路线里；文章同时提醒，视频模型本身不是完整世界模型。"},
+          {"level": "专家", "text": "这篇的价值在于给出可操作的判断标准：不看画面拟真度，而看系统是否对行动作出符合物理的回应、规则是否稳定可组合。作者把塞尔达这类显式规则引擎与从数据学状态-行动-后果的世界模型区分开，并指出符合常识的成片不能证明可泛化的物理认知，必须回到可观察输出。其评测仍是定性的三场回应测试，缺少量化指标、统一阈值与多模型对照。"}
+        ],
+        "socratic": [
+          {"q": "为什么规则稳定比画面逼真更关键？", "a": "只有规则稳定，玩家才能依据经验预测后果并据此规划；画面逼真但回应不一致，用户无法建立可迁移的预测，世界感立刻崩塌。"},
+          {"q": "为什么不能直接用视频生成质量评判世界模型？", "a": "视频质量只衡量单段输出是否合理，而世界模型要求状态表征与行动后果的关系可泛化；符合常识的成片可能只是拟合了训练分布，换个没见过的交互就会露馅。"}
+        ],
+        "mechanism": "世界模型的实用价值来自可被行动调用的转移关系：只有把状态、动作与后果的关系学到，才能在不碰真机的情况下推演「如果这样做会怎样」。因此评测必须针对回应是否稳定、是否遵循物理、能否组合出未写死的解法，而不是针对单段视频的观感。",
+        "boundary": "文章的结论建立在三场定性回应测试上，没有量化基准与多模型对照，不能据此判断 HiDream V1 在物理一致性上达到何种水平；用游戏引擎类比世界模型也有边界——引擎规则是显式写死的，学习式模型无法保证规则完备或物理正确。",
+        "analogyBoundary": "塞尔达类比容易让人以为世界模型也需要一本显式规则手册，但学习式模型给出的是概率性、可能违反物理的预测，也没有设计者保证所有交互都被覆盖。",
+        "misconceptions": ["把世界模型等同于更大更强的视频生成模型", "认为画面对就行，忽略能否稳定回应行动", "把关卡设计师写死的规则当成模型学到的物理规律"],
+        "ownAnalysis": "文章给出的判断标准（状态、变化、交互、反馈，规则稳定且可组合）与机器人学里基于模型的规划所需条件基本一致（推断）。可疑处在于三场测试的选择由作者决定，缺少反例与量化阈值，「更懂真实世界」仍是官方叙事而非可复现结论。用于面试时，把它当作提问框架比当作 HiDream V1 的性能证明更稳妥。",
+        "officialNotes": [{"position": "智象官方将 HiDream-O1-Video-1.0 定义为「更懂真实世界的视频生成模型」，具备前置多模态意图理解、5—20 秒动态时长、1080P 输出、物理变化生成与原生音画，属于一个 UiT、四大模型同源演进的路线。", "source": "https://leiphone.com/category/yanxishe/NGx4Ckx3MbUWlIs3.html"}],
+        "interviewAnswer": "我会把世界模型和视频生成器分开看。世界模型要对世界状态及其变化规律形成表征，支持预测、规划或行动；标准是能否对行动作出符合物理的稳定回应，而非画面像不像。HiDream-O1-Video 官方定位是更懂真实世界的视频生成模型，宣称有前置多模态意图理解、5—20 秒、1080P、物理变化生成等能力，但它本身不是完整世界模型。文章用三场回应测试观察物理变化，属定性验证，还需可观察的量化输出才能下结论。",
+        "studyPath": {
+          "prerequisites": ["视频扩散与生成模型基础", "基于模型的规划与世界模型概念", "多模态大模型的能力边界"],
+          "nextSteps": ["查 HiDream 官方技术报告核对宣称能力", "对照 DreamerV3 等世界模型的评测协议", "自己设计可量化的物理回应测试"]
+        }
+      }
+    },
+    {
+      "id": "ee2e59c46b3f17f3",
+      "tldr": "把「怎么移动」与「去哪」解耦：源城市学相对转移先验，目标城市只用 POI 图落地，十城 14 次迁移优于适配基线。",
+      "keyPoints": [
+        "目标城市只有 POI 坐标与类别，没有任何轨迹可用于训练或选型",
+        "已有生成器预测绝对目的地，把移动行为与城市 POI 身份绑死",
+        "Nomad 改为上下文条件化相对转移，分离「怎么移动」与「在哪落地」",
+        "历史条件流匹配学转移先验，覆盖语义位移、地理位移与耗时",
+        "十城 14 次迁移，分布保真平均误差较最强基线低约 15%"
+      ],
+      "why": "跨城市冷启动是出行与推荐建模的真实痛点；把转移先验与落地图分开的因子化设计，对做可迁移表征与 RL 探索的岗位是可复用的方法论。",
+      "difficulty": "hard",
+      "tags": ["human-mobility", "flow-matching", "transfer-learning", "trajectory-generation", "graph"],
+      "entities": ["Nomad", "flow-matching", "points of interest (POIs)", "behavior graph", "exploration–return walk"],
+      "diagram": {
+        "kind": "architecture",
+        "title": "Nomad 迁移与落地",
+        "caption": "记住：可迁移的是相对转移先验，绝对目的地必须靠目标城市 POI 图重新落地。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='竖排四层流程图：源城市 POI 与轨迹、历史条件流匹配学转移先验、采样相对转移、在目标城市 POI 图落地'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>源城市 POI + 轨迹</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>只在这里学怎么移动</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>历史条件流匹配</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>语义与地理位移 + 耗时</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>采样相对转移</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>不含城市 POI 身份</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>目标城市落地</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>行为图 + 探索返回游走</text></svg>",
+        "alt": "竖排四层流程图：源城市 POI 与轨迹训练历史条件流匹配转移先验，采样相对位移，最后在目标城市 POI 图上用行为图与探索返回游走落地。"
+      },
+      "concepts": [
+        {
+          "name": "Target-Trajectory-Free Transfer",
+          "readable": "源城市有 POI 与轨迹，目标城市只有地图上的 POI 坐标和类别，训练、选型、生成全程都拿不到目标城市的轨迹或任何轨迹派生统计量。",
+          "analogy": "像只拿一张陌生城市的地图和店铺名录就要猜出当地人怎么逛街：你在家乡观察过大量逛街路线，但到新城市没有任何一份路线记录。",
+          "analogyBreaksDown": "逛街类比里目标城市居民的文化偏好可能与家乡完全不同，模型却假设「怎么移动」的先验可迁移，只把「去哪里」重新落地；两地出行习惯差异极大时，这一分解就失效。",
+          "mechanism": "把输出从绝对目的地改成语义位移、地理位移与耗时的相对转移，并让条件只依赖历史与源城市学到的先验，从而不需要目标城市的任何轨迹或其派生统计量。",
+          "visual": "左边源城市地图上有密集轨迹线，中间是一个与地图无关的转移先验模块，右边目标城市地图只有 POI 点、没有轨迹线，输出轨迹由先验落到这些点上。",
+          "prerequisites": ["轨迹生成与序列建模基础", "流匹配或扩散模型基本概念", "图结构与随机游走"],
+          "selfTest": ["为什么预测绝对目的地会妨碍跨城市迁移？", "「无目标轨迹」具体排除了哪些信息？", "这一因子化测试的是什么层面的可迁移性？"],
+          "formula": ""
+        },
+        {
+          "name": "Flow-Matching Transition Prior",
+          "readable": "用流匹配学一个以历史为条件的分布，采样出的是相对位移三元组：POI 语境间的语义位移、地理位移与经过的时间，而不是某个具体目的地。",
+          "analogy": "像学会「逛完咖啡馆通常会往书店方向走十分钟」这种句式，而不是背下「从 A 店到 B 店」的具体路线。",
+          "analogyBreaksDown": "句式可以任意组合，但位移三元组之间受地理距离与时间预算的硬约束，采样出的组合未必在目标城市物理可行，需要落地步骤再筛。",
+          "mechanism": "把连续位移当作可采样的向量场来学，条件里加入历史，使先验与具体城市解耦；语义位移落在 POI 类别空间，地理位移与耗时落在度量空间，三者在同一分布里联合建模。",
+          "visual": "三维散点图的三个轴分别是语义位移、地理位移、耗时，每个点是源城市的一个转移样本，流匹配把这个点云变成一个可按历史条件采样的连续场。",
+          "prerequisites": ["连续归一化流与流匹配", "条件生成建模"],
+          "selfTest": ["条件里为什么要放历史？", "语义位移与地理位移分别对应什么空间？", "为什么把三个量放在同一先验里联合建模？"],
+          "formula": "\\mathcal{L}(\\theta)=\\mathbb{E}\\lVert v_\\theta(x_t,t,h)-(x_1-x_0)\\rVert_2^2"
+        },
+        {
+          "name": "Explore–Return Walk Grounding",
+          "readable": "采样得到的相对转移本身没有坐标，要靠目标城市的行为图和一次「先探索、再返回」的游走，把它对应到该城市真实的 POI 序列上。",
+          "analogy": "像拿着「先往热闹处走」的模糊指令在陌生街区找店：先朝可能有店的方向逛出去，发现不对再折回来换一条路。",
+          "analogyBreaksDown": "真人可以边走边看招牌，而这里的图与候选 POI 完全来自地图属性，走错时没有实时反馈可用；目标城市 POI 缺失或类别粒度不同时，游走会系统性偏离。",
+          "mechanism": "行为图承载目标城市的 POI 连接先验，探索步负责找到与采样位移匹配的候选，返回步保证轨迹落点闭合、不越界，从而把与城市无关的转移变成城市相关的轨迹。",
+          "visual": "目标城市地图上由 POI 节点与边构成的行为图，一条游走先在图上向外探索若干跳，再沿原路或等价路径返回，落点高亮为预测的下一站。",
+          "prerequisites": ["图搜索与随机游走", "POI 类别体系与空间近邻"],
+          "selfTest": ["为什么不能直接把采样的位移拼成轨迹？", "探索与返回两步各自解决什么问题？", "行为图提供的是什么先验？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-flow-matching-transition-prior",
+          "name": "历史条件流匹配转移先验（History-Conditioned Flow-Matching Prior）",
+          "category": "generative",
+          "latex": "\\mathcal{L}(\\theta)=\\mathbb{E}_{t,\\,x_0,\\,x_1,\\,h}\\left\\lVert v_\\theta(x_t,t,h)-(x_1-x_0)\\right\\rVert_2^2",
+          "symbols": [["h", "历史条件（用户的过往访问与时间信息）"], ["x_1", "真实转移样本，即（语义位移, 地理位移, 耗时）"], ["x_0", "噪声端点"], ["x_t", "在两端点之间的插值点"], ["v_θ", "学到的速度场，用于按条件采样"]],
+          "derivation": ["第 1 步：动机。需要一个与城市无关、只描述「人怎么移动」的分布，并且能按历史条件采样。", "第 2 步：把一次转移写成三元组 x =（语义位移, 地理位移, 耗时），作为连续空间里的一个点。", "第 3 步：在噪声端点 x_0 与数据端点 x_1 之间插值得 x_t，让网络回归位移方向 x_1 - x_0。", "第 4 步：训练完成后按历史条件积分速度场采样，得到目标城市里并不存在的相对转移样本。"],
+          "analogy": "像学写字时的笔顺：不背整篇范文，而是学每一步笔尖往哪走；换一张纸（换城市）仍能照着笔顺写。",
+          "pitfalls": ["把流匹配采样出的位移直接当坐标用，忘记还需要落地步骤", "条件里漏掉历史，先验退化成全局平均", "以为三个位移维度可以独立采样，忽略它们的联合相关性"],
+          "code": "import torch\n\ndef flow_matching_loss(v_theta, x1, hist):\n    x0 = torch.randn_like(x1)   # (语义, 地理, 耗时)\n    t = torch.rand(x1.shape[0], 1)\n    xt = (1 - t) * x0 + t * x1\n    return ((v_theta(xt, t, hist) - (x1 - x0)) ** 2).mean()",
+          "sources": [{"title": "Relative Transitions, Not Absolute Destinations: A Transfer-and-Ground Framework for Target-Trajectory-Free Human Mobility Generation", "url": "https://arxiv.org/abs/2610.02033v1"}]
+        },
+        {
+          "id": "f-relative-transition-factorization",
+          "name": "相对转移因子化（Relative-Transition Factorization）",
+          "category": "rl",
+          "latex": "\\hat{T}_{tgt}=\\mathrm{Ground}\\!\\left(\\Delta\\sim p_\\theta(\\Delta\\mid h);\\;G_{tgt}\\right),\\qquad \\Delta=(\\delta_{sem},\\delta_{geo},\\delta_{t})",
+          "symbols": [["h", "历史条件"], ["Δ", "相对转移三元组：语义位移、地理位移、耗时"], ["p_θ(Δ|h)", "源城市轨迹学到的转移先验"], ["G_tgt", "目标城市行为图"], ["Ground(·)", "探索-返回游走落地算子"], ["T̂_tgt", "生成的目标城市轨迹"]],
+          "derivation": ["第 1 步：动机。绝对目的地把可复用的移动行为与城市特有的 POI 身份纠缠在一起，跨城市不可迁移。", "第 2 步：改为生成本地无关的相对量 Δ，其分布只由源城市轨迹与历史条件决定。", "第 3 步：目标城市信息只进入落地算子，在行为图上用探索-返回游走把 Δ 匹配成具体 POI 序列。", "第 4 步：于是可迁移性在表征层被直接检验，而不需要假设整个移动分布在城市间不变。"],
+          "analogy": "像把「往人多的地方走五分钟」这类相对指令和「具体进哪家店」分开：指令跨城市通用，进哪家店必须查当地地图。",
+          "pitfalls": ["以为相对转移先验一定比绝对目的地更准，忽略落地步骤的误差", "把「可迁移」理解成整个移动分布不变", "目标城市 POI 类别粒度与源城市不一致时仍照搬语义位移"],
+          "code": "def generate(prior, ground_fn, hist, graph, n=1):\n    out = []\n    for _ in range(n):\n        delta = prior.sample(hist)          # (语义, 地理, 耗时)\n        poi_seq = ground_fn(delta, graph)   # 探索-返回游走落地\n        out.append(poi_seq)\n    return out",
+          "sources": [{"title": "Relative Transitions, Not Absolute Destinations: A Transfer-and-Ground Framework for Target-Trajectory-Free Human Mobility Generation", "url": "https://arxiv.org/abs/2610.02033v1"}]
+        }
+      ],
+      "selfCheck": {
+        "claims": ["目标城市只提供 POI 坐标与类别，没有任何目标轨迹或轨迹派生统计量可用于训练、模型选择或生成。", "已有轨迹生成器通常预测绝对目的地，把可复用移动行为与城市特有的 POI 身份和空间布局纠缠在一起。", "Nomad 用历史条件流匹配模型学得关于语义位移、地理位移与耗时的转移先验。", "推理时用行为图与探索-返回游走把采样到的转移落到目标城市的 POI 图上。", "在十城 14 次迁移上优于适配基线，分布保真平均误差较各指标最强基线低约 15%，下游效用低约 3%。"],
+        "uncertain": ["流匹配转移先验的具体目标函数与条件化方式摘要未给出，公式为按摘要重建的通用形式，需核对原文", "行为图如何从 POI 构建、探索-返回游走的算法细节摘要未说明", "15% 与 3% 的分层结果（按城市或迁移难度）摘要未报告"]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "学会「人一般怎么走」，再把这种走法落到陌生城市地图上，不需要当地任何轨迹。"},
+          {"level": "入门", "text": "很多轨迹生成器只在有轨迹数据的城市能用，但目标城市常常只有公开地图上的 POI 坐标和类别。Nomad 的思路是别直接预测「去哪」，而是学与城市无关的相对转移，再在目标城市的 POI 图上把位移落地成轨迹。"},
+          {"level": "进阶", "text": "已有方法预测绝对目的地，这会把可复用的移动行为与城市特有的 POI 身份和空间布局绑在一起，跨城市就失效。Nomad 用历史条件流匹配在源城市轨迹上学关于语义位移、地理位移与耗时的转移先验；推理时用行为图和探索-返回游走把采样到的位移落到目标城市 POI 上。这样可迁移性在表征层被直接检验，而不用假设整个移动分布不变。"},
+          {"level": "专家", "text": "因子化的关键在于输出不含任何城市特有标识：先验项只由源城市轨迹与历史决定，目标城市信息只进入落地算子。于是「可迁移」被拆成两问——转移先验是否可迁移、落地是否合理，而不是笼统要求分布不变。实验覆盖十城 14 次迁移，分布保真平均误差较各指标最强基线低约 15%，下游效用低约 3%，后者明显更小，说明效用类指标对落地误差更敏感。边界是目标城市 POI 类别粒度与空间覆盖必须可用。"}
+        ],
+        "socratic": [
+          {"q": "为什么不直接预测绝对目的地？", "a": "绝对目的地把可复用的移动行为与城市特有的 POI 身份、空间布局纠缠在一个输出里；换城市后这些标识全部失效，模型学到的行为无法复用。"},
+          {"q": "既然有了转移先验，为什么还需要探索-返回游走这一步？", "a": "先验采样出的只是语义与地理位移的数值，没有坐标；必须靠行为图与游走把它匹配成目标城市真实存在的 POI 序列，并保证轨迹不越界、能闭合。"}
+        ],
+        "mechanism": "关键在于把城市相关信息从待迁移的部分里彻底剥离：只要输出还带具体 POI 身份，跨城市就退化成分布适配问题。改成相对转移后，先验只描述「怎么移动」，落地算子才注入目标城市结构，于是可以在不假设整体分布不变的前提下检验可迁移性，也让目标城市无需任何轨迹或派生统计量。",
+        "boundary": "需要目标城市可获取 POI 坐标与类别，且类别体系与源城市可比；若两地出行习惯差异极大，可迁移的「怎么移动」先验本身就不成立。下游效用只提升约 3%，说明迁移对具体任务效果的帮助有限，摘要也未报告按城市或迁移难度分层的失败情况。",
+        "analogyBoundary": "「只拿地图猜当地人怎么逛街」的类比暗示地图信息足够，但忽略了先验来源：它仍来自源城市居民的行为，文化差异大时无从猜测，模型也无法主动向目标城市居民求证。",
+        "misconceptions": ["以为无目标轨迹迁移就是零样本泛化，忽略它仍依赖源城市轨迹", "把相对转移理解成只用相对坐标，忽略语义位移也在先验里", "看到 15% 就以为下游任务也提升 15%，实际下游效用只有约 3%"],
+        "ownAnalysis": "把绝对目的地换成相对转移，本质上是把城市标识从预测目标里移除，与跨域推荐里去掉物品 ID、只保留行为模式的思路接近（推断）。摘要声称这使可迁移性可被直接检验，在表征层的这个论证是成立的。可疑处是「上下文条件化」的具体做法与落地失败率未在摘要给出，且下游效用仅提升约 3%，提示当前收益主要在分布层面而非任务层面（推断）。",
+        "officialNotes": [{"position": "Nomad 把学习「人如何移动」与确定「移动在哪里实现」分离：源城市轨迹训练历史条件流匹配转移先验，推理时用行为图与探索-返回游走落到目标城市 POI 图；目标城市不提供任何轨迹或轨迹派生统计量。", "source": "https://arxiv.org/abs/2610.02033v1"}],
+        "interviewAnswer": "我关注的是目标城市无轨迹这个设定：只能拿到 POI 坐标和类别，训练到生成都不能用当地轨迹。已有生成器预测绝对目的地，把行为模式与城市特有 POI 身份绑死了。Nomad 改成上下文条件化的相对转移，用历史条件流匹配在源城市学语义位移、地理位移和耗时的先验，推理时再用行为图和探索-返回游走落到目标城市 POI 上。十城 14 次迁移中，分布保真误差比最强基线低约 15%，下游效用低约 3%。",
+        "studyPath": {
+          "prerequisites": ["轨迹生成与序列建模", "流匹配与扩散模型基础", "图上的搜索与随机游走"],
+          "nextSteps": ["查原文的十城 14 迁移实验设置与基线", "梳理行为图如何从 POI 构建", "分析下游效用只提升约 3% 的原因"]
+        }
+      }
+    },
+    {
+      "id": "1787bd32264be89f",
+      "tldr": "首个基于用户历史的个性化图像生成基准，并提出 PEARL：推理器与冻结生成器交替推理-反思，个性化指标平均提升 15%。",
+      "keyPoints": [
+        "首个从用户历史（评论、帖子、图像、描述、元数据）做个性化生成的统一基准",
+        "两个任务：个性化场景生成与个性化创意生成",
+        "评估覆盖目标保真、视觉质量、用户可区分性、语义对齐与任务效用",
+        "PEARL 把多模态推理器与冻结图像生成器耦合进交替的推理-反思循环",
+        "用差分数据奖励优化，两任务个性化指标平均提升 15%"
+      ],
+      "why": "个性化生成正从「给几张参考图」走向「理解用户是谁」；基准的多轴协议与冻结生成器加推理器的解耦训练，是生成式岗位可直接复用的范式。",
+      "difficulty": "medium",
+      "tags": ["personalization", "image-generation", "benchmark", "multimodal", "reasoning"],
+      "entities": ["PEARL", "Personalized Scene Generation", "Personalized Creative Generation"],
+      "diagram": {
+        "kind": "flow",
+        "title": "PEARL 推理反思循环",
+        "caption": "记住：PEARL 不改生成器权重，靠推理-反思循环与差分数据奖励把用户历史变成个性化信号。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='竖排四层流程图：用户历史输入多模态推理器，驱动冻结图像生成器，再经反思与差分数据奖励形成交替循环'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>用户历史</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>评论·帖子·图像·元数据</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>多模态推理器</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>产出条件与提示</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>冻结图像生成器</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>不更新任何权重</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>反思与差分奖励</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>交替循环，指标 +15%</text></svg>",
+        "alt": "竖排四层流程图：用户历史输入多模态推理器，推理器驱动冻结的图像生成器出图，再由反思与差分数据奖励反馈到下一轮推理。"
+      },
+      "concepts": [
+        {
+          "name": "User-History Personalization",
+          "readable": "不再只给几张精选参考图，而是把用户长期积累的评论、帖子、图像、描述和元数据当作条件，让生成结果贴合他的生活方式与审美偏好。",
+          "analogy": "像给一位老朋友挑生日礼物：你不是只看他最近发的一张照片，而是记得他半年来吐槽过什么、常去哪家店、喜欢什么颜色。",
+          "analogyBreaksDown": "朋友记忆会随时间与场合变化并被主动修正，而这里的历史是冻结的文本与图像集合，模型无法追问「你现在还喜欢这个吗」，历史里的噪声也会被一并学到。",
+          "mechanism": "把个性化条件从少量视觉样例扩展到多模态历史，并把评测拆成目标保真、视觉质量、用户可区分性、语义对齐与任务效用多个轴，避免单一相似度指标掩盖个性化失败。",
+          "visual": "左侧一列用户历史条目（评论、帖子、图片缩略图、时间戳），右侧同一提示词下不同用户生成的图像排成行，行间差异应明显大于行内差异。",
+          "prerequisites": ["扩散模型与图像生成条件控制", "多模态大模型的图文条件输入", "评测指标设计常识"],
+          "selfTest": ["只用参考图做条件与用用户历史做条件的差别在哪？", "为什么需要「用户可区分性」这一指标？", "两个任务分别对应什么真实场景？"],
+          "formula": ""
+        },
+        {
+          "name": "Reason-Reflect Loop",
+          "readable": "多模态推理器先根据用户历史与任务想一轮，驱动冻结的生成器出图，再对结果做反思并调整下一轮推理，如此交替，而不是一次前向出图。",
+          "analogy": "像装修时先画效果图，站在屋里看一圈觉得电视墙太暗，改一版再看，几轮之后才定稿。",
+          "analogyBreaksDown": "装修可以实地感受，而这里「看一圈」靠推理器对自己的输出做文本判断，没有真实用户反馈，反思可能收敛到推理器自身的偏好而非用户的。",
+          "mechanism": "把推理与生成解耦：生成器冻结，只让推理器承担理解用户与调整条件的职责，使训练信号集中在推理环节，避免为个性化重训大生成模型。",
+          "visual": "一个闭环：用户历史与任务进入推理器，箭头指向冻结生成器输出图像，图像再回箭头到反思模块，反思结果注入下一轮推理，循环数轮后输出终图。",
+          "prerequisites": ["多模态推理模型", "图像生成的条件控制", "奖励优化与偏好优化基本概念"],
+          "selfTest": ["为什么冻结生成器反而是优势？", "反思环节的输入是什么、输出去了哪里？", "循环轮数增加一定更好吗？"],
+          "formula": ""
+        },
+        {
+          "name": "Differential Data Reward",
+          "readable": "摘要只说明 PEARL 用差分数据奖励做优化，没有给出定义；按名称可理解为用成对或差分的数据构造相对奖励信号来驱动推理-反思循环（推断）。",
+          "analogy": "像评菜时不打绝对分数，而是让你比较同一道菜的两版，指出哪一版更合口味——相对判断通常比绝对打分更稳定。",
+          "analogyBreaksDown": "品尝两版菜时差异是直接可感的，而这里是被当作奖励的数据差分，若差分数据本身噪声大或有偏，奖励会把推理器引向错误方向；摘要未给定义，这一类比只是推测。",
+          "mechanism": "把奖励从绝对评分改成基于数据差分的相对信号，可在缺少可靠绝对评判标准时提供更稳的优化方向（推断，摘要未给出具体形式）。",
+          "visual": "两条并列样本行：同一用户历史下的两组生成结果，中间标出差分箭头，箭头方向决定奖励正负，再反馈到推理器参数。",
+          "prerequisites": ["奖励建模与偏好优化", "成对或对比式训练目标"],
+          "selfTest": ["绝对奖励与差分奖励在什么情况下差别最大？", "为什么相对信号可能更稳定？", "摘要缺少定义时应如何评价这一设计？"],
+          "formula": "r(\\Delta)=\\mathrm{score}(x^{+})-\\mathrm{score}(x^{-})\\quad（按命名推断的通用形式）"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-reason-reflect-reward",
+          "name": "推理-反思循环的奖励目标（Reason-Reflect Reward Objective）",
+          "category": "generative",
+          "latex": "\\max_{\\phi}\\;\\mathbb{E}_{H,\\,c}\\left[\\sum_{k=1}^{K} R\\Big(G\\big(\\pi_\\phi(H,c,z_{k})\\big)\\Big)\\right]",
+          "symbols": [["π_φ", "可训练的多模态推理器"], ["H", "用户历史（评论、帖子、图像、描述、元数据）"], ["c", "任务与提示，如个性化场景生成"], ["z_k", "第 k 轮推理产生的条件信号"], ["G", "冻结的图像生成器"], ["R", "个性化奖励，对应多轴评测指标"], ["K", "反思轮数"]],
+          "derivation": ["第 1 步：动机。个性化信号来自难以直接建模的用户历史，同时不希望重训大生成模型。", "第 2 步：让可训练的推理器 π_φ 读用户历史 H 与任务 c，产出条件交给冻结生成器 G 出图。", "第 3 步：对出图按个性化指标打分得奖励 R，并把结果作为反思再喂回推理器，形成 K 轮交替。", "第 4 步：以期望累积奖励为目标优化推理器参数 φ，生成器权重保持冻结。"],
+          "analogy": "像摄影师与修图师分工：修图师（生成器）手法固定，摄影师（推理器）反复翻用户相册后调构图，拍完看回放再继续调。",
+          "pitfalls": ["以为要微调图像生成器，实际只训练推理端", "把一次前向出图当成 PEARL 的完整流程，漏掉反思循环", "用单一相似度指标代替多轴评测协议"],
+          "code": "def reason_reflect(reasoner, frozen_gen, hist, task, rounds=3):\n    rewards = []\n    for _ in range(rounds):\n        cond = reasoner(hist, task)      # 产出条件\n        img = frozen_gen(cond)           # 冻结生成器出图\n        r = reward(img, hist, task)      # 个性化奖励\n        reasoner.reflect(img, r)         # 反思注入下一轮\n        rewards.append(r)\n    return sum(rewards) / len(rewards)",
+          "sources": [{"title": "Personalized Image Generation with Reasoning and Reflection", "url": "https://huggingface.co/papers/2610.00737"}]
+        },
+        {
+          "id": "f-differential-data-reward",
+          "name": "差分数据奖励（Differential Data Reward）",
+          "category": "generative",
+          "latex": "\\mathcal{L}(\\phi)=-\\mathbb{E}_{(x^{+},x^{-})\\sim\\mathcal{D}}\\left[\\log\\sigma\\!\\left(\\mathrm{score}_\\phi(x^{+}\\mid H)-\\mathrm{score}_\\phi(x^{-}\\mid H)\\right)\\right]",
+          "symbols": [["D", "差分数据对集合"], ["x⁺", "更贴合该用户的样本"], ["x⁻", "次优或对照样本"], ["H", "用户历史"], ["score_φ", "推理器给出的评分"], ["σ", "sigmoid 函数"]],
+          "derivation": ["第 1 步：摘要只说 PEARL 用差分数据奖励优化，未给形式；这里按成对偏好或差分信号的通用做法重建。", "第 2 步：把同一用户历史下更好与更差的结果组成数据对。", "第 3 步：用两个样本评分之差过 sigmoid 得到偏好概率，取负对数似然作为损失。", "第 4 步：梯度只依赖两样本的相对差，因此不需要绝对奖励的标定。"],
+          "analogy": "像盲品两款同款不同批次的茶：说「这杯更好」比给每杯打绝对分更容易取得一致。",
+          "pitfalls": ["把差分奖励等同于绝对分数回归", "忽略差分数据的构造方式会直接决定模型学到什么偏好", "把重建形式当成作者原式（本条目已标注待核实）"],
+          "code": "import torch, torch.nn.functional as F\n\ndef diff_data_reward_loss(score, x_pos, x_neg, hist):\n    s_pos = score(x_pos, hist)   # 更贴合用户的样本\n    s_neg = score(x_neg, hist)   # 次优对照样本\n    return -F.logsigmoid(s_pos - s_neg).mean()",
+          "sources": [{"title": "Personalized Image Generation with Reasoning and Reflection", "url": "https://arxiv.org/abs/2610.00737"}]
+        }
+      ],
+      "selfCheck": {
+        "claims": ["论文提出首个从用户历史做个性化图像生成的统一基准，历史包含评论、帖子、图像、描述与元数据。", "基准含个性化场景生成与个性化创意生成两个任务，以及覆盖目标保真、视觉质量、用户可区分性、历史语义对齐与任务效用的多轴评估协议。", "两个任务分别对应个性化商品展示与社交媒体内容创作两个真实场景。", "PEARL 把多模态推理器与冻结图像生成器耦合在交替的推理-反思循环中，用差分数据奖励优化。", "PEARL 在两个任务上超过强基线，个性化指标平均提升 15%。"],
+        "uncertain": ["差分数据奖励的定义与计算方式摘要未给出，相关公式为按命名重建的通用形式，需核对原文", "推理-反思循环的轮数、冻结生成器具体是哪个模型、训练数据规模摘要均未说明", "15% 是跨多个个性化指标的平均值，各指标分别提升多少摘要未报告"]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "不只给几张参考图，而是读你长期留下的内容，生成像你会喜欢的图。"},
+          {"level": "入门", "text": "以前的个性化图像生成大多只看几张精选参考图，抓不住「用户是谁」。这篇提出首个从用户历史做个性化生成的统一基准，含两个任务和多轴评测，并提出 PEARL：多模态推理器与冻结图像生成器交替推理与反思。"},
+          {"level": "进阶", "text": "用户历史包含评论、帖子、图像、描述和元数据，目标是由此生成贴合其生活方式与审美的图像。基准有两个任务：个性化场景生成（把给定物体放进反映用户偏好的场景，对应个性化商品展示）和个性化创意生成（按主题生成符合用户视觉身份的新图，对应社交媒体创作）；评测覆盖目标保真、视觉质量、用户可区分性、历史语义对齐与任务效用。PEARL 把可训练推理器与冻结生成器耦合在交替循环里，用差分数据奖励优化。"},
+          {"level": "专家", "text": "PEARL 的取舍很清晰：生成器冻结，训练信号全部落在多模态推理器上，由推理产出条件、看结果、再反思改进下一轮。这样既避免为个性化重训扩散模型，也把「理解用户」与「出图能力」分开。基准的多轴协议是对单相似度评测的修正：用户可区分性专门惩罚那种对不同用户生成雷同图的模型。两任务平均提升 15%，但摘要未报告各指标分别提升多少，也未说明循环轮数与推理成本的权衡。"}
+        ],
+        "socratic": [
+          {"q": "为什么要把图像生成器冻结？", "a": "个性化需要的是理解用户而不是重画世界；冻结生成器既省算力，又让训练信号集中到推理环节，便于用奖励优化推理行为而不破坏生成质量。"},
+          {"q": "为什么需要用户可区分性这个指标？", "a": "如果模型对所有人都生成风格相似的图，目标保真和视觉质量可能都不差，但个性化根本没发生；可区分性直接检验输出能否把不同用户区分开。"}
+        ],
+        "mechanism": "个性化信号的来源决定架构选择：当条件从几张参考图变成噪声大、跨模态、时间跨度长的用户历史时，直接微调生成器既昂贵又难以把历史对齐到像素空间。把理解用户交给推理器、把出图交给冻结生成器，再用奖励优化推理端，等于把最难的部分放进语言与推理空间处理。",
+        "boundary": "摘要没有给出用户历史的规模上限、隐私处理方式与冷启动表现；推理-反思循环会增加推理成本与延迟，轮数增加未必单调变好。基准来自电商与社交媒体场景，迁移到医疗、教育等其它领域时，历史语义与评测轴都需要重新定义。",
+        "analogyBoundary": "「给老朋友挑礼物」的类比暗示模型真的了解这个人，但它只是从冻结的历史文本与图片里做统计推断，既不理解上下文时间线，也无法像朋友那样求证或遗忘过时偏好。",
+        "misconceptions": ["以为个性化图像生成就是把参考图做风格迁移", "以为 PEARL 微调了图像生成器，实际生成器是冻结的", "把 15% 当成所有指标的统一提升，忽略多轴协议与任务差异"],
+        "ownAnalysis": "把「理解用户」交给推理器、把「出图」交给冻结生成器，是当前个性化生成里成本最低的分工方式，也与用奖励优化策略而非重训基座的思路一致（推断）。真正值得关注的是评测：用户可区分性与历史语义对齐这两轴把「看起来个性化」和「确实对应用户」分开，比再多一个生成模型更重要（推断）。可疑处是差分数据奖励与推理-反思循环的具体形式摘要未给，15% 提升无法据此判断来自推理改进还是来自更好的提示（推断）。",
+        "officialNotes": [{"position": "论文提出首个从用户历史做个性化图像生成的统一基准，含个性化场景生成与个性化创意生成两个任务及多轴评估协议；PEARL 将多模态推理器与冻结图像生成器耦合在交替的推理-反思循环中，用差分数据奖励优化，两个任务的个性化指标平均提升 15%。", "source": "https://huggingface.co/papers/2610.00737"}],
+        "interviewAnswer": "这篇做从用户历史出发的个性化图像生成。它指出现有工作只用少量参考图做条件，抓不住用户是谁，于是提出首个基于用户历史的统一基准，两个任务是个性化场景生成与创意生成，评测覆盖目标保真、视觉质量、用户可区分性与任务效用。PEARL 把多模态推理器和冻结的图像生成器放进交替的推理-反思循环，用差分数据奖励优化，两个任务上个性化指标平均提升 15%。关键设计是冻结生成器，把训练信号集中在理解用户这一侧。",
+        "studyPath": {
+          "prerequisites": ["扩散模型与图像生成条件控制", "多模态大模型的图文理解", "偏好优化与奖励建模"],
+          "nextSteps": ["读原文看两个任务的数据构造与指标定义", "弄清差分数据奖励的具体形式", "对比只给参考图的个性化基线"]
+        }
+      }
+    }
+  ]
+}

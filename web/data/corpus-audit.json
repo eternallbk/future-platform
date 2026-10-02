@@ -1,14 +1,14 @@
 {
- "generatedAt": "2026-10-03T02:20:45+08:00",
- "corpus": 736,
+ "generatedAt": "2026-10-03T02:50:24+08:00",
+ "corpus": 746,
  "knowledgeTypes": {
-  "method": 397,
+  "method": 403,
   "project": 121,
-  "fundamentals": 62,
+  "fundamentals": 64,
   "coding": 41,
   "job": 30,
-  "interview": 40,
-  "other": 44,
+  "interview": 41,
+  "other": 45,
   "news": 1
  },
  "drop": [],
@@ -84,6 +84,12 @@
    "title": "免费开源项目|个人深度研究 Agent",
    "category": "agent",
    "relevance": 46.8
+  },
+  {
+   "id": "0cb321e1853d55c6",
+   "title": "A model guide for the GPT-6 family",
+   "category": "course",
+   "relevance": 46.5
   },
   {
    "id": "f70b0915b6c9ae6c",

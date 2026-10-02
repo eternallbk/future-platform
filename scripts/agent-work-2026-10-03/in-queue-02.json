@@ -1,0 +1,171 @@
+{
+  "batchId": "queue-02",
+  "mode": "full",
+  "date": "2026-10-03",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
+  "items": [
+    {
+      "id": "ca33c1c95f651461",
+      "title": "[编程题] 汉诺塔问题",
+      "category": "coding",
+      "channel": "nowcoder_questions",
+      "url": "https://nowcoder.com/practice/7d6cab7d435048c4b05251bf44e9f185",
+      "sources": [
+        {
+          "url": "https://nowcoder.com/practice/7d6cab7d435048c4b05251bf44e9f185",
+          "name": "nowcoder_questions"
+        }
+      ],
+      "tags": [
+        "算法题",
+        "牛客",
+        "编程题"
+      ],
+      "summary": "汉诺塔问题_牛客题霸_牛客网 我们有由底至上为从大到小放置的 n 个圆盘，和三个柱子（分别为左中右即leftmidright），开始时所有圆盘都放在左边的柱子上，按照汉诺塔游戏的要求我们要把所有的圆盘都移到右边的柱子上，要求一次只能移动一个圆盘，而且大的圆盘不可以放到小的上面。 请实现一个函数打印最优移动轨迹。 给定一个 `int n` ，表示有 n 个圆盘。请返回一个 `string` 数组，其中的元素依次为每次移动的描述。描述格式为： `move from [leftmidright] to [leftmidright]`。 数据范围： 要求：时间复杂度 ， 空间复杂度 示例1 输入 2 输出 [\"move from left to mid\",\"move from left to right\",\"move from mid to right\"] 加载中... import java.util.*; public class Solution { /** * 代码中的类名、方法名、参数名已经指定，请勿修改，直接返回方法规定的值即可 * * * @param n int整型 * @return string字符串ArrayList */ public ArrayList getSolution (int n) { // write code here } } class Solut",
+      "authors": [],
+      "publishedAt": "2026-10-03T01:43:44+08:00",
+      "knowledgeType": "coding",
+      "why": "归属「面试手撕题」方向；命中关键词 算法题；疑似附带开源实现；中文来源，贴近国内求职语境",
+      "relevanceScore": 64.7,
+      "qualitySignals": {
+        "hotIndex": 0,
+        "timeLimit": ""
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 64.7,
+      "planDepthScore": 92.97
+    },
+    {
+      "id": "7be70fc8379e7991",
+      "title": "doocs/leetcode — 🔥LeetCode solutions in any programming language | 多种编程语言实现 LeetCode、《剑",
+      "category": "coding",
+      "channel": "github_algo",
+      "url": "https://github.com/doocs/leetcode",
+      "sources": [
+        {
+          "url": "https://github.com/doocs/leetcode",
+          "name": "github_algo"
+        }
+      ],
+      "tags": [
+        "GitHub",
+        "算法仓库",
+        "题解",
+        "多语言",
+        "LeetCode"
+      ],
+      "summary": "🔥LeetCode solutions in any programming language | 多种编程语言实现 LeetCode、《剑指 Offer（第 2 版）》、《程序员面试金典（第 6 版）》题解｜36647 stars｜Java｜最近更新 2026-10-02｜主题：algorithms、cpp、csharp、golang、java、javascript、leetcode、python3",
+      "authors": [],
+      "publishedAt": "2026-10-02T18:09:43Z",
+      "knowledgeType": "coding",
+      "why": "归属「面试手撕题」方向；命中关键词 leetcode；GitHub 36647 stars；疑似附带开源实现；中文来源，贴近国内求职语境",
+      "relevanceScore": 77.2,
+      "qualitySignals": {
+        "stars": 36647
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 77.2,
+      "planDepthScore": 89.58
+    },
+    {
+      "id": "806ec4de46376616",
+      "title": "huggingface/transformers - 🤗 Transformers: the model-definition framework for state-of-the-art machine learning models in text, vision, audio, and multimodal models, for both inference and training.",
+      "category": "multimodal",
+      "channel": "github",
+      "url": "https://github.com/huggingface/transformers",
+      "sources": [
+        {
+          "url": "https://github.com/huggingface/transformers",
+          "name": "github"
+        }
+      ],
+      "tags": [
+        "audio",
+        "deep-learning",
+        "deepseek",
+        "gemma",
+        "glm",
+        "hacktoberfest",
+        "llm",
+        "machine-learning",
+        "Python"
+      ],
+      "summary": "🤗 Transformers: the model-definition framework for state-of-the-art machine learning models in text, vision, audio, and multimodal models, for both inference and training.",
+      "authors": [
+        "huggingface"
+      ],
+      "publishedAt": "2026-10-01T00:12:54+08:00",
+      "knowledgeType": "fundamentals",
+      "why": "归属「多模态算法」方向；命中关键词 multimodal；GitHub 166878 stars；疑似附带开源实现",
+      "relevanceScore": 66.9,
+      "qualitySignals": {
+        "stars": 166905,
+        "forks": 34743,
+        "codeAvailable": true
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 66.9,
+      "planDepthScore": 88.94
+    },
+    {
+      "id": "1c0c06f03796d16e",
+      "title": "C++单例模式四种实现方式：饿汉式、懒汉式、双检锁与Magic Static的演进与选择",
+      "category": "coding",
+      "channel": "kamacoder_notes",
+      "url": "https://notes.kamacoder.com/cpp/singleton-pattern.html",
+      "sources": [
+        {
+          "url": "https://notes.kamacoder.com/cpp/singleton-pattern.html",
+          "name": "kamacoder_notes"
+        }
+      ],
+      "tags": [
+        "八股",
+        "卡码笔记"
+      ],
+      "summary": "C++ Java Go 🔥大模型🔥 大厂面经 大厂面经 大模型面经 Java面经 C++面经 大模型Github (opens new window) 代码随想录 (opens new window) 首页 计算机基础 C++ Java Go 🔥大模型🔥 大厂面经 大厂面经 大模型面经 Java面经 C++面经 大模型Github (opens new window) 代码随想录 (opens new window) 本栏必读 关于本专栏 C++学习路线 C++零基础入门课 C++面试题系优化 基础与语法 面向对象 C++构造函数有几种，分别什么作用？ 什么是构造函数和析构函数？构造函数和析构函数可以是虚函数吗？为什么？ C++的重载和重写，以及它们的区别和实现方式 C++怎么实现多态 C++中的虚函数和纯虚函数有什么区别？ 虚函数怎么实现的？ 多重继承的优缺点及菱形继承问题 如何禁止一个类被继承 深拷贝和浅拷贝的区别？ this指针的原理 C++如何实现一个单例模式？ 简要回答 详细回答 知识拓展 STL 与容器 内存管理 C++11 与现代 C++ 智能指针 并发与 I/O # C++ 单例模式的实现 面试官问\"怎么实现单例模式\"，大多数人能写出懒汉式，但追问\"线程安全吗\"\"双检锁有什么坑\"\"现代 C++ 推荐哪种\"，就开始含糊了。 这道题考的不是能不能写出代码，而是你对四种实现方式的 演进逻辑 和 各自的坑 是否清楚。把\"为什么一步步演进到 Magic Static\"讲清楚，面试官就不会继续追了。 # 简要回答 单例模式确保 类只有一个实例 + 提供全局访问点 。核心手段：构造函数私有化 + 删除拷贝/赋值 + 静态方法返回唯一实例。现代 C++ 推荐用 局部静态变量（Magic Static） ： static Singleton& getInstance() { static Singleton inst; return inst; } ——C++11 标准保证局部 static 变量初始化是线程安全的，代码最简洁，自动析构，没有任何坑。 # 详细回答 四种实现的演进逻辑 饿汉式 ：程序启动时就创建实例（静态成员变量在 main 之前初始化）。天然线程安全，但如果单例很重且可能用不到，就浪费了资源。另外多个饿汉式单例之间的初始化顺序不确定（static initialization order fiasco）。 懒汉式 ：第一次调用 getInstance() 时才创建。解决了资源浪费问题，但多线程下两个线程同时判断 instance == nullptr 会创建两个实例——线程不安全。 双检锁（DCLP） ：在懒汉式基础上加锁。第一次检查避免每次都加锁（性能），加锁后第二次检查避免重复创建。但在 C++11 之前，由于指令重排和内存可见性问题，DCLP 实际上是有 bug 的。C++11 之后需要配合 std::atomic 或 std::call_once 才能正确实现。 Magic Static（C++11 推荐） ：函数内的局",
+      "authors": [],
+      "publishedAt": "2026-10-03T02:19:09+08:00",
+      "knowledgeType": "fundamentals",
+      "why": "归属「面试手撕题」方向；命中关键词 面经、八股；中文来源，贴近国内求职语境",
+      "relevanceScore": 67.6,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 67.6,
+      "planDepthScore": 88.79
+    },
+    {
+      "id": "250593b8b2b6a7ad",
+      "title": "C++重载与重写对比：同作用域参数不同编译期决定vs继承关系签名相同运行时决定、virtual与override关键字作用",
+      "category": "coding",
+      "channel": "kamacoder_notes",
+      "url": "https://notes.kamacoder.com/cpp/overload-vs-override.html",
+      "sources": [
+        {
+          "url": "https://notes.kamacoder.com/cpp/overload-vs-override.html",
+          "name": "kamacoder_notes"
+        }
+      ],
+      "tags": [
+        "八股",
+        "卡码笔记"
+      ],
+      "summary": "C++ Java Go 🔥大模型🔥 大厂面经 大厂面经 大模型面经 Java面经 C++面经 大模型Github (opens new window) 代码随想录 (opens new window) 首页 计算机基础 C++ Java Go 🔥大模型🔥 大厂面经 大厂面经 大模型面经 Java面经 C++面经 大模型Github (opens new window) 代码随想录 (opens new window) 本栏必读 关于本专栏 C++学习路线 C++零基础入门课 C++面试题系优化 基础与语法 面向对象 C++构造函数有几种，分别什么作用？ 什么是构造函数和析构函数？构造函数和析构函数可以是虚函数吗？为什么？ C++的重载和重写，以及它们的区别和实现方式 简要回答 详细回答 知识拓展 C++怎么实现多态 C++中的虚函数和纯虚函数有什么区别？ 虚函数怎么实现的？ 多重继承的优缺点及菱形继承问题 如何禁止一个类被继承 深拷贝和浅拷贝的区别？ this指针的原理 C++如何实现一个单例模式？ STL 与容器 内存管理 C++11 与现代 C++ 智能指针 并发与 I/O # 重载和重写的区别 面试官问\"重载和重写有什么区别\"，大部分人能说出\"重载参数不同，重写是子类覆盖父类\"，但追问\"重载能不能靠返回值区分\"\"不加 virtual 会怎样\"\"override 关键字到底有什么用\"就开始含糊了。这道题的核心是理解：重载是编译期决定调哪个（静态绑定），重写是运行时决定调哪个（动态绑定）。 # 简要回答 重载（Overload）是在同一个作用域里，多个函数名字相同但参数列表不同（类型不同、个数不同、顺序不同），编译器在编译时根据你传的参数类型决定调用哪个版本。重写（Override）是子类对父类虚函数的重新实现，函数名、参数、返回值完全一样，运行时通过虚函数表决定调用父类版本还是子类版本。一个是编译期多态，一个是运行时多态。 # 详细回答 重载发生在什么条件下 重载发生在同一个作用域内（同一个类里，或者同一个命名空间里）。条件是函数名相同，但参数列表必须不同——可以是参数类型不同、参数个数不同、或者参数顺序不同。编译器通过参数列表来区分调用哪个函数，这个过程在编译期就确定了，叫静态绑定。注意： 不能仅靠返回值类型来区分重载 ，因为调用时编译器看不到你要用返回值做什么，无法判断该调哪个。 重写发生在什么条件下 重写必须满足三个前提：有继承关系、父类函数标了 virtual 、子类函数签名和父类完全一致（函数名、参数列表、const 修饰都一样）。满足这三个条件后，通过父类指针/引用调用该函数时，运行时会根据对象的实际类型（通过虚函数表查找）决定调用父类版本还是子类版本，这就是动态绑定。 virtual 和 override 各自的作用 virtual 写在父类函数声明前面，告诉编译器\"这个函数可能被子类重写，请走虚函数表机制\"。如果父类不加 virtual ，子类写了同名同参的函数不叫重写，叫\"隐藏\"（hidi",
+      "authors": [],
+      "publishedAt": "2026-10-03T02:12:44+08:00",
+      "knowledgeType": "fundamentals",
+      "why": "归属「面试手撕题」方向；命中关键词 面经、八股；中文来源，贴近国内求职语境",
+      "relevanceScore": 67.6,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 67.6,
+      "planDepthScore": 88.79
+    }
+  ]
+}

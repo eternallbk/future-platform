@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-03T01:45:30+08:00",
+ "generatedAt": "2026-10-03T02:50:27+08:00",
  "generatedBy": "plan_deep_read.py",
  "policy": {
   "perCategoryMin": 2,
@@ -26,12 +26,12 @@
   ]
  },
  "totals": {
-  "corpus": 708,
+  "corpus": 746,
   "alreadyEnriched": 116,
-  "candidates": 594,
-  "skimmed": 75,
-  "selected": 92,
-  "categories": 11
+  "candidates": 633,
+  "skimmed": 78,
+  "selected": 95,
+  "categories": 13
  },
  "perCategory": {
   "agent": {
@@ -43,61 +43,73 @@
   "coding": {
    "quota": 10,
    "picked": 10,
-   "candidates": 30,
+   "candidates": 60,
    "categoryWeight": 1.0
+  },
+  "course": {
+   "quota": 6,
+   "picked": 1,
+   "candidates": 1,
+   "categoryWeight": 0.55
   },
   "engineering": {
    "quota": 7,
    "picked": 7,
-   "candidates": 28,
+   "candidates": 29,
    "categoryWeight": 0.65
   },
   "foundation": {
    "quota": 8,
-   "picked": 4,
-   "candidates": 4,
+   "picked": 5,
+   "candidates": 5,
    "categoryWeight": 0.7
   },
   "generative": {
    "quota": 9,
    "picked": 9,
-   "candidates": 41,
+   "candidates": 39,
    "categoryWeight": 0.85
   },
   "job": {
    "quota": 6,
    "picked": 6,
-   "candidates": 28,
+   "candidates": 30,
    "categoryWeight": 0.5
   },
   "multimodal": {
    "quota": 10,
    "picked": 10,
-   "candidates": 76,
+   "candidates": 75,
    "categoryWeight": 1.0
   },
   "paper": {
    "quota": 10,
    "picked": 10,
-   "candidates": 18,
+   "candidates": 17,
    "categoryWeight": 0.95
   },
   "posttraining": {
    "quota": 10,
    "picked": 10,
-   "candidates": 105,
+   "candidates": 107,
    "categoryWeight": 1.0
   },
   "rl": {
    "quota": 9,
    "picked": 9,
-   "candidates": 16,
+   "candidates": 17,
    "categoryWeight": 0.9
+  },
+  "trend": {
+   "quota": 6,
+   "picked": 1,
+   "candidates": 1,
+   "categoryWeight": 0.45
   },
   "worldmodel": {
    "quota": 10,
    "picked": 10,
-   "candidates": 51,
+   "candidates": 52,
    "categoryWeight": 1.0
   }
  },
@@ -107,12 +119,12 @@
    "title": "[编程题] 设 v 是实单位列向量，Householder 反射矩阵 H",
    "category": "coding",
    "channel": "nowcoder_questions",
-   "relevanceScore": 71.8,
-   "depthScore": 97.6,
+   "relevanceScore": 69.8,
+   "depthScore": 96.29,
    "url": "https://nowcoder.com/questionTerminal/8b95485d87b34572ba2597134506f3dc",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 32.31,
+    "relevance": 31.41,
     "content": 11.999999999999998,
     "code": 8.0,
     "peer": 0.0,
@@ -121,16 +133,52 @@
    }
   },
   {
+   "id": "84dc5ede05e7bd20",
+   "title": "FRS2003/hands-on-llm - 动手学大模型全栈：CS336 中文精讲 · PyTorch 手搓 Transformer · 单卡复现 Pretrain/SFT/LoRA/DPO/GRPO/RLVR · PEFT/Agent/RAG 落地（含真实实验、曲线与复现脚本）",
+   "category": "posttraining",
+   "channel": "github",
+   "relevanceScore": 79.2,
+   "depthScore": 95.2,
+   "url": "https://github.com/FRS2003/hands-on-llm",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 35.64,
+    "content": 2.3600000000000003,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "ec70af7a045b9f22",
+   "title": "AXIAL: Attention-based eXplainability for Interpretable Alzheimer’s Localized diagnosis using 2D CNNs on 3D MRI brain scans",
+   "category": "foundation",
+   "channel": "s2",
+   "relevanceScore": 67.1,
+   "depthScore": 95.1,
+   "url": "https://doi.org/10.1186/s12911-026-03833-2",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.194999999999997,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 7.000000000000001,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "34583f8e3d5d4c78",
    "title": "[编程题] 反转链表",
    "category": "coding",
    "channel": "nowcoder_questions",
-   "relevanceScore": 66.6,
-   "depthScore": 94.21,
+   "relevanceScore": 64.7,
+   "depthScore": 92.97,
    "url": "https://nowcoder.com/practice/75e878df47f24fdc9dc3e400ec6058ca",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 29.97,
+    "relevance": 29.115000000000002,
     "content": 11.999999999999998,
     "code": 8.0,
     "peer": 0.0,
@@ -143,12 +191,12 @@
    "title": "[编程题] 合并两个排序的链表",
    "category": "coding",
    "channel": "nowcoder_questions",
-   "relevanceScore": 66.6,
-   "depthScore": 94.21,
+   "relevanceScore": 64.7,
+   "depthScore": 92.97,
    "url": "https://nowcoder.com/practice/d8b6b4358f774294a89de2a6ac4d9337",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 29.97,
+    "relevance": 29.115000000000002,
     "content": 11.999999999999998,
     "code": 8.0,
     "peer": 0.0,
@@ -161,12 +209,12 @@
    "title": "[编程题] 栈的压入、弹出序列",
    "category": "coding",
    "channel": "nowcoder_questions",
-   "relevanceScore": 66.6,
-   "depthScore": 94.21,
+   "relevanceScore": 64.7,
+   "depthScore": 92.97,
    "url": "https://nowcoder.com/practice/d77d11405cc7470d82554cb392585106",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 29.97,
+    "relevance": 29.115000000000002,
     "content": 11.999999999999998,
     "code": 8.0,
     "peer": 0.0,
@@ -179,12 +227,12 @@
    "title": "[编程题] 汉诺塔问题",
    "category": "coding",
    "channel": "nowcoder_questions",
-   "relevanceScore": 66.6,
-   "depthScore": 94.21,
+   "relevanceScore": 64.7,
+   "depthScore": 92.97,
    "url": "https://nowcoder.com/practice/7d6cab7d435048c4b05251bf44e9f185",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 29.97,
+    "relevance": 29.115000000000002,
     "content": 11.999999999999998,
     "code": 8.0,
     "peer": 0.0,
@@ -193,16 +241,52 @@
    }
   },
   {
-   "id": "b339885dc7c6a89b",
-   "title": "越大越强，不再是 LLM 的专利：PixVerse R2 攻克实时世界模型 Scaling 难题",
-   "category": "worldmodel",
-   "channel": "leiphone",
-   "relevanceScore": 66.5,
-   "depthScore": 88.09,
-   "url": "https://leiphone.com/category/yanxishe/qrkgXZRZeLOX4viW.html",
+   "id": "7be70fc8379e7991",
+   "title": "doocs/leetcode — 🔥LeetCode solutions in any programming language | 多种编程语言实现 LeetCode、《剑",
+   "category": "coding",
+   "channel": "github_algo",
+   "relevanceScore": 77.2,
+   "depthScore": 89.58,
+   "url": "https://github.com/doocs/leetcode",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 29.925,
+    "relevance": 34.74,
+    "content": 4.039999999999999,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "806ec4de46376616",
+   "title": "huggingface/transformers - 🤗 Transformers: the model-definition framework for state-of-the-art machine learning models in text, vision, audio, and multimodal models, for both inference and training.",
+   "category": "multimodal",
+   "channel": "github",
+   "relevanceScore": 66.9,
+   "depthScore": 88.94,
+   "url": "https://github.com/huggingface/transformers",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.105000000000004,
+    "content": 3.42,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "1c0c06f03796d16e",
+   "title": "C++单例模式四种实现方式：饿汉式、懒汉式、双检锁与Magic Static的演进与选择",
+   "category": "coding",
+   "channel": "kamacoder_notes",
+   "relevanceScore": 67.6,
+   "depthScore": 88.79,
+   "url": "https://notes.kamacoder.com/cpp/singleton-pattern.html",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.419999999999998,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -211,20 +295,254 @@
    }
   },
   {
-   "id": "82e71d5b37dee84f",
-   "title": "vllm-sr/multi-modal-embed-small",
-   "category": "multimodal",
-   "channel": "hf_models",
-   "relevanceScore": 75.5,
-   "depthScore": 84.86,
-   "url": "https://huggingface.co/vllm-sr/multi-modal-embed-small",
+   "id": "250593b8b2b6a7ad",
+   "title": "C++重载与重写对比：同作用域参数不同编译期决定vs继承关系签名相同运行时决定、virtual与override关键字作用",
+   "category": "coding",
+   "channel": "kamacoder_notes",
+   "relevanceScore": 67.6,
+   "depthScore": 88.79,
+   "url": "https://notes.kamacoder.com/cpp/overload-vs-override.html",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 33.975,
-    "content": 3.6399999999999997,
-    "code": 8.0,
+    "relevance": 30.419999999999998,
+    "content": 18.0,
+    "code": 0.0,
     "peer": 0.0,
     "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "277441ea3ddc25e9",
+   "title": "C++ push_back与emplace_back的区别：原地构造、完美转发、性能差异与选择策略",
+   "category": "coding",
+   "channel": "kamacoder_notes",
+   "relevanceScore": 67.6,
+   "depthScore": 88.79,
+   "url": "https://notes.kamacoder.com/cpp/pushback-vs-emplaceback.html",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.419999999999998,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "30480cd0e3a058a6",
+   "title": "C++11移动语义作用与原理：右值引用标识临时对象、移动构造接管指针O(1)转移、std::move类型转换本质",
+   "category": "coding",
+   "channel": "kamacoder_notes",
+   "relevanceScore": 67.6,
+   "depthScore": 88.79,
+   "url": "https://notes.kamacoder.com/cpp/move-semantics.html",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.419999999999998,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 0.0,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "98ecc61a0f6c206b",
+   "title": "Learning Chaos Without Seeing Chaos: Extrapolation of Global Dynamics in Autoregressive Transformers",
+   "category": "foundation",
+   "channel": "hf_papers",
+   "relevanceScore": 70.0,
+   "depthScore": 88.09,
+   "url": "https://huggingface.co/papers/2609.38814",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 31.5,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "ad48db42eb955173",
+   "title": "A foundation for systematic analysis of transformers and RNNs for tractography",
+   "category": "generative",
+   "channel": "arxiv",
+   "relevanceScore": 59.4,
+   "depthScore": 87.82,
+   "url": "https://arxiv.org/abs/2610.01894v1",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.73,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "dd3ee83684a019cf",
+   "title": "langchain4j/langchain4j - LangChain4j is an idiomatic, open-source Java library for building LLM-powered applications on the JVM. It offers a unified API over popular LLM providers and vector stores, and makes implementing tool calling (including MCP support), agents and RAG easy. It integrates seamlessly with enterprise Java frameworks like Quarkus and Spring Boot.",
+   "category": "agent",
+   "channel": "github",
+   "relevanceScore": 80.9,
+   "depthScore": 86.14,
+   "url": "https://github.com/langchain4j/langchain4j",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 36.405,
+    "content": 6.84,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "6cb2bfabaac22609",
+   "title": "Transformers Stop Thinking Too Early, and a Tiny LoRA Fixes It",
+   "category": "foundation",
+   "channel": "hf_papers",
+   "relevanceScore": 61.5,
+   "depthScore": 83.38,
+   "url": "https://huggingface.co/papers/2609.36585",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 27.675,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "8a60bc7ca8f1e1b9",
+   "title": "dromara/Omega-AI - Omega-AI is a Java-based deep learning framework that helps you quickly build neural networks for inference and training. Its engine supports automatic differentiation, multithreading, and GPU acceleration with CUDA and cuDNN.",
+   "category": "engineering",
+   "channel": "github",
+   "relevanceScore": 75.3,
+   "depthScore": 82.36,
+   "url": "https://github.com/dromara/Omega-AI",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 33.885,
+    "content": 4.52,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "fe8effbbe5b24d57",
+   "title": "Decoding Looped Transformers Better for (Almost) Free",
+   "category": "engineering",
+   "channel": "hf_papers",
+   "relevanceScore": 61.3,
+   "depthScore": 81.37,
+   "url": "https://huggingface.co/papers/2610.02185",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 27.585,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "622683b4a1f31b43",
+   "title": "jmaczan/tiny-vllm - Build your own high performance LLM inference engine in C++ and CUDA - a smaller version of vLLM",
+   "category": "engineering",
+   "channel": "github",
+   "relevanceScore": 76.5,
+   "depthScore": 79.88,
+   "url": "https://github.com/jmaczan/tiny-vllm",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 34.425000000000004,
+    "content": 1.9200000000000002,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "527f4b1f6ad840c7",
+   "title": "The Geometry of Inference in Transformer Residual Streams",
+   "category": "engineering",
+   "channel": "hf_papers",
+   "relevanceScore": 58.1,
+   "depthScore": 79.64,
+   "url": "https://huggingface.co/papers/2609.37824",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.145,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "b267ff96b62b124d",
+   "title": "t8y2/dbx - 25 MB lightweight cross-platform database client for 100+ databases, including MySQL, PostgreSQL, SQLite, Redis, MongoDB, DuckDB, SQL Server, and Dameng. Built-in AI, MCP Server, CLI, desktop and Docker. | 轻量级跨平台数据库管理工具，支持 MySQL、PostgreSQL、SQLite、Redis、MongoDB、达梦等 100+ 数据库，提供桌面端、Docker、CLI、内置 AI 助手和",
+   "category": "agent",
+   "channel": "gh_trending",
+   "relevanceScore": 67.5,
+   "depthScore": 78.06,
+   "url": "https://github.com/t8y2/dbx",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.375,
+    "content": 5.999999999999999,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "8be496c85ad5ec3b",
+   "title": "JetBrains/koog - Koog is a JVM (Java and Kotlin) framework for building predictable, fault-tolerant and enterprise-ready AI agents across all platforms – from backend services to Android and iOS, JVM, and even in-browser environments. Koog is based on our AI products expertise and provides proven solutions for complex LLM and AI problems",
+   "category": "agent",
+   "channel": "github",
+   "relevanceScore": 65.9,
+   "depthScore": 77.73,
+   "url": "https://github.com/JetBrains/koog",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.655000000000005,
+    "content": 6.439999999999999,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "6e9fe3c163df33a0",
+   "title": "genkit-ai/genkit - Open-source framework for building agentic apps in JavaScript, Go, Dart, and Python, built and used in production by Google",
+   "category": "agent",
+   "channel": "github",
+   "relevanceScore": 64.8,
+   "depthScore": 72.47,
+   "url": "https://github.com/genkit-ai/genkit",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 29.16,
+    "content": 2.46,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
     "material": 15.0
    }
   },
@@ -279,6 +597,24 @@
     "code": 0.0,
     "peer": 0.0,
     "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "4f5b506dfea832c7",
+   "title": "liyupi/mianshiya — 持续维护的企业面试题库网站，帮你拿到满意 offer！⭐️ 2026年最新Java面试题、前端面试题、AI大模型面试题、AI Agent面试",
+   "category": "agent",
+   "channel": "github_algo",
+   "relevanceScore": 58.3,
+   "depthScore": 67.14,
+   "url": "https://github.com/liyupi/mianshiya",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 26.235,
+    "content": 7.859999999999999,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 0.0,
     "material": 15.0
    }
   },
@@ -445,13 +781,13 @@
    }
   },
   {
-   "id": "a2675c908b72c1ca",
-   "title": "Keyword Harnesses Fail Open: A Cheap Diagnostic Ladder for Tool-Use Claims in Small Language Models",
+   "id": "c0494b509b63aae3",
+   "title": "Generative modeling of intrinsically disordered protein regions by reinforcing sparse autoencoder features",
    "category": "posttraining",
    "channel": "arxiv",
    "relevanceScore": 65.5,
    "depthScore": 65.85,
-   "url": "https://arxiv.org/abs/2610.02142v1",
+   "url": "https://arxiv.org/abs/2610.02189v1",
    "hasSummary": true,
    "scoreBreakdown": {
     "relevance": 29.475,
@@ -463,16 +799,16 @@
    }
   },
   {
-   "id": "c0494b509b63aae3",
-   "title": "Generative modeling of intrinsically disordered protein regions by reinforcing sparse autoencoder features",
+   "id": "a2675c908b72c1ca",
+   "title": "Keyword Harnesses Fail Open: A Cheap Diagnostic Ladder for Tool-Use Claims in Small Language Models",
    "category": "posttraining",
    "channel": "arxiv",
-   "relevanceScore": 65.5,
-   "depthScore": 65.85,
-   "url": "https://arxiv.org/abs/2610.02189v1",
+   "relevanceScore": 65.4,
+   "depthScore": 65.82,
+   "url": "https://arxiv.org/abs/2610.02142v1",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 29.475,
+    "relevance": 29.430000000000003,
     "content": 18.0,
     "code": 8.0,
     "peer": 0.0,
@@ -517,13 +853,13 @@
    }
   },
   {
-   "id": "99373303e219b8c5",
-   "title": "FutureWorlds: Learning Robotic World Models from Alternative Futures",
+   "id": "eebff77cf06b8b95",
+   "title": "iSEE: Object Permanence Through Self-Supervision",
    "category": "worldmodel",
    "channel": "arxiv",
    "relevanceScore": 65.2,
    "depthScore": 65.74,
-   "url": "https://arxiv.org/abs/2610.01019v1",
+   "url": "https://arxiv.org/abs/2610.01201v1",
    "hasSummary": true,
    "scoreBreakdown": {
     "relevance": 29.340000000000003,
@@ -535,16 +871,16 @@
    }
   },
   {
-   "id": "eebff77cf06b8b95",
-   "title": "iSEE: Object Permanence Through Self-Supervision",
+   "id": "99373303e219b8c5",
+   "title": "FutureWorlds: Learning Robotic World Models from Alternative Futures",
    "category": "worldmodel",
    "channel": "arxiv",
-   "relevanceScore": 65.2,
-   "depthScore": 65.74,
-   "url": "https://arxiv.org/abs/2610.01201v1",
+   "relevanceScore": 65.1,
+   "depthScore": 65.7,
+   "url": "https://arxiv.org/abs/2610.01019v1",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 29.340000000000003,
+    "relevance": 29.294999999999998,
     "content": 18.0,
     "code": 8.0,
     "peer": 0.0,
@@ -593,33 +929,15 @@
    "title": "LEAP: Learned Block-wise Evidence Retrieval for Long Audio-Video Perception",
    "category": "multimodal",
    "channel": "hf_papers",
-   "relevanceScore": 82.1,
-   "depthScore": 65.4,
+   "relevanceScore": 82.0,
+   "depthScore": 65.37,
    "url": "https://huggingface.co/papers/2609.39938",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 36.945,
+    "relevance": 36.9,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "7d02e98128d5425f",
-   "title": "BEYOND SATISFACTION: PREDICTORS AND CORRELATES OF MARITAL HEALTH",
-   "category": "paper",
-   "channel": "s2",
-   "relevanceScore": 72.1,
-   "depthScore": 64.66,
-   "url": "https://openalex.org/W7214516059",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 32.445,
-    "content": 16.18,
-    "code": 0.0,
-    "peer": 7.000000000000001,
     "trust": 7.000000000000001,
     "material": 15.0
    }
@@ -629,12 +947,12 @@
    "title": "Smaller Models, Better Rejects: Preference Distillation Scaling",
    "category": "posttraining",
    "channel": "hf_papers",
-   "relevanceScore": 78.1,
-   "depthScore": 63.87,
+   "relevanceScore": 78.0,
+   "depthScore": 63.83,
    "url": "https://huggingface.co/papers/2609.38987",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 35.144999999999996,
+    "relevance": 35.1,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -661,16 +979,52 @@
    }
   },
   {
+   "id": "75ce314787189989",
+   "title": "X-Tree: Tokenizing Reusable Experience for Efficient Agent Generalization",
+   "category": "posttraining",
+   "channel": "hf_papers",
+   "relevanceScore": 77.4,
+   "depthScore": 63.61,
+   "url": "https://huggingface.co/papers/2609.32993",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 34.830000000000005,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
+   "id": "c5702c5feb87be26",
+   "title": "On-Policy or Off-Policy Learning? A Systematic Study of Distillation Dynamics",
+   "category": "posttraining",
+   "channel": "hf_papers",
+   "relevanceScore": 75.6,
+   "depthScore": 62.92,
+   "url": "https://huggingface.co/papers/2609.35259",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 34.019999999999996,
+    "content": 18.0,
+    "code": 0.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "b5b41c240c3c8cc6",
    "title": "全网最硬核 OpenClaw 2.0 实测：从 ToC 到 ToB 的试探，Agent 网关能重塑工作流边界吗？",
    "category": "agent",
    "channel": "leiphone",
-   "relevanceScore": 59.3,
-   "depthScore": 62.67,
+   "relevanceScore": 59.2,
+   "depthScore": 62.62,
    "url": "https://leiphone.com/category/yanxishe/7bPyLlZDfncTOw5B.html",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 26.685,
+    "relevance": 26.64,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -715,60 +1069,6 @@
    }
   },
   {
-   "id": "0be84424ddbe168c",
-   "title": "9月秋招个人总结",
-   "category": "coding",
-   "channel": "nowcoder",
-   "relevanceScore": 69.1,
-   "depthScore": 61.74,
-   "url": "https://nowcoder.com/discuss/935309819861270528",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 31.095,
-    "content": 3.3,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "c6cf073644ed8f6e",
-   "title": "On the Off-Policy Teacher in On-Policy Distillation",
-   "category": "posttraining",
-   "channel": "hf_papers",
-   "relevanceScore": 72.3,
-   "depthScore": 61.65,
-   "url": "https://huggingface.co/papers/2609.38360",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 32.535,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "fd3bb0fd738612e2",
-   "title": "BiasReducer: Adaptive Bias Mitigation for Reward Models",
-   "category": "posttraining",
-   "channel": "hf_papers",
-   "relevanceScore": 71.2,
-   "depthScore": 61.23,
-   "url": "https://huggingface.co/papers/2609.32720",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 32.04,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
    "id": "6cf8ef4124506a57",
    "title": "A Dynamic Generalized Kalman Consensus Filter for Switching Sensor Networks",
    "category": "paper",
@@ -787,38 +1087,20 @@
    }
   },
   {
-   "id": "829e4d9d21801892",
-   "title": "Mid-Harness: Scaling Actions Between Model and Harness for Terminal Agents",
-   "category": "posttraining",
+   "id": "a61bf1c90a479e68",
+   "title": "RLE-Bench: A Qualifying Exam for Coding Agents as Robot Learning Engineers",
+   "category": "worldmodel",
    "channel": "hf_papers",
-   "relevanceScore": 71.1,
-   "depthScore": 61.2,
-   "url": "https://huggingface.co/papers/2609.39982",
+   "relevanceScore": 70.3,
+   "depthScore": 60.89,
+   "url": "https://huggingface.co/papers/2609.34210",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 31.994999999999997,
+    "relevance": 31.634999999999998,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
     "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "b90fea7ae4fcdf9d",
-   "title": "nagayama0706/video_generation_model",
-   "category": "generative",
-   "channel": "hf_models",
-   "relevanceScore": 43.6,
-   "depthScore": 60.83,
-   "url": "https://huggingface.co/nagayama0706/video_generation_model",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 19.62,
-    "content": 3.5999999999999996,
-    "code": 8.0,
-    "peer": 0.0,
-    "trust": 0.0,
     "material": 15.0
    }
   },
@@ -863,12 +1145,12 @@
    "title": "Systematically Exploring the Capabilities of GPT-6 Astra as Embodied Policies",
    "category": "worldmodel",
    "channel": "hf_papers",
-   "relevanceScore": 67.2,
-   "depthScore": 59.7,
+   "relevanceScore": 67.1,
+   "depthScore": 59.67,
    "url": "https://huggingface.co/papers/2609.38537",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 30.240000000000002,
+    "relevance": 30.194999999999997,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -913,24 +1195,6 @@
    }
   },
   {
-   "id": "ec70af7a045b9f22",
-   "title": "AXIAL: Attention-based eXplainability for Interpretable Alzheimer’s Localized diagnosis using 2D CNNs on 3D MRI brain scans",
-   "category": "foundation",
-   "channel": "s2",
-   "relevanceScore": 71.1,
-   "depthScore": 59.09,
-   "url": "https://doi.org/10.1186/s12911-026-03833-2",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 31.994999999999997,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 7.000000000000001,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
    "id": "d6bcc8f5d8cb2993",
    "title": "RASteer: Retain-Aware Activation Steering for Concept Erasure in Diffusion Models",
    "category": "generative",
@@ -967,24 +1231,6 @@
    }
   },
   {
-   "id": "6869cced09ad15da",
-   "title": "9月21日字节tiktok社交一面",
-   "category": "coding",
-   "channel": "nowcoder",
-   "relevanceScore": 63.6,
-   "depthScore": 58.7,
-   "url": "https://nowcoder.com/discuss/932667730539343872",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 28.62,
-    "content": 3.3400000000000003,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
-    "material": 15.0
-   }
-  },
-  {
    "id": "ae5f1b9da8e383f0",
    "title": "LongTake: Learning to Sustain Dynamics in Long-Horizon Video Generation",
    "category": "generative",
@@ -1014,24 +1260,6 @@
    "scoreBreakdown": {
     "relevance": 31.680000000000003,
     "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "386e53cdfcfe880e",
-   "title": "面经：腾讯混元多模态一面",
-   "category": "coding",
-   "channel": "inbox",
-   "relevanceScore": 50.8,
-   "depthScore": 58.4,
-   "url": "https://nowcoder.com/discuss/xxx",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 22.86,
-    "content": 1.86,
     "code": 0.0,
     "peer": 0.0,
     "trust": 7.000000000000001,
@@ -1097,12 +1325,12 @@
    "title": "HumanoidToolBench: Benchmarking Humanoid Tool Use from Selection to Mobile Execution",
    "category": "agent",
    "channel": "arxiv",
-   "relevanceScore": 72.5,
-   "depthScore": 57.57,
+   "relevanceScore": 72.4,
+   "depthScore": 57.53,
    "url": "https://arxiv.org/abs/2610.02089v1",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 32.625,
+    "relevance": 32.580000000000005,
     "content": 18.0,
     "code": 8.0,
     "peer": 0.0,
@@ -1147,34 +1375,16 @@
    }
   },
   {
-   "id": "60c9b9700eff5980",
-   "title": "HiPhy: Hierarchical Alignment for Physically-Plausible Multi-Principle Video Generation",
-   "category": "generative",
-   "channel": "arxiv",
-   "relevanceScore": 70.5,
-   "depthScore": 57.31,
-   "url": "https://arxiv.org/abs/2610.02197v1",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 31.725,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
    "id": "2760b3ea24e31fe2",
    "title": "DyRAD: Radar Novel View Synthesis for Dynamic Driving Scenes",
    "category": "paper",
    "channel": "hf_papers",
-   "relevanceScore": 63.6,
-   "depthScore": 57.16,
+   "relevanceScore": 63.5,
+   "depthScore": 57.12,
    "url": "https://huggingface.co/papers/2609.39841",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 28.62,
+    "relevance": 28.575,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -1223,12 +1433,12 @@
    "title": "Personalized Image Generation with Reasoning and Reflection",
    "category": "generative",
    "channel": "hf_papers",
-   "relevanceScore": 69.6,
-   "depthScore": 56.98,
+   "relevanceScore": 69.5,
+   "depthScore": 56.95,
    "url": "https://huggingface.co/papers/2610.00737",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 31.319999999999997,
+    "relevance": 31.275000000000002,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -1241,12 +1451,12 @@
    "title": "Removing Timing Shortcuts Improves Non-Invasive Brain-to-Text",
    "category": "paper",
    "channel": "hf_papers",
-   "relevanceScore": 63.1,
-   "depthScore": 56.97,
+   "relevanceScore": 63.0,
+   "depthScore": 56.94,
    "url": "https://huggingface.co/papers/2609.40359",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 28.395,
+    "relevance": 28.35,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -1259,12 +1469,12 @@
    "title": "Counterfactual Video Generation Enables Scalable Humanoid Loco-Manipulation",
    "category": "generative",
    "channel": "hf_papers",
-   "relevanceScore": 69.1,
-   "depthScore": 56.8,
+   "relevanceScore": 69.0,
+   "depthScore": 56.77,
    "url": "https://huggingface.co/papers/2609.38172",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 31.095,
+    "relevance": 31.05,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -1273,38 +1483,20 @@
    }
   },
   {
-   "id": "54178cd095b5c1c3",
-   "title": "理想汽车嵌入式面经一面（嵌入式大厂面经22）",
-   "category": "coding",
-   "channel": "nowcoder",
-   "relevanceScore": 60.0,
-   "depthScore": 56.68,
-   "url": "https://nowcoder.com/discuss/933863059641159680",
+   "id": "65067c7852d59602",
+   "title": "Oscillator-Qubit Primitives for a Molecular Quantum Dynamics Simulator",
+   "category": "paper",
+   "channel": "arxiv",
+   "relevanceScore": 62.5,
+   "depthScore": 56.75,
+   "url": "https://arxiv.org/abs/2609.40078v1",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 27.0,
-    "content": 3.3400000000000003,
+    "relevance": 28.125,
+    "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
-    "trust": 0.0,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "4b6abf3be439f9c7",
-   "title": "面经60：江波龙 | 嵌入式软件 | 二面",
-   "category": "coding",
-   "channel": "nowcoder",
-   "relevanceScore": 59.7,
-   "depthScore": 56.51,
-   "url": "https://nowcoder.com/discuss/933360982833758208",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 26.865000000000002,
-    "content": 3.3400000000000003,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
+    "trust": 7.000000000000001,
     "material": 15.0
    }
   },
@@ -1313,30 +1505,12 @@
    "title": "Adaptive Reward Routing: Dynamic Multi-Reward Optimization for Joint Audio-Video Diffusion via Forward-Process RL",
    "category": "generative",
    "channel": "hf_papers",
-   "relevanceScore": 68.1,
-   "depthScore": 56.45,
+   "relevanceScore": 68.0,
+   "depthScore": 56.41,
    "url": "https://huggingface.co/papers/2609.37200",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 30.645,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "03b7d33155ec3826",
-   "title": "Prefill-Free Cross-Family KV Cache Transfer for Heterogeneous Multi-Agent LLMs",
-   "category": "agent",
-   "channel": "hf_papers",
-   "relevanceScore": 86.6,
-   "depthScore": 56.38,
-   "url": "https://huggingface.co/papers/2609.32259",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 38.97,
+    "relevance": 30.6,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -1349,12 +1523,12 @@
    "title": "Homomorphic Advantage Operator: Stabilizing Reinforcement Learning Under Fully Homomorphic Encryption Constraints",
    "category": "rl",
    "channel": "arxiv",
-   "relevanceScore": 63.5,
-   "depthScore": 55.96,
+   "relevanceScore": 63.4,
+   "depthScore": 55.92,
    "url": "https://arxiv.org/abs/2610.02074v1",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 28.575,
+    "relevance": 28.53,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -1381,34 +1555,16 @@
    }
   },
   {
-   "id": "ce8adac751035736",
-   "title": "Mapping the RAG Landscape: A Four Axis Taxonomy of Efficiency, Defense, Interactivity, and Reasoning",
+   "id": "23a2fc68ba96e9ac",
+   "title": "OTRetarget: Joint Robot and Object Motion Retargeting via Optimal Transport",
    "category": "rl",
-   "channel": "arxiv",
-   "relevanceScore": 63.4,
-   "depthScore": 55.92,
-   "url": "https://arxiv.org/abs/2610.01936v1",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 28.53,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "fb94cfacf0f35754",
-   "title": "OSWorld-Science: A Benchmark of Computer Use Agents for Learning and Using Scientific Software",
-   "category": "agent",
    "channel": "hf_papers",
-   "relevanceScore": 83.4,
-   "depthScore": 55.36,
-   "url": "https://huggingface.co/papers/2609.39903",
+   "relevanceScore": 62.8,
+   "depthScore": 55.7,
+   "url": "https://huggingface.co/papers/2609.36602",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 37.53,
+    "relevance": 28.259999999999998,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -1417,57 +1573,21 @@
    }
   },
   {
-   "id": "85136c3811515069",
-   "title": "DAGent: Evaluate-then-Grow Planning for Deep Research Agents",
-   "category": "agent",
-   "channel": "hf_papers",
-   "relevanceScore": 83.3,
-   "depthScore": 55.32,
-   "url": "https://huggingface.co/papers/2609.39154",
+   "id": "3cc4365e8f7535f1",
+   "title": "huihut/interview — 📚 C/C++ 技术面试基础知识总结，包括语言、程序库、数据结构、算法、系统、网络、链接装载库等知识及面试经验、招聘、内推等信息。This",
+   "category": "job",
+   "channel": "github_algo",
+   "relevanceScore": 70.7,
+   "depthScore": 54.16,
+   "url": "https://github.com/huihut/interview",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 37.485,
-    "content": 18.0,
-    "code": 0.0,
+    "relevance": 31.815,
+    "content": 8.54,
+    "code": 8.0,
     "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "98ecc61a0f6c206b",
-   "title": "Learning Chaos Without Seeing Chaos: Extrapolation of Global Dynamics in Autoregressive Transformers",
-   "category": "foundation",
-   "channel": "hf_papers",
-   "relevanceScore": 74.1,
-   "depthScore": 54.86,
-   "url": "https://huggingface.co/papers/2609.38814",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 33.345,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "e57c363c256725b4",
-   "title": "Toward Self-organizing Production Logistics: A Multi-agent Approach",
-   "category": "agent",
-   "channel": "s2",
-   "relevanceScore": 88.6,
-   "depthScore": 52.97,
-   "url": "https://doi.org/10.1007/978-3-032-38614-4_37",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 39.87,
-    "content": 5.32,
-    "code": 0.0,
-    "peer": 7.000000000000001,
-    "trust": 7.000000000000001,
-    "material": 15.0
+    "trust": 0.0,
+    "material": 0.0
    }
   },
   {
@@ -1481,24 +1601,6 @@
    "hasSummary": true,
    "scoreBreakdown": {
     "relevance": 32.445,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "03cc61d21d39299e",
-   "title": "KaliBench: A Fine-Grained Benchmark for Cybersecurity Tool Use on Kali Linux with Runtime-Free Verifiable Rewards",
-   "category": "agent",
-   "channel": "arxiv",
-   "relevanceScore": 75.9,
-   "depthScore": 52.95,
-   "url": "https://arxiv.org/abs/2610.02206v1",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 34.155,
     "content": 18.0,
     "code": 0.0,
     "peer": 0.0,
@@ -1525,53 +1627,17 @@
    }
   },
   {
-   "id": "fdc43f955113fdaf",
-   "title": "Before It Fades: Reinforcing Temporal Representations at Inference Time in VideoLLMs",
-   "category": "engineering",
-   "channel": "hf_papers",
-   "relevanceScore": 63.1,
-   "depthScore": 50.0,
-   "url": "https://huggingface.co/papers/2610.01595",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 28.395,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "4569f436f3ced941",
-   "title": "Prompt2Skill: Unsupervised Skill Optimization From Natural Language Instructions",
-   "category": "engineering",
-   "channel": "hf_papers",
-   "relevanceScore": 62.1,
-   "depthScore": 49.67,
-   "url": "https://huggingface.co/papers/2609.38593",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 27.945,
-    "content": 18.0,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "8a60bc7ca8f1e1b9",
-   "title": "dromara/Omega-AI - Omega-AI is a Java-based deep learning framework that helps you quickly build neural networks for inference and training. Its engine supports automatic differentiation, multithreading, and GPU acceleration with CUDA and cuDNN.",
-   "category": "engineering",
+   "id": "ac2524af5b9231f7",
+   "title": "ddalcu/mlx-serve - Native LLM inference server for Apple Silicon. OpenAI + Anthropic API compatible. No Python. Zig backend, Swift frontend macOS app with chat, music, voice, video generation.",
+   "category": "generative",
    "channel": "github",
-   "relevanceScore": 67.2,
-   "depthScore": 44.55,
-   "url": "https://github.com/dromara/Omega-AI",
+   "relevanceScore": 73.3,
+   "depthScore": 49.97,
+   "url": "https://github.com/ddalcu/mlx-serve",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 30.240000000000002,
-    "content": 4.52,
+    "relevance": 32.985,
+    "content": 3.4599999999999995,
     "code": 8.0,
     "peer": 0.0,
     "trust": 7.000000000000001,
@@ -1597,21 +1663,21 @@
    }
   },
   {
-   "id": "622683b4a1f31b43",
-   "title": "jmaczan/tiny-vllm - Build your own high performance LLM inference engine in C++ and CUDA - a smaller version of vLLM",
-   "category": "engineering",
-   "channel": "github",
-   "relevanceScore": 66.0,
-   "depthScore": 42.39,
-   "url": "https://github.com/jmaczan/tiny-vllm",
+   "id": "b1ec28947f12f9bd",
+   "title": "kunal-kushwaha/DSA-Bootcamp-Java — This repository consists of the code samples, assignments, and notes f",
+   "category": "course",
+   "channel": "github_algo",
+   "relevanceScore": 48.0,
+   "depthScore": 41.65,
+   "url": "https://github.com/kunal-kushwaha/DSA-Bootcamp-Java",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 29.7,
-    "content": 1.9200000000000002,
+    "relevance": 21.6,
+    "content": 6.680000000000001,
     "code": 8.0,
     "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
+    "trust": 0.0,
+    "material": 0.0
    }
   },
   {
@@ -1629,6 +1695,24 @@
     "code": 0.0,
     "peer": 0.0,
     "trust": 7.000000000000001,
+    "material": 0.0
+   }
+  },
+  {
+   "id": "df9779ef2a1128bd",
+   "title": "Codex一定要海外手机号吗？登录验证与GPT-5.6 API替代方案",
+   "category": "trend",
+   "channel": "programmercarl",
+   "relevanceScore": 68.6,
+   "depthScore": 37.7,
+   "url": "https://programmercarl.com/daichong/0015.codex-phone-verification.html",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.869999999999997,
+    "content": 18.0,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 0.0,
     "material": 0.0
    }
   },
@@ -1655,12 +1739,12 @@
    "title": "千万不要对面试官抱有太多滤镜！",
    "category": "job",
    "channel": "nowcoder",
-   "relevanceScore": 64.9,
-   "depthScore": 32.55,
+   "relevanceScore": 64.8,
+   "depthScore": 32.5,
    "url": "https://nowcoder.com/discuss/935450926888812544",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 29.205000000000002,
+    "relevance": 29.16,
     "content": 3.3400000000000003,
     "code": 0.0,
     "peer": 0.0,
@@ -1687,16 +1771,16 @@
    }
   },
   {
-   "id": "7db5e99d71d98229",
-   "title": "金9结束了 我的秋招还好吗？",
+   "id": "153213a1b791c02b",
+   "title": "字节跳动 AI数据运营实习生（自动化方向）-AI数据与安全 一面面经",
    "category": "job",
    "channel": "nowcoder",
-   "relevanceScore": 63.9,
-   "depthScore": 32.09,
-   "url": "https://nowcoder.com/discuss/934080767628496896",
+   "relevanceScore": 63.5,
+   "depthScore": 31.91,
+   "url": "https://nowcoder.com/discuss/932604724463882240",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 28.755,
+    "relevance": 28.575,
     "content": 3.3400000000000003,
     "code": 0.0,
     "peer": 0.0,
@@ -1727,31 +1811,13 @@
    "title": "WorkBuddy-Agent Harness 算法工程师",
    "category": "job",
    "channel": "jobs_tencent",
-   "relevanceScore": 68.6,
-   "depthScore": 20.34,
+   "relevanceScore": 68.5,
+   "depthScore": 20.32,
    "url": "http://careers.tencent.com/jobdesc.html?postId=2098252450778759168",
    "hasSummary": true,
    "scoreBreakdown": {
-    "relevance": 30.869999999999997,
+    "relevance": 30.825,
     "content": 5.46,
-    "code": 0.0,
-    "peer": 0.0,
-    "trust": 0.0,
-    "material": 0.0
-   }
-  },
-  {
-   "id": "d821c97b149a0920",
-   "title": "QQ-高级算法工程师",
-   "category": "job",
-   "channel": "jobs_tencent",
-   "relevanceScore": 65.6,
-   "depthScore": 19.45,
-   "url": "http://careers.tencent.com/jobdesc.html?postId=2044968720287297536",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 29.52,
-    "content": 5.219999999999999,
     "code": 0.0,
     "peer": 0.0,
     "trust": 0.0,
@@ -1850,6 +1916,13 @@
    "why": "看起来不是手撕题（本文归类可能错误）"
   },
   {
+   "id": "4f910aa3ed729ecd",
+   "title": "没有Claude账号怎么用Opus 4.8与Fable 5？API接入教程",
+   "category": "course",
+   "rule": "category-mismatch",
+   "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
+  },
+  {
    "id": "c774859b5652b767",
    "title": "巨人网络内推，巨人网络27届校招正式启动了",
    "category": "job",
@@ -1876,6 +1949,41 @@
    "category": "course",
    "rule": "category-mismatch",
    "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
+  },
+  {
+   "id": "12cf6d4a3a613472",
+   "title": "[编程题] 位拆分与运算",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "6b4fea8c9d73c5b4",
+   "title": "[编程题] 最大子矩阵",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "0fe3d8b02701d756",
+   "title": "[编程题] 计算字符串的编辑距离",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "909e1c8682a2c82f",
+   "title": "[编程题] 合并回文子串",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "edc977a25048a279",
+   "title": "[编程题] 旅游",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
   },
   {
    "id": "796ed0cc88e165e2",
@@ -1955,39 +2063,18 @@
    "why": "看起来不是手撕题（本文归类可能错误）"
   },
   {
-   "id": "12cf6d4a3a613472",
-   "title": "[编程题] 位拆分与运算",
-   "category": "coding",
+   "id": "1c2658423b2235b6",
+   "title": "GPT Image 2国内怎么调用？生图API、中文提示词与尺寸设置教程",
+   "category": "course",
    "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
+   "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
   },
   {
-   "id": "6b4fea8c9d73c5b4",
-   "title": "[编程题] 最大子矩阵",
-   "category": "coding",
+   "id": "c7415103f9caa2d5",
+   "title": "CodeBuddy如何配置GPT-5.6自定义模型？Base URL与API Key教程",
+   "category": "course",
    "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "0fe3d8b02701d756",
-   "title": "[编程题] 计算字符串的编辑距离",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "909e1c8682a2c82f",
-   "title": "[编程题] 合并回文子串",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "edc977a25048a279",
-   "title": "[编程题] 旅游",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
+   "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
   },
   {
    "id": "07a4f13d88234b9b",
@@ -2032,6 +2119,13 @@
    "why": "看起来不是手撕题（本文归类可能错误）"
   },
   {
+   "id": "8c866a65a245922b",
+   "title": "数分岗投了很多一个面试都没有，想请大家帮我看看简历",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
    "id": "154b349e78266c54",
    "title": "[编程题] 判断整数奇偶性_牛客题霸_牛客网",
    "category": "coding",
@@ -2041,55 +2135,6 @@
   {
    "id": "8194045a7c09bd4f",
    "title": "[编程题] 异步复位的串联T触发器",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "772814fe75649d44",
-   "title": "[编程题] 根据状态转移表实现时序电路",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "ce7ae3e02a0c1082",
-   "title": "[编程题] 四选一多路器",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "367e17bfa5e19024",
-   "title": "9.26 中国电信-计算机类笔试",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "19faf28d880171cf",
-   "title": "家人们，秋招貌似迎来转机！！！",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "110be42856156bba",
-   "title": "[编程题] 奇偶校验",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "8c866a65a245922b",
-   "title": "数分岗投了很多一个面试都没有，想请大家帮我看看简历",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "04077cedb0d0fab1",
-   "title": "[编程题] 判断字母_牛客题霸_牛客网",
    "category": "coding",
    "rule": "category-mismatch",
    "why": "看起来不是手撕题（本文归类可能错误）"
@@ -2109,15 +2154,36 @@
    "why": "看起来不是手撕题（本文归类可能错误）"
   },
   {
-   "id": "5f47316656dd4eeb",
-   "title": "分享｜5年Java面字节，虚拟线程和GraalVM深挖，三面终于OC",
+   "id": "772814fe75649d44",
+   "title": "[编程题] 根据状态转移表实现时序电路",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "ce7ae3e02a0c1082",
+   "title": "[编程题] 四选一多路器",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "d0b03ad5c8b0bb81",
+   "title": "嵌入式面试不会这些，那真的很难了",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "f7d4939faf8f534f",
+   "title": "银行科技岗工作内容介绍——总行科技部",
    "category": "coding",
    "rule": "category-mismatch",
    "why": "看起来不是手撕题（本文归类可能错误）"
   }
  ],
  "skimByRule": {
-  "category-mismatch": 72,
+  "category-mismatch": 75,
   "referral-code": 3
  }
 }

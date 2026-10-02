@@ -1,0 +1,1090 @@
+{
+  "batchId": "queue-01",
+  "entries": [
+    {
+      "id": "c97a5a7e82e644b9",
+      "tldr": "华为面试不定项：H=I−2vvᵀ（v 为单位列向量）的对称、正交、行列式与 Householder QR 数值稳定性。",
+      "keyPoints": [
+        "题干：v 是实单位列向量，Householder 矩阵 H=I−2vvᵀ。",
+        "候选说法一：H 是正交矩阵；候选二：H 的行列式为 +1。",
+        "候选说法三：Householder QR 通常比经典 Gram–Schmidt 数值更稳定。",
+        "候选说法四：H 是对称矩阵。",
+        "页面未公开正确选项，只显示「查看正确选项」入口。"
+      ],
+      "why": "正交变换与 QR 是数值线性代数面试与华为笔试高频点，能手推 H 的三个性质，就能答上「为什么用 Householder 而不是 Gram–Schmidt」。",
+      "difficulty": "medium",
+      "tags": [
+        "linear-algebra",
+        "householder",
+        "qr-decomposition",
+        "numerical-stability",
+        "interview"
+      ],
+      "entities": [
+        "Householder 反射矩阵",
+        "正交矩阵",
+        "对称矩阵",
+        "Householder QR 分解",
+        "经典 Gram–Schmidt 正交化",
+        "华为"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "Householder 性质判定路径",
+        "caption": "从 H=I−2vvᵀ 的定义出发，依次验证对称、正交与特征值，再落到 QR 的数值稳定性。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Householder 矩阵性质的判定流程：定义、对称性、正交与特征值、QR 数值稳定性'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>H = I − 2vvᵀ</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>v 为单位列向量</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>对称</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>Hᵀ = H</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>正交</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>HᵀH = I，det = −1</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>QR 数值稳定</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>优于经典 GS</text></svg>",
+        "alt": "四步流程：定义 H=I−2vvᵀ（v 为单位列向量）→ 由结构推出 H 对称 → 推出 H 正交、特征值为 ±1 与 −1 故 det=−1 → Householder QR 通常比经典 Gram–Schmidt 数值更稳定"
+      },
+      "concepts": [
+        {
+          "name": "Householder 反射 (Householder Reflection)",
+          "readable": "用实单位列向量 v 构造 H=I−2vvᵀ，它把任意向量沿 v 方向的分量取反、与 v 垂直的分量保持不变，因此是一次镜像反射。由此 H 对称、正交，且 det H=−1。常用来一次消去向量中某一列除首元素外的全部元素，是稠密 QR 的默认消元方式。",
+          "analogy": "像把一束激光打到镜面上：镜面就是与 v 垂直的那个超平面，沿 v 打进去的光原路返回（符号翻转），贴着镜面滑过去的光方向不变。台球沿库边反弹也是同一件事。",
+          "analogyBreaksDown": "镜面反射在三维里能靠直觉画出来，但 n 维时「镜面」是 n−1 维超平面，无法直接想象；而且台球只折一次方向，Householder 是对整段向量做一次整体线性变换，真正关键的工程问题是「反射面怎么选」（由 v 决定），类比给不出这一点。",
+          "mechanism": "选 v 为「目标向量与其范数镜像之差」的单位化方向，H 就恰好把该向量打到只剩首坐标轴上；于是 n−1 次反射即可把矩阵逐列三角化。关键设计是 H 正交：2-范数条件数为 1，误差不被放大。",
+          "visual": "画两条轴：横轴是向量 x 在 v 方向的分量，纵轴是垂直分量。沿 v 的分量箭头被翻到负半轴（−2(vᵀx)v），垂直分量箭头原样不动；再把结果画成关于浅灰虚线（超平面 v⊥）的镜像，两个箭头长度不变、只改方向。",
+          "prerequisites": [
+            "矩阵乘法与转置",
+            "正交矩阵定义 QᵀQ=I",
+            "特征值与行列式的基本关系",
+            "向量 2-范数"
+          ],
+          "selfTest": [
+            "验证 Hᵀ=H 且 H²=I，从而 H 是正交矩阵。",
+            "证明 det H = −1，并说明为什么不是 +1。",
+            "给定 x，说明如何取 v 使 Hx 只有第一个分量非零。"
+          ],
+          "formula": "H = I - 2vv^{\\top},\\quad \\lVert v \\rVert_2 = 1"
+        },
+        {
+          "name": "经典 Gram–Schmidt 的数值不稳定 (Instability of Classical Gram–Schmidt)",
+          "readable": "经典 Gram–Schmidt 逐列减去在已正交化列上的投影；当两列几乎平行时，减去的量与剩余量几乎相等，发生灾难性抵消，算出的基很快失去正交性。Householder QR 用一次正交反射整体消元，不做这种大数相减，因此通常数值更稳定。",
+          "analogy": "像用一把刻度尺分段量长度：每次先量一长段、再减掉另一长段，两段几乎一样长时读数误差被放大；Householder 相当于直接换一个坐标系来量，避免了这次相减。",
+          "analogyBreaksDown": "尺子类比能说明抵消，却说不清误差按列数线性增长还是平方增长。真正决定稳定性的是正交变换的相对误差是否被放大，以及是否做了重正交化：对经典 GS 补一次重正交化后，稳定性会明显改善，类比给不出这个结论。",
+          "mechanism": "投影相减的中间量量级是 2 而不是 1，浮点相对误差被放大约 1/‖剩余量‖ 倍，几乎平行时因子爆炸；Householder 用正交矩阵左乘，条件数为 1，不放大误差，因此是后向稳定的。",
+          "visual": "画一张误差—列数图：横轴列数 k，纵轴是算出的 Q 的正交性偏差 ‖QᵀQ−I‖。经典 GS 的曲线在 k 稍大处明显上翘，Householder 的曲线几乎贴着横轴平走，两条曲线很快分叉。",
+          "prerequisites": [
+            "内积与正交投影",
+            "浮点舍入与灾难性抵消",
+            "矩阵条件数的直觉"
+          ],
+          "selfTest": [
+            "为什么两列几乎平行时经典 GS 会丢掉正交性？",
+            "Householder QR 的误差为什么不像经典 GS 那样迅速累积？",
+            "重正交化能改善哪条曲线，代价是什么？"
+          ],
+          "formula": "\\lVert \\hat{Q}^{\\top}\\hat{Q} - I \\rVert_2 \\gg \\varepsilon \\;(\\text{经典 GS}) \\quad\\text{vs.}\\quad O(n\\varepsilon) \\;(\\text{Householder})"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-householder-reflection",
+          "name": "Householder 反射矩阵 (Householder Reflection Matrix)",
+          "category": "foundation",
+          "latex": "H = I - 2vv^{\\top},\\qquad \\lVert v \\rVert_2 = 1 \\;\\Rightarrow\\; H^{\\top} = H,\\; H^{\\top}H = I,\\; \\det H = -1",
+          "symbols": [
+            [
+              "v",
+              "实单位列向量，决定反射超平面的法向"
+            ],
+            [
+              "I",
+              "n 阶单位矩阵"
+            ],
+            [
+              "H",
+              "Householder 反射矩阵，同时对称且正交"
+            ],
+            [
+              "vvᵀ",
+              "秩一矩阵，把向量投影到 v 方向"
+            ],
+            [
+              "det H",
+              "−1，说明这次反射含一次定向翻转"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：v 为单位向量时 (vvᵀ)² = v(vᵀv)vᵀ = vvᵀ，即该投影算子幂等。",
+            "第 2 步：Hᵀ = I − 2(vvᵀ)ᵀ = I − 2vvᵀ = H，所以 H 对称。",
+            "第 3 步：H² = I − 4vvᵀ + 4vvᵀvvᵀ = I；又 H 对称，故 HᵀH = H² = I，H 是正交矩阵。",
+            "第 4 步：v 方向上 Hv = v − 2v = −v，与 v 垂直的子空间上 Hx = x，于是特征值为 −1（一重）与 +1（n−1 重），det H = −1。",
+            "第 5 步：选 v 使 Hx 只剩首坐标非零，用一系列反射把矩阵逐列化成上三角，即 Householder QR。"
+          ],
+          "analogy": "像用一面平面镜把向量照回去：正对镜面的分量翻符号，贴着镜面滑的分量不变。一次镜面翻转会改变手性，所以行列式是 −1 而不是 +1。",
+          "pitfalls": [
+            "把 det H 记成 +1：只翻转了一个方向，det 必为 −1。",
+            "把对称性与正交性混为一谈：一般对称矩阵并不正交，这里两者同时成立是 vvᵀ 结构的特殊结果。",
+            "忘记 v 必须是单位向量，直接写 H=I−2vvᵀ 会使 H²≠I。",
+            "被问「为什么 Householder QR 更稳」只答「它是正交变换」，没点出经典 GS 的灾难性抵消。"
+          ],
+          "code": "import numpy as np\n\ndef householder(x):\n    x = x.astype(float)\n    v = x.copy()\n    v[0] += np.sign(x[0]) * np.linalg.norm(x)  # 取符号避免相消\n    v /= np.linalg.norm(v)\n    H = np.eye(len(x)) - 2 * np.outer(v, v)\n    return H, H @ x\n\nH, y = householder(np.array([3., 4., 0.]))\nprint(np.allclose(H, H.T), np.allclose(H @ H.T, np.eye(3)), np.linalg.det(H))\n",
+          "sources": [
+            {
+              "title": "[编程题] 设 v 是实单位列向量，Householder 反射矩阵 H",
+              "url": "https://nowcoder.com/questionTerminal/8b95485d87b34572ba2597134506f3dc"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "题干：v 是实单位列向量，Householder 反射矩阵 H=I−2vvᵀ，要求判断若干说法是否正确。",
+          "候选项包含：H 是正交矩阵、H 的行列式为 +1、Householder QR 分解通常比经典 Gram–Schmidt 具有更好的数值稳定性、H 是对称矩阵。",
+          "该题标记为「不定项选择题」，来源标注为 2026 年华为笔试题库。",
+          "页面对应选项未公开（只显示「查看正确选项」），且显示 0 个回答。"
+        ],
+        "uncertain": [
+          "摘要未给出官方答案与解析；下文的 H 对称/正交、det H=−1 为按定义推导的数学结论，需人工核对题解。",
+          "由 H²=I 与 H≠I（v≠0）可得 det H=−1，故选项「行列式为 +1」应为错误项（推断，待核实）。",
+          "题目未说明 n 的取值，也未说明是否限定在实向量空间之外的情形，本卡片只按「实单位列向量」处理。",
+          "概念二里经典 GS 与 Householder QR 的误差量级对比属数值线性代数通用结论，题目摘要未涉及。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "一个用单位向量做镜面反射的矩阵：既对称又正交，行列式是 −1。"
+          },
+          {
+            "level": "入门",
+            "text": "取实单位列向量 v，令 H=I−2vvᵀ。它把 x 沿 v 的分量取反、垂直分量保留，是一次镜像反射。于是可以逐条验证：Hᵀ=H（对称）；H²=I 且 HᵀH=I（正交）；特征值为 −1 与 +1，故 det H=−1。选项里「行列式为 +1」与推导矛盾。"
+          },
+          {
+            "level": "进阶",
+            "text": "关键设计在于 v 必须是单位向量：只有 vᵀv=1 时 (vvᵀ)²=vvᵀ 才成立，才能推出 H²=I，从而 H 正交。正交性的实际价值是 2-范数不被放大，用一串反射把矩阵逐列消成上三角就是 Householder QR；而经典 Gram–Schmidt 逐列做投影相减，两列几乎平行时出现灾难性抵消，正交性误差随列数迅速累积（MGS 加一次重正交化可明显改善）。这道题考的就是「对称 + 正交 + det=−1」三件事能否分清。"
+          },
+          {
+            "level": "专家",
+            "text": "与 Givens 旋转相比，一次 Householder 反射就能消掉一整列对角线以下的元素，运算量为 O(mn²) 量级，是稠密 QR 的默认选择；Givens 更适合稀疏矩阵或需要并行消元的场景。与经典 GS 相比，Householder 是后向稳定的，误差量级 O(nε) 而不是随条件数平方放大，代价是不能像 GS 那样直接读出正交基的显式列，需要额外累乘 Q。对称性 Hᵀ=H 让存储与作用都可复用；det H=−1 说明它是反射而非旋转，两次反射等价于一次旋转，这也是 QR 与 Givens 之间可以互相转换的原因（推断）。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么 H 必须是正交矩阵，而不只是「能把向量消元」的矩阵？",
+            "a": "消元过程要在浮点下不放大误差，而正交变换的 2-范数条件数为 1，是唯一不放大误差的变换类；非正交消元会把舍入误差放大。"
+          },
+          {
+            "q": "如果 v 不是单位向量，H=I−2vvᵀ 会怎样？",
+            "a": "(vvᵀ)²=‖v‖²vvᵀ≠vvᵀ，于是 H²≠I，H 不再正交，v 的模长会混进缩放里，数值稳定性随之丢失。"
+          },
+          {
+            "q": "既然 H 对称又正交，能说「对称矩阵都是正交矩阵」吗？",
+            "a": "不能。H 的正交性来自 H²=I 这一特殊结构；一般对称矩阵如 diag(2,3) 显然不正交，也不保范。"
+          }
+        ],
+        "mechanism": "要让数值线性代数在浮点下可靠，消元变换必须不放大误差，而不放大的关键是正交。H=I−2vvᵀ 用最少的结构造出正交矩阵：v 单位保证 (vvᵀ)²=vvᵀ，于是 H²=I；再选 v 的方向让 Hx 恰好只剩首坐标，一次左乘就消掉一整列。之所以用反射而不是投影，是因为投影会丢信息、增大条件数，而反射保持范数。",
+        "boundary": "只在实向量空间（或复 Hermitian 推广）、且 v 为单位向量的前提下成立；v 未单位化时 H 既不对称也不正交，所有结论失效。另外「Householder QR 比经典 GS 稳」通常是成立的经验结论，若对 GS 做重正交化或改用修正 GS，差距会显著缩小，不能当成绝对不等式。",
+        "analogyBoundary": "镜面类比只在三维里可见，n 维下「镜面」是 n−1 维超平面，画不出来；而且真实镜面反射涉及距离、光速等物理量，这里只是一个保范的线性映射，没有传播或延迟的概念。",
+        "misconceptions": [
+          "以为「对称 + 正交」是 Householder 之外的一般规律，其实是 vvᵀ 结构带来的巧合。",
+          "把 det H 说成 +1，与「一次反射翻转手性」直接矛盾。",
+          "把「正交矩阵」理解成「列向量两两正交」，混淆了矩阵正交性与列正交组。"
+        ],
+        "ownAnalysis": "这题本质是把 Householder 的三个代数性质（对称、正交、det=−1）与一个工程结论（QR 稳定性）捆在一起考，属笔试里「一题验三知识点」的典型（推断）。可疑处是摘要没给正确选项，所以答题必须自己推：由 H²=I 与 Hv=−v 可定 det=−1，选项二应判错；「Householder QR 更稳」在标准教材里成立，通常是正确项。要注意摘要里「H 是正交矩阵」「H 是对称矩阵」都只是候选选项，不能反过来把它们当成题面已确认的事实。",
+        "officialNotes": [
+          {
+            "position": "题目页面给出题干 H=I−2vvᵀ（v 为实单位列向量）与四个候选说法，并标注为「不定项选择题」，但未公开正确选项与解析，显示 0 个回答。",
+            "source": "牛客题目页 https://nowcoder.com/questionTerminal/8b95485d87b34572ba2597134506f3dc"
+          }
+        ],
+        "interviewAnswer": "我先看定义：v 是单位列向量，所以 (vvᵀ)²=vvᵀ，于是 Hᵀ=H、H²=I，两条合起来就是既对称又正交。特征值方面，v 方向被翻成 −v、垂直方向不变，所以特征值是 −1 与 +1、det 为 −1，说法里讲 det=+1 的应判错。至于 QR，Householder 用正交反射整体消元，不像经典 Gram–Schmidt 那样做大数相减，所以通常数值更稳定。我还会补一句 Householder 一次消一列、Givens 更适合稀疏与并行消元的场景差异。",
+        "studyPath": {
+          "prerequisites": [
+            "矩阵转置与乘法",
+            "正交矩阵与向量范数",
+            "特征值与行列式的基本关系",
+            "浮点误差与条件数的直觉"
+          ],
+          "nextSteps": [
+            "推导 Householder QR 的完整算法与运算量",
+            "对比 CGS、MGS、Givens 的稳定性与并行性",
+            "用 numpy 手写一次 QR 并与 np.linalg.qr 对照"
+          ]
+        }
+      }
+    },
+    {
+      "id": "84dc5ede05e7bd20",
+      "tldr": "FRS2003 中文大模型全栈教程：CS336 精讲、PyTorch 手搓 Transformer，称单卡复现全流程。",
+      "keyPoints": [
+        "内容覆盖 CS336 中文精讲与 PyTorch 手搓 Transformer。",
+        "声称单卡复现 Pretrain、SFT、LoRA、DPO、GRPO、RLVR。",
+        "落地部分覆盖 PEFT、Agent、RAG。",
+        "提供真实实验、训练曲线与复现脚本。",
+        "仓库元数据：125 stars、11 forks，作者 FRS2003。"
+      ],
+      "why": "后训练岗面试常要手推 GRPO/DPO 并能手写训练循环，这份中文全栈笔记适合当作单卡复现清单与八股对照材料。",
+      "difficulty": "medium",
+      "tags": [
+        "posttraining",
+        "llm",
+        "from-scratch",
+        "lora",
+        "dpo",
+        "grpo"
+      ],
+      "entities": [
+        "FRS2003",
+        "hands-on-llm",
+        "CS336",
+        "PyTorch",
+        "Transformer",
+        "Pretrain",
+        "SFT",
+        "LoRA",
+        "DPO",
+        "GRPO",
+        "RLVR",
+        "PEFT",
+        "Agent",
+        "RAG",
+        "LLaMA-Factory"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "hands-on-llm 学习路线",
+        "caption": "从手搓 Transformer 与预训练，到 SFT/偏好对齐/RLVR，再到 PEFT、Agent、RAG 落地。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='hands-on-llm 仓库的四段学习路线：手搓 Transformer、预训练、后训练对齐、应用落地'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>手搓 Transformer</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>CS336 中文精讲</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>Pretrain</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>单卡预训练复现</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>对齐</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>SFT/LoRA/DPO/GRPO/RLVR</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>落地</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>PEFT/Agent/RAG</text></svg>",
+        "alt": "四段路线：手搓 Transformer 与 CS336 精讲 → 单卡预训练复现 → SFT/LoRA/DPO/GRPO/RLVR 对齐 → PEFT/Agent/RAG 应用落地"
+      },
+      "concepts": [
+        {
+          "name": "全栈式后训练课程 (Full-Stack Post-Training Curriculum)",
+          "readable": "这份仓库把大模型训练链路按顺序铺开：先手写 Transformer 搞清结构，再跑预训练理解数据与算力，然后依次做 SFT、LoRA、DPO、GRPO、RLVR 等对齐阶段，最后落到 PEFT/Agent/RAG 应用层，并配实验曲线与复现脚本。",
+          "analogy": "像学做菜不只看菜谱：先认刀和灶（Transformer），再练一道家常菜（预训练），然后学调味（对齐），最后开小店（应用落地）；每一步都有成品照（实验曲线）可以对照。",
+          "analogyBreaksDown": "做菜的手艺可以凭味觉当场验证，而模型训练「味道对不对」取决于随机种子、数据配比与评测口径，同一份脚本换张卡可能跑出完全不同的曲线；教程给出的曲线只能证明作者环境下的结果，不构成方法有效性的证据。",
+          "mechanism": "把「手搓 + 复现」当主轴：每个阶段都要求真的跑起来并看曲线，这样学到的是显存、学习率、数据配比这些真正决定成败的工程变量，而不是 API 调用顺序。",
+          "visual": "画一条自下而上的四层阶梯：底层「手搓 Transformer / CS336」→「Pretrain」→「SFT → LoRA → DPO/GRPO/RLVR」→「PEFT / Agent / RAG」。每层右侧标一样产物：代码、loss 曲线、评测数字、可运行 demo。",
+          "prerequisites": [
+            "PyTorch 基础（张量、autograd、nn.Module）",
+            "Transformer 结构与注意力",
+            "微调的基本概念（SFT 与偏好对齐）"
+          ],
+          "selfTest": [
+            "说出 Pretrain→SFT→偏好对齐→RLVR 各自的数据形态与目标差异。",
+            "LoRA 与全参 SFT 在显存和效果上各有什么取舍？",
+            "为什么教程类材料必须自己复现一遍才算学会？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "低秩适配 LoRA (Low-Rank Adaptation)",
+          "readable": "冻结原权重 W₀，只在旁边学一对小矩阵 B、A，把增量 ΔW=(α/r)BA 加到权重上。由于秩 r 远小于原维度，可训练参数从 d×k 降到 r(d+k)；推理时可把增量合并回 W₀，不增加延迟。",
+          "analogy": "像给一本厚重说明书贴便利贴：原文一个字不改，只在自己需要的地方加几张便签；要用的时候把便签内容抄进正文（合并权重），书还是原来那本。",
+          "analogyBreaksDown": "便利贴可以随时撕掉、彼此独立；LoRA 的 BA 与 W₀ 是在同一前向里相加的，多组 LoRA 之间会互相干扰，合并回权重后也无法再「撕掉」——要回到基座必须另存原始权重副本。",
+          "mechanism": "把更新约束在低秩子空间：A 用高斯初始化、B 初始化为零，使训练起点等价于原模型；缩放系数 α/r 让不同秩 r 下的有效更新幅度保持可比，从而换 r 时不必重调学习率。",
+          "visual": "画两个并排的权重矩阵：左边大的灰色 W₀（冻结、带锁标记），右边是两个细长矩形 A(d×r) 与 B(r×k)（彩色、可训练），相乘得到 ΔW 再与 W₀ 相加。下方画参数量条形图：全参 d×k 的长条对比 LoRA r(d+k) 的短条。",
+          "prerequisites": [
+            "矩阵乘法与矩阵的秩",
+            "线性层的前向与反向传播",
+            "全参微调的基本流程"
+          ],
+          "selfTest": [
+            "为什么 B 要初始化为零、A 用高斯初始化？",
+            "秩 r 变大时效果与显存各怎么变？",
+            "为什么推理时可以合并权重而不损失速度？"
+          ],
+          "formula": "W = W_0 + \\Delta W = W_0 + \\frac{\\alpha}{r} B A"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-hands-on-llm-lora-update",
+          "name": "LoRA 低秩增量更新 (Low-Rank Adaptation Update)",
+          "category": "posttraining",
+          "latex": "W = W_0 + \\Delta W = W_0 + \\frac{\\alpha}{r}\\,B A,\\qquad A \\in \\mathbb{R}^{r \\times k},\\; B \\in \\mathbb{R}^{d \\times r}",
+          "symbols": [
+            [
+              "W₀",
+              "冻结的预训练权重（d×k）"
+            ],
+            [
+              "A",
+              "下投影矩阵（r×k），高斯随机初始化"
+            ],
+            [
+              "B",
+              "上投影矩阵（d×r），初始化为零"
+            ],
+            [
+              "r",
+              "低秩维度，远小于 min(d,k)"
+            ],
+            [
+              "α",
+              "缩放超参，α/r 控制增量的有效幅度"
+            ],
+            [
+              "α/r",
+              "让不同秩 r 下的有效更新幅度保持可比"
+            ]
+          ],
+          "derivation": [
+            "全参微调要更新 d×k 个参数，显存与存储随模型线性增长；经验上微调带来的权重变化是低秩的。",
+            "于是把增量参数化为 BA，可训练参数量从 d×k 降到 r(d+k)，r 取 8~64 时通常只有原参数的千分之几。",
+            "初始化上令 B=0、A 取小方差高斯，训练起点 ΔW=0，模型行为与基座完全一致，避免一开始就破坏预训练知识。",
+            "前向写成 h = W₀x + (α/r)BAx，只对 A、B 求梯度；推理时把 (α/r)BA 加回 W₀，得到与原模型同构的线性层。",
+            "α/r 的缩放让改 r 时不必重调学习率：r 变大时 BA 的量级被 1/r 抵消。"
+          ],
+          "analogy": "像在原配方上只允许加一勺调料：可选的调料种类（秩 r）有限，但足以改变菜的走向；把调料倒回锅里（合并权重）后，出菜速度不变。",
+          "pitfalls": [
+            "把 A、B 都随机初始化，ΔW 起点非零，训练初期就会破坏基座能力。",
+            "忘记 α/r 缩放，换 r 后必须重调学习率，实验不可复现。",
+            "以为只能给注意力层加 LoRA：线性层（含 MLP 与投影）同样可以，选哪些层加是重要超参。",
+            "声称 LoRA 一定不损失效果：低秩本身就是容量上限，复杂任务上通常仍需更大 r 或部分全参微调。"
+          ],
+          "code": "import torch, torch.nn as nn\n\nclass LoRALinear(nn.Module):\n    def __init__(self, base: nn.Linear, r=8, alpha=16):\n        super().__init__()\n        self.base = base\n        for p in self.base.parameters():\n            p.requires_grad = False\n        self.A = nn.Parameter(torch.randn(r, base.in_features) * 0.01)\n        self.B = nn.Parameter(torch.zeros(base.out_features, r))\n        self.scale = alpha / r\n\n    def forward(self, x):\n        return self.base(x) + self.scale * (x @ self.A.T @ self.B.T)\n",
+          "sources": [
+            {
+              "title": "FRS2003/hands-on-llm - 动手学大模型全栈：CS336 中文精讲 · PyTorch 手搓 Transformer · 单卡复现 Pretrain/SFT/LoRA/DPO/GRPO/RLVR · PEFT/Agent/RAG 落地（含真实实验、曲线与复现脚本）",
+              "url": "https://github.com/FRS2003/hands-on-llm"
+            }
+          ]
+        },
+        {
+          "id": "f-hands-on-llm-grpo-group-advantage",
+          "name": "GRPO 组内相对优势 (Group Relative Advantage)",
+          "category": "rl",
+          "latex": "\\hat{A}_i = \\frac{r_i - \\mathrm{mean}(\\{r_1,\\dots,r_G\\})}{\\mathrm{std}(\\{r_1,\\dots,r_G\\})}",
+          "symbols": [
+            [
+              "G",
+              "同一 prompt 采样出的回答数（组大小）"
+            ],
+            [
+              "r_i",
+              "第 i 个回答的奖励，如 RLVR 的可验证对错信号"
+            ],
+            [
+              "mean/std",
+              "组内均值与标准差，充当基线"
+            ],
+            [
+              "Â_i",
+              "第 i 个回答的相对优势，用于策略梯度加权"
+            ],
+            [
+              "π_θ",
+              "正在训练的策略模型"
+            ]
+          ],
+          "derivation": [
+            "策略梯度需要优势估计，常规做法要另训一个 value/critic 网络，显存与调参成本都高。",
+            "GRPO 改为对同一 prompt 采样一组 G 个回答，用组内奖励均值当基线，于是不需要 critic。",
+            "再除以组内标准差做归一化，使不同难度 prompt 的优势量级可比、梯度尺度更稳定。",
+            "把 Â_i 乘到 log 概率（或重要性比）上加权，配合裁剪项约束更新幅度，就是 GRPO 的策略目标形式。",
+            "在 RLVR 场景中奖励是可自动验证的对错，组内统计因此不依赖带噪的奖励模型打分。"
+          ],
+          "analogy": "像班级里给相对评价：不判断 80 分本身值不值钱，而看你比同一次考试的班平均高多少、高几个标准差；换一张更难的卷子，相对位次仍然可比。",
+          "pitfalls": [
+            "忘记除以标准差，优势量级会随奖励尺度漂移；组内奖励全同（全对或全错）时标准差为 0，需要加 eps 或丢弃该组。",
+            "把 GRPO 说成不需要采样：它省掉的是 critic，采样开销反而变成原来的 G 倍。",
+            "混淆 RLVR 的可验证奖励与 RLHF 奖励模型打分，两者的噪声结构不同。"
+          ],
+          "code": "import torch\n\ndef group_advantage(rewards: torch.Tensor, eps=1e-6):\n    \"\"\"rewards: (num_groups, G) 同一 prompt 的 G 次采样奖励\"\"\"\n    mean = rewards.mean(dim=1, keepdim=True)\n    std = rewards.std(dim=1, keepdim=True, unbiased=False)\n    adv = (rewards - mean) / (std + eps)\n    return adv  # 组内奖励全同时 adv 全为 0，该组不产生梯度\n",
+          "sources": [
+            {
+              "title": "FRS2003/hands-on-llm - 动手学大模型全栈：CS336 中文精讲 · PyTorch 手搓 Transformer · 单卡复现 Pretrain/SFT/LoRA/DPO/GRPO/RLVR · PEFT/Agent/RAG 落地（含真实实验、曲线与复现脚本）",
+              "url": "https://github.com/FRS2003/hands-on-llm"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "仓库自述覆盖 CS336 中文精讲与 PyTorch 手搓 Transformer。",
+          "仓库自述可在单卡上复现 Pretrain、SFT、LoRA、DPO、GRPO、RLVR。",
+          "仓库自述包含 PEFT/Agent/RAG 落地，以及真实实验、曲线与复现脚本。",
+          "输入元数据显示 125 stars、11 forks、作者 FRS2003、更新时间 2026-09-15。"
+        ],
+        "uncertain": [
+          "仓库的具体实现质量、代码可运行性、实验数值与许可证未在摘要中给出，需打开仓库核实。",
+          "「单卡复现」的硬件门槛（显存、卡型）与各阶段的模型规模，摘要未说明。",
+          "两条公式是 LoRA 与 GRPO 的通用形式，摘要未给出本仓库使用的具体变体与超参，需核对仓库代码。",
+          "概念中「GRPO 不需要 critic」「RLVR 奖励可验证」等描述属领域通用背景，摘要只出现了这些名称。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "一份中文大模型全栈教程：从手搓 Transformer 一路做到 DPO/GRPO 与 RAG 落地。"
+          },
+          {
+            "level": "入门",
+            "text": "仓库把大模型训练拆成可上手的几段：先手写 Transformer 与注意力，再跑预训练理解数据与显存，然后做 SFT、LoRA、DPO、GRPO、RLVR 对齐，最后到 PEFT/Agent/RAG 落地。它强调真实实验、曲线与复现脚本，是「跟着跑一遍」的材料，不是 API 速查。"
+          },
+          {
+            "level": "进阶",
+            "text": "作为教程型仓库，价值取决于两条：一是「手搓」是否真到能跑通、能解释每一行；二是复现是否给出可比较的曲线与超参，而不只是调用现成框架。建议按 Pretrain→SFT→DPO→GRPO/RLVR 的顺序各跑一遍最小规模，重点记录显存占用、有效 batch、学习率与数据配比这些真正影响结果的工程变量；LoRA 与全参的对照实验尤其值得复现，因为低秩带来的效果上限是面试常问的取舍点。"
+          },
+          {
+            "level": "专家",
+            "text": "放进面试准备里，最有用的不是「我读过」，而是能说清各阶段的数据形态与目标差异：Pretrain 是下一个 token 的交叉熵，SFT 是指令数据的监督微调，DPO 直接在偏好对上做隐式奖励优化，GRPO 用组内相对优势替代 critic 做策略梯度，RLVR 则把奖励换成可自动验证的对错信号。教程仓库通常在这条链路上给出统一工程骨架，适合对照检查自己缺哪一环；但要注意其规模与线上差距，125 stars 说明受众仍小、issue 与测试覆盖有限（推断）。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么不直接从 SFT 跳到应用，而要经过偏好对齐和 RLVR？",
+            "a": "SFT 只教「照抄示范」，缺少对好坏的相对信号；偏好对齐与 RLVR 直接把奖励差异注入，能改善指令跟随与推理，数据形态和损失都不同。"
+          },
+          {
+            "q": "为什么偏好对齐阶段常用 LoRA 而不是全参微调？",
+            "a": "偏好数据规模远小于预训练，全参微调易过拟合并且显存昂贵；低秩更新足以表达对齐带来的偏移，还能一个基座挂多份 adapter。"
+          },
+          {
+            "q": "「单卡复现」这个卖点有什么隐含前提？",
+            "a": "它必须把模型规模、序列长度、batch 与梯度累积压进单卡显存，通常意味着小模型或小数据；流程可迁移，但绝对效果不能比拟多卡大模型训练。"
+          }
+        ],
+        "mechanism": "大模型能力不是单点算法而是流水线：结构决定表达能力，预训练决定知识底座，SFT 与偏好对齐决定输出风格与对齐程度，RLVR 这类可验证奖励进一步把推理能力拉起来。把这些阶段放进同一个仓库、用同一套代码骨架跑通，才能看清各阶段之间的接口（数据格式、评估口径、checkpoint 交接），这正是「全栈」教程存在的理由。",
+        "boundary": "教程类卡片只给出覆盖面声明，不含可验证的实验结论；若要查某个方法的最新 SOTA，应回到论文与官方实现。此外低秩与单卡约束决定了复现规模偏小，超参往往不能直接搬到大模型训练，迁移时必须重扫学习率与数据配比。",
+        "analogyBoundary": "做菜类比在「配方可固定」这点上失效：训练的随机性与数据依赖使同一脚本难以复刻同一结果；而且菜可以当场尝，模型效果要靠 benchmark 与人工评估，反馈链条长得多。",
+        "misconceptions": [
+          "把教程仓库的覆盖面等同于社区认可度：125 stars 说明受众其实不大。",
+          "以为 LoRA 一定不损失效果，忽略低秩本身就是容量上限。",
+          "把 GRPO 说成一定比 PPO 省算力：它省的是 critic，采样数反而要乘以组大小 G。"
+        ],
+        "ownAnalysis": "从标题看，这个仓库把 CS336 的课程脉络与国产工程实践（LoRA/DPO/GRPO/RLVR/PEFT/Agent/RAG）拼成一条线，定位是「学完能自己复现」而不是「讲清原理」（推断）。可迁移点是工程基线：同一套数据格式与评估脚本贯穿各阶段，能用来定位自己的薄弱环节。可疑处：摘要只有一句标题，没有实验数值、基线对比、硬件要求与许可；「含真实实验、曲线与复现脚本」是仓库自述，需要打开仓库核对曲线是否有对照组、脚本是否固定随机种子。GRPO 与 RLVR 的具体变体（组大小、奖励函数、裁剪方式）也只能从代码里确认。",
+        "officialNotes": [
+          {
+            "position": "仓库自述为「动手学大模型全栈：CS336 中文精讲 · PyTorch 手搓 Transformer · 单卡复现 Pretrain/SFT/LoRA/DPO/GRPO/RLVR · PEFT/Agent/RAG 落地（含真实实验、曲线与复现脚本）」。",
+            "source": "GitHub 仓库 FRS2003/hands-on-llm"
+          }
+        ],
+        "interviewAnswer": "我把它当后训练的工程地图用。链路是：先手搓 Transformer 搞清结构，再跑最小规模预训练理解数据与显存，然后 SFT、LoRA、DPO、GRPO/RLVR 逐个对齐，最后做 PEFT/Agent/RAG 落地。我会重点复现两组对照：LoRA 与全参 SFT 的效果/显存取舍，以及 GRPO 组内相对优势的方差随组大小怎么变。GRPO 的要点是用组内均值当基线、不需要 critic，代价是采样数乘以组大小 G。这个仓库只有 125 stars，我会先核对代码可运行性再引用它的结论。",
+        "studyPath": {
+          "prerequisites": [
+            "PyTorch 与 nn.Module 手写能力",
+            "Transformer 与注意力结构",
+            "SFT 与偏好对齐的基本概念",
+            "策略梯度的直觉"
+          ],
+          "nextSteps": [
+            "按仓库顺序跑通最小复现并记录显存与曲线",
+            "做 LoRA/全参、DPO/GRPO 两组对照实验",
+            "补 CS336 原始课程作业以核对理论细节"
+          ]
+        }
+      }
+    },
+    {
+      "id": "34583f8e3d5d4c78",
+      "tldr": "牛客手撕题：反转单链表并返回新表头，{1,2,3} 变 {3,2,1}，空链表返回空。",
+      "keyPoints": [
+        "给定单链表头结点 pHead（头结点有值，如 val=1），长度为 n。",
+        "要求反转该链表后返回新链表的表头。",
+        "示例：输入 {1,2,3}，输出 {3,2,1}。",
+        "示例：输入 {}（空链表），输出 {}。",
+        "题干给出数据范围与复杂度要求，但摘要里这些数值被截断为空。"
+      ],
+      "why": "链表反转是手撕环节出现频率最高的题，考三指针迭代、边界处理与递归栈代价，是链表类题的地基。",
+      "difficulty": "easy",
+      "tags": [
+        "linked-list",
+        "coding-interview",
+        "two-pointers",
+        "recursion",
+        "nowcoder"
+      ],
+      "entities": [
+        "ListNode",
+        "pHead",
+        "ReverseList",
+        "单链表",
+        "牛客题霸"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "三指针反转链表四步",
+        "caption": "反转链表就是每步「先存后继、再改指向、然后整体前移」，直到 cur 为空时返回 prev。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='反转链表的四步流程：初始化 prev 与 cur、暂存后继、反转指向、前移并返回'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>初始化</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>prev=null，cur=head</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>暂存后继</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>nxt = cur.next</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>反转指向</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>cur.next = prev</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>前移并返回</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>prev=cur，cur=nxt</text></svg>",
+        "alt": "反转链表四步：初始化 prev=null、cur=head → 暂存 nxt=cur.next → 反转 cur.next=prev → 前移 prev=cur、cur=nxt，cur 为空时返回 prev"
+      },
+      "concepts": [
+        {
+          "name": "指针反转的循环不变式 (Loop Invariant of List Reversal)",
+          "readable": "迭代写法维护一个不变式：prev 指向已经反转好的那段链表的头部，cur 指向尚未处理的那段链表的头部，两段在 cur.next 处被切断。每轮先把 cur.next 存进 nxt，再让 cur.next 指向 prev，然后把 prev、cur 各前移一格，不变式在被破坏前就被恢复。",
+          "analogy": "像把一列火车车厢一节节摘下来、反向挂到新车头上：手里始终握着「已挂好的车头」与「还没摘的车厢」，摘之前必须先记住下一节车厢在哪，否则一松手就找不到剩下的车。",
+          "analogyBreaksDown": "火车受物理轨道约束，车厢只能单向挂接；链表里 next 只是一个可以任意改写的指针，所以「反向挂」既不占额外空间也不违反物理规律。类比容易让人以为需要额外缓冲区或调车轨道，而实际上只要三个指针变量。",
+          "mechanism": "关键设计是「先保存后继再改指针」：任何时刻只改写一个 next，因此不会丢失剩余链表；同时原地复用节点，空间与链表长度无关。选迭代而非递归，是为了把 O(n) 的调用栈降成 O(1)。",
+          "visual": "画三个箭头变量 prev、cur、nxt 在一串节点方块上方移动：已处理部分用灰色方块、箭头朝左；未处理部分用白色方块、箭头朝右；当前正在改的 next 用加粗箭头标出。随着步骤推进，灰色区域从左往右生长，最后 prev 落在最右端成为新表头。",
+          "prerequisites": [
+            "单链表结构",
+            "引用/指针与别名语义",
+            "循环不变式的基本写法"
+          ],
+          "selfTest": [
+            "空链表和只有一个节点的链表，迭代写法分别返回什么？",
+            "为什么必须在 cur.next=prev 之前保存 nxt？",
+            "递归写法的空间复杂度是多少，什么时候会爆栈？"
+          ],
+          "formula": "\\text{inv: } \\text{prev} \\to \\cdots \\to \\text{null},\\quad \\text{cur} \\to \\cdots \\to \\text{null}"
+        },
+        {
+          "name": "递归反转与栈深度 (Recursive Reversal and Stack Depth)",
+          "readable": "递归写法先递归到最后一个节点作为新表头，回溯时让后继节点的 next 指回自己，并把当前节点的 next 置空。代价是递归深度等于链表长度，空间不是 O(1)，长链表上容易栈溢出。",
+          "analogy": "像让后面的人先报数：你等他们处理完再把自己的手搭回去；但「让后面的人先做」这件事本身要在调用栈上排一长队，队伍太长就有人站不下了。",
+          "analogyBreaksDown": "人的队列可以无限延伸，调用栈不行——它受线程栈大小限制（通常几 MB），所以 n 很大时递归写法直接崩溃，迭代写法则不会。类比传达不出「深度有硬上限」这一点。",
+          "mechanism": "递归的返回值固定是新表头，于是每层只需做两件事：让后继节点的 next 指向自己、把自己的 next 置空。选择这个顺序是为了在回溯时切断原方向，否则会形成环。",
+          "visual": "画一条从 head 到 tail 的递归下降箭头（右侧标 depth=1..n），再画从 tail 折返回 head 的虚线箭头；下方画一个高度为 n 的栈柱状图，标出栈帧随 n 线性增长，与迭代写法的常数高度并排对比。",
+          "prerequisites": [
+            "递归与调用栈",
+            "返回值的自底向上传递"
+          ],
+          "selfTest": [
+            "递归版本为什么要把当前节点的 next 置空？",
+            "n=10⁵ 时递归写法会出什么问题？",
+            "递归和迭代的时间复杂度相同吗？"
+          ],
+          "formula": "T(n) = T(n-1) + O(1) = O(n),\\quad S_{\\text{rec}} = O(n)"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-linked-list-reversal",
+          "name": "链表反转的迭代不变式与复杂度 (Iterative List Reversal)",
+          "category": "engineering",
+          "latex": "\\text{while } \\text{cur} \\neq \\text{null}:\\; \\text{nxt} = \\text{cur.next};\\; \\text{cur.next} = \\text{prev};\\; \\text{prev} = \\text{cur};\\; \\text{cur} = \\text{nxt}",
+          "symbols": [
+            [
+              "head",
+              "原链表头结点 pHead"
+            ],
+            [
+              "prev",
+              "已反转部分的头，初始为 null"
+            ],
+            [
+              "cur",
+              "待处理部分的头，初始为 head"
+            ],
+            [
+              "nxt",
+              "cur 的原后继，改指针前必须先保存"
+            ],
+            [
+              "T(n)",
+              "O(n)，每个节点恰好被访问一次"
+            ],
+            [
+              "S(n)",
+              "迭代 O(1)；递归为 O(n) 栈深度"
+            ]
+          ],
+          "derivation": [
+            "目标：把每个节点的 next 从指向后继改成指向前驱，同时不丢失还没处理的节点。",
+            "每一步只改写一个 next，所以必须先把 cur.next 存进 nxt，否则剩余链表失去入口。",
+            "改写为 cur.next=prev 后，cur 成为已反转部分的新头；把 prev 前移到 cur、cur 前移到 nxt，不变式恢复。",
+            "循环结束时 cur=null，已反转部分从 prev 开始，直接返回 prev 即新表头。",
+            "边界：空链表时循环不执行、prev 仍为 null，正好返回空；单节点链表返回 head 本身，其 next 由初始 prev=null 自动置空。"
+          ],
+          "analogy": "像把一串珠子逐个取下来反着装：手里握着已经反装的那一段（prev）与还没动的那一段（cur），取之前先用另一只手指按住下一颗（nxt），否则整串就掉地上了。",
+          "pitfalls": [
+            "先写 cur.next=prev 再取 cur.next，后半条链直接丢失，这是面试最常见的手滑。",
+            "忘记原头结点反转后必须指向 null：迭代写法里由 prev 初值 null 自动满足，改写时很容易破坏。",
+            "用递归写法却不提栈深度，被追问 n 很大时答不上来。",
+            "以为需要新建节点或额外数组，丢掉原地 O(1) 空间的做法。"
+          ],
+          "code": "class Solution:\n    def ReverseList(self, head):\n        prev, cur = None, head\n        while cur is not None:\n            nxt = cur.next        # 1. 先存后继\n            cur.next = prev       # 2. 反转指向\n            prev, cur = cur, nxt  # 3. 整体前移\n        return prev               # 空链表时 prev 为 None，直接返回\n",
+          "sources": [
+            {
+              "title": "[编程题] 反转链表",
+              "url": "https://nowcoder.com/practice/75e878df47f24fdc9dc3e400ec6058ca"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "题干：给定单链表头结点 pHead，该头结点有值（如 val=1），长度为 n，反转后返回新链表表头。",
+          "示例：输入 {1,2,3}，输出 {3,2,1}；输入 {}（空链表），输出 {}。",
+          "页面给出 Java 与 C 的题面模板（类名 Solution、方法名 ReverseList、参数 head），函数体为空。",
+          "题目来自牛客题霸，摘要中「数据范围」与空间/时间复杂度要求的数值被截断为空。"
+        ],
+        "uncertain": [
+          "摘要中复杂度要求为空（原文写作「要求：空间复杂度 ，时间复杂度 」），O(n) 时间与 O(1) 空间是本题标准做法的通用结论，需核对题目页给出的实际上限。",
+          "链表节点值的取值范围与 n 的最大值在摘要中缺失，无法确认是否存在超长链表带来的栈深约束。",
+          "摘要未给出官方标程与解析，示例只覆盖 {1,2,3} 与空链表两种情形，两节点等边界需自行补测。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "把链表每个节点的 next 掉个头，最后返回原来的尾节点当新表头。"
+          },
+          {
+            "level": "入门",
+            "text": "用一个循环维护三个指针：prev 是已反转那段的头，cur 是未处理那段的头，nxt 临时存 cur 原来的后继。每轮先存 nxt，再把 cur.next 指向 prev，然后 prev、cur 各前移一格。cur 为空时返回 prev 即新表头。空链表不必特判：循环不执行，prev 就是 null。"
+          },
+          {
+            "level": "进阶",
+            "text": "关键设计是「改写指针前先保存后继」：任何一步只断一条边、只改一条边，因此不会丢失剩余链表的入口。选择迭代而不是递归，是因为递归虽然只需几行（递归到尾部拿新表头，回溯时把后继的 next 指回自己并把自己 next 置空），但栈深度等于 n，长链表会栈溢出。原地复用的写法空间与 n 无关；面试还要能说清边界：空链表返回 null、单节点返回自身、原头结点反转后必须指向 null，这一条由 prev 初值为 null 自动满足。"
+          },
+          {
+            "level": "专家",
+            "text": "同类题可以按「需要几个指针」统一：反转整条链用三指针；反转区间 [m,n] 需要额外哑结点定位 m−1，再用头插法逐个插入；每 k 个一组反转则把反转函数抽出来，用 prevGroup 串回去，并单独处理不足 k 个的尾部。K 组反转时间仍是 O(n)，但指针数量到四五个，是区分度更高的一档。工程上要强调的是：这类题真正考的不是背代码，而是能否在动手前说清不变式与终止条件，并在白板上一次写对边界；递归写法若必须使用，应主动说明 O(n) 栈空间与可改为迭代（推断：这是本题常见追问方向）。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "如果不先保存 nxt 会怎样？",
+            "a": "cur.next 被改成 prev 后，通往剩余链表的那条边就断了，剩下的节点再也访问不到，链表被腰斩。"
+          },
+          {
+            "q": "为什么不用数组把节点值存下来再倒序重建？",
+            "a": "那需要 O(n) 额外空间并新建节点，丢掉原地改指针的基本功；链表不支持随机访问，倒序重建还要额外复制。"
+          },
+          {
+            "q": "递归写法看起来更简洁，为什么不作为首选？",
+            "a": "简洁的代价是 O(n) 调用栈，n 很大时会栈溢出，且回溯时的置空操作容易写漏形成环；用它必须主动指出栈空间代价。"
+          }
+        ],
+        "mechanism": "链表只能顺着 next 单向走，一旦改写某条边就再也回不到它原来的后继，所以反转必须同时满足两个约束：任何时刻都不能丢掉某个方向的信息入口，且总空间不能随 n 增长。三指针方案把「已反转段」与「未处理段」用 prev/cur 显式锚住，改写前先保存 nxt，于是每次只改一条边就完成一个节点的反转，既保住剩余链表又做到原地 O(1) 空间。",
+        "boundary": "迭代三指针适用于单链表且允许原地修改；若链表只读或需要保留原链表，就必须新建节点或先复制，空间不再是 O(1)。若链表存在环，循环不会在 cur=null 处终止，需要先用快慢指针判环。递归写法在 n 超过线程栈容量时不可用。",
+        "analogyBoundary": "火车车厢类比在「指针可任意改写」这点上失效：现实中车厢只能沿轨道单向挂接，反挂还需要调车空间；链表反转不消耗额外空间，也不会因为「反着挂」而失去可行性。",
+        "misconceptions": [
+          "把反转写成新建节点或数组倒序，结果虽对但不符合原地要求。",
+          "忘记新链表尾部的 next 必须置空，导致尾部挂着旧方向或形成环。",
+          "把递归写法的空间复杂度也说成 O(1)，忽略调用栈。"
+        ],
+        "ownAnalysis": "这是链表题里的入门题，但同时考三件事：指针操作的手稳、边界处理（空链表与单节点）、以及能否说清不变式（推断：这三点正是面试官追问的方向）。摘要里复杂度要求被截断，所以卡片中的 O(n)/O(1) 是标准做法的通行结论而非题目给定值，答题前应先看题面原始上限。可疑处是摘要同时出现 Java 与 C 两套空函数体模板，说明页面只提供题面与接口、不含官方解析；示例仅有 {1,2,3} 与 {}，覆盖不到「两节点」这类最易写错的边界，建议自己补测。",
+        "officialNotes": [
+          {
+            "position": "题目页面给出接口定义：类名 Solution、方法名 ReverseList、参数 head（ListNode 类），返回 ListNode 类；并声明长度 n 与示例。摘要未提供复杂度上限的具体数值与官方解析。",
+            "source": "牛客题霸《反转链表》 https://nowcoder.com/practice/75e878df47f24fdc9dc3e400ec6058ca"
+          }
+        ],
+        "interviewAnswer": "我用三指针迭代写：prev 初值 null、cur 初值 head；每轮先把 nxt 存成 cur.next，再把 cur.next 指向 prev，然后 prev 前移到 cur、cur 前移到 nxt；循环结束时 cur 是 null，直接返回 prev。空链表时循环不执行，返回的 prev 就是 null，不用特判。之所以必须先保存 nxt，是因为改完 cur.next 就丢失了剩余链表的入口。时间 O(n)、原地 O(1) 空间；递归写法更短但有 O(n) 栈深度，长链表会爆栈，所以我默认给迭代版。",
+        "studyPath": {
+          "prerequisites": [
+            "单链表结构与 ListNode 定义",
+            "引用/指针的别名语义",
+            "循环不变式",
+            "递归与调用栈"
+          ],
+          "nextSteps": [
+            "反转链表 II：指定区间，用哑结点加头插",
+            "K 个一组翻转链表",
+            "判断链表是否有环并找环入口",
+            "合并两个排序链表（同为指针操作基本功）"
+          ]
+        }
+      }
+    },
+    {
+      "id": "9e9baefb2a456ef3",
+      "tldr": "牛客手撕题：合并两条递增链表为一条递增链表，如 {1,3,5}+{2,4,6}→{1,2,3,4,5,6}，空表返回空。",
+      "keyPoints": [
+        "输入两个递增的链表，单个链表的长度为 n。",
+        "合并后新链表中的节点仍保持递增排序。",
+        "示例：{1,3,5} 与 {2,4,6} → {1,2,3,4,5,6}。",
+        "示例：{-1,2,4} 与 {1,3,4} → {-1,1,2,3,4,4}（重复值保留）。",
+        "示例：空链表与空链表 → {}。"
+      ],
+      "why": "双指针归并是手撕链表第二高频题，考哑结点写法、重复元素处理与剩余链收尾，思路与归并排序同源。",
+      "difficulty": "easy",
+      "tags": [
+        "linked-list",
+        "coding-interview",
+        "merge",
+        "two-pointers",
+        "nowcoder"
+      ],
+      "entities": [
+        "ListNode",
+        "pHead1",
+        "pHead2",
+        "归并",
+        "牛客题霸"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "双指针归并四步",
+        "caption": "比较两表头取小者接到哑结点后面，取谁就让谁前进，最后把没走完的那条链整段接上。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='合并两个排序链表的四步流程：建哑结点、比较两表头、接上并前移、收尾接剩余链'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>建哑结点</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>dummy 与 tail</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>比较两头</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>取较小者</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>接上并前移</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>tail 与被摘侧前移</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>收尾接剩余链</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>接上未走完的链</text></svg>",
+        "alt": "合并两个排序链表四步：建哑结点 dummy 与 tail → 比较两个头节点的值取较小者 → 接到 tail 后并前移 tail 与被摘侧的指针 → 循环结束后把未走完的那条链整段接上"
+      },
+      "concepts": [
+        {
+          "name": "哑结点 (Dummy Head)",
+          "readable": "在结果链表前面人为加一个不参与结果的节点，让 head 的初始化、第一个节点接入与后续节点接入写成同一套代码，最后返回 dummy.next。它消除的是「结果链表为空时要特判」这类分支，从而减少边界 bug。",
+          "analogy": "像写生字时先在格子最前面空一格：不管第一个字从哪开始写，都可以统一说「写在上一格右边」，不必为「第一个字没有上一格」单独想一套规则。",
+          "analogyBreaksDown": "空格子只是视觉占位，不会进入最终答案；哑结点是真实节点，忘了返回 dummy.next 而直接返回 dummy，结果链就会多出一个值无意义的头节点。它省的是「头节点特判」，链尾收尾与剩余链拼接这些边界仍要自己处理。",
+          "mechanism": "把「结果链表的当前尾节点」统一表示成 tail，初始指向哑结点，于是接入新节点永远是 tail.next=node 后 tail=tail.next，与它是不是第一个节点无关；这是用一层间接把两类情况折叠成一类。",
+          "visual": "画一条结果链，最左边是一个虚线边框的灰色节点标 dummy，后面跟着实线结果节点，箭头变量 tail 始终指向最右端节点。旁边画两条输入链各有一个指针，每次只移动被取走节点的那一侧指针。",
+          "prerequisites": [
+            "单链表基本操作",
+            "指针/引用的可变性",
+            "边界分支处理经验"
+          ],
+          "selfTest": [
+            "不用哑结点需要多写哪些额外分支？",
+            "为什么返回的是 dummy.next 而不是 dummy？",
+            "结果链表的头节点在什么情况下会被替换？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "双指针归并与比较次数上界 (Two-Pointer Merge and Comparison Bound)",
+          "readable": "两个指针分别指向两条链的当前头部，每轮比较两者取值，把较小者摘下来接到结果链尾，并只推进被摘取的那一侧；某一侧走完后，另一侧剩余部分整段接上。总比较次数不超过两条链长度之和减一，因为每次比较至少使一个节点确定位置。",
+          "analogy": "像两摞已经按大小排好的扑克牌，每次只看两张牌面，把小的那张翻到新牌堆，然后从它所在的那摞再抽下一张；一摞抽完就把另一摞整个搬过去。",
+          "analogyBreaksDown": "实体扑克牌要挪动位置、占用额外桌面，链表合并只是改写指针，不复制数据也不移动节点；更关键的是，牌堆类比给不出 n+m−1 这个比较次数上界，而分析算法时这个界比「感觉上很快」有价值。",
+          "mechanism": "因为两条链各自已经有序，两个当前头部中的较小者必定是全局剩余元素里的最小值，可以立即输出而不必回看；只推进被取的一侧则保证不会漏掉任何节点，于是算法一次线性扫描即可完成。",
+          "visual": "画两条水平节点链各带一个指针，结果链在下方生长。每轮把两个候选节点用高亮框圈出，把较小者画一条箭头接到结果链尾，并给被取那一侧的指针画右移箭头；重复次数用计数标注，直到一侧为空后画一条大箭头把剩余段整段搬过去。",
+          "prerequisites": [
+            "归并排序的合并步骤",
+            "比较排序下界的基本直觉"
+          ],
+          "selfTest": [
+            "比较次数的上界是多少，为什么？",
+            "某一侧走完后为什么可以直接整段接上？",
+            "重复元素应该保留还是去重，题面怎么规定的？"
+          ],
+          "formula": "C \\le n + m - 1"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-merge-two-sorted-lists",
+          "name": "有序链表归并的时间与比较上界 (Merge of Two Sorted Lists)",
+          "category": "engineering",
+          "latex": "T(n,m) = O(n+m),\\qquad S_{\\text{iter}} = O(1),\\qquad C_{\\max} = n + m - 1",
+          "symbols": [
+            [
+              "n, m",
+              "两条输入链表的长度"
+            ],
+            [
+              "T(n,m)",
+              "线性时间：每个节点只被摘取一次"
+            ],
+            [
+              "S_iter",
+              "迭代版只用常数个指针"
+            ],
+            [
+              "C_max",
+              "比较次数上界 n+m−1"
+            ],
+            [
+              "dummy",
+              "哑结点，结果链的哨兵头"
+            ],
+            [
+              "tail",
+              "结果链当前的尾节点"
+            ]
+          ],
+          "derivation": [
+            "两条链各自递增，所以两个当前头部中的较小者必定是剩余元素中的全局最小值，可以立刻输出，无需回看。",
+            "每输出一个节点就把对应一侧的指针前移一格，另一个指针不动，因此每个节点最多被摘取一次，总摘取次数为 n+m。",
+            "每次比较至少确定一个节点的最终位置，因此比较次数不超过 n+m−1：最后一次只剩单侧时不再需要比较。",
+            "某一侧先走空后，另一侧剩余节点本身有序且都大于已输出部分，可以整段接上，不必再逐个比较。",
+            "边界：两条链都为空时结果为空链；只有一侧为空时直接返回另一侧，这正是哑结点写法要保留的分支。"
+          ],
+          "analogy": "像把两摞已排好的扑克牌合成一摞：每次只比两张牌面，把小的翻到新牌堆，再从它原来那摞抽下一张；哪摞抽完就把剩下的整摞搬过去。",
+          "pitfalls": [
+            "循环条件写成「两条链任一非空」，一侧为空后会访问空指针而崩溃。",
+            "不用哑结点，结果链头要单独特判，某一侧为空时容易返回错。",
+            "循环结束后忘记接上剩余链，结果被截断。",
+            "误以为会去重：示例 {-1,2,4} 与 {1,3,4} 的输出含两个 4，重复元素必须保留。"
+          ],
+          "code": "class Solution:\n    def Merge(self, pHead1, pHead2):\n        dummy = ListNode(0)\n        tail = dummy\n        while pHead1 and pHead2:\n            if pHead1.val <= pHead2.val:\n                tail.next, pHead1 = pHead1, pHead1.next\n            else:\n                tail.next, pHead2 = pHead2, pHead2.next\n            tail = tail.next\n        tail.next = pHead1 or pHead2   # 接上未走完的那条链\n        return dummy.next\n",
+          "sources": [
+            {
+              "title": "[编程题] 合并两个排序的链表",
+              "url": "https://nowcoder.com/practice/d8b6b4358f774294a89de2a6ac4d9337"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "题干：输入两个递增的链表，单个链表的长度为 n，合并后新链表中的节点仍递增排序。",
+          "示例：{1,3,5} 与 {2,4,6} 合并为 {1,2,3,4,5,6}。",
+          "示例：{-1,2,4} 与 {1,3,4} 合并为 {-1,1,2,3,4,4}，重复值保留。",
+          "示例：{} 与 {} 输出 {}。",
+          "页面给出类名 Solution、参数 pHead1/pHead2 的 Java 题面模板。"
+        ],
+        "uncertain": [
+          "摘要中复杂度要求被截断（原文写作「要求：空间复杂度 ，时间复杂度 」），O(n+m) 时间与 O(1) 空间是迭代归并的通用结论，需核对题目给定上限。",
+          "两条链表长度不等时的取值摘要未说明：正文写「单个链表的长度为 n」而示例两侧等长，通用题意应允许不等长，需核实 n 与 m 的定义。",
+          "摘要未给出官方解析与标程，示例只覆盖三种输入。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "两条已经排好的链，每次比个头、把小的接上去，最后接上没走完的那条。"
+          },
+          {
+            "level": "入门",
+            "text": "建哑结点 dummy 当结果链哨兵，tail 指向它。两条链都不空时，比较两个头节点的值，把较小者摘下来接到 tail 后，并前移 tail 与被摘那一侧的指针；某条链走空后，把另一条剩余整段接上，返回 dummy.next。每个节点只被摘一次，所以是线性的。"
+          },
+          {
+            "level": "进阶",
+            "text": "关键设计有三个。第一是哑结点：它让「接入第一个节点」与「接入后续节点」共用同一行代码，消掉结果链为空的特判，最后返回 dummy.next 即可。第二是只推进被摘取的一侧：因为两条链各自有序，两个头部中较小者必然是剩余元素的最小值，可以立刻定下来。第三是收尾：循环条件是两条链都非空，结束后用 tail.next = pHead1 or pHead2 一次接上剩余段。边界上要记住重复值必须保留（{-1,2,4} 与 {1,3,4} 的输出里有两个 4），以及两侧都为空时返回空。"
+          },
+          {
+            "level": "专家",
+            "text": "把它看作归并排序的 merge 步骤：链表版比数组版更省，合并只改写 next 指针，不需要 O(n+m) 的缓冲数组，迭代实现是 O(1) 额外空间（不含输入）。它与反转链表、K 个一组翻转同属指针重排家族，区别是本算法不改变任何节点的内部顺序，只决定节点间的连接次序，因此不存在形成环的风险。比较次数上界 n+m−1 可用来解释归并排序 O(N log N) 的常数来源。若变体要求去重、原地复用某一链表头、或合并 k 条链（用最小堆把每轮 k 次比较降到 log k），核心流程不变，只在「取谁」与「收尾」上加条件（推断：k 路归并属常见追问）。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "不用哑结点会多出哪些麻烦？",
+            "a": "结果链的第一个节点要先判断空链决定 head 指向谁，之后还要单独维护 head 不被覆盖；分支多一处就多一个出错点。"
+          },
+          {
+            "q": "循环条件写成「任一非空」会怎样？",
+            "a": "其中一侧为空后会去访问空指针的属性并抛异常；正确条件是两者都非空，剩余部分在循环外整段接上。"
+          },
+          {
+            "q": "为什么可以整段接上剩余链，而不用继续逐个比较？",
+            "a": "剩余那一侧自身已经递增，且其头节点大于已输出的所有节点，所以整段都在正确位置上。"
+          }
+        ],
+        "mechanism": "要在线性时间里合并两条有序链，必须让每次比较都不浪费：两条链各自有序保证两个头部中的较小者一定是全局剩余最小元素，于是它可以直接输出，不需要回看或重排；只推进被摘取的一侧保证每个节点只被访问一次。哑结点的作用是把过程统一成「往结果链尾追加」，让「结果链为空」这一特例自动被吸收，从工程上减少边界分支。",
+        "boundary": "前提是两条输入链各自有序；若输入无序，必须先排序（链表上通常用归并排序）。原地迭代版要求允许改写输入的 next 指针，若需保留原链表则必须复制节点，空间升到 O(n+m)。k 路归并时两两比较会退化，需要堆或分治。",
+        "analogyBoundary": "扑克牌类比在「改写指针」这点上失效：实体牌合并要挪动位置、占额外桌面；链表合并不复制数据、不改节点内部，只用常数个变量改变连接关系。它也给不出比较次数上界。",
+        "misconceptions": [
+          "以为合并要去重，把示例里的两个 4 说成一个。",
+          "循环条件写成「任一非空」后直接访问空链表的 val。",
+          "忘记接上剩余链，导致较长的那条被截断。"
+        ],
+        "ownAnalysis": "这题与反转链表共用同一套基本功：能否在白板上一次写对空指针与收尾两个边界（推断：面试官通常就盯这两处）。哑结点写法是工程上最值得带走的习惯，它能同时服务反转区间、K 组反转、删除节点等一大类题。可疑处在于摘要里复杂度数值被截断，且写「单个链表的长度为 n」，而通用题意通常允许两条链不等长（示例 3 恰好等长）；若面试给定 n 相同，比较上界应写成 2n−1，建议以题面原始说明为准。另外递归写法三四行就能写完，但栈深度是 n+m 量级，摘要没提，属于需要自己补的边界。",
+        "officialNotes": [
+          {
+            "position": "题目页面给出接口：类名 Solution、参数 pHead1/pHead2，返回合并后的链表头；并给出三个示例，其中 {-1,2,4} 与 {1,3,4} 的输出保留重复值 4。",
+            "source": "牛客题霸《合并两个排序的链表》 https://nowcoder.com/practice/d8b6b4358f774294a89de2a6ac4d9337"
+          }
+        ],
+        "interviewAnswer": "我用哑结点加双指针归并。建 dummy 和 tail，当两条链都非空时比较两个头节点的值，把较小者摘下来接到 tail.next，然后 tail 前移、被摘那一侧的指针也前移；循环结束后 tail.next 接上还没走完的那条链，返回 dummy.next。因为两条链各自有序，每次取走的都是剩余最小值，所以每个节点只处理一次，时间 O(n+m)。空间上迭代只需常数个指针；重复元素保留，示例里两个 4 都会出现在结果里。递归版更短但有 O(n+m) 栈深度，长链表会爆栈。",
+        "studyPath": {
+          "prerequisites": [
+            "单链表结构与指针操作",
+            "归并排序的合并步骤",
+            "空指针边界处理"
+          ],
+          "nextSteps": [
+            "合并 K 个排序链表（分治或最小堆）",
+            "合并两个排序数组（对比额外空间差异）",
+            "链表的归并排序",
+            "删除排序链表中的重复元素"
+          ]
+        }
+      }
+    },
+    {
+      "id": "a0eba0aa1c5bae4d",
+      "tldr": "牛客手撕题：判断第二个序列能否是第一个压栈序列的合法弹出顺序，如 4,5,3,2,1 可以而 4,3,5,1,2 不行。",
+      "keyPoints": [
+        "输入两个整数序列，第一个是压入顺序 pushV，判断第二个是否为可能的弹出顺序。",
+        "假设压入栈的所有数字均不相等。",
+        "示例：[1,2,3,4,5] 与 [4,5,3,2,1] 返回 true。",
+        "示例：[1,2,3,4,5] 与 [4,3,5,1,2] 返回 false。",
+        "约束：长度非零、元素范围与 -1000 有关、数字互不相同（摘要中不等号被截断）。"
+      ],
+      "why": "栈合法性判定是模拟类手撕高频题，考「何时必须弹」这一贪心不变式，也是笔试区分「背模板」与「会推理」的常见题型。",
+      "difficulty": "medium",
+      "tags": [
+        "stack",
+        "simulation",
+        "coding-interview",
+        "greedy",
+        "nowcoder"
+      ],
+      "entities": [
+        "pushV",
+        "popV",
+        "栈",
+        "牛客题霸"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "栈序列合法性判定",
+        "caption": "按压入顺序边压边弹：只要栈顶等于弹出序列当前元素就必须弹，最后全部匹配则为合法。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='栈弹出序列合法性判定的四步流程：遍历压入序列、压栈、栈顶匹配就循环弹出、全部匹配即合法'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>遍历压入序列</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>pushV 逐个处理</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>压栈</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>stack.append(v)</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>能弹就弹</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>while 循环弹出</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>全部匹配即合法</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>j 走到末尾</text></svg>",
+        "alt": "栈弹出序列判定四步：按 pushV 顺序遍历 → 逐个压栈 → 栈顶等于弹出序列当前元素就循环弹出 → 弹出指针走到末尾即返回 true，否则 false"
+      },
+      "concepts": [
+        {
+          "name": "栈弹出序列合法性判定 (Stack Permutation Feasibility)",
+          "readable": "给定互不相同的压入顺序，判断候选序列能否作为弹出顺序。做法是贪心模拟：按顺序压栈，每当栈顶等于候选序列当前位置的元素，就必须立刻弹出并让候选指针前进；压入序列走完后，再核对栈内剩余元素是否按弹出顺序逐步对上，全部对上才返回 true。",
+          "analogy": "像一条只能单侧开门的死胡同车位：车按固定顺序开进去，先进去的被堵在最里面，要开出来的车必须正好停在洞口；若候选出场顺序要求一辆还堵在里面的车先出来，这个顺序就不可能。",
+          "analogyBreaksDown": "停车场里司机可以倒车、可以挪动别的车，而栈不允许——任何时刻只能弹出栈顶元素，没有随机访问与重排；类比还容易让人忽略「压入顺序本身是给定的、不能改」，而司机可以自行决定入场次序。",
+          "mechanism": "核心不变式是「能弹就必须弹」：若栈顶等于候选元素却不弹，后续任何压入都会把它埋得更深，它就永远不可能成为下一个弹出的元素，所以延迟弹出不会换来任何合法解。这条单调性让一次线性扫描即可判定，无需搜索所有合法弹出序列。",
+          "visual": "画一个竖着的栈容器，旁边一条从左到右的弹出序列。压入指针逐个把元素方块推进栈；每当栈顶方块与弹出序列当前方块标注的值相同，就画一条向右的箭头把栈顶摘走并前进弹出指针，否则继续压入。最后画栈空为绿勾、栈内残留为红叉。",
+          "prerequisites": [
+            "栈的后进先出语义",
+            "贪心与模拟类算法",
+            "循环不变式"
+          ],
+          "selfTest": [
+            "为什么「能弹就必须弹」不会漏掉合法解？",
+            "压入序列全部走完后还要做什么检查？",
+            "如果压入元素有重复，这个贪心判定还成立吗？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "贪心模拟的交换论证 (Exchange Argument for Greedy Simulation)",
+          "readable": "要证明「能弹就弹」不劣于任何策略，可假设某个合法操作序列在栈顶等于候选元素时选择继续压入；把这次压入与该次弹出交换顺序，得到的仍是合法序列（弹出的前提只是该元素在栈顶，继续压入不改变这一点），且候选序列的进度更靠前。反复交换即可把任何合法解变成贪心解。",
+          "analogy": "像收银员先结算手里已经拿好的商品：如果手上这件正好是清单上的下一件，先结掉它绝不会让之后更麻烦，因为后面要扫的商品还没被拿起来。",
+          "analogyBreaksDown": "结账的交换成立是因为「手上商品」不受后续商品影响；栈里存在覆盖关系——压入新元素会改变栈顶，所以交换论证必须严格说明「弹出前的那次压入不改变弹出可行性」。类比传达不出这个论证义务，容易让人以为贪心显然正确。",
+          "mechanism": "设计选择是放弃搜索全部合法弹出序列（数量可达卡特兰数级），转而利用单调性：候选序列的当前元素只可能来自「当前栈顶」或「尚未压入的元素」，而尚未压入的元素必须按给定顺序进入，所以一旦栈顶匹配就应立即输出，否则它被后续压入覆盖后无法再成为下一个输出。",
+          "visual": "画两个并排的时序图：上图是贪心解，用压、压、压、弹、压、弹、弹、弹、弹的方块序列表示；下图是某个「弹迟了」的解，用红色标记被后续压入埋住的元素，旁边画一条带叉的箭头表示它再也不可能按候选顺序弹出。",
+          "prerequisites": [
+            "栈操作序列",
+            "贪心算法与交换论证",
+            "组合计数的基本直觉"
+          ],
+          "selfTest": [
+            "交换论证中交换的是哪两步操作？",
+            "为什么「尚未压入的元素」不能随意挑选？",
+            "重复元素会让判定出现什么歧义？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-stack-pop-sequence-greedy",
+          "name": "栈弹出序列的贪心判定 (Greedy Validity Check for Stack Pop Sequence)",
+          "category": "engineering",
+          "latex": "\\text{valid} \\iff \\text{压入过程中每当 } \\mathrm{top}(S) = popV[j] \\text{ 就立即弹出},\\quad T(n) = O(n),\\; S(n) = O(n)",
+          "symbols": [
+            [
+              "pushV",
+              "压入顺序，题目给定且元素互不相同"
+            ],
+            [
+              "popV",
+              "待判定的弹出顺序"
+            ],
+            [
+              "S",
+              "模拟用的辅助栈"
+            ],
+            [
+              "top(S)",
+              "栈顶元素，唯一可被弹出的元素"
+            ],
+            [
+              "j",
+              "popV 的当前匹配位置"
+            ],
+            [
+              "T, S",
+              "时间 O(n)，额外空间 O(n)"
+            ]
+          ],
+          "derivation": [
+            "按 pushV 的顺序逐个把元素压入辅助栈 S，忠实模拟真实压栈过程。",
+            "每压入一个元素后，只要 S 非空且 top(S) == popV[j]，就弹出并令 j 前进；这一步可重复，因此内层是 while 而不是 if。",
+            "为什么必须立即弹出：若此刻不弹，后续压入的元素会盖在它上面，它不再是栈顶，永远无法成为下一个弹出的元素，延迟弹出换不来任何合法解。",
+            "pushV 全部处理完后，栈内剩余元素只能按从栈顶到栈底的顺序弹出；把它们依次与 popV 的剩余部分比对，全部相等才返回 true，否则 false。",
+            "复杂度：每个元素最多压入一次、弹出一次，时间 O(n)；辅助栈最坏存 n 个元素，空间 O(n)。"
+          ],
+          "analogy": "像一条单侧开门的死胡同车库：车按固定顺序开进去，要开出来的那辆必须刚好停在洞口；洞口那辆正是清单下一辆就先放它走，若清单要的是还堵在里面的车，这个顺序就不可能。",
+          "pitfalls": [
+            "内层弹出写成 if 而不是 while：连续多个元素可弹时只弹一个，会把合法序列误判为非法。",
+            "忘记压入序列走完后继续清栈核对，栈内残留元素被忽略而误返回 true。",
+            "把 O(n) 空间说成 O(1)：辅助栈最多要存 n 个元素。",
+            "忽略「数字互不相同」这一前提：允许重复时「栈顶等于候选值」不再唯一，需额外的消歧规则。"
+          ],
+          "code": "def IsPopOrder(pushV, popV):\n    if len(pushV) != len(popV):\n        return False\n    stack, j = [], 0\n    for v in pushV:\n        stack.append(v)                       # 1. 按顺序压入\n        while stack and stack[-1] == popV[j]:  # 2. 能弹就弹\n            stack.pop()\n            j += 1\n    return j == len(popV)                     # 3. 全部匹配才算合法\n",
+          "sources": [
+            {
+              "title": "[编程题] 栈的压入、弹出序列",
+              "url": "https://nowcoder.com/practice/d77d11405cc7470d82554cb392585106"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "题干：输入两个整数序列，第一个表示压入顺序，判断第二个序列是否可能为该栈的弹出顺序。",
+          "假设压入栈的所有数字均不相等。",
+          "示例：[1,2,3,4,5] 与 [4,5,3,2,1] 输出 true，页面给出的操作序列是 push(1)→push(2)→push(3)→push(4)→pop()→push(5)→pop()→pop()→pop()→pop()。",
+          "示例：[1,2,3,4,5] 与 [4,3,5,1,2] 输出 false，说明中给出的理由是 1、2 的弹出次序无法满足。",
+          "约束三条：长度非零、pushV 元素范围与 -1000 有关、所有数字互不相同；摘要中不等号被截断。"
+        ],
+        "uncertain": [
+          "摘要中数据范围的不等号被截断（原文写作「0length」「-1000pushV[i]」），无法确认边界是否含等号。",
+          "pushV 是否恰好是某个连续整数区间的排列：示例中是 1..5，但摘要只说「所有数字均不相同」。",
+          "「合法弹出序列数量等于卡特兰数」是通用组合结论，题目摘要未提及，本卡片只在 teaching 中作为背景提及。",
+          "摘要未给出官方答案代码，只给了两个示例与说明文字。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "按顺序压栈，栈顶正好是下一个该弹出的就弹掉；最后能全部弹完就合法。"
+          },
+          {
+            "level": "入门",
+            "text": "用辅助栈模拟真实压栈：按 pushV 顺序逐个压入，每压一个就看栈顶是否等于 popV 当前元素，是就弹出并前进指针，且要用 while 反复弹。pushV 走完后，把栈里剩余元素与 popV 剩余部分逐个核对，全部对上才返回 true。整个过程只需扫一遍，时间 O(n)。"
+          },
+          {
+            "level": "进阶",
+            "text": "关键设计是「能弹就必须弹」这条贪心规则，它把搜索问题变成一次线性扫描。理由是：若栈顶正好等于 popV 当前元素却不弹，之后任何一次压入都会盖在它上面，它就再也不可能成为下一个弹出的元素，所以延迟弹出换不来合法解。实现上有两个易错点：内层弹出必须是 while 而不是 if，因为一次压入后可能连续满足多次；压入序列走完后必须继续清栈核对，否则残留元素被忽略而误判为 true。空间上辅助栈最坏要存 n 个元素，是 O(n) 而不是 O(1)。"
+          },
+          {
+            "level": "专家",
+            "text": "这道题的数学背景是栈排列：n 个互不相同元素按固定顺序压入，合法弹出序列的总数等于卡特兰数，因此暴力枚举不可行（数量指数增长），必须靠单调性判定。它与括号匹配、表达式求值、下一个更大元素同属「用栈做模拟」家族，区别在于这里栈的角色是忠实复现一个物理过程，而不是维护单调结构。变体上要注意：允许重复元素时贪心需要额外消歧规则；若题目改成两个栈或允许有限缓冲，判定难度会显著上升（推断：多栈可行性属更难的排列问题）。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "内层用 if 而不是 while 会怎样？",
+            "a": "一次压入后可能连续多个元素都等于 popV 接下来的值，只弹一个就会把本应弹出的元素留在栈里，使合法序列被判成 false。"
+          },
+          {
+            "q": "为什么走完压入序列后还要再检查一遍？",
+            "a": "此时栈里可能还有元素，它们必须按从栈顶到栈底恰好等于 popV 的剩余部分才合法；不检查就等于默认剩下的一定匹配。"
+          },
+          {
+            "q": "为什么不直接枚举所有可能的弹出序列来判断？",
+            "a": "合法序列数量是卡特兰数级（随 n 指数增长），枚举代价不可接受；而贪心模拟一次线性扫描就能判定。"
+          }
+        ],
+        "mechanism": "栈只允许弹出栈顶，这个约束非常强：一个元素一旦被新元素压住，就再也不能成为下一个弹出的元素。因此当栈顶恰好是候选序列当前元素时，弹出它既不违反任何约束，也不会牺牲未来的选择权（未来的候选元素只可能来自尚未压入的元素或更深的栈内元素），于是贪心不劣于任何合法策略。正是这条单调性把「是否存在合法操作序列」的搜索问题压成一次 O(n) 模拟。",
+        "boundary": "适用前提是压入顺序给定且元素互不相同；若存在重复值，「栈顶等于候选值」不再唯一，贪心需要额外的匹配规则，摘要也未覆盖。若题目允许两个栈、允许有限缓冲或要求最小辅助空间，判定条件会变。此外判定为 true 只说明存在一个合法操作序列，不保证该序列唯一。",
+        "analogyBoundary": "停车场类比在「可倒车、可挪车」这点上失效：栈不能移动非栈顶元素，也没有随机访问。它同样传达不出「元素互不相同」这一前提，而重复值会让「洞口那辆是不是清单上那辆」变得不确定。",
+        "misconceptions": [
+          "把判断写成「popV 是不是 pushV 的任意排列」——任何排列都能压入，但绝大多数不能按该顺序弹出。",
+          "内层弹出只用 if，漏掉连续可弹的情况。",
+          "压入序列走完就直接返回 true，忘记核对栈内残留元素。"
+        ],
+        "ownAnalysis": "这是典型的「用模拟代替搜索」题：把物理约束直接编码成循环，再用一条单调性论证正确性（推断：面试追问多半落在「为什么能弹就弹」与两个边界上）。与括号匹配、表达式求值一样，考的是能否把抽象规则翻译成状态机，而不是背模板。可疑处在于摘要里的数据范围被截断，无法确认 n 的上限与元素范围，也看不出 pushV 是否一定等于 1..n；如果面试给出 pushV 恰为 1..n，则合法弹出序列与卡特兰数一一对应，可作为加分点主动提。另外摘要的 false 示例说明写得较绕，用贪心模拟一遍即可得反例：弹出 4 后栈内是 [1,2,3]，弹出 3 后栈顶 2 与候选的 5 不符，而 5 之后要求 1 在 2 之前弹出，与栈序矛盾。",
+        "officialNotes": [
+          {
+            "position": "题目页面给出两条示例与说明：push(1)→push(2)→push(3)→push(4)→pop()→push(5)→pop()→pop()→pop()→pop() 可得到 [4,5,3,2,1] 并返回 true；[4,3,5,1,2] 因 1、2 的弹出次序无法满足而返回 false。页面同时声明压入栈的所有数字均不相等。",
+            "source": "牛客题霸《栈的压入、弹出序列》 https://nowcoder.com/practice/d77d11405cc7470d82554cb392585106"
+          }
+        ],
+        "interviewAnswer": "我用一个辅助栈做贪心模拟：按 pushV 顺序逐个压入，每压入一个就用 while 循环检查栈顶是否等于 popV 当前元素，等于就弹出并前进指针。pushV 走完后，如果弹出指针已经走到 popV 末尾，就返回 true，否则 false。核心是「能弹就必须弹」：栈顶正好是下一个该弹出的元素时不弹，后续压入会把它埋住，它永远出不来，所以延迟没有收益。时间是 O(n)，每个元素进出栈各一次；空间是辅助栈的 O(n)。题目保证元素互不相同，所以栈顶与候选值的比较没有歧义。",
+        "studyPath": {
+          "prerequisites": [
+            "栈的后进先出语义",
+            "基本的循环与索引操作",
+            "贪心算法与交换论证的直觉"
+          ],
+          "nextSteps": [
+            "括号匹配与表达式求值",
+            "单调栈：下一个更大元素、柱状图最大矩形",
+            "卡特兰数计数：n 个元素的合法栈排列数量",
+            "两个栈或有限缓冲下的序列可行性变体"
+          ]
+        }
+      }
+    }
+  ]
+}

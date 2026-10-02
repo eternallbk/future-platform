@@ -1,0 +1,221 @@
+{
+  "batchId": "backfill-01",
+  "entries": [
+    {
+      "id": "0b3e16ecf4f67dcb",
+      "formulas": [
+        {
+          "id": "f-agentic-rl-grpo-group-advantage",
+          "name": "GRPO 组内相对优势（Group-Relative Advantage）",
+          "category": "rl",
+          "latex": "A_i = \\frac{r_i - \\mathrm{mean}(r_1, \\ldots, r_G)}{\\mathrm{std}(r_1, \\ldots, r_G) + \\varepsilon}",
+          "symbols": [
+            ["G", "同一 prompt 采样出的轨迹条数（组大小）"],
+            ["r_i", "第 i 条轨迹拿到的奖励（环境返回或规则校验）"],
+            ["A_i", "组内归一化优势，充当策略梯度的 baseline 减项"],
+            ["ε", "防止组内标准差为 0 时除零的小常数"],
+            ["prompt", "智能体任务的起始输入，同组轨迹由它采样而来"]
+          ],
+          "derivation": [
+            "第 1 步（动机）：策略梯度需要 baseline 来降方差，PPO 用额外的 critic 网络估计它，显存与调参成本都很高。",
+            "第 2 步（可用的结构）：Agentic RL 的奖励来自环境对整条轨迹的反馈，同一个 prompt 天然可以采样出 G 条不同的轨迹，无需额外模型就能构造一组样本。",
+            "第 3 步（去 baseline）：直接用组内奖励均值替代 critic：r_i 减去 mean(r_1…r_G)，得到这条轨迹「比同组平均好多少」。",
+            "第 4 步（尺度归一）：再除以组内标准差，把不同 prompt 的奖励量纲与难度差异抹平，使优势跨任务可比，且不引入 critic 的参数。"
+          ],
+          "analogy": "同一道题让 G 个学生各写一份，老师不打绝对分，只看「你比这组平均分高多少」。标准差归一相当于把不同科目的难度差异抹平：数学平均 80 分、语文平均 60 分，不能直接拿原始分比谁更优秀。省下的是一个专职估分老师（critic）。",
+          "pitfalls": [
+            "组内奖励全相同（std=0）时优势全部为 0，该 prompt 对梯度零贡献，必须过滤或重新采样。",
+            "稀疏的 0/1 奖励下 G 太小会让均值/标准差噪声极大，工程上常见 G 取 4~16（具体取值需核对教程的 TRL 示例）。",
+            "把「整条轨迹一个标量奖励」当成逐步奖励来算优势，是 Agentic RL 里最常见的概念混淆。"
+          ],
+          "code": "import torch\n\ndef group_advantage(rewards: torch.Tensor) -> torch.Tensor:\n    # rewards: (G,) 同一 prompt 下 G 条轨迹的奖励\n    mean = rewards.mean()\n    std = rewards.std(unbiased=False)\n    return (rewards - mean) / (std + 1e-4)\n\n# 若组内奖励全相同，返回的优势恒为 0，应过滤掉该 prompt",
+          "sources": [
+            {
+              "title": "cookiespiggy/agentic-rl（33 章 Agentic RL 中文零基础教程，含 GRPO 实战）",
+              "url": "https://github.com/cookiespiggy/agentic-rl"
+            }
+          ]
+        },
+        {
+          "id": "f-agentic-rl-grpo-clipped-objective",
+          "name": "GRPO 带裁剪的策略目标（Clipped Surrogate Objective）",
+          "category": "rl",
+          "latex": "\\mathcal{J}_{\\mathrm{GRPO}}(\\theta) = \\mathbb{E}\\left[ \\frac{1}{G} \\sum_{i=1}^{G} \\frac{1}{|o_i|} \\sum_{t=1}^{|o_i|} \\min\\left( \\rho_{i,t} A_i,\\ \\mathrm{clip}(\\rho_{i,t}, 1-\\epsilon, 1+\\epsilon)\\, A_i \\right) \\right], \\quad \\rho_{i,t} = \\frac{\\pi_\\theta(o_{i,t}\\mid q, o_{i,<t})}{\\pi_{\\theta_{\\mathrm{old}}}(o_{i,t}\\mid q, o_{i,<t})}",
+          "symbols": [
+            ["q", "任务 prompt（智能体任务的起点）"],
+            ["o_i", "第 i 条采样轨迹（一段多步动作/文本序列）"],
+            ["|o_i|", "该轨迹的 token 数，用于序列内平均，避免长轨迹主导"],
+            ["ρ_{i,t}", "token 级重要性比 π_θ / π_old，衡量新旧策略的分布偏移"],
+            ["A_i", "组内相对优势（由组内奖励均值与标准差归一得到）"],
+            ["ε", "clip 范围（常见 0.2），限制单步策略改动幅度"]
+          ],
+          "derivation": [
+            "第 1 步（动机）：策略梯度只能用在当前策略采到的数据上，一次采样只更新一步太浪费，所以引入重要性采样让同一批数据可以复用多次。",
+            "第 2 步（PPO 的形式）：用重要性比 ρ 修正分布偏移，并加 clip 把过大的 ρ 截断，防止一次更新把策略推得太远。",
+            "第 3 步（GRPO 的替换）：保留 clip 的重要性采样目标，但把 PPO 里由 critic 估计的优势换成组内相对优势 A_i，于是整个目标不再需要价值网络。",
+            "第 4 步（变长序列的处理）：Agent 轨迹长度不一，先在每条轨迹内部对 token 的 min(·,·) 取平均，再在组内对 G 条轨迹取平均，长轨迹不会因 token 多而主导梯度。",
+            "第 5 步（稳定化）：实践上通常再叠加一项与参考模型的 KL 惩罚以防止策略跑偏（摘要未给具体形式，属通用做法）。"
+          ],
+          "analogy": "复习一叠旧卷子：允许你相对于上次的答案做修改，但每道题只能改一点点（clip）；改对了就加分，改得太多、超出允许幅度的部分不计入。这样既能反复利用旧卷子，又不会因为一次激进修改把整门课带偏。",
+          "pitfalls": [
+            "ρ 必须逐 token 用 log-prob 之差再指数化，用整条序列一个标量比值是典型错误。",
+            "clip 只约束单步偏移，训练后期仍需要 KL 项或早停，否则策略可能退化。",
+            "教程的 TRL 最小示例是入门入口而非生产配方；奖励函数与采样实现一变，同样的目标形式也可能训不出来。"
+          ],
+          "code": "import torch\n\ndef grpo_loss(logp, logp_old, adv, eps=0.2):\n    # logp/logp_old: (G, T) 当前与采样时策略的 token log-prob\n    # adv: (G,) 组内相对优势 A_i\n    ratio = torch.exp(logp - logp_old)                 # rho_{i,t}\n    a = adv.unsqueeze(-1)\n    unclipped = ratio * a\n    clipped = ratio.clamp(1 - eps, 1 + eps) * a\n    return -torch.min(unclipped, clipped).mean()       # 序列内与组内平均",
+          "sources": [
+            {
+              "title": "cookiespiggy/agentic-rl（33 章 Agentic RL 中文零基础教程，含 GRPO 实战与 TRL 最小可跑示例）",
+              "url": "https://github.com/cookiespiggy/agentic-rl"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "28f899c9d5f4731d",
+      "formulas": [
+        {
+          "id": "f-swift-dpo-pairwise-objective",
+          "name": "DPO 偏好对目标（Direct Preference Optimization Loss）",
+          "category": "posttraining",
+          "latex": "\\mathcal{L}_{\\mathrm{DPO}} = -\\mathbb{E}_{(x,\\, y_w,\\, y_l)}\\left[ \\log \\sigma\\!\\left( \\beta \\log \\frac{\\pi_\\theta(y_w \\mid x)}{\\pi_{\\mathrm{ref}}(y_w \\mid x)} - \\beta \\log \\frac{\\pi_\\theta(y_l \\mid x)}{\\pi_{\\mathrm{ref}}(y_l \\mid x)} \\right) \\right]",
+          "symbols": [
+            ["x", "提示词（prompt）"],
+            ["y_w", "被偏好的回答（chosen）"],
+            ["y_l", "被拒绝的回答（rejected）"],
+            ["π_θ", "正在训练的策略模型"],
+            ["π_ref", "冻结的参考模型，提供 KL 约束的锚点"],
+            ["β", "KL 约束强度，控制策略相对参考模型能走多远"]
+          ],
+          "derivation": [
+            "第 1 步（动机）：偏好数据只说明「这条比那条好」，SFT 只模仿正例，无法表达这种相对信号。",
+            "第 2 步（RLHF 的痛点）：传统做法先训奖励模型、再跑 PPO，链路长、超参多、训练不稳定。",
+            "第 3 步（闭式解代入）：在「最大化奖励同时 KL 约束不离开参考模型」的目标下，最优策略有闭式解，反解出奖励可写成策略与参考模型对数概率比的形式。",
+            "第 4 步（变成分类）：把该奖励差代回 Bradley–Terry 偏好模型，得到对 chosen/rejected 的 sigmoid 二分类损失，于是无需奖励模型即可直接优化策略。",
+            "第 5 步（框架中的位置）：ms-swift 把这条目标封装成 DPO 训练阶段，输入就是成对的 chosen/rejected 数据。"
+          ],
+          "analogy": "作文课不打绝对分，只给两篇作文排序「这篇比那篇好」。学生据此相对地提高好作文的概率、压低差作文的概率；参考模型像入学时的原始水平，β 决定你允许自己偏离这个水平多远。",
+          "pitfalls": [
+            "忘记冻结参考模型（或让它跟着训练）会失去 KL 锚点，DPO 退化成无约束的偏好拟合。",
+            "β 太小策略走得过远易退化，太大则几乎学不动，是 DPO 最主要的调参项。",
+            "DPO 只能吃离线偏好对，无法像 GRPO 那样用可验证奖励在线采样，两者数据前提不同。"
+          ],
+          "code": "import torch, torch.nn.functional as F\n\ndef dpo_loss(logp_w, logp_l, ref_w, ref_l, beta=0.1):\n    # logp_*: 策略/参考模型对 chosen、rejected 的序列 log-prob\n    margin = beta * ((logp_w - ref_w) - (logp_l - ref_l))\n    return -F.logsigmoid(margin).mean()",
+          "sources": [
+            {
+              "title": "modelscope/ms-swift（用 PEFT 或全参做 CPT/SFT/DPO/GRPO 的统一训练框架）",
+              "url": "https://github.com/modelscope/ms-swift"
+            }
+          ]
+        },
+        {
+          "id": "f-swift-lora-low-rank-update",
+          "name": "LoRA 低秩增量更新（Low-Rank Adaptation，PEFT 模式）",
+          "category": "posttraining",
+          "latex": "h = W_0 x + \\Delta W x = W_0 x + \\frac{\\alpha}{r} B A x, \\quad A \\in \\mathbb{R}^{r \\times d},\\ B \\in \\mathbb{R}^{k \\times r},\\ r \\ll \\min(d, k)",
+          "symbols": [
+            ["W_0", "冻结的底座权重，训练中不更新"],
+            ["ΔW", "微调需要学习的权重增量，被假设为低秩"],
+            ["A", "下投影矩阵（r×d），把输入降到秩 r"],
+            ["B", "上投影矩阵（k×r），把低秩结果升回输出维度"],
+            ["r", "LoRA 秩，越小可训练参数越少"],
+            ["α", "缩放系数，α/r 使不同 r 下的更新尺度大致一致"]
+          ],
+          "derivation": [
+            "第 1 步（动机）：全参微调要为每个参数存梯度与优化器状态，显存随模型规模线性增长，单卡很难跑大模型。",
+            "第 2 步（假设）：微调带来的权重变化是低秩的，不需要一个满秩的 ΔW 才能适配下游任务。",
+            "第 3 步（分解）：把 ΔW 写成 B·A 两个小矩阵相乘，只训练 A、B，可训练参数量从 d×k 降到 r×(d+k)。",
+            "第 4 步（工程收益）：冻结的 W_0 可被多个适配器共享，换任务只换 A、B；用 α/r 缩放使调 r 时不必重调学习率。",
+            "第 5 步（框架中的位置）：ms-swift 把这条路径作为 PEFT 模式，与全参数微调并存、可按模型切换。"
+          ],
+          "analogy": "不重印整本教科书，只在页边贴几张便利贴：书上「这里要强调、那里要弱化」；书本身（W_0）不动，换一门课只要换一批便利贴。便利贴的总面积远小于全书，却能改变你的阅读侧重。",
+          "pitfalls": [
+            "说「LoRA 一定不如全参」不准确：差距取决于秩 r 与领域跨度，继续预训练这类分布漂移大的任务通常仍需全参。",
+            "合并权重时 α/r 的缩放容易漏乘或重复乘，导致推理与训练结果不一致。",
+            "A、B 的初始化与学习率设置影响训练早期稳定性，不是随便初始化就能复现。"
+          ],
+          "code": "import torch, torch.nn as nn\n\n# 冻结的 W0 继续用原层；只训练 A、B 两个小矩阵\nA = nn.Parameter(torch.zeros(r, d))    # 下投影\nB = nn.Parameter(torch.zeros(k, r))    # 上投影\nscale = alpha / r\n\ndef lora_forward(x, base, A, B, scale):\n    return base(x) + scale * (x @ A.T @ B.T)   # h = W0 x + (alpha/r) B A x",
+          "sources": [
+            {
+              "title": "modelscope/ms-swift（支持 PEFT 与全参数两种微调模式）",
+              "url": "https://github.com/modelscope/ms-swift"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "97fae90c627e5adb",
+      "formulas": [
+        {
+          "id": "f-ruoyi-rag-cosine-relevance",
+          "name": "RAG 检索余弦相关性打分（Cosine Relevance Score）",
+          "category": "engineering",
+          "latex": "s(q, d) = \\cos(\\mathbf{e}_q, \\mathbf{e}_d) = \\frac{\\mathbf{e}_q \\cdot \\mathbf{e}_d}{\\lVert \\mathbf{e}_q \\rVert_2 \\, \\lVert \\mathbf{e}_d \\rVert_2}",
+          "symbols": [
+            ["q", "用户问题（query）"],
+            ["d", "知识库里的一个文档切片（chunk）"],
+            ["e_q", "问题经 embedding 模型编码后的向量"],
+            ["e_d", "文档切片编码后的向量"],
+            ["s(q,d)", "相关性分数，越大越相关"],
+            ["k", "取分数最高的前 k 个切片作为候选"]
+          ],
+          "derivation": [
+            "第 1 步（建库）：把知识库文档按一定粒度切片，用同一个 embedding 模型编码成向量并建索引。",
+            "第 2 步（编码查询）：用户提问时用同一模型把问题编码到同一向量空间。",
+            "第 3 步（打分）：用余弦相似度衡量两个向量方向的一致程度，除以模长使分数与文本长度无关。",
+            "第 4 步（取候选）：按分数降序取 top-k 作为候选片段。",
+            "第 5 步（所谓高精度）：通常在检索后加一道重排或相关性过滤，把更相关的片段排到前面再注入提示词（摘要未给具体重排模型与指标）。"
+          ],
+          "analogy": "在图书馆里按「你那本书的目录和哪几页的目录最像」来选页，而不是按页数多少来选；余弦只看方向是否一致，所以很长的章节不会仅因为字数多就天然占便宜。",
+          "pitfalls": [
+            "向量已归一化时余弦等于内积，若又重复除以模长会造成分数口径混乱（常见实现 bug）。",
+            "余弦只衡量语义相似，不衡量能否答对：检索分数高的片段仍可能答非所问。",
+            "切片粒度、embedding 模型、重排器任一变都会改变命中，换个向量库就宣称提精度是过度归因。"
+          ],
+          "code": "import numpy as np\n\ndef topk_by_cosine(q_vec, doc_vecs, k=5):\n    q = q_vec / (np.linalg.norm(q_vec) + 1e-8)\n    D = doc_vecs / (np.linalg.norm(doc_vecs, axis=1, keepdims=True) + 1e-8)\n    scores = D @ q                      # 归一化后内积即余弦\n    idx = np.argsort(-scores)[:k]\n    return idx, scores[idx]",
+          "sources": [
+            {
+              "title": "ageerle/ruoyi-ai（企业级 AI agent 框架，含安全知识库与高精度 RAG）",
+              "url": "https://github.com/ageerle/ruoyi-ai"
+            }
+          ]
+        },
+        {
+          "id": "f-ruoyi-rag-precision-at-k",
+          "name": "Top-k 检索命中评估（Precision@k / Recall@k）",
+          "category": "engineering",
+          "latex": "\\mathrm{Precision@}k = \\frac{\\left| \\{\\text{top-}k\\ \\text{中相关片段}\\} \\right|}{k}, \\qquad \\mathrm{Recall@}k = \\frac{\\left| \\{\\text{top-}k\\} \\cap \\{\\text{全部相关片段}\\} \\right|}{\\left| \\{\\text{全部相关片段}\\} \\right|}",
+          "symbols": [
+            ["k", "检索返回的候选片段数量"],
+            ["top-k", "按相关性分数降序取出的前 k 个片段集合"],
+            ["相关片段集合", "人工标注的、真正能回答问题的那批片段（金标准）"],
+            ["Precision@k", "取回的 k 个片段中真正相关的比例"],
+            ["Recall@k", "全部相关片段中被取回的比例"]
+          ],
+          "derivation": [
+            "第 1 步（动机）：「高精度 RAG」需要可测口径，否则只是仓库自述，无法判断改动是否真的变好。",
+            "第 2 步（固定 k）：k 太小会漏掉必要信息，k 太大会把噪声塞进上下文窗口，所以要先固定 k 再谈命中。",
+            "第 3 步（造金标准）：人工标注一小批问题的相关片段集合，作为评测基准。",
+            "第 4 步（算指标）：用 Precision@k 看取回内容里有多少是有用的（噪声），用 Recall@k 看有用的资料漏了多少（覆盖率）。",
+            "第 5 步（用于决策）：切片策略或重排器的改动，以前后这两个指标对比来评估，而不是看单条回答读起来像不像。"
+          ],
+          "analogy": "从一摞资料里挑 k 张递给答题的人：Precision@k 看你挑的这 k 张里有几张真有用（别夹带废纸），Recall@k 看全部有用的资料你漏掉了多少（别把关键的留在书架上）。",
+          "pitfalls": [
+            "只看 Precision 不看 Recall 会漏答；只靠调大 k 又会让噪声占满上下文窗口，反而降低答案质量。",
+            "金标准由人工标注，标注口径不同则指标不可比，跨项目对比要先对齐口径。",
+            "本条目摘要没有给 ruoyi-ai 的任何评测数值，「高精度」是自述而非已验证指标。"
+          ],
+          "code": "def precision_recall_at_k(retrieved, relevant, k):\n    topk = set(retrieved[:k])\n    hit = topk & set(relevant)\n    precision = len(hit) / k\n    recall = len(hit) / max(len(relevant), 1)\n    return precision, recall\n\n# retrieved 为按分数降序的片段 id，relevant 为人工标注的相关片段 id",
+          "sources": [
+            {
+              "title": "ageerle/ruoyi-ai（企业级 AI agent 框架，含高精度 RAG 与多 agent 协作）",
+              "url": "https://github.com/ageerle/ruoyi-ai"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-10-02T21:03:14+08:00",
+ "generatedAt": "2026-10-03T02:50:20+08:00",
  "source": "build_interview_index.py (deterministic rules, no LLM)",
- "count": 27,
+ "count": 28,
  "note": "面经时效性最强，按发布时间倒序；公司/轮次/结果/主题由规则抽取，可逐条核对",
  "companies": [
   {
@@ -70,15 +70,15 @@
  "topics": [
   {
    "name": "项目/论文深挖",
-   "count": 15
+   "count": 16
   },
   {
    "name": "工程/系统",
-   "count": 7
+   "count": 8
   },
   {
    "name": "Agent/RAG",
-   "count": 6
+   "count": 7
   },
   {
    "name": "手撕/算法题",
@@ -86,7 +86,7 @@
   },
   {
    "name": "大模型/LLM",
-   "count": 3
+   "count": 4
   },
   {
    "name": "强化学习",
@@ -100,7 +100,7 @@
  "outcomes": [
   {
    "name": "通过",
-   "count": 19
+   "count": 20
   },
   {
    "name": "未通过",
@@ -163,24 +163,6 @@
    "summary": "1. 自我介绍2. 讲一下实习项目3. 软件架构是怎么设计的？从数据采集到最终算法计算，中间经历了哪些环节？4. 为什么项目选择这个 MCU？有没有考虑过其他型号？回答思路：推荐大家主要从需求匹配的角度回答可以从几个方面考虑：性能：主频、CPU内核、是否有 FPU/DSP，能不能满足数据采集和算法计_牛客网_牛客在手,offer不愁"
   },
   {
-   "id": "bc43875b886cc899",
-   "title": "字节国际化广告后端实习一二面凉经",
-   "url": "https://nowcoder.com/discuss/933056720308305920",
-   "channel": "nowcoder",
-   "category": "job",
-   "publishedAt": "2026-10-01T23:58:56+08:00",
-   "lastSeen": "2026-10-02T00:02:23+08:00",
-   "company": "字节跳动",
-   "round": "二面",
-   "outcome": "未通过",
-   "topics": [
-    "手撕/算法题",
-    "Agent/RAG"
-   ],
-   "hasCoding": true,
-   "summary": "9-17一面，9.20二面（挂）。不好评价了，二面来了个大的，面试官在那里嬉皮笑脸的，问我我的CodingAgent和Codex比有什么优势？那我说Trae对比qoder，cc，codex有什么优势？算法出个16进制大数相乘，题目描述都不清晰，就一个 a * b，然后说是很大的16进制的数，让我写它_牛客网_牛客在手,offer不愁"
-  },
-  {
    "id": "d44c4c2a9174e06b",
    "title": "极兔后端一面",
    "url": "https://nowcoder.com/discuss/932663753219244032",
@@ -197,6 +179,24 @@
    ],
    "hasCoding": false,
    "summary": "1.Redis Stream 做订单队列，如果消费失败了怎么兜底？2.推模式缺点，改进方案3.滚动分页用的是时间戳加 offset 去重，为什么不直接用 limit 呢？4.点赞用 ZSet 存储用户 DB 存计数，你是怎么保证这个缓存和这个 DB 双写一致的呢？5.秒杀结束后，数据怎么同步到数据库_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "bc43875b886cc899",
+   "title": "字节国际化广告后端实习一二面凉经",
+   "url": "https://nowcoder.com/discuss/933056720308305920",
+   "channel": "nowcoder",
+   "category": "job",
+   "publishedAt": "2026-10-01T23:58:56+08:00",
+   "lastSeen": "2026-10-02T00:02:23+08:00",
+   "company": "字节跳动",
+   "round": "二面",
+   "outcome": "未通过",
+   "topics": [
+    "手撕/算法题",
+    "Agent/RAG"
+   ],
+   "hasCoding": true,
+   "summary": "9-17一面，9.20二面（挂）。不好评价了，二面来了个大的，面试官在那里嬉皮笑脸的，问我我的CodingAgent和Codex比有什么优势？那我说Trae对比qoder，cc，codex有什么优势？算法出个16进制大数相乘，题目描述都不清晰，就一个 a * b，然后说是很大的16进制的数，让我写它_牛客网_牛客在手,offer不愁"
   },
   {
    "id": "34943744e1ea5edd",
@@ -496,6 +496,21 @@
    "summary": "bg本2硕9，在秋招和春招一共拿到了 15+ 家大厂嵌软Offer，包括华为、OPPO、vivo、蔚来、影石及荣耀等。在每次面试完成后，我自己进行整理汇总，总结出大厂面经专栏。专栏累计已有6.2w+ 同学阅读，共整理100+篇文章、60+篇大厂面经(持续更新中)每道题也都配备了解答(代码块+框架图)_牛客网_牛客在手,offer不愁"
   },
   {
+   "id": "52e617684045fc77",
+   "title": "（诺瓦星云）双非硕秋招实录！9 月斩获 4 份嵌入式开发 offer，面经连载中",
+   "url": "https://nowcoder.com/discuss/935200647861792768",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T16:46:27+08:00",
+   "lastSeen": "2026-10-01T16:48:06+08:00",
+   "company": "",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "前言：双非电子信息硕士，秋招 9 月拿下 4 个嵌入式开发 offer。一路踩坑整理面试真题，本专栏持续更新各家嵌入式面经，包含众多厂商面试原题与考点复盘，嵌入式求职小伙伴可以收藏蹲后续！🎓学历背景：双非电子信息硕👨‍💻意向职位：嵌入式软件开发📍求职类型：秋招🔑本篇：诺瓦星云嵌入式一面面经_牛客网_牛客在手,offer不愁"
+  },
+  {
    "id": "5f47316656dd4eeb",
    "title": "分享｜5年Java面字节，虚拟线程和GraalVM深挖，三面终于OC",
    "url": "https://nowcoder.com/discuss/934417678071058432",
@@ -512,21 +527,6 @@
    ],
    "hasCoding": false,
    "summary": "先交代背景：普通本科，Java后端，5年经验，上一家是某电商平台，负责过订单系统的架构优化，带过5人团队。字节5年经验的面试，一面45分钟，围绕虚拟线程、GraalVM原生镜像、Spring Boot 3.x三个方向深挖。面试官不满足于“知不知道”，而是追问“为什么这么设计”和“线上怎么落地”。三轮_牛客网_牛客在手,offer不愁"
-  },
-  {
-   "id": "52e617684045fc77",
-   "title": "（诺瓦星云）双非硕秋招实录！9 月斩获 4 份嵌入式开发 offer，面经连载中",
-   "url": "https://nowcoder.com/discuss/935200647861792768",
-   "channel": "nowcoder",
-   "category": "coding",
-   "publishedAt": "2026-10-01T16:46:27+08:00",
-   "lastSeen": "2026-10-01T16:48:06+08:00",
-   "company": "",
-   "round": "一面",
-   "outcome": "通过",
-   "topics": [],
-   "hasCoding": false,
-   "summary": "前言：双非电子信息硕士，秋招 9 月拿下 4 个嵌入式开发 offer。一路踩坑整理面试真题，本专栏持续更新各家嵌入式面经，包含众多厂商面试原题与考点复盘，嵌入式求职小伙伴可以收藏蹲后续！🎓学历背景：双非电子信息硕👨‍💻意向职位：嵌入式软件开发📍求职类型：秋招🔑本篇：诺瓦星云嵌入式一面面经_牛客网_牛客在手,offer不愁"
   },
   {
    "id": "a269d242962e0bae",
@@ -581,6 +581,26 @@
    ],
    "hasCoding": true,
    "summary": "一套代码能跑遍所有芯片。 作者丨 高允毅 编辑丨岑 峰 刚刚，DeepSeek做了一个开源壮举： 把给英伟达 GPU 写代码的全套工具链，原样铺到了华为昇腾 950 NPU 上。 最核心的算子开发产品 TileLang 官宣原生支持昇腾。不仅如此，连同 DeepGEMM、DeepEP、FlashMLA、TileKernels、DeepSelect 五大核心计算与通信库也同步推出昇腾版本，直接对标英伟达平台的全套工具链。 这意味着国产算力第一次在核心算子工具层面，做到了与英伟达生态的能力对标 。 在此之前，全球 AI 行业苦 CUDA 垄断久矣；而现在，DeepSeek 用一行行开源代码，为国产算力自主生态蹚出了一条康庄大道。 01 写算子的 “手工作坊” 时代，该结束了 做过 AI 底层开发的都知道， “写算子” 一直是门槛最高、耗时最久的工作之一。 一张芯片的理论算力上限很高，但如果底层"
+  },
+  {
+   "id": "4f5b506dfea832c7",
+   "title": "liyupi/mianshiya — 持续维护的企业面试题库网站，帮你拿到满意 offer！⭐️ 2026年最新Java面试题、前端面试题、AI大模型面试题、AI Agent面试",
+   "url": "https://github.com/liyupi/mianshiya",
+   "channel": "github_algo",
+   "category": "agent",
+   "publishedAt": "2026-02-04T10:47:29Z",
+   "lastSeen": "2026-10-03T02:13:16+08:00",
+   "company": "",
+   "round": "",
+   "outcome": "通过",
+   "topics": [
+    "大模型/LLM",
+    "工程/系统",
+    "Agent/RAG",
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "持续维护的企业面试题库网站，帮你拿到满意 offer！⭐️ 2026年最新Java面试题、前端面试题、AI大模型面试题、AI Agent面试题、RAG面试题、C++面试题、Go面试题、Python面试题、测试面试题、运维面试题、后端面试题、操作系统面试题、计算机网络面试题、Redis面试题、MySQL数据库面试题、算法面试题、Spring面试题、JVM面试题、Java并发面试题、Linux面试题、LLM面试题、Prompt工程面试题、系统设计面试题等1万多道高频程序员求职必备八股文。面试刷题就选面试鸭 💎 React 前端 + Node 后端 + 云开发全栈项目 by 程序员鱼皮｜5927 stars｜TypeScript｜最近更新 2026-02-04｜主题：ai、ai-agents、algorithm、ant-design、backend、cpp、css、database"
   }
  ]
 }

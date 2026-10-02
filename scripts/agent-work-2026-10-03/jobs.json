@@ -1,0 +1,6 @@
+{
+  "date": "2026-10-03",
+  "addedBy": "daily-agent",
+  "newJobs": [],
+  "note": "本轮 digest 里的招聘类条目都不是新岗位：腾讯『游戏AI-强化学习算法研究员』与『WorkBuddy-Agent Harness 算法工程师』已存在于 jobs.json（tencent-game-ai-rl-researcher / tencent-workbuddy-agent-harness，2026-10-02 由 deep-read 增量加入）；inbox 里的『字节跳动 多模态算法实习生（Seed）』URL 为占位符，按 daily-agent.md 第 3 节不写入岗位库，已转人工复核。牛客两条为求职吐槽帖，不含岗位事实。"
+}

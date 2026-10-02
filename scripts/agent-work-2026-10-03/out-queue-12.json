@@ -1,0 +1,516 @@
+{
+  "batchId": "queue-12",
+  "entries": [
+    {
+      "id": "4b9f93bba7c4e1a6",
+      "tldr": "PRISM 把几段真人视频扩成数百条反事实交互片段，重定向为物理可行轨迹，训练出可零微调上真机的人形策略。",
+      "keyPoints": [
+        "用 V2V 从几条真实视频生成数百条反事实人-物交互视频，扩出类内多样性。",
+        "contact-anchored real-to-sim 重建人与物体运动，把不完美视频重定向为物理可行轨迹。",
+        "单一策略靠类内差异泛化到同类未见物体，不需一物一模版。",
+        "真机部署不做任何真实世界微调，只用机载深度观测。",
+        "完成抓取、搬运、放下箱子、桶、储物箱与球，覆盖新实例、新尺寸、新初始位形。"
+      ],
+      "why": "生成式数据扩增正在替代真机采数据：视频生成补结构多样性、仿真补物理可行性，是具身与人形岗位最值钱的组合拳。",
+      "difficulty": "hard",
+      "tags": ["video-generation", "humanoid", "real-to-sim", "imitation-learning", "data-augmentation"],
+      "entities": ["PRISM", "video-to-video (V2V)", "contact-anchored real-to-sim", "real-to-sim-to-real", "humanoid loco-manipulation"],
+      "diagram": {
+        "kind": "flow",
+        "title": "PRISM 数据放大流水线",
+        "caption": "真实视频提供运动学结构，视频生成提供类内变化，仿真负责把数据修成物理可行。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='PRISM 流程：少量真实交互视频经视频到视频生成出数百条反事实交互视频，再经接触锚定的实到虚重定向为物理可行轨迹，最后训练单一策略并零微调部署到真机'><rect x='40' y='14' width='400' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='56' y='38' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>少量真实交互视频</text><text x='424' y='38' font-size='13' text-anchor='end' fill='currentColor'>全身可见·不遮挡</text><line x1='240' y1='52' x2='240' y2='60' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,68 236,60 244,60' fill='var(--line-1)'/><rect x='40' y='68' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='92' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>V2V 反事实生成</text><text x='424' y='92' font-size='13' text-anchor='end' fill='currentColor'>数百条类内变体</text><line x1='240' y1='106' x2='240' y2='114' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,122 236,114 244,114' fill='var(--line-1)'/><rect x='40' y='122' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='146' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>接触锚定 real-to-sim</text><text x='424' y='146' font-size='13' text-anchor='end' fill='currentColor'>重定向为物理可行</text><line x1='240' y1='160' x2='240' y2='168' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,176 236,168 244,168' fill='var(--line-1)'/><rect x='40' y='176' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='200' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>单一策略实机部署</text><text x='424' y='200' font-size='13' text-anchor='end' fill='currentColor'>仅机载深度·零微调</text></svg>",
+        "alt": "竖向流程图：少量真实交互视频经 V2V 反事实生成得到数百条类内变体，再经接触锚定的 real-to-sim 重定向为物理可行轨迹，最后训练单一策略并仅用机载深度零微调部署到真机。"
+      },
+      "concepts": [
+        {
+          "name": "Counterfactual Video Generation（反事实视频生成）",
+          "readable": "只给几条真实拍摄的人与物体交互视频，模型在保持动作结构的前提下换掉物体实例、尺寸、初始位置等条件，生成几百条「同一类动作、不同情境」的新视频，凭空造出类内多样性。",
+          "analogy": "像同一位老师录同一堂课，但每天换不同教室、不同教具、不同座位表，学生学到的是这堂课的本质，而不是某一间教室的摆设。",
+          "analogyBreaksDown": "换教室不会让人手穿进桌子；生成出来的反事实片段却可能手物接触错位、穿模、物体突然跳变，所以这些视频不能直接当动作标签，必须再经仿真重定向修正物理可行性。",
+          "mechanism": "关键设计是条件来自真实视频而非文本：保留真实交互的运动学结构，只在物体属性维度做反事实扰动，使多样性集中在策略真正需要泛化的类内差异上，再靠接触锚定重定向洗掉生成伪影。",
+          "visual": "横轴放物体实例与尺寸，纵轴放交互阶段（接近、抓取、搬运、放下）；每条生成视频是格子里的一段轨迹，同一列的轨迹结构相似，轨迹颜色深浅表示生成置信度。",
+          "prerequisites": ["扩散/流匹配式视频生成基础", "模仿学习与策略学习框架", "刚体运动学与手物接触表示"],
+          "selfTest": ["为什么多样性不能只靠随机种子，而要在物体属性上显式做反事实扰动？", "生成出的视频为什么不能直接作为模仿学习标签？", "类内多样性如何让一个策略覆盖同类未见物体？"],
+          "formula": ""
+        },
+        {
+          "name": "Real-to-Sim-to-Real（实到虚再回实）",
+          "readable": "把真实视频先搬进仿真器，在仿真里修正成物理可行、可批量生成的训练数据，再把学到的策略搬回真机，全程不依赖真机采数据。",
+          "analogy": "像飞行员先在模拟器里练上千小时：模拟器的地形与科目来自真实飞行录像，练完直接上真飞机，不用拿真飞机摔着学。",
+          "analogyBreaksDown": "模拟器与真机的差距（接触摩擦、深度噪声、执行器延迟）才是决定成败的地方；本流程声称仅用机载深度、零微调就能迁移，但这个结论只在摘要描述的物体与任务范围内成立。",
+          "mechanism": "仿真被当成「数据修正器」而不是「数据来源」：来源是真实视频，仿真负责补上物理可行性与大规模变体，从而同时避开真机采数据贵和纯仿真视觉差距大两个问题。",
+          "visual": "三个并排方块：真实视频（小）→ 仿真修正与扩增（大）→ 真机部署（小）；箭头粗细表示数据量，方块颜色深浅表示数据来源的真实性。",
+          "prerequisites": ["sim-to-real 迁移常识", "轨迹优化与运动重定向", "机器人模仿学习"],
+          "selfTest": ["real-to-sim 在这里的作用是生成数据还是修正数据？", "为什么把仿真放在中间环节能缓解 sim-to-real 差距？", "零真机微调意味着系统对哪些误差最敏感？"],
+          "formula": ""
+        },
+        {
+          "name": "Contact-Anchored Motion Retargeting（接触锚定的动作重定向）",
+          "readable": "从不完美的生成视频里重建人与物体运动后，用检测到的接触时刻作为锚点锁住手与物体的相对位姿，再把整条轨迹优化成仿真器能执行的物理可行动作。",
+          "analogy": "像照着一段模糊录像学搬箱子：身体大体照做就行，但当画面里手碰到箱子的那一帧，你必须真的抓住箱子，而不是让手从箱子里穿过去。",
+          "analogyBreaksDown": "类比只保证了「碰到时要抓住」，给不出接触力、摩擦锥、物体惯性这些必须由物理仿真器判定的东西，也无法解释重定向后轨迹的动力学残差该如何分配权重。",
+          "mechanism": "视频轨迹当软目标做跟踪、接触帧当硬锚点做约束、再加物理可行性罚项：三项分工明确，使不完美的视频数据只贡献运动学结构，动力学校正交给仿真。",
+          "visual": "时间轴上画两条曲线（手部位姿与物体位姿），接触时段用竖线阴影标出；阴影内两条曲线间距被压到接近零，阴影外允许出现偏差。",
+          "prerequisites": ["运动重定向与逆运动学基础", "接触检测与手物位姿表示", "轨迹优化与物理仿真器"],
+          "selfTest": ["为什么用软跟踪项而不是直接回放重建轨迹？", "接触锚点约束与物理可行性罚项各自解决什么问题？", "接触帧权重设错会出现什么现象？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-v2v-counterfactual-video-gen",
+          "name": "反事实视频到视频生成目标（Counterfactual Video-to-Video Generation Objective）",
+          "category": "generative",
+          "latex": "\\mathcal{L}_{\\text{V2V}}=\\mathbb{E}_{t,\\,x_0,\\,\\epsilon}\\left[w(t)\\left\\|\\epsilon-\\epsilon_\\theta(x_t,t\\mid v_{\\text{src}},c_{\\text{cf}})\\right\\|_2^2\\right]",
+          "symbols": [["v_{\\text{src}}", "作为条件的一小段真实人物交互视频（exemplar）"], ["c_{\\text{cf}}", "反事实条件（物体类别/实例/尺寸/初始位形等变化因子）"], ["x_t", "第 t 步加噪后的视频隐变量"], ["\\epsilon_\\theta", "以源视频与反事实条件为条件的去噪网络"], ["w(t)", "噪声时间步的损失权重"]],
+          "derivation": ["第 1 步：动机是实拍人-物交互视频稀缺，而策略泛化需要同一类动作下的多种情境。", "第 2 步：把真实视频当作结构条件 v_src，再采样反事实因子 c_cf（换物体实例、尺寸、初始位形）。", "第 3 步：在视频隐空间做条件去噪回归，得到一批「动作结构相似、情境细节不同」的生成视频。", "第 4 步：这些样本构成类内差异，使一个策略能覆盖同类未见物体，而不是每个物体训一个模版。（公式为按摘要重建的通用形式）"],
+          "analogy": "像给同一个舞蹈动作换舞伴、换舞台道具反复录一遍：动作骨架不变，但每个版本细节都不同。",
+          "pitfalls": ["把反事实生成说成文本到视频，忽略它的条件是真实视频而不是文本", "以为生成视频可以直接当训练数据，忽略后续必须做物理可行性重定向", "以为多样性来自随机种子；这里多样性来自显式变化的物体属性"],
+          "code": "import torch\n\ndef v2v_loss(eps_theta, x0, src_cond, cf_cond):\n    t = torch.rand(x0.shape[0], device=x0.device)\n    noise = torch.randn_like(x0)\n    a = t.view(-1, 1, 1, 1, 1)            # 简化的 alpha_t\n    x_t = a.sqrt() * x0 + (1 - a).sqrt() * noise\n    pred = eps_theta(x_t, t, cond_src=src_cond, cond_cf=cf_cond)\n    return ((pred - noise) ** 2).mean()",
+          "sources": [{"title": "Counterfactual Video Generation Enables Scalable Humanoid Loco-Manipulation", "url": "https://huggingface.co/papers/2609.38172"}]
+        },
+        {
+          "id": "f-contact-anchored-retarget",
+          "name": "接触锚定的动作重定向目标（Contact-Anchored Retargeting Objective）",
+          "category": "worldmodel",
+          "latex": "\\min_{\\tau}\\;\\sum_t\\left\\|\\tau_t-\\hat{\\tau}_t\\right\\|_2^2+\\lambda_c\\sum_{t\\in\\mathcal{C}}\\left\\|x^{o}_t-T(\\tau_t)\\,x^{h}_t\\right\\|_2^2+\\lambda_p\\,\\mathcal{P}(\\tau)",
+          "symbols": [["\\tau_t", "重定向后的人/机器人动作轨迹"], ["\\hat{\\tau}_t", "从生成视频重建出的（不完美）参考轨迹"], ["\\mathcal{C}", "检测到的接触时刻集合"], ["x^{o}_t,\\,x^{h}_t", "物体与手部的位姿"], ["T(\\tau_t)", "由动作决定的相对变换"], ["\\mathcal{P}(\\tau)", "物理可行性罚项（穿模、浮空、动力学残差）"], ["\\lambda_c,\\,\\lambda_p", "接触项与物理项权重"]],
+          "derivation": ["第 1 步：视频重建出的轨迹在接触处常有滑动与穿模，不能直接当动作标签。", "第 2 步：因此以视频轨迹为软目标构造跟踪项，只借它的运动学结构。", "第 3 步：在检测到的接触帧上加锚定约束，强制手与物体保持正确的相对位姿。", "第 4 步：再叠加物理可行性罚项，在仿真中获得动力学可执行的轨迹。（公式为按摘要重建的通用形式）"],
+          "analogy": "像照着模糊录像学做菜：大体动作照着做，但手握锅柄的那一刻必须真的握住，不能穿过去。",
+          "pitfalls": ["把重定向理解成纯运动学逆解回放，忽略接触约束与物理可行性", "以为视频重建精度越高越好；这里明确承认视频不完美，并交给仿真修正", "忘记接触是稀疏事件，权重错配会让手在物体表面滑动"],
+          "code": "import torch\n\ndef retarget_loss(tau, tau_ref, contact_mask, x_obj, x_hand, lam_c=1.0):\n    track = ((tau - tau_ref) ** 2).sum(dim=-1).mean()\n    gap = ((x_obj - x_hand) ** 2).sum(dim=-1)\n    contact = (contact_mask * gap).sum() / contact_mask.sum().clamp(min=1.0)\n    return track + lam_c * contact      # 物理可行性罚项 P(tau) 简化省略",
+          "sources": [{"title": "Counterfactual Video Generation Enables Scalable Humanoid Loco-Manipulation", "url": "https://arxiv.org/abs/2609.38172"}]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "PRISM 是 real-to-sim-to-real 框架，用少量真实视频扩增出大规模训练集。",
+          "反事实人-物交互视频由 video-to-video（V2V）生成，数量为数百条量级。",
+          "contact-anchored real-to-sim 重建人与物体运动，把视频数据重定向为物理可行轨迹。",
+          "类内差异用于训练单个策略，使其泛化到每个类别中的未见物体。",
+          "真机部署不做真实世界微调，只使用机载深度观测。",
+          "任务覆盖抓取、搬运、放下箱子、桶、储物箱与球，含新实例、新尺寸与新初始位形。"
+        ],
+        "uncertain": [
+          "摘要未给 V2V 的具体生成模型、噪声调度与条件注入方式，本条目公式为按摘要重建的通用形式，需核对原文。",
+          "摘要只写「数百条」，未给精确数据量、策略学习算法与超参。",
+          "未给真机成功率、试验次数与重定向后的动力学残差数值。",
+          "摘要未说明反事实条件（物体实例、尺寸、初始位形）如何采样与筛选。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "几段真人视频扩成几百段，在仿真里修成可执行动作，人形机器人就学会了搬箱子搬球。"},
+          {"level": "入门", "text": "机器人模仿学习缺数据：全身可见、手物不遮挡的交互视频很难拍。PRISM 只用几段真实视频，让生成模型在换物体实例与尺寸的条件下产出几百条反事实交互片段，再用接触锚定的 real-to-sim 流程重建成物理可行轨迹，用于训练策略。"},
+          {"level": "进阶", "text": "关键设计是把多样性放在哪：不是随机扰动，而是沿物体实例、尺寸、初始位形这些策略真正需要泛化的维度做反事实条件。生成视频保留真实交互的运动学结构，但可能接触错位、穿模，于是第二步用接触锚定重定向：视频轨迹当软目标、接触帧当锚点锁住手物相对位姿、再加物理可行性罚项。类内变体让单个策略覆盖同类未见物体。"},
+          {"level": "专家", "text": "与纯仿真训练再迁移相比，PRISM 的数据源头是真实视频，仿真的角色变成修正器与放大器，从而同时避开真机采数据贵和纯仿真视觉差距大；与直接用生成视频做模仿学习相比，它多了物理可行性这道闸门，代价是管线更长、依赖接触检测与物体位姿重建的精度。边界也清楚：摘要只在箱子、桶、储物箱、球这几类可抓放物体上验证，策略输入只用机载深度且不做真机微调，所以高频接触、柔性物体或需要力控的任务是否成立，摘要没有给出证据。"}
+        ],
+        "socratic": [
+          {"q": "如果不做反事实扰动，只用那几段真实视频训练会怎样？", "a": "策略只会记住少数物体实例的姿态与尺度，遇到同类新物体就退化；泛化必须来自训练分布里存在类内变化，而真实拍摄恰好最缺这种变化。"},
+          {"q": "为什么不直接拿生成视频训练，省掉 real-to-sim 重定向？", "a": "视频生成只保证看起来对，手物接触可能滑移、穿模，物体尺寸与轨迹未必满足动力学；直接当动作标签会让策略学到物理上做不到的目标。"}
+        ],
+        "mechanism": "为什么必须这样设计：机器人模仿学习的数据瓶颈不是数量，而是结构可控的多样性。真实视频提供可信的运动学结构但数量稀少；视频生成能在给定结构下批量换条件，却只保证像素真实、不保证物理真实。所以中间必须插入一层用接触约束做锚点的重定向，把生成伪影洗掉、把轨迹落到仿真可执行空间，最终才能用一个策略覆盖类内未见物体并在真机上零微调运行。",
+        "boundary": "摘要的验证范围限于可抓放搬运的刚性物体（箱子、桶、储物箱、球）与人形 loco-manipulation 任务：需要精细力控、可变形物体、高动态接触或强遮挡的场景没有证据；此外整条管线依赖接触检测与物体位姿重建质量，这些环节在真实视频上的失败会直接传播到策略。",
+        "analogyBoundary": "「换教室录同一堂课」的类比只覆盖条件扰动这一层：它无法表达生成视频会失败（手穿进物体、物体瞬移），也无法说明为什么需要物理仿真器判定可行性；类比里「内容不变」是自动成立的，而在视频生成里它恰恰是需要被约束的假设。",
+        "misconceptions": [
+          "以为 PRISM 是端到端视频生成模型；它其实是一条 real-to-sim-to-real 数据管线。",
+          "以为生成视频可直接当模仿学习标签，忽略物理可行性重定向这一步。",
+          "把多样性归因于随机采样，忽略显式的物体实例、尺寸、位形反事实条件。"
+        ],
+        "ownAnalysis": "（推断）这条工作的真正卖点是「用生成补结构、用仿真补物理」的分工，而不是视频生成质量本身：一旦 V2V 生成器换成更强的视频基础模型，管线其余部分可原样受益。可疑处在于摘要只给「数百条」这一量级与任务清单，没有给策略成功率、真机试验次数、重定向后的动力学残差，也没有说明反事实条件如何采样与筛选；（推断）零真机微调能成立，很可能依赖训练分布已覆盖目标物体的尺寸区间，超出该区间的外推能力仍需核实。",
+        "officialNotes": [
+          {"position": "PRISM 是 real-to-sim-to-real 框架：用 V2V 从少量真实视频生成数百条反事实人-物交互视频，经 contact-anchored real-to-sim 重定向为物理可行轨迹，训练单个策略泛化到同类未见物体，并在真机零微调部署，仅用机载深度完成对箱子、桶、储物箱、球的抓取、搬运与放下。", "source": "https://huggingface.co/papers/2609.38172"}
+        ],
+        "interviewAnswer": "PRISM 解决人形 loco-manipulation 的数据瓶颈：全身可见又不遮挡的交互视频很难拍。它先把少量真实视频当结构模板，用视频到视频生成在物体实例、尺寸、初始位形上做反事实扩增，得到几百条类内变体；再用接触锚定的 real-to-sim 把不完美的生成视频重建成物理可行轨迹——视频当软目标、接触帧当锚点、再罚物理不可行；最后训练一个策略，靠类内多样性泛化到同类未见物体，实机只用机载深度、不做微调就能抓取搬运箱子、桶、储物箱和球。",
+        "studyPath": {
+          "prerequisites": ["扩散/流匹配视频生成基础", "模仿学习与策略学习", "刚体运动学与手物接触表示", "sim-to-real 迁移常识"],
+          "nextSteps": ["深入接触锚定的轨迹优化与重定向方法", "了解 humanoid loco-manipulation 的硬件与观测配置", "对比纯仿真训练与生成数据扩增在泛化上的差异"]
+        }
+      }
+    },
+    {
+      "id": "9802701805b37556",
+      "tldr": "在音视频联合扩散的前向过程 RL 中，用双向交叉注意力响应动态选更新位置，并用偏好先验加残差修正协调多奖励。",
+      "keyPoints": [
+        "多奖励 RL 的效果取决于两个训练中变化的量：在哪更新、奖励如何合并。",
+        "现有做法多用固定路由与固定奖励权重，跟不上训练中模型函数的变化。",
+        "跨模态影响引导路由用双向交叉注意力响应作代理，重加权 token 级损失并缩放跨模态层梯度。",
+        "偏好保持的模态重加权把预设权重当先验，预热后用分支奖励梯度交互做残差修正。",
+        "实验在模态质量、语义一致性、音视频同步上优于强 RL 基线，消融验证两部分互补。"
+      ],
+      "why": "多奖励后训练是生成式岗位主战场：奖励冲突与更新位置是绕不开的工程细节，这篇给了可迁移的自适应思路。",
+      "difficulty": "hard",
+      "tags": ["diffusion", "reinforcement-learning", "audio-video", "multi-reward", "posttraining"],
+      "entities": ["Adaptive Reward Routing", "DiffusionNFT", "Cross-Modal Influence-Guided Routing", "Preference-Preserving Modality-Aware Reweighting", "joint audio-video diffusion", "bidirectional cross-attention"],
+      "diagram": {
+        "kind": "flow",
+        "title": "自适应奖励路由两部件",
+        "caption": "一个部件决定奖励驱动的更新打在哪，另一个部件决定互相竞争的奖励怎么合并。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='自适应奖励路由流程：前向过程 RL 采样联合音视频扩散模型，多奖励打分得到质量、语义与同步信号，跨模态影响引导路由决定更新位置，偏好保持的模态重加权决定奖励合并方式'><rect x='40' y='14' width='400' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='56' y='38' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>前向过程 RL 采样</text><text x='424' y='38' font-size='13' text-anchor='end' fill='currentColor'>DiffusionNFT</text><line x1='240' y1='52' x2='240' y2='60' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,68 236,60 244,60' fill='var(--line-1)'/><rect x='40' y='68' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='92' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>多奖励打分</text><text x='424' y='92' font-size='13' text-anchor='end' fill='currentColor'>质量·语义·同步</text><line x1='240' y1='106' x2='240' y2='114' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,122 236,114 244,114' fill='var(--line-1)'/><rect x='40' y='122' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='146' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>影响引导路由</text><text x='424' y='146' font-size='13' text-anchor='end' fill='currentColor'>双向交叉注意力定权</text><line x1='240' y1='160' x2='240' y2='168' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,176 236,168 244,168' fill='var(--line-1)'/><rect x='40' y='176' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='200' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>偏好保持重加权</text><text x='424' y='200' font-size='13' text-anchor='end' fill='currentColor'>先验＋梯度残差修正</text></svg>",
+        "alt": "竖向流程图：前向过程 RL 采样联合音视频扩散模型，经多奖励打分，再由跨模态影响引导路由决定更新位置，最后由偏好保持的模态重加权决定奖励合并方式。"
+      },
+      "concepts": [
+        {
+          "name": "Forward-Process RL / DiffusionNFT（前向过程强化学习）",
+          "readable": "普通 RL 微调扩散模型时，奖励只加在最终生成结果上，中间去噪步骤拿不到信号。前向过程 RL 把从噪声到样本的整条生成路径当作决策轨迹做策略优化，让每个去噪步都能被奖励塑形。",
+          "analogy": "像学画画不只看最后成品打分，而是老师在你每一笔落下时就给反馈：起稿、上色、勾线各有各的问题，早改比撕掉重画便宜。",
+          "analogyBreaksDown": "画画每一步的反馈是老师给的明确指令，而这里每一步只有同一个结果奖励反推出来的信号，信用分配依旧模糊；把中间步当动作空间还意味着轨迹极长、方差大，类比体现不出这种统计难度。",
+          "mechanism": "关键设计是把去噪过程建模成多步决策，并复用扩散模型自身的似然结构，从而不需要额外奖励模型或反传整条采样链，代价是必须自己处理极长轨迹上的信用分配。",
+          "visual": "横轴是去噪时间步（从纯噪声到干净样本），纵轴是奖励值；每个时间步画一根柱子表示该步被分配到的奖励信号，前向过程 RL 让柱子从只有最后一根变成整条都有高度。",
+          "prerequisites": ["扩散模型采样过程", "策略梯度与信用分配", "奖励塑形基本概念"],
+          "selfTest": ["前向过程 RL 把什么当作动作、什么当作轨迹？", "与只在最终样本上加奖励相比，它在信用分配上改了什么？", "为什么这条轨迹的方差会特别大？"],
+          "formula": ""
+        },
+        {
+          "name": "Cross-Modal Influence-Guided Routing（跨模态影响引导的更新路由）",
+          "readable": "训练中音频与视频对彼此的影响强弱一直在变，作者不去训额外网络估计它，而是直接用双向交叉注意力响应当作代理，据此决定哪一层、哪些 token 的损失该加权重、梯度该放大。",
+          "analogy": "像开会时按「谁和谁真的在互相对话」决定先改哪段稿子：互相回应多的那几对先改，而不是平均用力改所有人的稿子。",
+          "analogyBreaksDown": "开会可以直接问谁在对话，注意力响应只是模型内部的数值，可能被无关的高注意力尖峰污染；它度量的是模型此刻把信息往哪送，不等于哪里的更新真的能提升奖励。",
+          "mechanism": "关键设计是用双向（音频到视频、视频到音频）注意力响应的乘积作为影响强度，并对层与 token 归一化成路由权重：不引入额外可训练模块、不改模型结构，就能让更新预算跟随训练动态迁移。",
+          "visual": "一张层×token 的热力图，颜色深浅表示双向注意力响应的乘积大小；颜色深的格子就是被路由加权的更新位置，两张图对比固定路由与自适应路由的差异。",
+          "prerequisites": ["交叉注意力机制", "扩散模型多步去噪", "多奖励 RL 基础"],
+          "selfTest": ["为什么用双向而不是单向注意力响应？", "路由权重决定的是什么，与奖励权重有何区别？", "不做归一化会出现什么问题？"],
+          "formula": ""
+        },
+        {
+          "name": "Preference-Preserving Modality-Aware Reweighting（偏好保持的模态感知重加权）",
+          "readable": "多个奖励（画质、语义对齐、音视频同步）会互相冲突。作者保留人工设定的权重作为偏好先验，预热之后再用各奖励分支的梯度交互作为残差修正，让弱但必要的目标不被强奖励压死。",
+          "analogy": "像调音台：主旋钮一开始就按制作人的偏好设好，之后只在监听时对某一路做小幅微调，避免某一路音量把其他声道完全盖住。",
+          "analogyBreaksDown": "调音台里各路基本独立，调一路很少影响别的路；这里各奖励的梯度是耦合的，一次修正会改变其他分支的有效强度，所以必须靠归一化与残差限制来约束，类比给不出这层耦合。",
+          "mechanism": "关键在于「先验＋残差」的分解：先验保证目标不漂移、训练稳定，残差项（分支奖励梯度交互）只做小步修正以化解演化中的冲突，并在预热后才启用，避开早期噪声梯度。",
+          "visual": "三条随时间变化的权重曲线：虚线是固定先验，实线是修正后的有效权重；在两条奖励梯度开始明显冲突的位置标出实线偏离虚线的幅度。",
+          "prerequisites": ["多目标/多奖励优化", "策略梯度", "扩散模型 RL 微调流程"],
+          "selfTest": ["为什么不在训练一开始就启用残差修正？", "先验权重与修正项各自承担什么职责？", "不做权重归一化会导致什么后果？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-cross-modal-influence-routing",
+          "name": "跨模态影响引导的路由权重（Cross-Modal Influence-Guided Routing Weight）",
+          "category": "generative",
+          "latex": "w_{l,t}=\\frac{\\exp\\left(\\rho\\,\\hat{A}^{\\mathrm{cross}}_{l,t}\\right)}{\\sum_{t'}\\exp\\left(\\rho\\,\\hat{A}^{\\mathrm{cross}}_{l,t'}\\right)},\\qquad \\hat{A}^{\\mathrm{cross}}_{l,t}=\\frac{1}{H}\\sum_{h=1}^{H}A^{a\\to v}_{l,h,t}\\,A^{v\\to a}_{l,h,t}",
+          "symbols": [["A^{a\\to v}_{l,h,t}", "音频查询视频方向的交叉注意力响应"], ["A^{v\\to a}_{l,h,t}", "视频查询音频方向的交叉注意力响应"], ["H", "注意力头数"], ["w_{l,t}", "第 l 层第 t 个 token 的路由权重"], ["\\rho", "路由权重的缩放/温度参数"], ["\\hat{A}^{\\mathrm{cross}}_{l,t}", "头平均后的跨模态影响代理量"]],
+          "derivation": ["第 1 步：动机是跨模态影响随训练变化，需要一个不额外干预模型的廉价代理。", "第 2 步：用双向交叉注意力响应的乘积作为该位置跨模态影响强度。", "第 3 步：按层内 token 做归一化，得到路由权重 w。", "第 4 步：用 w 重加权 token 级损失并缩放跨模态层梯度，实现更新位置的动态迁移。（通用形式，需核对原文）"],
+          "analogy": "像按「谁和谁真的在互相对话」决定先改哪段发言稿：互相回应得多的那几对先改。",
+          "pitfalls": ["把路由权重当成奖励权重：一个决定更新位置，一个决定奖励合并", "以为必须用额外网络估计跨模态影响，忽略了注意力本身可当代理", "只用单向注意力，导致更新偏向主导模态"],
+          "code": "import torch\n\ndef influence_weights(attn_a2v, attn_v2a, rho=1.0):\n    # attn_*: [B, H, T, S] 双向交叉注意力响应\n    infl = (attn_a2v * attn_v2a).mean(dim=1)     # 头平均后的跨模态影响\n    return torch.softmax(rho * infl, dim=-1)     # 层内 token 级路由权重",
+          "sources": [{"title": "Adaptive Reward Routing: Dynamic Multi-Reward Optimization for Joint Audio-Video Diffusion via Forward-Process RL", "url": "https://huggingface.co/papers/2609.37200"}]
+        },
+        {
+          "id": "f-preference-preserving-reweight",
+          "name": "偏好保持的奖励重加权（Preference-Preserving Reward Reweighting）",
+          "category": "generative",
+          "latex": "\\tilde{w}_m=w^{0}_m\\left(1+\\lambda\\sum_{m'\\neq m}g_{m,m'}\\right),\\qquad g_{m,m'}=\\left\\langle \\nabla_\\theta R_m,\\ \\nabla_\\theta R_{m'}\\right\\rangle,\\qquad w^{\\mathrm{eff}}_m=\\frac{\\tilde{w}_m}{\\sum_j\\tilde{w}_j}\\,c",
+          "symbols": [["w^{0}_m", "第 m 个奖励的预设权重（偏好先验）"], ["g_{m,m'}", "第 m 与第 m' 个奖励分支的梯度内积，表示冲突或协同"], ["\\lambda", "残差修正强度，预热之后才启用"], ["\\tilde{w}_m", "修正后的权重"], ["w^{\\mathrm{eff}}_m", "归一化后实际使用的奖励权重"], ["c", "保持总权重尺度的常数"]],
+          "derivation": ["第 1 步：多奖励固定权重在训练中会失效，强奖励会压制弱但必要的目标。", "第 2 步：保留人工设定的 w^0 作为偏好先验，避免优化目标整体漂移。", "第 3 步：预热后测量各奖励分支的梯度交互，作为残差修正项加到先验上。", "第 4 步：修正后再归一化，保证总权重尺度不变，冲突演化时不至于失稳。（通用形式，需核对原文）"],
+          "analogy": "像调音台：主旋钮按制作人偏好设好，只在监听后对某一路做小幅微调，避免某一路把其他声道压掉。",
+          "pitfalls": ["把残差修正误解为完全重新学习权重，从而丢失偏好先验", "在预热前就启用修正，让噪声梯度污染奖励配比", "忽略归一化，导致总梯度尺度随修正漂移"],
+          "code": "import torch\n\ndef reweight(w0, grad_inter, lam=0.1, c=1.0):\n    # w0: [M] 预设偏好先验; grad_inter: [M] 各奖励与其他分支的梯度交互和\n    w = w0 * (1.0 + lam * grad_inter)\n    return w / w.sum() * c            # 归一化，保持总权重尺度",
+          "sources": [{"title": "Adaptive Reward Routing: Dynamic Multi-Reward Optimization for Joint Audio-Video Diffusion via Forward-Process RL", "url": "https://arxiv.org/abs/2609.37200"}]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "多奖励 RL 的效果取决于两个随训练变化的量：奖励驱动的更新应作用在哪，以及竞争的奖励应如何合并。",
+          "已有方法多依赖固定路由与固定奖励权重，无法跟踪演化的模型函数。",
+          "方法一用双向交叉注意力响应作为跨模态影响的代理，动态重加权 token 级损失并缩放跨模态层梯度，不增加模型干预。",
+          "方法二保留预设权重作为偏好先验，预热后用分支特有的奖励梯度交互做残差修正。",
+          "目标是避免主导奖励压制弱但必要的目标。",
+          "实验在模态质量、语义一致性与音视频同步上相对强 RL 基线有一致提升，消融与机制分析验证两部分互补。"
+        ],
+        "uncertain": [
+          "摘要未给路由权重的具体函数形式与温度参数，本条目公式为按摘要重建的通用形式，需核对原文。",
+          "摘要未给具体指标数值、基线名称与额外训练成本。",
+          "DiffusionNFT 在摘要中只作为前向过程 RL 的指代出现，其确切算法细节需查原文。",
+          "「预热」的具体步数与残差修正强度 λ 的取值未在摘要中说明。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "音视频扩散模型训练时，让模型自己决定该在哪里更新、几个奖励该怎么配比。"},
+          {"level": "入门", "text": "用多奖励 RL 提升联合音视频扩散模型时，有两个量会随训练变化：奖励驱动的更新该作用在哪，以及互相竞争的奖励该怎么合并。已有方法都用固定的路由和固定的奖励权重，跟不上模型函数的变化。这篇提出自适应奖励路由，一边用双向交叉注意力响应动态选更新位置，一边用偏好先验加梯度残差修正协调奖励。"},
+          {"level": "进阶", "text": "方法有两个部件。第一是跨模态影响引导路由：把音频到视频与视频到音频两个方向的交叉注意力响应当作跨模态影响的廉价代理，据此重加权 token 级损失、按层缩放跨模态梯度，不需要额外网络或改结构。第二是偏好保持的模态感知重加权：人工设定的奖励权重保留为偏好先验，预热之后才用各奖励分支的梯度交互作为残差修正，从而在冲突演化时不让强奖励压掉弱但必要的目标。消融显示两部分互补。"},
+          {"level": "专家", "text": "它把多奖励扩散 RL 的两个自由度都做成动态的：更新位置由注意力响应路由，奖励配比由梯度交互微调。价值在于不引入额外可训练模块，因此可以叠在已有的前向过程 RL（DiffusionNFT）流程上；局限是代理量的可靠性——注意力响应只是影响的相关指标，不等于奖励梯度方向，双向乘积也会被注意力尖峰干扰。相比固定路由加固定权重的基线，它在模态质量、语义一致性与音视频同步上稳定更好，但摘要没有给奖励权重敏感性分析，也无法判断某个奖励本身有偏时残差修正会不会放大这种偏差。"}
+        ],
+        "socratic": [
+          {"q": "如果路由固定、奖励权重也固定，会怎样？", "a": "训练早期与后期的有效更新位置和奖励冲突关系并不相同，固定设置会让更新预算长期花在已饱和或已对齐的层上，弱目标则被强奖励持续压制。"},
+          {"q": "为什么不直接训一个网络来预测每层的更新重要性？", "a": "额外模块本身要训练、要进反向传播链路，成本高且引入新的不稳定源；交叉注意力响应已经在模型里，可以零额外干预地反映跨模态影响。"}
+        ],
+        "mechanism": "为什么必须做成两个自适应：多奖励 RL 里「在哪更新」与「怎么合并奖励」并不独立，更新位置决定各奖励梯度实际触达的参数，奖励配比又决定这些梯度的大小；固定其中任何一个，另一个的最优值都会随训练漂移。作者用注意力响应解决前者（免费代理、无需改模型），用「先验＋预热后残差」解决后者（既不被噪声带偏，也不让强奖励吃掉弱目标），并用归一化保证总梯度尺度不漂移。",
+        "boundary": "适用于同一套扩散骨干、多个可微奖励分支的联合音视频生成场景；若奖励只有一到两个且彼此不冲突，自适应路由的收益会显著变小。摘要未说明这些策略在更长视频、更多模态或奖励本身有偏时是否成立，也没给出增加路由自由度后的额外显存与训练时间代价。",
+        "analogyBoundary": "「开会时先改互相回应多的稿子」只在把注意力响应等同于影响力时成立：注意力可能是弥散或尖峰式的噪声，也可能反映模型的冗余而非关键路径；而且开会能一次改一处，这里的更新同时作用于多层多 token，冲突无法逐条协商。",
+        "misconceptions": [
+          "把路由权重与奖励权重混为一谈：前者决定更新位置，后者决定目标配比。",
+          "以为自适应路由需要额外训练一个影响预测网络，忽略注意力响应可零干预复用。",
+          "以为偏好先验会被丢弃；实际它是基准项，残差修正只在预热后小幅调整。"
+        ],
+        "ownAnalysis": "（推断）这篇的工程价值大于理论价值：它没有提出新的 RL 目标，而是给已有的前向过程 RL 加了两处「旋钮」，且都要求零额外模型干预，说明作者把可上线性当作一等约束。可疑处在于摘要只给「一致提升」，没给具体指标与基线名称，也没说明双向注意力响应乘积为何比求和或最大池化更适合做代理；此外残差修正强度与预热步数看起来是需要按任务调的敏感超参，摘要未给敏感性分析。",
+        "officialNotes": [
+          {"position": "方法由两部分组成：跨模态影响引导路由（用双向交叉注意力响应重加权 token 级损失并缩放跨模态层梯度）与偏好保持的模态感知重加权（保留预设权重作偏好先验、预热后用分支奖励梯度交互做残差修正），在前向过程 RL（DiffusionNFT）中联合自适应更新位置与奖励协调；实验在模态质量、语义一致性、音视频同步上优于强 RL 基线，消融验证两部分互补。", "source": "https://huggingface.co/papers/2609.37200"}
+        ],
+        "interviewAnswer": "多奖励 RL 微调联合音视频扩散时有两个会漂的量：更新该打在哪、奖励该怎么配比，已有方法都写死。这篇在前向过程 RL 里同时自适应这两点。第一部分用双向交叉注意力响应当跨模态影响的代理，动态重加权 token 级损失、缩放跨模态层梯度，不需要额外模型干预；第二部分把人工权重留作偏好先验，预热之后用各奖励分支的梯度交互做残差修正，避免强奖励压死弱但必要的目标。消融显示两部分互补，效果在画质、语义一致性与音视频同步上都优于强基线。",
+        "studyPath": {
+          "prerequisites": ["扩散模型与交叉注意力", "策略梯度与 RL 微调", "多奖励优化的基本概念"],
+          "nextSteps": ["读 DiffusionNFT 前向过程 RL 原文", "对比 DPO/GRPO 式后训练与扩散 RL 的信用分配差异", "复现固定路由与自适应路由的消融实验"]
+        }
+      }
+    },
+    {
+      "id": "3024b1b3d6f0b3b3",
+      "tldr": "HAO 把零均值中心化投影加到 TD 目标，压制 FHE 多项式近似的 Bellman 漂移，且不增加乘法深度。",
+      "keyPoints": [
+        "FHE 做云端 RL 必须把非线性换成多项式近似，误差递归放大，作者称为 Bellman drift。",
+        "HAO 把优势估计里的零均值中心化投影直接搬到 TD 目标上。",
+        "该线性投影消掉均匀状态价值基线，保持动作相对排序，不增乘法深度、免密文自举。",
+        "三层验证：表格 MDP、真实 CKKS 加密 CartPole、20 节点物流路径规划基准。",
+        "HAO 全种子 0% 越界，仅正则化 3/5 种子越界，未稳定基线 83.8% episode 越界，准确率 +18.0%。"
+      ],
+      "why": "隐私计算加 RL 的交叉岗越来越常见：能不能在不碰明文的前提下稳住价值学习，是 FHE 落地 RL 的第一道坎。",
+      "difficulty": "hard",
+      "tags": ["fhe", "reinforcement-learning", "privacy", "td-learning", "cryptography"],
+      "entities": ["Homomorphic Advantage Operator (HAO)", "Fully Homomorphic Encryption (FHE)", "CKKS", "Bellman drift", "CartPole", "temporal-difference (TD) targets"],
+      "diagram": {
+        "kind": "flow",
+        "title": "HAO 阻断贝尔曼漂移",
+        "caption": "漂移的驱动力是 TD 目标里的均匀状态价值基线，用一次线性中心化就能把它消掉。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='HAO 流程：FHE 加密云端强化学习要求把非线性换成多项式近似，TD 自举误差递归放大形成贝尔曼漂移，HAO 对 TD 目标做零均值中心化投影，使网络预激活留在安全近似域内'><rect x='40' y='14' width='400' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='56' y='38' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>FHE 加密云端 RL</text><text x='424' y='38' font-size='13' text-anchor='end' fill='currentColor'>非线性须多项式化</text><line x1='240' y1='52' x2='240' y2='60' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,68 236,60 244,60' fill='var(--line-1)'/><rect x='40' y='68' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='92' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>TD 自举误差递归</text><text x='424' y='92' font-size='13' text-anchor='end' fill='currentColor'>Bellman 漂移</text><line x1='240' y1='106' x2='240' y2='114' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,122 236,114 244,114' fill='var(--line-1)'/><rect x='40' y='122' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='146' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>HAO 零均值中心化</text><text x='424' y='146' font-size='13' text-anchor='end' fill='currentColor'>直接作用于 TD 目标</text><line x1='240' y1='160' x2='240' y2='168' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,176 236,168 244,168' fill='var(--line-1)'/><rect x='40' y='176' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='200' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>预激活留在安全域</text><text x='424' y='200' font-size='13' text-anchor='end' fill='currentColor'>0% 越界·准确率 +18.0%</text></svg>",
+        "alt": "竖向流程图：FHE 加密云端 RL 要求非线性多项式化，TD 自举误差递归放大形成贝尔曼漂移，HAO 对 TD 目标做零均值中心化投影，使网络预激活留在安全近似域内。"
+      },
+      "concepts": [
+        {
+          "name": "Bellman Drift（贝尔曼漂移）",
+          "readable": "在 FHE 加密的深度 RL 里，非线性必须换成多项式近似，而 TD 自举会把上一步的近似误差反复喂回下一步；误差随自举递归放大，最终把网络预激活推出多项式近似有效的输入区间，训练崩溃。",
+          "analogy": "像用一台只能近似测量的秤反复称重并累加：每次误差不大，但你把上一次结果当成下一次的输入，误差就会像复利一样越滚越大。",
+          "analogyBreaksDown": "复利是单调放大，而这里的放大倍数取决于预激活落在哪个区间：在近似有效域内误差可被压缩，一旦越界放大率会突然跳变，所以它不是一条平滑的指数曲线，而更像有临界点的失稳。",
+          "mechanism": "关键设计是识别出漂移来自 TD 目标里的均匀状态价值基线，而不是来自密码学噪声或学习率：只要这个基线能被消去，递归放大就被切断，因此可以在不增加乘法深度的前提下稳定训练。",
+          "visual": "横轴是训练步，纵轴是网络预激活的最大绝对值；画一条水平虚线表示多项式近似有效域上界，未稳定基线的曲线很快穿出虚线，HAO 曲线始终贴在其下方。",
+          "prerequisites": ["时序差分学习与自举", "函数逼近误差传播", "同态加密与多项式近似的基本概念"],
+          "selfTest": ["为什么 Bellman drift 在加密/多项式近似场景被特别强调？", "漂移的驱动项具体是 TD 目标里的哪一部分？", "为什么消去基线不会改变最优策略？"],
+          "formula": ""
+        },
+        {
+          "name": "Zero-Mean Centering Advantage Projection（零均值中心化优势投影）",
+          "readable": "优势函数本来就用 A(s,a)=Q(s,a)-V(s) 把动作维度上的公共部分减掉，只留下动作之间的相对好坏。作者把这个减均值的线性操作原封不动搬到 TD 目标上，使均匀的状态价值基线被消掉。",
+          "analogy": "像给不断走高的音量做直流校准：不改变每首歌之间的相对高低，只把整体偏置拉回零点，避免越推越爆。",
+          "analogyBreaksDown": "音频的直流偏置是物理量，可以精确测量并移除；而这里的均匀基线是估计出来的 Q 值均值，本身带近似误差，中心化只能减掉偏差的均值部分，不能消除方差与分层误差。",
+          "mechanism": "关键设计是只做线性减法：对所有动作减同一个量，argmax 与动作排序不变，因此不改变最优策略；同时它不引入任何乘法或非线性，乘法深度为零，也就不需要昂贵的密文自举。",
+          "visual": "同一状态下的动作价值柱状图：左图柱子整体抬高（带基线），右图整体下移后基线落在零，柱与柱之间的高低关系完全不变。",
+          "prerequisites": ["优势函数与价值基线", "softmax/argmax 的平移不变性", "TD 目标的构造方式"],
+          "selfTest": ["为什么减均值投影不改变最优动作？", "这个操作会引入额外的乘法深度吗？", "中心化能解决哪些误差、又不能解决哪些？"],
+          "formula": ""
+        },
+        {
+          "name": "Multiplicative Depth under FHE（同态加密中的乘法深度预算）",
+          "readable": "同态加密里密文相乘会消耗乘法深度，深度耗尽就必须做自举来降噪，而自举非常昂贵。因此任何想让加密 RL 可用的技巧，都必须避免增加非线性乘法层数。",
+          "analogy": "像手机电池：加法是待机耗电，乘法是打游戏耗电，深度用完就得插上充电宝（自举）；一个只做减法的算法能被接受，正因为它不额外吃电。",
+          "analogyBreaksDown": "电量可以随时补，自举却是重密码学操作且受噪声预算上限约束；类比也无法表达深度与噪声预算互相挤压的取舍——省下深度有时要用更多同态乘法换取精度。",
+          "mechanism": "关键设计是把稳定化做成线性操作：多项式近似的次数不变、网络乘法层数不变，所以 HAO 能被塞进现有 FHE 推理管线而不触发自举，这是它在部署侧被接受的前提。",
+          "visual": "横轴为网络层、纵轴为累计乘法深度；画两条阶梯线，普通稳定化方案在某层多出一级台阶，HAO 与基线重合。",
+          "prerequisites": ["同态加密基础（CKKS）", "多项式近似与噪声预算", "神经网络推理的算子构成"],
+          "selfTest": ["为什么多一级乘法深度可能让方案不可用？", "自举在噪声预算中扮演什么角色？", "线性操作为什么能省下乘法深度？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-homomorphic-advantage-operator",
+          "name": "同态优势算子 TD 目标（Homomorphic Advantage Operator TD Target）",
+          "category": "rl",
+          "latex": "\\tilde{y}_t=r_t+\\gamma\\left(Q_\\theta(s_{t+1},a_{t+1})-\\frac{1}{|\\mathcal{A}|}\\sum_{a'\\in\\mathcal{A}}Q_\\theta(s_{t+1},a')\\right)",
+          "symbols": [["r_t", "第 t 步即时奖励"], ["\\gamma", "折扣因子"], ["Q_\\theta", "加密域内以多项式近似实现的行动价值网络"], ["\\mathcal{A}", "动作集合，用于计算零均值基线"], ["\\tilde{y}_t", "中心化后的稳定 TD 目标"]],
+          "derivation": ["第 1 步：FHE 只支持加法与乘法，非线性激活只能多项式化，而近似只在有限输入域内有效。", "第 2 步：TD 目标 y=r+γQ 中隐含的状态价值基线随自举不断增大，把预激活推出安全域，形成 Bellman drift。", "第 3 步：优势估计里已有零均值中心化 A(s,a)=Q(s,a)-V(s)，即减掉动作维度均值。", "第 4 步：把同一投影直接作用到 TD 目标上，均匀基线被消去，而动作之间的排序保持不变。", "第 5 步：该操作只含线性项，不增加乘法深度、不触发自举。（通用形式，需核对原文）"],
+          "analogy": "像给音量不断叠加的扩音器做校准：不改变每首歌的相对高低，只把整体直流偏置拉回零点，避免越推越爆。",
+          "pitfalls": ["把 HAO 说成换了个新损失函数；它是对 TD 目标做线性中心化投影", "以为中心化会改变最优策略；所有动作减去同一基线，argmax 不变", "忽略多项式近似的有效域，误以为可以无限叠加网络层数"],
+          "code": "import torch\n\ndef hao_td_target(q_next, reward, gamma):\n    # q_next: [B, A] 加密域内的动作价值（此处用明文示意）\n    baseline = q_next.mean(dim=-1, keepdim=True)   # 零均值中心化基线\n    adv = q_next - baseline                        # 只含减法，不增乘法深度\n    return reward.unsqueeze(-1) + gamma * adv      # 稳定的 TD 目标",
+          "sources": [{"title": "Homomorphic Advantage Operator: Stabilizing Reinforcement Learning Under Fully Homomorphic Encryption Constraints", "url": "https://arxiv.org/abs/2610.02074v1"}]
+        },
+        {
+          "id": "f-fhe-bellman-drift-bound",
+          "name": "贝尔曼漂移的误差递归界（Bellman Drift Error Recursion Bound）",
+          "category": "rl",
+          "latex": "e_{k+1}\\le \\gamma L\\,e_k+\\delta\\;\\Longrightarrow\\;e_{\\infty}\\le \\frac{\\delta}{1-\\gamma L}\\quad(\\gamma L<1)",
+          "symbols": [["e_k", "第 k 次自举时的近似误差"], ["L", "多项式近似函数的 Lipschitz 常数"], ["\\delta", "每一步逼近引入的误差上界"], ["\\gamma", "折扣因子"], ["\\gamma L", "误差的递归放大率"]],
+          "derivation": ["第 1 步：多项式近似在每一步 TD 更新中引入一个有界误差 δ。", "第 2 步：该误差随自举按 γL 的倍率递归传播到下一步。", "第 3 步：若 γL<1，误差收敛到 δ/(1-γL) 的有界值。", "第 4 步：一旦预激活越出近似有效域，L 与 δ 会骤然增大，放大率超过 1，误差发散，这正是 HAO 要阻止的情形。（按摘要重建的示意形式）"],
+          "analogy": "像复利：每期利息不大，但如果等效利率超过 1，本金会被越滚越大直到失控。",
+          "pitfalls": ["以为 FHE 的误差只是单次近似误差，忽略递归自举的放大", "把 γL<1 当成永远成立；输入越界后 L 会突然变大", "混淆多项式近似误差与密码学噪声这两种不同来源的误差"],
+          "code": "def drift_bound(gamma, L, delta, steps=100):\n    e = 0.0\n    for _ in range(steps):\n        e = gamma * L * e + delta      # 误差递归\n    return e, delta / (1 - gamma * L) if gamma * L < 1 else None",
+          "sources": [{"title": "Homomorphic Advantage Operator: Stabilizing Reinforcement Learning Under Fully Homomorphic Encryption Constraints", "url": "https://arxiv.org/abs/2610.02074v1"}]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "FHE 用于 RL 时必须把非线性操作替换为多项式近似，误差会因递归自举而灾难性发散，作者称为 Bellman drift。",
+          "HAO 把基于优势的价值估计中的零均值中心化投影直接作用于 TD 目标。",
+          "该线性投影消去驱动漂移的均匀状态价值基线，同时保持每个状态下的动作排序。",
+          "该方法不增加额外的非线性乘法深度，也避免昂贵的密文自举。",
+          "评估包含三层：表格 MDP、使用真实 CKKS 操作的加密 CartPole、20 节点密集连续特征物流路径规划基准。",
+          "HAO 在所有随机种子上 0% 越界；仅用 L2 权重衰减与梯度裁剪在 5 个种子中有 3 个越界；未稳定基线在 83.8% 的 episode 越界；最优策略准确率提升 18.0%。"
+        ],
+        "uncertain": [
+          "摘要未给出零均值投影的精确写法与作用位置（哪一层 TD 目标），本条目公式为按摘要重建的通用形式，需核对原文。",
+          "误差递归界是教科书式的通用形式，摘要未给出该推导，需核对原文。",
+          "越界的具体判定阈值、最优策略准确率的度量方式与物流基准的最优解定义未在摘要中说明。",
+          "连续动作空间下的均值估计方式与方差控制未在摘要中说明。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "加密状态下做强化学习时，把 TD 目标减去动作平均值，训练就不容易崩。"},
+          {"level": "入门", "text": "在云端用全同态加密做 RL，必须把激活等非线性换成多项式，而多项式只在有限输入范围内准。TD 学习反复自举会把误差放大，把预激活推出这个范围，即 Bellman drift。HAO 把优势估计里的零均值中心化投影直接用到 TD 目标上，减掉均匀的状态价值基线，从而在不增加乘法深度、不做密文自举的前提下稳住训练。"},
+          {"level": "进阶", "text": "关键设计是选择在哪里消去漂移。作者指出罪魁是 TD 目标中的均匀状态价值基线：自举每步都把它再放大一次。优势函数早就用 A(s,a)=Q(s,a)-V(s) 做动作维度中心化，HAO 把同一操作搬到 TD 目标上，对所有动作减同一个量，因此动作的相对排序与最优策略不变。由于只含减法，它不增加多项式次数、不增加乘法深度，所以无需自举。三层验证包括表格 MDP、真实 CKKS 加密 CartPole 和 20 节点物流路径规划。"},
+          {"level": "专家", "text": "与直觉做法相比，HAO 不靠 L2 权重衰减或梯度裁剪来压预激活：摘要报告仅正则化在 5 个随机种子里有 3 个越界，未稳定基线在 83.8% 的 episode 越界，而 HAO 在所有种子上 0% 越界，并带来 18.0% 的最优策略准确率提升。适用边界也很明确：中心化只消除均匀基线造成的漂移，对近似误差的方差、密钥噪声与多项式次数不足带来的偏差无能为力；此外它假设动作维度可枚举以计算均值，连续动作空间只能采样估计，摘要没有给出这类情形下的表现。"}
+        ],
+        "socratic": [
+          {"q": "如果只调小学习率或加正则，能不能避免越界？", "a": "摘要的正则化对照组显示不能稳定避免：5 个种子里 3 个仍然越界，因为漂移来自自举的递归结构，而不是步长或权重范数。"},
+          {"q": "为什么不干脆提高多项式近似次数来扩大有效域？", "a": "次数升高会吃掉乘法深度预算，很快触发昂贵自举；HAO 的取舍是把稳定化做成零深度的线性操作，把预算留给网络本身。"}
+        ],
+        "mechanism": "为什么必须这样设计：FHE 只支持加法与乘法，非线性只能在有限输入域上做多项式近似，而 TD 学习的自举会把每步近似误差反复送回网络，误差与预激活一起被放大。想稳住它，要么提高近似次数（贵在乘法深度与自举），要么强行压住预激活（容易改变最优策略）。HAO 找到第三条路：把 TD 目标中的均匀状态价值基线用线性中心化减掉，既切断递归放大源，又因平移不变性不动动作排序，还完全不增加乘法深度。",
+        "boundary": "适用于动作可枚举或可低成本取均值的价值型 RL，且 FHE 采用 CKKS 这类支持近似算术的方案；若奖励本身依赖绝对价值尺度、或算法需要精确价值比较，中心化会影响语义。摘要未说明它在高维连续控制、策略梯度类方法上的表现，也未给密钥参数与同态噪声预算的具体配置。",
+        "analogyBoundary": "「直流校准」类比只在基线确实均匀时成立：它假设各动作共享同一偏移，而实际 Q 值误差是有结构的，减均值会把这些结构一起搬进 TD 目标；此外音频偏置可以离线精确测出，这里的均值本身是加密域内估计出来的量，估计偏差会直接进入目标。",
+        "misconceptions": [
+          "以为 HAO 是新的 RL 损失或新网络结构；它是作用在 TD 目标上的线性中心化投影。",
+          "以为中心化会改变最优策略；所有动作减同一个量，argmax 与排序不变。",
+          "以为加正则就能防漂移；摘要报告 L2 衰减加梯度裁剪仍有 3/5 种子越界。"
+        ],
+        "ownAnalysis": "（推断）这篇把数值稳定性当成隐私计算落地的第一性问题，价值在于用一个几乎零成本的线性操作换来可训练的加密 RL。可疑处是评价口径：0% 越界与 +18.0% 最优策略准确率都在摘要中给出，但越界阈值如何选取、准确率在哪类任务上度量、20 节点物流基准的最优解如何定义都没有交代；另外中心化在连续动作空间需要采样估计，摘要只提到带密集连续特征的物流基准，没有说明均值估计的方差控制。",
+        "officialNotes": [
+          {"position": "HAO 把基于优势的价值估计中的零均值中心化投影直接作用于 TD 目标，消去驱动 Bellman drift 的均匀状态价值基线，保持每状态的动作排序，零额外非线性乘法深度且无需自举；在表格 MDP、真实 CKKS 加密 CartPole 与 20 节点物流路径规划上验证，HAO 全种子 0% 越界，仅正则化对照 3/5 种子越界，未稳定基线 83.8% episode 越界，最优策略准确率提升 18.0%。", "source": "https://arxiv.org/abs/2610.02074v1"}
+        ],
+        "interviewAnswer": "云端隐私 RL 用 FHE 时，非线性只能换成多项式近似，而多项式只在有限输入域准。TD 自举会把每步误差递归放大，把预激活推出安全域，这就是 Bellman drift。HAO 的判断是漂移的驱动力来自 TD 目标里那个均匀的状态价值基线，而优势估计早就有零均值中心化这一步。它把这个线性投影直接搬到 TD 目标上，所有动作减同一个量，动作排序和最优策略不变，但因为只做减法，不增加乘法深度、不需要密文自举。结果显示全种子 0% 越界，而仅靠 L2 与梯度裁剪有 3/5 种子越界，最优策略准确率还提升 18.0%。",
+        "studyPath": {
+          "prerequisites": ["时序差分学习与自举", "同态加密（CKKS）与多项式近似", "优势函数与价值基线"],
+          "nextSteps": ["读 CKKS 的噪声预算与乘法深度机制", "对比价值型方法与策略梯度方法在 FHE 下的可行性", "核实 20 节点物流基准的设定与评价指标"]
+        }
+      }
+    },
+    {
+      "id": "7d4462ca7e3eb405",
+      "tldr": "F-CIP 把 CIP 目标写成只依赖系统动力学，免去挑信息变量，无监督学出平衡与可控性，加前向速度奖励即可跑跳。",
+      "keyPoints": [
+        "无监督 RL 用内在动机减少人工奖励设计，但现有目标仍需挑选信息变量。",
+        "F-CIP 是 CIP 目标的 RL 原生形式，完全由系统动力学定义，不需要这种选择。",
+        "作者证明 F-CIP 与 RL 兼容，并能用现有算法训练。",
+        "训练后自发涌现平衡、维持可控性等原始行为。",
+        "配上简单的前向速度奖励，得到跳跃、奔跑等协调步态，本需奖励工程。"
+      ],
+      "why": "内在动机是无奖励或少奖励机器人学习的核心议题：不用再挑信息变量就直接减少领域专家依赖，具身与 RL 岗都常考。",
+      "difficulty": "hard",
+      "tags": ["unsupervised-rl", "intrinsic-motivation", "information-theory", "lyapunov", "locomotion"],
+      "entities": ["Forward CIP (F-CIP)", "Controllable Information Production (CIP)", "intrinsic motivation (IM)", "Lyapunov", "hopping and running gaits"],
+      "diagram": {
+        "kind": "flow",
+        "title": "F-CIP 的无监督技能涌现",
+        "caption": "目标只由动力学定义，于是先涌现可控性等原始技能，再由一个最简奖励定向到前进。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='F-CIP 流程：无监督 RL 只有环境交互，已有内在动机方法仍需人工挑选信息变量，F-CIP 让目标只由系统动力学定义，于是自发涌现平衡与可控性等原始行为，再加前向速度奖励得到跳跃与奔跑'><rect x='40' y='14' width='400' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='56' y='38' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>无监督 RL 设定</text><text x='424' y='38' font-size='13' text-anchor='end' fill='currentColor'>只有环境交互</text><line x1='240' y1='52' x2='240' y2='60' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,68 236,60 244,60' fill='var(--line-1)'/><rect x='40' y='68' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='92' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>已有内在动机的痛点</text><text x='424' y='92' font-size='13' text-anchor='end' fill='currentColor'>仍需挑信息变量</text><line x1='240' y1='106' x2='240' y2='114' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,122 236,114 244,114' fill='var(--line-1)'/><rect x='40' y='122' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='146' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>F-CIP 目标</text><text x='424' y='146' font-size='13' text-anchor='end' fill='currentColor'>只由系统动力学定义</text><line x1='240' y1='160' x2='240' y2='168' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,176 236,168 244,168' fill='var(--line-1)'/><rect x='40' y='176' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='200' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>原始技能到跑跳</text><text x='424' y='200' font-size='13' text-anchor='end' fill='currentColor'>＋前向速度奖励</text></svg>",
+        "alt": "竖向流程图：无监督 RL 设定下已有内在动机方法仍需人工挑信息变量，F-CIP 让目标只由系统动力学定义，训练后自发涌现平衡与可控性等原始行为，再加一个前向速度奖励得到跳跃与奔跑。"
+      },
+      "concepts": [
+        {
+          "name": "Controllable Information Production (CIP)",
+          "readable": "CIP 用「智能体的动作能在多大程度上改变下一时刻的状态」来定义内在动机：动作对下一步影响越大，说明系统还在产生可被控制的信息，这正是学习信号丰富的区域。",
+          "analogy": "像在漆黑房间里摸索：如果你推一下门把手门就动，这个房间还有得探索；如果怎么推都没反应，说明这里已经没什么可学的了。",
+          "analogyBreaksDown": "摸黑房间的反馈是因果直接的，而 CIP 要估计的是条件互信息，需要从采样轨迹里推断动力学；此外高影响也可能来自噪声或不稳定，未必等于可学习的结构，类比体现不出这种估计偏差。",
+          "mechanism": "关键设计是把目标写成只依赖系统动力学与策略的形式，不引入人工挑选的信息变量（如状态子集或特征），从而把领域专家从内在动机设计里彻底移出。",
+          "visual": "横轴放手或关节的动作，纵轴放下一时刻的状态变化量；画一族条件分布，宽而分离的分布代表高可控信息，窄而重叠的代表低。",
+          "prerequisites": ["互信息与信息论基础", "MDP 与策略优化", "内在动机与探索方法概览"],
+          "selfTest": ["CIP 与最大化状态熵这类内在奖励的区别是什么？", "为什么「不需要挑选信息变量」对无监督 RL 很重要？", "可控信息高是否一定意味着任务上有用？"],
+          "formula": ""
+        },
+        {
+          "name": "Intrinsic Motivation without Information-Variable Selection（无需挑选信息变量的内在动机）",
+          "readable": "以往内在动机方法总要先决定看哪些量（哪些状态维度、哪些特征），这个选择本身又需要领域知识。F-CIP 声称目标只由动力学定义，连这一步都省掉，因此换一个身体或环境不用重新设计。",
+          "analogy": "像给孩子一套积木而不是一张指定的拼图：不预先规定该关注哪个零件，孩子自己会从玩法里发现结构，换个玩具也照样能玩。",
+          "analogyBreaksDown": "积木的探索空间小且安全，机器人探索会损坏硬件、样本代价高；而且「不需要选择」并不等于没有隐含选择——动力学表示、网络结构与可观测状态仍然是人为设定的。",
+          "mechanism": "关键设计是把 CIP 改写成 RL 原生的前向形式，使目标可以只用前向采样估计并直接对策略求梯度，因此能套用现成算法，无需为每个任务定制信息变量或额外的表示学习目标。",
+          "visual": "左边一列是传统内在动机的流水线（选变量→估互信息→塑形奖励），右边一列是 F-CIP（动力学→前向目标→策略梯度），用箭头颜色对比哪一步被删掉。",
+          "prerequisites": ["内在动机方法族谱", "互信息估计", "策略梯度算法"],
+          "selfTest": ["「不需要选变量」具体省掉了哪一步？", "F-CIP 为什么被称作 RL-native？", "它仍然隐含了哪些人为选择？"],
+          "formula": ""
+        },
+        {
+          "name": "Lyapunov Exponent and Chaos（李雅普诺夫指数与混沌）",
+          "readable": "李雅普诺夫指数衡量相邻轨迹随时间分离的速率：为正说明系统对初值敏感、是混沌的。标题里的 Mastering Chaos 指让智能体在混沌动力学里学会控制，而不是回避混沌（推断）。",
+          "analogy": "像把两颗弹珠放在山谷不同位置：谷底附近扰动很快消失，而混沌地形里两颗弹珠几步之后就跑到完全不同的地方。",
+          "analogyBreaksDown": "弹珠的运动由地形唯一决定，而这里的「地形」会被策略改变：好的控制恰恰要把正的分离率压下去，类比无法表达控制与混沌之间的对抗关系。",
+          "mechanism": "关键设计是把混沌程度当作可优化的量而不是要规避的性质（推断）：可控性高往往出现在动力学对动作敏感的区域，因此 F-CIP 学到的原始技能正是平衡与维持可控性。",
+          "visual": "同一初始状态的两条邻近轨迹，横轴时间、纵轴状态偏差，画对数坐标下近似直线的分离曲线，其斜率就是李雅普诺夫指数。",
+          "prerequisites": ["动力系统与稳定性", "非线性动力学基础", "RL 中的探索"],
+          "selfTest": ["正的李雅普诺夫指数意味着什么？", "为什么混沌区域可能对无监督 RL 有价值？", "为什么「平衡」可以看作把指数压回零附近？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-forward-cip-objective",
+          "name": "前向可控信息生产目标（Forward Controllable Information Production Objective）",
+          "category": "rl",
+          "latex": "\\mathcal{J}_{\\text{F-CIP}}(\\pi)=\\mathbb{E}_{\\pi}\\left[I(s_{t+1};a_t\\mid s_t)\\right]=\\mathbb{E}_{\\pi}\\left[\\log\\frac{p(s_{t+1}\\mid s_t,a_t)}{p(s_{t+1}\\mid s_t)}\\right]",
+          "symbols": [["s_t", "第 t 步状态"], ["a_t", "第 t 步动作"], ["I(s_{t+1};a_t\\mid s_t)", "给定当前状态时动作与下一状态的条件互信息"], ["p(s_{t+1}\\mid s_t,a_t)", "受控转移概率"], ["p(s_{t+1}\\mid s_t)", "对动作边缘化后的转移概率（对照）"], ["\\pi", "策略"]],
+          "derivation": ["第 1 步：动机是让内在动机信号尽量少依赖人工挑选的信息变量。", "第 2 步：CIP 用「动作能在多大程度上改变下一步状态」来度量可控信息生产。", "第 3 步：把它写成条件互信息，等价于受控转移与边缘转移的对数似然比，只依赖动力学与策略。", "第 4 步：F-CIP 给出 RL 原生的前向形式，可直接用前向采样估计并对策略求梯度。", "第 5 步：与一个简单的前向速度奖励相加，即可从原始技能走向跳跃、奔跑等协调步态。（摘要未给精确式子，本式为按摘要重建的通用形式）"],
+          "analogy": "像在完全陌生的操场上自己玩：不告诉你该学什么，只奖励「我的动作真的能改变接下来发生的事」，于是先学会站稳和可控。",
+          "pitfalls": ["把 CIP 说成最大化状态熵；它衡量的是动作对下一状态的可控影响", "以为 F-CIP 需要额外训练一个信息变量提取器或判别器", "忽略无监督阶段只产出原始行为，跑跳仍需最简单的任务奖励"],
+          "code": "import torch\n\ndef f_cip_reward(logp_cond, logp_marg):\n    # logp_cond: log p(s_{t+1}|s_t,a_t)，logp_marg: log p(s_{t+1}|s_t)\n    return (logp_cond - logp_marg).detach()    # 可控信息生产的内在奖励\n\n# 与最简任务奖励相加后再交给策略梯度\n# total = f_cip_reward(logp_cond, logp_marg) + forward_velocity_reward",
+          "sources": [{"title": "Bellman Meets Lyapunov: Unsupervised Reinforcement Learning via Mastering Chaos", "url": "https://arxiv.org/abs/2610.02012v1"}]
+        },
+        {
+          "id": "f-maximal-lyapunov-exponent",
+          "name": "最大李雅普诺夫指数（Maximal Lyapunov Exponent）",
+          "category": "rl",
+          "latex": "\\lambda_{\\max}=\\lim_{T\\to\\infty}\\frac{1}{T}\\ln\\frac{\\|\\delta x_T\\|}{\\|\\delta x_0\\|}",
+          "symbols": [["\\delta x_0", "初始的微小扰动"], ["\\delta x_T", "经过 T 步后的扰动大小"], ["\\lambda_{\\max}", "最大李雅普诺夫指数，为正表示混沌"], ["T", "演化步数"]],
+          "derivation": ["第 1 步：混沌系统对初值敏感，微小扰动随时间指数放大。", "第 2 步：用对数增长率刻画这种放大速率，得到李雅普诺夫指数。", "第 3 步：对所有方向取最大值得到 λ_max，它是判定混沌的标准量。", "第 4 步：标题中的 Mastering Chaos 指在混沌动力学中学会控制（推断）；摘要未给出该量的具体用法，需核对原文。"],
+          "analogy": "像把两颗弹珠放在山谷不同位置：平坦谷底扰动很快消失，混沌地形里两颗弹珠几步后跑到完全不同的地方。",
+          "pitfalls": ["把 λ_max>0 直接当成训练失败；混沌区域也可能是可控信息最丰富的地方", "混淆李雅普诺夫指数与奖励尺度、折扣因子这类优化量", "以为无监督 RL 一定需要显式的混沌估计器"],
+          "code": "import torch\n\ndef lyapunov_max(deltas):\n    # deltas: [T] 相邻轨迹偏差的范数序列\n    d = torch.as_tensor(deltas, dtype=torch.float32)\n    return torch.log(d[-1] / d[0]) / (len(d) - 1)",
+          "sources": [{"title": "Bellman Meets Lyapunov: Unsupervised Reinforcement Learning via Mastering Chaos", "url": "https://arxiv.org/abs/2610.02012v1"}]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "无监督 RL 旨在用内在动机减少人工奖励设计，但现有内在动机目标涉及信息变量的选择，又把领域知识带回来。",
+          "F-CIP 是 Controllable Information Production（CIP）目标的 RL 原生形式，完全由系统动力学定义，不需要选择信息变量。",
+          "作者证明 F-CIP 与 RL 兼容，并能用现有算法训练智能体。",
+          "训练后无监督地发现了平衡与维持可控性等原始行为。",
+          "配合一个简单的前向速度奖励，方法产生跳跃、奔跑等协调步态，而这些步态原本需要奖励工程才能学到。"
+        ],
+        "uncertain": [
+          "摘要未给出 F-CIP 的精确目标表达式，本条目公式为按摘要重建的通用形式，需核对原文。",
+          "标题含 Lyapunov 与 Chaos，但摘要未说明该理论部分的具体度量与结论，李雅普诺夫指数公式为通用形式，需核对原文。",
+          "摘要未给样本效率、基线对比数值与真实硬件结果。",
+          "前向速度奖励的系数是否需要精调、训练用的具体 RL 算法均未在摘要中说明。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "让智能体只靠「我的动作能改变接下来发生什么」这个信号自学，先学会站稳再学会跑。"},
+          {"level": "入门", "text": "无监督 RL 想让智能体自己产生学习信号；但已有内在动机方法仍要先挑信息变量，把领域知识请了回来。F-CIP 把可控信息生产目标写成完全由系统动力学定义的前向形式，不需要挑变量，并与 RL 兼容。训练后它自发学会平衡与维持可控性，再加一个前向速度奖励就出现跳跃与奔跑。"},
+          {"level": "进阶", "text": "关键设计是让目标只依赖动力学本身。CIP 认为有价值的信号来自「动作能在多大程度上改变下一时刻状态」，把它写成条件互信息形式后，既不需要选状态子集，也不需要额外训一个表示学习模块。F-CIP 给出 RL 原生的前向形式，因此可以直接对策略做梯度估计、套用现有算法。作者报告训练后自发涌现平衡、维持可控性等原始行为，这些是复杂机器人技能的基础；在此之上只加一个朴素的前向速度奖励，就能得到跳跃、奔跑这类协调步态，而传统做法要为它们专门设计奖励项。"},
+          {"level": "专家", "text": "把 CIP 放进 RL 的关键困难是可估计性：互信息目标通常需要对状态或特征做选择并配额外估计器，而无监督 RL 的初衷正是去掉这类设计。F-CIP 的取舍是牺牲一部分目标的一般性，换取只用前向采样即可估计且与策略梯度直接兼容。与熵最大化、预测误差、技能发现等内在动机方法相比，它的卖点是隐含任务假设最少；边界也在此：目标不携带任何任务偏好，因此能涌现平衡与可控性，却不会自己产生前进的动机——摘要明确说跑跳仍要额外给一个前向速度奖励。另外标题提到 Lyapunov 与混沌，但摘要没有给出显式的混沌度量或稳定性证明细节（推断）。"}
+        ],
+        "socratic": [
+          {"q": "如果 F-CIP 已经完全由动力学定义，为什么还需要前向速度奖励？", "a": "因为 CIP 只奖励可控，不区分往哪个方向移动；维持平衡与原地可控同样满足目标，要前进必须由外部告诉它方向。"},
+          {"q": "为什么已有内在动机方法要挑信息变量，这会带来什么问题？", "a": "因为互信息目标需要指定看哪些量；选错变量会让智能体追逐与任务无关的细节，而选择本身依赖领域知识，等于把刚消掉的工程成本又加回来。"}
+        ],
+        "mechanism": "为什么必须这样设计：无监督 RL 的承诺是少设计奖励也能学会有用技能，但只要目标里出现「选哪些信息变量」这一人工决定，承诺就不成立。F-CIP 因此把目标从「估计某个指定量的信息」改成「刻画动作对下一步状态的可控影响」，让目标被系统动力学唯一确定；再用前向形式让它可采样、可求梯度，从而能落进标准 RL 循环。代价是目标不含任务偏好，所以它产出的是通用原始技能，任务级行为仍需一个最简奖励来定向。",
+        "boundary": "适用于有丰富动力学的连续控制环境，尤其是人形、四足这类需要先学基础技能的机器人任务；在动作对状态影响极弱、或动力学近似随机的环境里，可控信息生产的信号会退化。摘要未给样本效率、与基线方法的定量对比或真实硬件结果，因此它在高维视觉输入、稀疏接触任务上的可扩展性仍未验证。",
+        "analogyBoundary": "「在漆黑房间摸索」的类比把影响等同于可学性，但高影响也可能来自噪声、不稳定或不可复现的动态；此外它掩盖了估计问题——互信息要从有限轨迹里推断，估计器偏差可能让智能体追逐随机性，这在类比里看不到。",
+        "misconceptions": [
+          "把 CIP 当成最大化状态熵或计数式探索；它度量的是动作对下一状态的可控影响。",
+          "以为 F-CIP 需要额外训练一个信息变量提取器或判别器。",
+          "以为无监督阶段就能自己学会前进；摘要明确说跑跳还要加前向速度奖励。"
+        ],
+        "ownAnalysis": "（推断）这篇的贡献更偏目标重述而非新算法：它把 CIP 改写成能用前向采样估计并与策略梯度兼容的形式，因此可以直接跑在现有 RL 算法上。可疑处是摘要的表述层级——它说「证明 F-CIP 与 RL 兼容」并展示平衡、跳跃、奔跑等行为，但没有给任何成功率、样本量或对比曲线，也没有说明前向速度奖励的系数是否需要精调，而这类系数往往是奖励工程的新负担。标题中的 Lyapunov 与 Chaos 在摘要里没有对应细节，可能是理论分析部分的定位（推断）。",
+        "officialNotes": [
+          {"position": "F-CIP 是 Controllable Information Production（CIP）目标的 RL 原生前向形式，完全由系统动力学定义、不需要选择信息变量；作者证明其与 RL 兼容并能用现有算法训练，训练后自发发现平衡与维持可控性等原始行为，配合一个简单的前向速度奖励可产生跳跃、奔跑等协调步态。", "source": "https://arxiv.org/abs/2610.02012v1"}
+        ],
+        "interviewAnswer": "无监督 RL 想减少奖励设计，但已有内在动机方法还是要先挑信息变量，等于把领域知识加回来。F-CIP 把可控信息生产目标写成 RL 原生的前向形式，只由系统动力学定义，不需要挑变量，作者证明它和 RL 兼容，能直接套现有算法。结果是智能体自发学出平衡、维持可控性这些原始技能；再给一个很简单的前向速度奖励，就出现跳跃和奔跑，而传统上这些步态要精心设计奖励。它的边界是目标本身不带任务偏好，所以只能给最简方向信号；摘要也没给样本效率和定量对比。",
+        "studyPath": {
+          "prerequisites": ["MDP 与策略梯度", "信息论与互信息估计", "内在动机与探索方法概览"],
+          "nextSteps": ["读 CIP 原始工作与变分信息估计", "对比 RND、ICM、DIAYN 等内在奖励的设计假设", "核实 Lyapunov/混沌理论部分在原文中的具体结论"]
+        }
+      }
+    }
+  ]
+}

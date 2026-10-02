@@ -1,0 +1,178 @@
+{
+  "batchId": "queue-01",
+  "mode": "full",
+  "date": "2026-10-03",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
+  "items": [
+    {
+      "id": "c97a5a7e82e644b9",
+      "title": "[编程题] 设 v 是实单位列向量，Householder 反射矩阵 H",
+      "category": "coding",
+      "channel": "nowcoder_questions",
+      "url": "https://nowcoder.com/questionTerminal/8b95485d87b34572ba2597134506f3dc",
+      "sources": [
+        {
+          "url": "https://nowcoder.com/questionTerminal/8b95485d87b34572ba2597134506f3dc",
+          "name": "nowcoder_questions"
+        }
+      ],
+      "tags": [
+        "算法题",
+        "牛客",
+        "编程题"
+      ],
+      "summary": "设 v 是实单位列向量，Householder 反射矩阵 H__牛客网 首页 题库 面试 求职 学习 竞赛 搜索面经/职位/试题/公司 搜索 我要招人 去企业版 登录 / 注册 首页 > 试题广场 > 设 v 是实单位列向量，Householder 反射矩阵 H [不定项选择题] 设 v 是实单位列向量，Householder 反射矩阵 H=I-2vvᵀ。以下哪些说法正确？ H 是正交矩阵 H 的行列式为 +1 Householder QR 分解通常比经典 Gram–Schmidt 正交化具有更好的数值稳定性 H 是对称矩阵 查看正确选项 添加笔记 求解答(0) 邀请回答 收藏(0) 分享 纠错 0个回答 添加回答 这道题你会答吗？花几分钟告诉大家答案吧！ 提交观点 问题信息 来自： 2026年-华为-08... 难度： 0条回答 0收藏 15浏览 热门推荐 相关试题 小红的空间样本标注 评论 (0) 来自 2026年-华为-08月... 关于早期停止（Early Stop... 评论 (0) 来自 2026年-华为-08月... 向量 x=(1,0,1)、y=(1... 评论 (0) 来自 2026年-华为-08月... 关于用随机梯度更新实现的在线逻辑回... 评论 (0) 来自 2026年-华为-08月... 单个神经元的输入 x=2，权重 w... 评论 (0) 来自 20",
+      "authors": [],
+      "publishedAt": "2026-10-03T01:40:43+08:00",
+      "knowledgeType": "coding",
+      "why": "归属「面试手撕题」方向；命中关键词 面经、算法题；疑似附带开源实现；中文来源，贴近国内求职语境",
+      "relevanceScore": 69.8,
+      "qualitySignals": {
+        "hotIndex": 0,
+        "timeLimit": ""
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 69.8,
+      "planDepthScore": 96.29
+    },
+    {
+      "id": "84dc5ede05e7bd20",
+      "title": "FRS2003/hands-on-llm - 动手学大模型全栈：CS336 中文精讲 · PyTorch 手搓 Transformer · 单卡复现 Pretrain/SFT/LoRA/DPO/GRPO/RLVR · PEFT/Agent/RAG 落地（含真实实验、曲线与复现脚本）",
+      "category": "posttraining",
+      "channel": "github",
+      "url": "https://github.com/FRS2003/hands-on-llm",
+      "sources": [
+        {
+          "url": "https://github.com/FRS2003/hands-on-llm",
+          "name": "github"
+        }
+      ],
+      "tags": [
+        "cs336",
+        "deep-learning",
+        "dpo",
+        "from-scratch",
+        "grpo",
+        "hands-on",
+        "large-language-models",
+        "llama-factory",
+        "Python"
+      ],
+      "summary": "动手学大模型全栈：CS336 中文精讲 · PyTorch 手搓 Transformer · 单卡复现 Pretrain/SFT/LoRA/DPO/GRPO/RLVR · PEFT/Agent/RAG 落地（含真实实验、曲线与复现脚本）",
+      "authors": [
+        "FRS2003"
+      ],
+      "publishedAt": "2026-09-15T22:07:29+08:00",
+      "knowledgeType": "fundamentals",
+      "why": "归属「后训练」方向；命中关键词 sft、dpo、grpo、rlvr；GitHub 125 stars；疑似附带开源实现",
+      "relevanceScore": 79.2,
+      "qualitySignals": {
+        "stars": 125,
+        "forks": 11,
+        "codeAvailable": true
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 79.2,
+      "planDepthScore": 95.2
+    },
+    {
+      "id": "34583f8e3d5d4c78",
+      "title": "[编程题] 反转链表",
+      "category": "coding",
+      "channel": "nowcoder_questions",
+      "url": "https://nowcoder.com/practice/75e878df47f24fdc9dc3e400ec6058ca",
+      "sources": [
+        {
+          "url": "https://nowcoder.com/practice/75e878df47f24fdc9dc3e400ec6058ca",
+          "name": "nowcoder_questions"
+        }
+      ],
+      "tags": [
+        "算法题",
+        "牛客",
+        "编程题"
+      ],
+      "summary": "反转链表_牛客题霸_牛客网 给定一个单链表的头结点pHead(该头节点是有值的，比如在下图，它的val是1)，长度为n，反转该链表后，返回新链表的表头。 数据范围： 要求：空间复杂度 ，时间复杂度 。 如当输入链表{1,2,3}时， 经反转后，原链表变为{3,2,1}，所以对应的输出为{3,2,1}。 以上转换过程如下图所示： 示例1 输入 {1,2,3} 输出 {3,2,1} 示例2 输入 {} 输出 {} 说明 空链表则输出空 加载中... import java.util.*; /* * public class ListNode { * int val; * ListNode next = null; * public ListNode(int val) { * this.val = val; * } * } */ public class Solution { /** * 代码中的类名、方法名、参数名已经指定，请勿修改，直接返回方法规定的值即可 * * * @param head ListNode类 * @return ListNode类 */ public ListNode ReverseList (ListNode head) { // write code here } } /** * struct ListNode { * int val; * struct Li",
+      "authors": [],
+      "publishedAt": "2026-10-03T01:43:43+08:00",
+      "knowledgeType": "coding",
+      "why": "归属「面试手撕题」方向；命中关键词 算法题；疑似附带开源实现；中文来源，贴近国内求职语境",
+      "relevanceScore": 64.7,
+      "qualitySignals": {
+        "hotIndex": 0,
+        "timeLimit": ""
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 64.7,
+      "planDepthScore": 92.97
+    },
+    {
+      "id": "9e9baefb2a456ef3",
+      "title": "[编程题] 合并两个排序的链表",
+      "category": "coding",
+      "channel": "nowcoder_questions",
+      "url": "https://nowcoder.com/practice/d8b6b4358f774294a89de2a6ac4d9337",
+      "sources": [
+        {
+          "url": "https://nowcoder.com/practice/d8b6b4358f774294a89de2a6ac4d9337",
+          "name": "nowcoder_questions"
+        }
+      ],
+      "tags": [
+        "算法题",
+        "牛客",
+        "编程题"
+      ],
+      "summary": "合并两个排序的链表_牛客题霸_牛客网 输入两个递增的链表，单个链表的长度为n，合并这两个链表并使新链表中的节点仍然是递增排序的。 数据范围： ， 要求：空间复杂度 ，时间复杂度 如输入{1,3,5},{2,4,6}时，合并后的链表为{1,2,3,4,5,6}，所以对应的输出为{1,2,3,4,5,6}，转换过程如下图所示： 或输入{-1,2,4},{1,3,4}时，合并后的链表为{-1,1,2,3,4,4}，所以对应的输出为{-1,1,2,3,4,4}，转换过程如下图所示： 示例1 输入 {1,3,5},{2,4,6} 输出 {1,2,3,4,5,6} 示例2 输入 {},{} 输出 {} 示例3 输入 {-1,2,4},{1,3,4} 输出 {-1,1,2,3,4,4} 加载中... import java.util.*; /* * public class ListNode { * int val; * ListNode next = null; * public ListNode(int val) { * this.val = val; * } * } */ public class Solution { /** * 代码中的类名、方法名、参数名已经指定，请勿修改，直接返回方法规定的值即可 * * * @param pHead1 ListNode类 * @param pHea",
+      "authors": [],
+      "publishedAt": "2026-10-03T01:43:43+08:00",
+      "knowledgeType": "coding",
+      "why": "归属「面试手撕题」方向；命中关键词 算法题；疑似附带开源实现；中文来源，贴近国内求职语境",
+      "relevanceScore": 64.7,
+      "qualitySignals": {
+        "hotIndex": 0,
+        "timeLimit": ""
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 64.7,
+      "planDepthScore": 92.97
+    },
+    {
+      "id": "a0eba0aa1c5bae4d",
+      "title": "[编程题] 栈的压入、弹出序列",
+      "category": "coding",
+      "channel": "nowcoder_questions",
+      "url": "https://nowcoder.com/practice/d77d11405cc7470d82554cb392585106",
+      "sources": [
+        {
+          "url": "https://nowcoder.com/practice/d77d11405cc7470d82554cb392585106",
+          "name": "nowcoder_questions"
+        }
+      ],
+      "tags": [
+        "算法题",
+        "牛客",
+        "编程题"
+      ],
+      "summary": "栈的压入、弹出序列_牛客题霸_牛客网 输入两个整数序列，第一个序列表示栈的压入顺序，请判断第二个序列是否可能为该栈的弹出顺序。假设压入栈的所有数字均不相等。例如序列1,2,3,4,5是某栈的压入顺序，序列4,5,3,2,1是该压栈序列对应的一个弹出序列，但4,3,5,1,2就不可能是该压栈序列的弹出序列。 1. 0length 2. -1000pushV[i] 3. pushV 的所有数字均不相同 示例1 输入 [1,2,3,4,5],[4,5,3,2,1] 输出 true 说明 可以通过push(1)=>push(2)=>push(3)=>push(4)=>pop()=>push(5)=>pop()=>pop()=>pop()=>pop() 这样的顺序得到[4,5,3,2,1]这个序列，返回true 示例2 输入 [1,2,3,4,5],[4,3,5,1,2] 输出 false 说明 由于是[1,2,3,4,5]的压入顺序，[4,3,5,1,2]的弹出顺序，要求4，3，5必须在1，2前压入，且1，2不能弹出，但是这样压入的顺序，1又不能在2之前弹出，所以无法形成的，返回false 加载中... import java.util.*; public class Solution { /** * 代码中的类名、方法名、参数名已经指定，请勿修改，直接返回方法规定的值即可 * * * @",
+      "authors": [],
+      "publishedAt": "2026-10-03T01:43:43+08:00",
+      "knowledgeType": "coding",
+      "why": "归属「面试手撕题」方向；命中关键词 算法题；疑似附带开源实现；中文来源，贴近国内求职语境",
+      "relevanceScore": 64.7,
+      "qualitySignals": {
+        "hotIndex": 0,
+        "timeLimit": ""
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 64.7,
+      "planDepthScore": 92.97
+    }
+  ]
+}

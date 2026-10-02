@@ -1,0 +1,1203 @@
+{
+  "batchId": "queue-05",
+  "entries": [
+    {
+      "id": "a237aabcd4ae8069",
+      "tldr": "TierCEM 把严格约束优先级直接放进交叉熵法的精英选择：逐级过滤候选，被清空时回退并取违反最小者。",
+      "keyPoints": [
+        "约束冲突时要决定保留哪些、放宽哪些",
+        "惩罚权重法可能让解违背既定优先级",
+        "TierCEM 按优先级从高到低顺序过滤候选",
+        "某级清空候选则回退到上一非空集选精英",
+        "2D 导航与接触推动任务验证，颠倒优先级会改变被违反约束"
+      ],
+      "why": "世界模型与机器人规划常在安全与进度间冲突；TierCEM 用过滤顺序代替重要性权重，可迁移到带约束的采样规划与策略评估。",
+      "difficulty": "medium",
+      "tags": [
+        "world-models",
+        "constrained-optimization",
+        "cross-entropy-method",
+        "robotics",
+        "planning"
+      ],
+      "entities": [
+        "TierCEM",
+        "cross-entropy method (CEM)",
+        "2D navigation",
+        "contact-rich pushing tasks",
+        "learned world model"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "TierCEM 精英筛选流程",
+        "caption": "优先级由过滤顺序表达，而不是靠惩罚权重",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='TierCEM 精英筛选流程：采样候选、按优先级逐级过滤、阻塞时回退、用精英更新分布'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>采样候选</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>从当前分布采一批解</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>按优先级过滤</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>高优先级先筛，逐级向下</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>阻塞则回退</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>退回上一非空集，取违反最小</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>更新采样分布</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>精英无需逐约束权重</text>\n</svg>",
+        "alt": "竖向流程图：采样候选 → 按优先级从高到低过滤 → 某级清空候选则回退并在该级取违反最小者 → 用精英更新采样分布。"
+      },
+      "concepts": [
+        {
+          "name": "字典序约束优先级 (Lexicographic Constraint Priority)",
+          "readable": "把约束按重要性排成固定顺序，只有高优先级约束满足后，才允许用低优先级约束继续筛；排序本身就是权重，不需要调数值。",
+          "analogy": "找工作时先满足「必须有 offer」，再谈「薪资更高」：如果没有 offer，谈薪资没有意义，这两件事的顺序不可交换。",
+          "analogyBreaksDown": "求职里优先级偶尔能折中（钱多可以忍通勤）；字典序是硬性的，高优先级约束只要违反一点，低优先级收益再大也无法补偿，也无法用来换回高优先级。",
+          "mechanism": "用「逐级过滤候选集」替代「加权惩罚求和」，把优先级编码进可行集的收缩顺序；关键是允许在阻塞约束上让步，从而避免可行集为空、算法无解。",
+          "visual": "横轴为约束优先级从高到低，纵轴为剩余候选数；每级过滤画成一次断崖式下降，某级降到 0 时画一个回退箭头回到上一个非空台阶。",
+          "prerequisites": [
+            "交叉熵法/进化策略基本流程",
+            "约束优化与惩罚项形式",
+            "可行集与硬约束概念"
+          ],
+          "selfTest": [
+            "为什么字典序优先级无法用一组有限惩罚权重精确表示？",
+            "当某级过滤后候选集为空，TierCEM 的回退具体做了什么？",
+            "颠倒优先级顺序会带来什么可观察变化？"
+          ],
+          "formula": "$x \\preceq_{lex} y \\iff \\exists k:\\ g_i(x)=g_i(y)\\,\\forall i<k,\\ g_k(x) < g_k(y)$"
+        },
+        {
+          "name": "交叉熵法精英选择 (Elite Selection in CEM)",
+          "readable": "CEM 反复从当前分布采样一批候选，挑出得分最好的一小撮（精英），用精英的分布更新采样分布，逐步把概率质量搬到好解附近。",
+          "analogy": "像一群人在陌生城市找最好吃的店：每人随机试一家，回来只记评价最高的几家，下一轮大家就到那几家附近继续找。",
+          "analogyBreaksDown": "真实觅食会保留个人口味多样性，CEM 用单一高斯更新会把分布收窄，早期可能整体塌到局部最优；精英集一旦选错，后续只会越走越偏。",
+          "mechanism": "精英集决定分布往哪移动，所以把「谁算精英」改成按优先级逐级过滤，就能让约束优先级直接决定搜索方向，而不必调惩罚权重。",
+          "visual": "同一张图上画两轮：灰色散点为采样候选，圆圈为精英；第一轮精英集中在左上，第二轮高斯椭圆明显收窄并向该区域移动。",
+          "prerequisites": [
+            "重要性采样与分布更新",
+            "高斯分布参数含义",
+            "蒙特卡洛估计"
+          ],
+          "selfTest": [
+            "CEM 中精英集如何影响下一轮采样分布？",
+            "精英比例取得太小会有什么后果？",
+            "为什么把约束放进精英选择比放进目标函数更直接？"
+          ],
+          "formula": "$\\theta_{t+1} = \\arg\\max_{\\theta} \\sum_{x \\in \\mathcal{E}_t} \\log p_\\theta(x)$"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-tiercem-filtered-elite",
+          "name": "TierCEM 逐级过滤精英选择 (TierCEM Filtered Elite Selection)",
+          "category": "worldmodel",
+          "latex": "$\\mathcal{S}_0 = \\mathcal{X}_{sampled},\\quad \\mathcal{S}_k = \\{x \\in \\mathcal{S}_{k-1} : g_k(x) \\le 0\\};\\quad \\mathcal{E} = \\arg\\min_{x \\in \\mathcal{S}_{k^*-1}} g_{k^*}(x)$",
+          "symbols": [
+            [
+              "\\mathcal{X}_{sampled}",
+              "本轮从当前分布采样的候选集"
+            ],
+            [
+              "\\mathcal{S}_k",
+              "通过前 k 级优先级约束后的候选集"
+            ],
+            [
+              "g_k(x)",
+              "第 k 优先级约束的违反量，≤0 表示满足"
+            ],
+            [
+              "k^*",
+              "第一个把候选集清空的约束层级"
+            ],
+            [
+              "\\mathcal{E}",
+              "最终选出的精英集"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：从当前采样分布取 N 个候选，作为最高优先级下的候选集 S_0。",
+            "第 2 步：按优先级从高到低，依次用 g_k(x)≤0 过滤 S_{k-1}，得到 S_k。",
+            "第 3 步：若某级 k* 过滤后集合为空，回退到 S_{k*-1}，在该级约束下取违反量最小的候选作为精英。",
+            "第 4 步：用精英集更新采样分布（如拟合新高斯），进入下一轮迭代。"
+          ],
+          "analogy": "招聘先卡「必须能到岗」，再卡「技能匹配」；如果技能这关把所有候选都刷掉，就退回上一关，在能到岗的人里挑技能最接近的。",
+          "pitfalls": [
+            "把优先级做成大权重惩罚，实际解仍可能违反高优先级约束",
+            "误以为回退等于放弃该约束，其实是取违反最小者",
+            "忽略回退后仍须保持更高优先级约束的满足"
+          ],
+          "code": "import torch\nx = torch.randn(512, 2)                                 # 采样候选\ng = lambda x: torch.stack([x[:,0]-0.5, x[:,1]-0.2], 1)   # 违反量\nS = torch.arange(512)\nfor k in range(2):\n    keep = S[g(x[S])[:, k] <= 0]\n    if keep.numel() == 0:\n        E = S[g(x[S])[:, k].argmin()].unsqueeze(0); break\n    S = keep\nelse:\n    E = S\n",
+          "sources": [
+            {
+              "title": "Cross-entropy optimization with prioritized constraints",
+              "url": "https://arxiv.org/abs/2610.01319v1"
+            }
+          ]
+        },
+        {
+          "id": "f-cem-penalty-weighted-score",
+          "name": "惩罚加权目标 (Penalty-Weighted Objective)",
+          "category": "worldmodel",
+          "latex": "$J_\\lambda(x) = f(x) - \\sum_{i} \\lambda_i \\max(0, g_i(x))$",
+          "symbols": [
+            [
+              "f(x)",
+              "任务目标（如朝目标的进度）"
+            ],
+            [
+              "g_i(x)",
+              "第 i 个约束的违反量"
+            ],
+            [
+              "\\lambda_i",
+              "第 i 个约束的惩罚权重"
+            ],
+            [
+              "\\max(0,\\cdot)",
+              "只对违反部分施加惩罚"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：把每个硬约束写成违反量 g_i(x)≤0。",
+            "第 2 步：用 hinge 形式 max(0,g_i(x)) 把违反转成可加的惩罚项。",
+            "第 3 步：乘权重 λ_i 后从目标中减去，得到无约束目标 J_λ。",
+            "第 4 步：权重决定哪个约束「更贵」，但有限权重下目标收益足够大时仍会牺牲高优先级约束。"
+          ],
+          "analogy": "公司罚款制度：违规罚钱，只要赚得够多就可以选择交罚款继续违规——罚金高低决定了你更看重钱还是规则。",
+          "pitfalls": [
+            "认为把权重调得足够大就等价于硬优先级（有限权重下不成立）",
+            "把 λ_i 当作可解释的重要性排序，其实它只改变权衡斜率",
+            "忽略权重调参本身就是额外的搜索成本"
+          ],
+          "code": "import torch\nf = lambda x: -(x**2).sum(1)\ng = lambda x: torch.relu(x[:, 0] - 0.5)\nlam = torch.tensor([10.0])\nJ = f(x) - lam[0] * g(x)   # 权重越大越不愿违反\n",
+          "sources": [
+            {
+              "title": "Cross-entropy optimization with prioritized constraints",
+              "url": "https://arxiv.org/abs/2610.01319v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要指出约束冲突时优化器必须决定哪些要求保留、哪些放宽",
+          "摘要指出惩罚式写法用数值权重编码相对重要性，解可能提高加权得分却违背既定优先级",
+          "TierCEM 是交叉熵法的变体，把严格约束优先级直接放入精英选择，不需要逐约束重要性权重",
+          "TierCEM 从最高到最低优先级顺序过滤采样候选",
+          "若某约束清空全部剩余候选，TierCEM 回到上一个非空集，并在该阻塞约束下选违反最小的精英，递归保持更高优先级约束满足",
+          "评估包含 2D 导航与接触丰富的推动任务，设置为本体感知与学习世界模型",
+          "实验显示颠倒约束顺序会改变冲突时被违反的约束",
+          "把朝任务目标的进度设为高优先级，能让 TierCEM 放宽原本阻碍进展的低优先级约束"
+        ],
+        "uncertain": [
+          "摘要未给出精英数量、采样分布更新方式与迭代次数，公式为按摘要重建的通用形式，需核对原文",
+          "摘要未说明是否开源实现（输入标记 codeAvailable=true 但摘要未提），待核实",
+          "2D 导航与推动任务的具体指标数值摘要未给出，待核实"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "约束打架时按优先级一层层筛，实在筛没了就退回上一层挑违规最少的。"
+          },
+          {
+            "level": "入门",
+            "text": "很多优化器把约束变成惩罚项加进目标，权重调不好就会为了分数牺牲重要约束。TierCEM 改成按优先级顺序过滤采样候选：高优先级先筛，剩下的再交给低优先级继续筛。"
+          },
+          {
+            "level": "进阶",
+            "text": "CEM 靠精英集更新采样分布，所以「谁算精英」就是搜索方向的开关。TierCEM 把候选按 g_1…g_K 逐级过滤；若第 k* 级清空候选，就回退到 S_{k*-1} 并在该级取违反最小者作为精英。这样既不需要逐约束权重，也保证更高优先级约束继续满足，代价是高优先级本身不可行时只能在阻塞约束上做最小让步。"
+          },
+          {
+            "level": "专家",
+            "text": "与拉格朗日/惩罚法相比，TierCEM 不做标量化，而是让可行集按字典序收缩，冲突下的取舍由排序而非权重决定；与硬约束投影法相比，它不要求投影可解，而是允许在阻塞约束上取最小违反，更适合约束可能相互冲突的规划场景。适用边界是：你需要能给出稳定的优先级排序，且各约束的违反量可比（同尺度同量纲），否则「最小违反」失去意义。摘要中的导航与推动实验显示颠倒排序会直接改变被牺牲的约束，说明结果高度依赖排序而非数值调参。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "如果把所有约束都写成很大的惩罚权重，为什么还不够？",
+            "a": "有限权重下，目标收益足够大时解仍会违反高优先级约束；权重只决定权衡斜率，不构成顺序。"
+          },
+          {
+            "q": "为什么回退时不直接放弃阻塞约束、继续往下筛？",
+            "a": "那就只是普通分层过滤；回退后在该级取违反最小者，才是「尽力满足」，也避免可行集为空时无解。"
+          },
+          {
+            "q": "为什么不直接对目标做带约束的梯度优化？",
+            "a": "TierCEM 面向的是采样式规划（含学习世界模型），这类目标常不可微或梯度噪声大，交叉熵法更合适；约束优先级只是被搬进了精英选择。"
+          }
+        ],
+        "mechanism": "关键在把优先级从目标函数搬到可行集的收缩顺序：CEM 的搜索方向完全由精英集决定，谁进入精英就等于告诉采样分布下一轮往哪走。逐级过滤天然产生字典序可行集，不需要权重；而允许在阻塞约束上取最小违反，把「无解」变成「最小让步」，使算法在约束冲突时仍能持续迭代。",
+        "boundary": "当各约束违反量不可比（量纲、尺度差异大）时，最小违反的选择会偏向数值大的约束；若高优先级约束本身不可行，只能在该级最小让步，无法保证满足；当优先级排序不稳定或需要随场景变化时，TierCEM 不适用。",
+        "analogyBoundary": "招聘类比里「技能最接近」可以量化比较，但真实优化中不同约束的违反量往往不可比，数值大小不等于重要性；真实招聘可以破格录用，字典序过滤做不到跨级补偿。",
+        "misconceptions": [
+          "把 TierCEM 理解成单纯的分层过滤，漏掉「清空则回退取最小违反」这一关键机制",
+          "以为它也需要调约束权重，实际上它不需要逐约束重要性权重",
+          "认为颠倒优先级顺序只影响效率、不影响结果，实验显示被违反的约束会改变"
+        ],
+        "ownAnalysis": "TierCEM 的价值在于把「冲突取舍」这件原本被惩罚权重偷偷决定的事，显式交给排序，这与机器人安全层「先保证安全再谈进度」的思路一致（推断：摘要未直接比较 CBF 类方法）。与已有分层/字典序优化相比，它的新意更可能在「回退到阻塞约束取最小违反」这一韧性设计，而非排序本身（推断）。可疑处是摘要只给定性实验描述，没有成功率绝对值，因此「优于」的程度无法判断。",
+        "officialNotes": [
+          {
+            "position": "TierCEM 是交叉熵法变体，不需要逐约束重要性权重，通过按优先级顺序过滤候选实现严格优先级",
+            "source": "arxiv: https://arxiv.org/abs/2610.01319v1"
+          },
+          {
+            "position": "实验显示颠倒约束顺序会改变冲突时被违反的约束",
+            "source": "arxiv: https://arxiv.org/abs/2610.01319v1"
+          }
+        ],
+        "interviewAnswer": "我关注约束冲突下的优先级处理。惩罚法把优先级压成权重，有限权重下解可能为了加权得分牺牲高优先级约束。TierCEM 把优先级放进 CEM 的精英选择：按优先级从高到低过滤候选，某级清空就回退到上一非空集，在该级取违反最小者，因此无需逐约束权重且保持更高优先级约束满足。作者在 2D 导航和接触推动任务上验证，颠倒排序会改变被违反的约束。",
+        "studyPath": {
+          "prerequisites": [
+            "交叉熵法/进化策略",
+            "约束优化与惩罚项",
+            "机器人规划基础（任务目标与安全约束）"
+          ],
+          "nextSteps": [
+            "读原文确认精英数量与分布更新细节",
+            "对比拉格朗日乘子法与分层/字典序优化",
+            "在简单带约束规划任务上复现 TierCEM 与加权 CEM"
+          ]
+        }
+      }
+    },
+    {
+      "id": "6fa3fa31816e0d5b",
+      "tldr": "DIY 把五种已验证的心理学去偏干预译成 LLM 去偏流程，用 Show/Train/Revise 三种范式交付。",
+      "keyPoints": [
+        "把五种社会心理学去偏干预转成 LLM 流程",
+        "用 Show / Train / Revise 三种范式交付",
+        "覆盖 3 个模型、5 个偏见基准、11 个基线",
+        "Train+Revise 与 Revise 取得最高两个平均排名",
+        "平均偏见低至 2% 时推理准确率 90%，未见维度最多降 14.8%"
+      ],
+      "why": "后训练方向：把指令微调与引导式自修订组合用于去偏，是「对齐税」权衡的典型案例，面试常问偏见与能力如何不互相牺牲。",
+      "difficulty": "medium",
+      "tags": [
+        "posttraining",
+        "debiasing",
+        "instruction-tuning",
+        "self-revision",
+        "alignment"
+      ],
+      "entities": [
+        "Debias It Yourself (DIY)",
+        "Show",
+        "Train",
+        "Revise"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "DIY 去偏框架流程",
+        "caption": "去偏不是单一技巧，而是「认知干预 + 交付范式」的组合",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='DIY 去偏流程：五种心理学干预、三种交付范式、多基准评估、偏见与推理的权衡结果'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>五种人类干预</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>来自社会心理学实验</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>翻译为去偏流程</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>Show / Train / Revise</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>统一评估</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>3 模型 × 5 偏见基准</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>偏见—推理权衡</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>偏见 2% 时准确率 90%</text>\n</svg>",
+        "alt": "竖向流程图：五种人类去偏干预 → 翻译成 LLM 去偏流程并用 Show/Train/Revise 交付 → 在三个模型五个偏见基准上评估 → 结论是偏见与推理准确率的权衡。"
+      },
+      "concepts": [
+        {
+          "name": "引导式自我修订 (Guided Self-Revision)",
+          "readable": "让模型先给出初稿，再在明确指令或反馈的引导下改写自己的回答，从而在不更新参数的情况下压低偏见表达。",
+          "analogy": "写论文时先写完初稿，再按导师批注逐条修改；改的是这一稿，而不是你的写作能力。",
+          "analogyBreaksDown": "导师的批注来自外部知识，而 LLM 的自修订依赖同一套参数与偏置；若偏见正是模型自身盲点，再多轮修订也可能只在措辞上打转。",
+          "mechanism": "把干预写进提示或反馈回路，用模型自身的生成能力做原地重写；代价是推理时多一轮生成，收益是无需训练即可跨模型使用。",
+          "visual": "画两条横向流程：上行是「问题 → 初答」，下行是「初答 + 干预指令 → 修订答」；用红色标记初答里的偏见措辞，蓝色标记修订后被删除或替换的部分。",
+          "prerequisites": [
+            "提示工程与上下文学习",
+            "指令微调基本流程",
+            "偏见评测指标（如刻板印象得分）"
+          ],
+          "selfTest": [
+            "Revise 为什么不更新参数也能降低偏见？",
+            "什么情况下多轮自修订会失效？",
+            "Revise 与 Train 组合为什么可能优于单独使用？"
+          ],
+          "formula": "$y^{rev} \\sim p_\\theta(\\cdot \\mid x,\\, y^{init},\\, c)$"
+        },
+        {
+          "name": "偏见—推理权衡 (Bias–Reasoning Tradeoff)",
+          "readable": "去偏方法往往牺牲下游推理能力；好的方法应让偏见下降的同时推理准确率尽量不掉，摘要用「平均偏见 vs 推理准确率」来刻画这条曲线。",
+          "analogy": "减肥不能把肌肉一起减掉：体重（偏见）要降，但力量（推理）也得保住，只看体重会得出错误结论。",
+          "analogyBreaksDown": "体重和力量都可测且目标明确，而偏见基准分数依赖标注与模板，可能被「回避作答」刷低，看起来偏见降了其实只是不说话了。",
+          "mechanism": "把偏见指标与推理指标放在同一份报告里比较，迫使方法在两个维度同时被度量时才被认可，从而识别「靠削弱能力换低偏见」的假胜利。",
+          "visual": "横轴为推理准确率，纵轴为平均偏见率，每个方法一个点；理想点落在右下角（高准确率、低偏见），并画出连接不被支配点的帕累托前沿。",
+          "prerequisites": [
+            "评测基准与排序指标",
+            "LLM 对齐与安全基础"
+          ],
+          "selfTest": [
+            "为什么只看偏见分数会误判方法优劣？",
+            "帕累托前沿上的点代表什么？",
+            "怎样的结果说明方法只是「拒答」而非真正去偏？"
+          ],
+          "formula": "$\\big(\\text{Acc}^{reason}_m,\\ \\overline{\\text{Bias}}_m\\big),\\qquad \\max \\text{Acc}^{reason}\\ \\text{s.t.}\\ \\overline{\\text{Bias}} \\le \\epsilon$"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-diy-revision-sft-loss",
+          "name": "去偏修订与指令微调损失 (Debiasing Revision / Instruction-Tuning Loss)",
+          "category": "posttraining",
+          "latex": "$\\mathcal{L}(\\theta) = -\\mathbb{E}_{(x, c, y^{rev}) \\sim \\mathcal{D}_{debias}} \\log p_\\theta(y^{rev} \\mid x, c)$",
+          "symbols": [
+            [
+              "x",
+              "输入（可能触发偏见的提示）"
+            ],
+            [
+              "c",
+              "去偏干预条件，即心理学干预翻译成的指令"
+            ],
+            [
+              "y^{rev}",
+              "去偏后的目标回答"
+            ],
+            [
+              "\\mathcal{D}_{debias}",
+              "由干预流程构造的去偏数据"
+            ],
+            [
+              "\\theta",
+              "模型参数（Train 范式下被更新，Revise 下不更新）"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：把五种心理学干预转写成可执行的文本过程或指令 c。",
+            "第 2 步：用 Show（上下文示例）或 Revise（引导自修订）生成去偏回答 y^{rev}。",
+            "第 3 步：以 (x, c, y^{rev}) 作监督做指令微调（Train）。",
+            "第 4 步：推理时再叠加 Revise，形成摘要中排名最高的 Train+Revise 组合。"
+          ],
+          "analogy": "像把健身教练的动作要领写成手册，先照手册练一遍（Train），每次训练后再对着录像自我纠正动作（Revise）。",
+          "pitfalls": [
+            "把干预等同于「让模型拒绝回答」，偏见降了但能力被削",
+            "以为只有训练才有效，摘要显示单独 Revise 的平均排名同样靠前",
+            "忽略不同模型对同一干预的敏感度差异"
+          ],
+          "code": "# 概念示意：把去偏回答作为监督目标\nlogits = model(x, cond=c)\nloss = -torch.log_softmax(logits, -1)[range(n), y_rev].mean()\n# Revise 阶段：条件里带初答 y_init 与干预指令 c\nout = model.generate(prompt_with(x, y_init, c))\n",
+          "sources": [
+            {
+              "title": "Debias It Yourself: Teaching LLMs Cognitive Bias Mitigation Interventions",
+              "url": "https://arxiv.org/abs/2609.40124v1"
+            }
+          ]
+        },
+        {
+          "id": "f-diy-bias-reasoning-tradeoff",
+          "name": "偏见—推理权衡点 (Bias–Reasoning Tradeoff Point)",
+          "category": "posttraining",
+          "latex": "$\\text{point}_m = \\big(\\text{Acc}^{reason}_m,\\ \\overline{\\text{Bias}}_m\\big),\\qquad \\text{target} = \\max \\text{Acc}^{reason}\\ \\text{s.t.}\\ \\overline{\\text{Bias}} \\le \\epsilon$",
+          "symbols": [
+            [
+              "\\text{Acc}^{reason}_m",
+              "方法 m 在推理基准上的准确率"
+            ],
+            [
+              "\\overline{\\text{Bias}}_m",
+              "方法 m 在多个偏见基准上的平均偏见率"
+            ],
+            [
+              "\\epsilon",
+              "可接受的偏见上限"
+            ],
+            [
+              "m",
+              "被比较的方法（含 11 个去偏基线）"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：在 5 个偏见基准上算每个方法的偏见分数并取平均。",
+            "第 2 步：在 3 个推理基准上算准确率。",
+            "第 3 步：把每个方法表示成（准确率, 平均偏见）二维点，比较谁在同等准确率下偏见更低。",
+            "第 4 步：以「低偏见下保持高准确率」为目标，避免用能力换偏见的假胜利。"
+          ],
+          "analogy": "选车时同时看油耗与动力：只报油耗最低的车没有意义，要在动力够用的前提下比油耗。",
+          "pitfalls": [
+            "只报偏见下降幅度，不报推理准确率的变化",
+            "忽略「低偏见」可能来自模型回避作答",
+            "把不同基准的偏见分数直接平均而不看标注与量纲差异"
+          ],
+          "code": "import numpy as np\nbias = np.array([[0.02, 0.05], [0.03, 0.08]])   # 方法 × 基准\nreason_acc = np.array([0.90, 0.88])\nmean_bias = bias.mean(1)\nok = reason_acc >= 0.90                        # 只挑满足准确率门槛的方法\nprint(mean_bias[ok].min())\n",
+          "sources": [
+            {
+              "title": "Debias It Yourself: Teaching LLMs Cognitive Bias Mitigation Interventions",
+              "url": "https://arxiv.org/abs/2609.40124v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要说社会心理学与认知科学数十年研究已产生一批验证过的干预，可减少人类的刻板印象与偏见反应",
+          "DIY 是认知基础的框架，把五种此类干预翻译成 LLM 去偏流程",
+          "通过 Show（上下文示例）、Train（指令微调）、Revise（引导式自修订）三种范式交付",
+          "评估覆盖 3 个模型、5 个偏见基准、11 个去偏基线、3 个推理基准",
+          "Train+Revise 与单独 Revise 取得最高的两个平均排名",
+          "它们在偏见—推理权衡上领先，平均偏见低至 2% 时推理准确率达 90%",
+          "在未见维度上偏见最多降低 14.8%",
+          "代码与数据公开"
+        ],
+        "uncertain": [
+          "摘要未列出五种心理学干预的具体名称与操作细节，概念解释为通用重建，需核对原文",
+          "「未见维度」的定义与计算方式摘要未说明，待核实",
+          "偏见 2% 与 90% 准确率对应的具体模型/基准组合未说明，待核实",
+          "公式为按摘要重建的通用形式，需核对原文"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "把心理学里已验证的去偏方法翻译成给大模型用的提示和训练流程。"
+          },
+          {
+            "level": "入门",
+            "text": "社会心理学几十年积累了能减少刻板印象的干预手段。DIY 把这些干预改写成 LLM 可执行的去偏过程，并用三种方式交付：放进上下文示例（Show）、做指令微调（Train）、引导模型自我修订（Revise）。"
+          },
+          {
+            "level": "进阶",
+            "text": "关键设计是「干预在前、范式在后」：先有认知科学依据的去偏过程，再选交付方式。实验在三个模型、五个偏见基准、十一个去偏基线与三个推理基准上比较，Train+Revise 和单独 Revise 的平均排名最高，说明不更新参数也能拿到很强效果，同时它们保持了偏见与推理能力的平衡。"
+          },
+          {
+            "level": "专家",
+            "text": "与纯提示去偏或纯 RLHF 去偏相比，DIY 的上游是人类干预文献，下游是三种可组合交付范式，因此可跨模型迁移。摘要报告它在未见维度上最多降低 14.8% 偏见，平均偏见低至 2% 时推理准确率仍达 90%，更接近「低对齐税」一侧。边界在于：人类认知实验未必覆盖 LLM 特有偏见来源（如语料共现），且基准分数可能被回避作答刷低；此外 `LLM-judge`/标注依赖也会影响结论（推断：摘要未给评测细节）。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么不能只做指令微调（Train）？",
+            "a": "微调固化在参数里、成本高且可能损害通用推理；摘要显示单独 Revise 的平均排名也很高，说明推理时引导已能拿到大部分收益。"
+          },
+          {
+            "q": "为什么必须同时看偏见和推理准确率？",
+            "a": "只降偏见可能靠削弱能力或回避作答实现；同时报告才能识别「用能力换偏见」的假胜利。"
+          },
+          {
+            "q": "把人类干预直接搬到 LLM 上，凭什么可能有效？",
+            "a": "干预本质是显式引导推理步骤（如考虑反例、换位思考），与上下文学习和自修订的机制相容，因此可翻译成指令而不必重训。"
+          }
+        ],
+        "mechanism": "关键在于把「去偏」从结果约束变成过程引导：人类干预之所以有效，是因为它改变了人做判断时的推理步骤；把它翻译成 LLM 的上下文示例、微调数据或修订指令，等于在生成过程中插入同样的步骤，因此不改参数也能影响输出，并且能与训练手段叠加。",
+        "boundary": "当偏见主要来自训练语料的统计共现，而干预只作用于表面推理步骤时效果会衰减；若评测允许回避作答，偏见分数会虚低；跨语言、跨文化场景下源自特定心理学实验的干预未必适用。摘要未给失败案例分析。",
+        "analogyBoundary": "「导师批注」类比依赖导师掌握模型没有的信息；自修订时导师就是模型自己，若偏见正是其盲点，修订只能改措辞而不能改判断。",
+        "misconceptions": [
+          "以为 DIY 是一种新的去偏损失函数，其实它是把已有心理学干预接入三种交付范式",
+          "以为必须微调才有效，摘要中单独 Revise 的平均排名同样靠前",
+          "只看偏见下降不看推理准确率，属于典型的权衡误读"
+        ],
+        "ownAnalysis": "DIY 与「用自然语言把推理规范显式化」的思路一脉相承（如 CoT、自我批判类工作），差别在于干预来源可追溯到心理学实验，因而更容易解释。可疑处是基准分数的可刷性：若模型学会回避敏感问题，平均偏见率会下降但内部表征未必改变（推断，摘要未讨论）。另一个值得追问的是「未见维度最多降 14.8%」的泛化机制——是干预本身通用，还是评测维度间相关性导致迁移，摘要未给分析。",
+        "officialNotes": [
+          {
+            "position": "五种心理学干预被翻译为 LLM 去偏流程，并通过 Show/Train/Revise 三种范式交付",
+            "source": "arxiv: https://arxiv.org/abs/2609.40124v1"
+          },
+          {
+            "position": "Train+Revise 与单独 Revise 取得最高的两个平均排名，平均偏见低至 2% 时推理准确率达 90%，未见维度偏见最多降 14.8%",
+            "source": "arxiv: https://arxiv.org/abs/2609.40124v1"
+          }
+        ],
+        "interviewAnswer": "我关注去偏与对齐税。DIY 的做法是把社会心理学中验证过的五种去偏干预翻译成大模型可执行的流程，再用 Show、Train、Revise 三种方式交付，其中 Train+Revise 和单独 Revise 平均排名最高。它最值得借鉴的是评测口径：同时报告偏见与推理准确率，摘要里平均偏见低至 2% 时推理准确率仍有 90%，未见维度偏见最多降 14.8%。这说明不改参数、只在推理时引导也能拿到大部分收益，代价是每轮多一次生成。",
+        "studyPath": {
+          "prerequisites": [
+            "指令微调/SFT",
+            "上下文学习与提示工程",
+            "偏见评测基准基本概念"
+          ],
+          "nextSteps": [
+            "读原文确认五种干预的具体形式",
+            "复现 Show vs Revise 的对照实验",
+            "研究偏见—推理帕累托前沿的评测设计"
+          ]
+        }
+      }
+    },
+    {
+      "id": "e1903dd600f227bc",
+      "tldr": "SECRET 免训练地把问题状态引导向所需模态证据，缓解音视频大模型的来源混淆幻觉。",
+      "keyPoints": [
+        "AVLLM 存在来源混淆的 grounding 幻觉",
+        "路径干预与表征分析揭示 question-relay 机制",
+        "切断干扰模态到问题状态的路径，比切到生成位置恢复更多正确 logit",
+        "SECRET 用对比问题表征把问题状态推向所需来源证据",
+        "CMM/AVHBench 三个 AVLLM 上最优，最高 +18.0 / +7.1 个百分点"
+      ],
+      "why": "多模态方向：免训练激活引导加跨模态干扰定位，是「不重训也能修幻觉」的代表思路，面试可讲清干预位置的选择依据。",
+      "difficulty": "hard",
+      "tags": [
+        "multimodal",
+        "audio-visual-llm",
+        "hallucination",
+        "activation-steering",
+        "cross-modal"
+      ],
+      "entities": [
+        "SECRET",
+        "AVLLM",
+        "CMM",
+        "AVHBench",
+        "question-relay mechanism"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "SECRET 干预位置",
+        "caption": "要修的是问题状态这一环，而不是生成位置",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='SECRET 结构：视觉与音频输入汇聚到问题状态，再进入生成位置，SECRET 在问题状态处做引导'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>视觉 / 音频输入</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>两路模态线索</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>问题状态（中继）</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>混入干扰模态线索</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>生成位置</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>据此写出回答</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>SECRET 引导</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>把问题状态推向所需证据</text>\n</svg>",
+        "alt": "竖向结构图：视觉与音频两路输入汇聚到问题状态，问题状态把线索传到生成位置；SECRET 在问题状态处加入源条件引导向量。"
+      },
+      "concepts": [
+        {
+          "name": "激活引导 (Activation Steering)",
+          "readable": "不改模型参数，只在推理时给某些层的激活加一个方向向量，把内部表征推向「想要的」一侧，从而改变输出行为。",
+          "analogy": "开车时轻微扳住方向盘：车的构造没变，但行进方向被持续修正到你要的车道。",
+          "analogyBreaksDown": "方向盘修正有明确道路标线作参照，而激活空间里的「正确方向」要靠对比提示或干预实验构造；方向估计有偏就会像一直误打方向那样系统性带偏输出。",
+          "mechanism": "用成对条件（保留/切断某条模态路径）得到对比表征，二者之差就是方向向量；按系数加到原始问题上，无需训练即可改变 grounding 依据。",
+          "visual": "画二维表征散点图：灰色点为原始问题状态，蓝色点为去掉干扰路径后的状态，红色箭头为二者之差；把灰点沿箭头平移一段得到引导后的状态。",
+          "prerequisites": [
+            "Transformer 内部激活与残差流",
+            "因果干预/路径 patching 基本思想",
+            "提示与上下文学习"
+          ],
+          "selfTest": [
+            "为什么引导向量要用成对的干预表征相减得到？",
+            "引导系数过大会有什么风险？",
+            "免训练引导与微调相比的取舍是什么？"
+          ],
+          "formula": "$h' = h + \\alpha\\,(h^{+} - h^{-})$"
+        },
+        {
+          "name": "问题中继机制 (Question-Relay Mechanism)",
+          "readable": "指问题的内部状态像一个中继站：它不只携带所需模态的证据，还夹带了来自无关模态的干扰线索，后面的生成位置再据此作答。",
+          "analogy": "传话游戏里中间那个人把两句话混成一句再往下传，最后听到的人分不清哪句是原话。",
+          "analogyBreaksDown": "传话游戏的信息丢失不可逆，而这里的问题状态是向量，可以用干预实验精确测出「切哪条边」对最终 logit 的影响大小，因此可定位而非只能归咎于失真。",
+          "mechanism": "通过路径干预比较不同切割点的效果，发现切断干扰模态到问题状态的路径比切到生成位置更能恢复正确答案 logit，说明干扰是在问题状态这一环注入的。",
+          "visual": "画从左到右的链路（模态 → 问题状态 → 生成位置），用粗细不同的红色箭头表示干扰强度，在两个切割点画剪刀，旁边标出各自的正确答案 logit 恢复量（问题状态处更高）。",
+          "prerequisites": [
+            "多模态模型的信息流结构",
+            "logit 与正确率的关系",
+            "因果干预实验设计"
+          ],
+          "selfTest": [
+            "为什么在问题状态处干预比在生成位置处更有效？",
+            "这个机制能解释哪些具体的幻觉现象？",
+            "如何验证干扰确实来自未被要求的那路模态？"
+          ],
+          "formula": "$\\text{Recovery}(p) = \\text{logit}_{y^{*}}(\\text{cut at } p) - \\text{logit}_{y^{*}}(\\text{baseline})$"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-secret-steering-vector",
+          "name": "源条件引导向量 (Source-Conditioned Steering Vector)",
+          "category": "multimodal",
+          "latex": "$h' = h + \\alpha\\,(h^{+} - h^{-}),\\qquad h^{\\pm}\\ \\text{为不同模态路径干预下得到的问题状态}$",
+          "symbols": [
+            [
+              "h",
+              "原始问题状态表征"
+            ],
+            [
+              "h^{+}",
+              "保留所需来源证据路径时的问题表征"
+            ],
+            [
+              "h^{-}",
+              "保留干扰模态路径时的问题表征"
+            ],
+            [
+              "\\alpha",
+              "引导强度系数"
+            ],
+            [
+              "h'",
+              "引导后的问题状态"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：通过路径干预定位问题状态所在的层与位置（question relay）。",
+            "第 2 步：对模态到问题状态的路径做干预，得到两组对比问题表征 h+ 与 h-。",
+            "第 3 步：以二者之差作为「指向所需来源证据」的方向向量。",
+            "第 4 步：按系数 α 加到原始问题状态上，后续生成沿用修正后的状态，全程不更新参数。"
+          ],
+          "analogy": "调音台上把混进来的伴奏轨道反向相消：不换乐器，只把干扰那一路按比例减掉，主唱就清楚了。",
+          "pitfalls": [
+            "把引导向量当成微调的替代品，它只在推理时起作用且需逐模型估计",
+            "α 过大破坏原有语义，导致回答崩坏",
+            "忽略对比表征必须来自同一输入的不同路径干预，条件不匹配则方向无意义"
+          ],
+          "code": "h = acts['question_state']                  # [B, T, D]\nwith torch.no_grad():\n    h_pos = run(modality_paths=('required',))\n    h_neg = run(modality_paths=('interfering',))\nv = (h_pos - h_neg).mean(0)                  # 方向向量\nacts['question_state'] = h + alpha * v\n",
+          "sources": [
+            {
+              "title": "Devils in Question Relay: Source-Conditioned Relay Steering to Mitigate Hallucinations in Audio-visual Large Language Models",
+              "url": "https://arxiv.org/abs/2609.37568"
+            }
+          ]
+        },
+        {
+          "id": "f-secret-logit-recovery",
+          "name": "干预点的正确答案 logit 恢复量 (Correct-Answer Logit Recovery at an Intervention Site)",
+          "category": "multimodal",
+          "latex": "$\\text{Recovery}(p) = \\text{logit}_{y^{*}}\\big(\\text{cut at } p\\big) - \\text{logit}_{y^{*}}\\big(\\text{baseline}\\big)$",
+          "symbols": [
+            [
+              "p",
+              "被切断的路径/干预位置（如干扰模态→问题状态、→生成位置）"
+            ],
+            [
+              "y^{*}",
+              "正确答案对应的 token"
+            ],
+            [
+              "\\text{logit}_{y^{*}}",
+              "该 token 的 logit 值"
+            ],
+            [
+              "\\text{Recovery}(p)",
+              "该干预点带来的正确 logit 恢复量"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：跑一遍基线前向，记录正确答案 token 的 logit。",
+            "第 2 步：在候选路径 p 上做切断/干预，再跑一次前向。",
+            "第 3 步：两次 logit 之差即为该干预点的恢复量。",
+            "第 4 步：比较不同 p 的恢复量，问题状态处更大，说明干扰在该处注入，从而指导 SECRET 的干预位置选择。"
+          ],
+          "analogy": "排查漏水时在水管不同位置各关一个阀门，看水压回升多少；回升最多的阀门就是漏点上游。",
+          "pitfalls": [
+            "只看准确率变化而不看 logit 恢复量，会掩盖干预的真实影响强度",
+            "对不同层/不同位置直接比较而不控制干预幅度",
+            "把恢复量大等同于该路径是唯一原因，实际可能是多路径叠加"
+          ],
+          "code": "base = logits_of(y_star)\nfor site in ['to_question_state', 'to_generation']:\n    with intervene(cut=site):\n        rec = logits_of(y_star) - base\n    print(site, float(rec))\n",
+          "sources": [
+            {
+              "title": "Devils in Question Relay: Source-Conditioned Relay Steering to Mitigate Hallucinations in Audio-visual Large Language Models",
+              "url": "https://arxiv.org/abs/2609.37568"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要指出 AVLLM 存在 source-confused grounding hallucination：未被要求的模态线索会诱导出所需模态并不支持的回应",
+          "摘要说路径干预与表征分析揭示了 question-relay 机制：问题状态既带所需来源证据也带干扰线索",
+          "摘要指出切断干扰模态到问题状态的路径，比切到生成位置带来更大的正确答案 logit 恢复",
+          "SECRET 是免训练方法，用不同模态路径干预得到的对比问题表征，把原始问题状态引向所需来源证据",
+          "在 CMM 与 AVHBench 两个基准、三个 AVLLM 上，SECRET 持续优于先前的免训练方法",
+          "相对基座模型最高提升 +18.0 与 +7.1 个百分点",
+          "模态特定描述（captioning）实验显示其对开放式生成同样可泛化"
+        ],
+        "uncertain": [
+          "引导施加的层/位置、系数 α 取值与对比表征的具体构造摘要未给出，公式为按摘要重建的通用形式，需核对原文",
+          "+18.0 与 +7.1 个百分点分别对应哪个基准/模型未说明，待核实",
+          "摘要未给代码链接（输入标记 codeAvailable=false），复现需等作者释出",
+          "问题状态的具体定义（哪一层、哪个 token 位置）摘要未说明，待核实"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "音视频模型常被没用到的那个模态带偏，SECRET 在问题环节把内部状态扳回正轨。"
+          },
+          {
+            "level": "入门",
+            "text": "AVLLM 同时看图像和声音作答，但会出现「来源混淆幻觉」：题目只要求看图像，声音里的线索却影响了回答。作者用干预实验发现干扰是在问题状态这一步混进去的，于是提出免训练的 SECRET，在该处把问题状态推向真正需要的那路证据。"
+          },
+          {
+            "level": "进阶",
+            "text": "做法是先定位问题状态（question relay），再通过不同模态路径的干预得到一对对比问题表征，二者之差就是指向所需来源证据的方向；推理时按系数把这个方向加到原始问题状态上，后续生成沿用修正后的表征。因为不需要训练，它可以套用到现成模型；在 CMM 和 AVHBench 上跨三个 AVLLM 都比既有免训练方法好，最高提升 18.0 和 7.1 个百分点。"
+          },
+          {
+            "level": "专家",
+            "text": "与在生成位置干预或事后过滤的方法相比，SECRET 的贡献是把跨模态干扰归因到问题状态，并用「恢复正确答案 logit 更多」的实验证据支撑干预位置选择——这是先做因果定位、再做轻量修复的范式，与激活引导一脉相承。适用边界是：对比表征依赖路径干预，若模型不支持干净的单模态路径切分，方向估计会变成噪声；引导强度需要调，过大必然破坏语义；它只处理来源混淆型幻觉，对知识缺失型幻觉无能为力（推断）。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么不在生成位置直接纠正输出？",
+            "a": "摘要的干预实验显示，切断干扰模态到问题状态的路径带来更大的正确答案 logit 恢复，说明干扰在更早的问题状态就已注入，晚期纠正效果更差。"
+          },
+          {
+            "q": "为什么强调「免训练」有价值？",
+            "a": "训练方案要数据、算力并逐模型重训；免训练引导可直接套到多个现成 AVLLM 上，摘要中三个模型一致有效正说明这种可移植性。"
+          },
+          {
+            "q": "对比问题表征为什么必须来自不同模态路径的干预？",
+            "a": "只有保持输入与提示一致、仅改变模态通路，二者之差才纯净地编码「所需来源证据 vs 干扰线索」，否则差向量会混入输入内容差异。"
+          }
+        ],
+        "mechanism": "核心是把跨模态干扰当成可定位的内部现象处理：先用路径干预测出哪个环节的干扰对最终 logit 影响最大，再用该环节的对比表征构造方向向量做推理时修复。这样既避免重训，又让干预位置有实验依据，而不是凭经验在所有层都加向量。",
+        "boundary": "只针对来源混淆型 grounding 幻觉；若正确答案所需信息本身缺失（知识型幻觉），或两路模态都相关，引导方向难以定义。模型架构若不支持干净的模态路径分离，对比表征会被污染。α 需按模型调，过大将破坏语义。摘要未报告失败案例与计算开销。",
+        "analogyBoundary": "「反向相消伴奏」类比假设干扰与所需信号可线性分离；但真实激活空间里两路模态信息高度纠缠，做差得到的向量可能同时削掉一部分有用证据，因此需要小系数而非完全相消。",
+        "misconceptions": [
+          "以为 SECRET 需要微调或额外训练数据，它其实是免训练的推理时干预",
+          "以为干预应加在生成位置，实验显示问题状态处恢复更大",
+          "把来源混淆幻觉与知识缺失型幻觉混为一谈，SECRET 只对前者有效"
+        ],
+        "ownAnalysis": "SECRET 与激活引导/表征工程（如 steering vector、ITI）思路同源，新意在于干扰来源的因果定位与「源条件」对比构造，这让干预系数不必靠试错搜索（推断：摘要未说明 α 如何选取）。值得追问的是 +18.0/+7.1 个百分点的口径——若基线本身很低，绝对提升会被放大；另外摘要未给计算开销，若逐样本做多路前向求对比表征，推理成本可能显著上升（推断，需核实）。",
+        "officialNotes": [
+          {
+            "position": "路径干预与表征分析揭示 question-relay 机制：切断干扰模态到问题状态的路径比切到生成位置带来更大正确答案 logit 恢复",
+            "source": "arxiv: https://arxiv.org/abs/2609.37568"
+          },
+          {
+            "position": "SECRET 为免训练方法，在 CMM 与 AVHBench 上跨三个 AVLLM 优于先前免训练方法，最高 +18.0 / +7.1 个百分点",
+            "source": "hf_papers: https://huggingface.co/papers/2609.37568"
+          }
+        ],
+        "interviewAnswer": "AVLLM 有一类来源混淆幻觉：题目只要求某个模态，另一路模态的线索却影响了回答。这篇工作先做路径干预，发现干扰是在问题状态这一环注入的——切断干扰模态到问题状态的路径，比切到生成位置能恢复更多正确答案 logit。据此提出免训练的 SECRET：用不同模态路径干预得到对比问题表征，把问题状态引向所需来源证据。它在 CMM 和 AVHBench 上跨三个 AVLLM 都优于既有免训练方法，最高提升 18 和 7.1 个百分点。",
+        "studyPath": {
+          "prerequisites": [
+            "多模态大模型结构（视觉/音频编码器 + LLM）",
+            "激活引导与表征工程",
+            "因果干预与 logit 分析"
+          ],
+          "nextSteps": [
+            "读原文确认干预层与 α 的选择策略",
+            "复现 question-relay 的路径干预实验",
+            "对比 ITI 等免训练幻觉缓解方法"
+          ]
+        }
+      }
+    },
+    {
+      "id": "4f5b506dfea832c7",
+      "tldr": "程序员鱼皮的 mianshiya：持续维护的中文面试题库，1万多道 Java/前端/AI 大模型/RAG 等八股题。",
+      "keyPoints": [
+        "持续维护的企业面试题库网站",
+        "覆盖 Java/前端/AI 大模型/Agent/RAG 等方向",
+        "累计 1 万多道高频程序员八股题",
+        "React 前端 + Node 后端 + 云开发全栈项目",
+        "5927 stars，TypeScript，最近更新 2026-02-04"
+      ],
+      "why": "国内求职语境的中文题库，AI 大模型/Agent/RAG 八股可直接用于面试冲刺与知识自测，适合当复习索引而非唯一资料。",
+      "difficulty": "easy",
+      "tags": [
+        "interview-prep",
+        "question-bank",
+        "llm-interview",
+        "agent",
+        "rag"
+      ],
+      "entities": [
+        "mianshiya",
+        "liyupi（程序员鱼皮）",
+        "React",
+        "Node",
+        "TypeScript"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "mianshiya 题库结构",
+        "caption": "按方向组织的八股索引，AI 方向是新增重点",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='mianshiya 题库结构：传统方向覆盖、AI 方向覆盖、技术栈与数据规模'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>传统方向</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>Java/前端/C++/Go/Python</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>AI 方向</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>大模型/Agent/RAG/Prompt</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>技术栈</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>React + Node + 云开发</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>规模与维护</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>1 万+ 题，5927 stars</text>\n</svg>",
+        "alt": "竖向结构图：传统方向覆盖 Java/前端/C++/Go/Python，AI 方向覆盖大模型/Agent/RAG/Prompt，技术栈为 React + Node + 云开发，规模是 1 万多题、5927 stars。"
+      },
+      "concepts": [
+        {
+          "name": "八股题库式求职准备 (Interview Question Bank Prep)",
+          "readable": "把企业高频面试题按方向整理成题库，通过反复刷题把知识点与标准答法固化成能复述的答案。",
+          "analogy": "像考驾照前刷科目一题库：题目相对固定、答案标准化，刷够遍数就能通过理论考试。",
+          "analogyBreaksDown": "驾照理论题有唯一标准答案，技术面试题往往没有；背下题库答案的人被追问「为什么这样设计」就可能崩，题库也覆盖不了系统设计与项目深挖。",
+          "mechanism": "用「高频题覆盖度」换复习效率：先按岗位方向定位题库，再靠检索—回忆—复述形成长期记忆；代价是容易停在背答案层面。",
+          "visual": "画一个二维矩阵，纵轴为技术方向（后端/前端/AI/算法），横轴为主题清单；已掌握知识点涂绿、生疏的涂灰，直观看出复习盲区。",
+          "prerequisites": [
+            "目标岗位的 JD 与技能清单",
+            "基础编程与计算机基础"
+          ],
+          "selfTest": [
+            "刷题库能覆盖面试中的哪些环节？",
+            "为什么只背答案在追问环节容易失分？",
+            "如何判断某个方向的题库是否过时？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "检索增强生成 (Retrieval-Augmented Generation, RAG)",
+          "readable": "先按问题检索出相关文档片段，再把片段放进提示让模型基于它们作答，从而减少凭记忆瞎编。",
+          "analogy": "开卷考试：不靠把内容背下来，而是先翻到相关章节再作答。",
+          "analogyBreaksDown": "开卷考试的教材是可靠的；RAG 的检索结果可能召回无关或过时文档，模型还可能无视片段照旧凭参数作答，错误反而以「有出处」的形式显得更可信。",
+          "mechanism": "把「记住」与「查找」解耦：知识更新只需换索引而不用重训模型；代价是引入检索质量与上下文长度两个新瓶颈。",
+          "visual": "画三段流水线：问题 → 检索器（向量库/BM25）取 top-k 片段 → 拼进提示 → 模型生成答案，并用括号标出答案中对应片段的引用。",
+          "prerequisites": [
+            "向量检索与相似度",
+            "提示工程",
+            "Transformer 与上下文窗口概念"
+          ],
+          "selfTest": [
+            "RAG 与微调各自适合什么样的知识更新需求？",
+            "检索结果质量差时如何缓解？",
+            "为什么说 RAG 不能消除幻觉？"
+          ],
+          "formula": "$\\hat{y} = \\arg\\max_{y} p_\\theta\\big(y \\mid q,\\ \\text{Ret}_k(q)\\big),\\quad \\text{Ret}_k(q) = \\text{top-}k\\ \\text{passages}$"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-bm25-retrieval-score",
+          "name": "BM25 检索打分 (BM25 Retrieval Score)",
+          "category": "engineering",
+          "latex": "$\\text{score}(q,d) = \\sum_{t \\in q} \\text{IDF}(t) \\cdot \\frac{f(t,d)\\,(k_1+1)}{f(t,d) + k_1\\left(1 - b + b\\,\\frac{|d|}{\\text{avgdl}}\\right)}$",
+          "symbols": [
+            [
+              "q",
+              "查询（面试里常问的问题文本）"
+            ],
+            [
+              "d",
+              "候选文档/知识片段"
+            ],
+            [
+              "f(t,d)",
+              "词 t 在文档 d 中的出现次数"
+            ],
+            [
+              "\\text{IDF}(t)",
+              "逆文档频率，稀有词权重更高"
+            ],
+            [
+              "k_1, b",
+              "词频饱和与长度归一化超参"
+            ],
+            [
+              "\\text{avgdl}",
+              "语料平均文档长度"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：从词频出发，词出现越多越相关，但用饱和函数避免分数无限增长。",
+            "第 2 步：乘 IDF，让「的/是」这类高频词几乎不贡献分数。",
+            "第 3 步：除以文档长度归一化项，避免长文档靠字数堆分。",
+            "第 4 步：对查询中所有词求和得到最终分数，按分数排序取 top-k 作为 RAG 的检索结果。"
+          ],
+          "analogy": "查资料时按关键词找书：关键词出现多、又比较罕见的书更相关；但同一关键词出现一百次和一千万次差别不大，厚书也不该因为字多就排前面。",
+          "pitfalls": [
+            "把 BM25 与向量检索当成互斥方案，工程上通常做混合检索再融合",
+            "忽略 k1/b 需按语料调，默认值不一定最优",
+            "以为 BM25 能处理同义改写，它本质是词面匹配"
+          ],
+          "code": "import math\ndef bm25(q, d, f, idf, avgdl, k1=1.2, b=0.75):\n    s = 0.0\n    for t in q:\n        s += idf[t] * f(t, d) * (k1 + 1) / (f(t, d) + k1 * (1 - b + b * len(d) / avgdl))\n    return s\n",
+          "sources": [
+            {
+              "title": "liyupi/mianshiya — 持续维护的企业面试题库网站",
+              "url": "https://github.com/liyupi/mianshiya"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "该仓库是持续维护的企业面试题库网站",
+          "覆盖 Java、前端、AI 大模型、AI Agent、RAG、C++、Go、Python、测试、运维、后端、操作系统、计算机网络、Redis、MySQL、算法、Spring、JVM、Java 并发、Linux、LLM、Prompt 工程、系统设计等方向",
+          "累计 1 万多道高频八股题",
+          "形态为 React 前端 + Node 后端 + 云开发的全栈项目，作者为程序员鱼皮",
+          "5927 stars、TypeScript、最近更新 2026-02-04"
+        ],
+        "uncertain": [
+          "该卡片是面试题库网站，摘要未给任何方法细节；所附 BM25 公式只是为「RAG 面试题」这一主题补充的通用背景知识，并非卡片内容，是否保留需人工确认",
+          "题库实际题目数量与「1 万多道」的宣传口径是否一致，未独立核实",
+          "AI/Agent/RAG 方向内容的深度与更新频率，摘要未说明",
+          "仓库实际许可协议与可复现程度未核实（输入标记 codeAvailable=true）"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "一个把程序员面试高频题按方向整理好、方便刷题的中文题库网站。"
+          },
+          {
+            "level": "入门",
+            "text": "mianshiya 由程序员鱼皮维护，把企业面试常考知识点按方向整理成题库，从前端、后端、Java、算法到 AI 大模型、Agent、RAG 都有，累计 1 万多道题；站点本身是 React + Node + 云开发的全栈项目。"
+          },
+          {
+            "level": "进阶",
+            "text": "它的用处是给你一张覆盖度地图：先按目标岗位圈定方向，再用高频题快速定位知识盲区，最后靠复述答案检验掌握程度。局限也很明确——八股只能覆盖「知识点陈述」这一层，系统设计与项目追问要另练；而且技术迭代快，AI 方向的题目是否跟得上需要自己判断（推断）。"
+          },
+          {
+            "level": "专家",
+            "text": "把它当索引而不是教材更合适：题库适合做广度扫描与自查，深度要靠原始论文与官方文档。对求职者更有效的用法是先刷一遍标记不会的题，再针对薄弱方向读一手资料并写成自己的答案，最后用模拟追问检验是否真懂。对 AI 方向尤其要注意时效性，模型与框架的版本变化会让旧答案失效（推断）。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么刷完题库还是会在面试中挂掉？",
+            "a": "题库覆盖的是知识点复述，面试往往追问设计动机、取舍与项目细节，这些需要理解而非记忆。"
+          },
+          {
+            "q": "为什么说题库更适合当索引而不是教材？",
+            "a": "题库给的是答案结论，缺少推导与边界条件；真正掌握需要一手资料里的原理与失败案例。"
+          },
+          {
+            "q": "AI 方向的八股题为什么更容易过时？",
+            "a": "模型、框架与最佳实践迭代快，一两年前的答案可能已不适用，需要对照最新文档核实。"
+          }
+        ],
+        "mechanism": "它的有效性来自「高频题 ≈ 高频考点」这一统计事实：企业面试题目高度集中，先覆盖高频题能以较小投入拿到较大命中率。但正因如此，它优化的是覆盖面而非理解深度，所以正确用法是把它放在复习流程前段做定位，中后段必须换成一手资料与动手实践。",
+        "boundary": "不适用于需要深度推导或系统设计能力的环节；题目与答案长期未更新会误导；社区题库质量参差，宣传题量不等于有效覆盖；对英文面试或小语种岗位适配性有限。",
+        "analogyBoundary": "「科目一刷题」类比只在有标准答案时成立；技术面试答案取决于场景与追问方向，背下的标准答案在紧张时还会被复述偏差放大。",
+        "misconceptions": [
+          "把题库当成学习资料本身，跳过原理直接背答案",
+          "以为题量大就等于覆盖全，忽略方向与岗位的匹配度",
+          "认为刷完题就能拿 offer，忽视项目经历与沟通表达"
+        ],
+        "ownAnalysis": "这类题库的价值在求职语境里既被高估也被低估：高估在于题量不等于掌握度，低估在于它能快速暴露盲区。对做 AI/Agent 方向的求职者，更有价值的用法是把它当检查表，逐条对照自己能否讲清机制与取舍，而不是背标准答案。可疑处是摘要只给宣传性描述（题量与方向列表），没有任何评测数据支撑「高频」与「最新」两个宣称（推断，需人工核实）。",
+        "officialNotes": [
+          {
+            "position": "仓库自述为持续维护的企业面试题库网站，含 Java/前端/AI 大模型/AI Agent/RAG 等 1 万多道高频题",
+            "source": "github: https://github.com/liyupi/mianshiya"
+          }
+        ],
+        "interviewAnswer": "我会把 mianshiya 这类题库当复习索引：先按目标岗位圈方向，快速刷一遍定位盲区，再针对薄弱点读一手资料、写成自己的答案，最后用模拟追问验证是否真懂。它的优势是中文语境、方向覆盖广，包含 AI 大模型、Agent、RAG 这些新方向；局限是八股只能覆盖知识点陈述，系统设计和项目深挖还得单独准备。",
+        "studyPath": {
+          "prerequisites": [
+            "目标岗位 JD 与技能清单",
+            "编程与计算机基础"
+          ],
+          "nextSteps": [
+            "按方向刷题并标记盲区",
+            "针对盲区读一手论文与官方文档",
+            "用模拟面试检验答案能否经得起追问"
+          ]
+        }
+      }
+    },
+    {
+      "id": "d94ed02fbc3c269b",
+      "tldr": "Mem++ 把组织 Agent 记忆从写时蒸馏改为读时选择：整篇存文档加日期作者，检索按提问时间截断并融合词法语义排序。",
+      "keyPoints": [
+        "组织场景中决策修订以新文档出现，需知道某时刻生效版本",
+        "现有记忆系统在写入时把文档蒸馏为事实/笔记/图边",
+        "Mem++ 原样保存整篇文档及日期与作者，写时不调用生成模型",
+        "读时只取日期不晚于提问时间的文档，融合词法+语义排序",
+        "保留旧版本交给作答模型选择，OrgMemBench 上领先最强基线 8.0–13.1 分"
+      ],
+      "why": "做 Agent 记忆与长上下文 RAG 的求职者要掌握：写时压缩还是读时选择，这个架构取舍直接决定系统可回答问题的上界。",
+      "difficulty": "medium",
+      "tags": [
+        "agent-memory",
+        "long-term-memory",
+        "rag",
+        "retrieval",
+        "llm-agents"
+      ],
+      "entities": [
+        "Mem++",
+        "OrgMemBench",
+        "LoCoMo",
+        "LongMemEval-S",
+        "gpt-4.1-mini",
+        "RAG"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "Mem++ 写入与读取",
+        "caption": "写入不蒸馏，读时才按时间与相关性选证据",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Mem++ 流程：原样存档文档、读时按提问时间截断、混合检索排序、模型自行选择版本'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>写入：原样存档</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>全文+日期+作者，不蒸馏</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>读时：时间截断</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>只取日期 ≤ 提问时间</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>混合检索排序</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>词法 + 语义融合</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>模型自选版本</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>旧版本保留不覆盖</text>\n</svg>",
+        "alt": "竖向流程图：写入时原样存档全文与日期作者 → 读时按提问时间截断候选 → 词法与语义融合排序 → 保留旧版本、由作答模型自行选择版本。"
+      },
+      "concepts": [
+        {
+          "name": "非破坏性记忆 (Non-Destructive Memory)",
+          "readable": "写入时不把文档压缩成事实或摘要，而是原样保存全文及元数据（日期、作者），信息在写入环节不丢失。",
+          "analogy": "像把收到的每封信按日期归档进文件柜，而不是读一封就写一张便签、把原信扔掉。",
+          "analogyBreaksDown": "文件柜可以无限堆，模型的上下文有限；原样保存意味着读时必须做更重的检索与筛选，存储与检索成本随文档量增长，而便签式归档把成本前移到了写入端。",
+          "mechanism": "把「决定什么重要」从写入时推迟到提问时：写入端只做存储，因此不会预先锁死可回答的问题集合；代价是读时需要更强的检索与排序。",
+          "visual": "画两条时间线：上行是文档按日期排成一列（每篇一个方块，全部保留）；下行是蒸馏式系统的输出（少量事实卡片，原方块变灰），并标出「问题时间点」的截断竖线。",
+          "prerequisites": [
+            "RAG 基本流程",
+            "向量检索与倒排索引",
+            "时间敏感的数据管理"
+          ],
+          "selfTest": [
+            "写时蒸馏为什么会限制可回答的问题？",
+            "非破坏性记忆的主要代价是什么？",
+            "为什么必须保留日期这一元数据？"
+          ],
+          "formula": "$\\mathcal{M} = \\{(d_i,\\, t_i,\\, a_i)\\}_{i=1}^{N}$"
+        },
+        {
+          "name": "读时选择 (Read-Time Selection)",
+          "readable": "把筛选与判断放到提问发生时：先按时间条件圈出候选文档，再用检索排序挑出证据，最后让作答模型自己决定用哪个版本。",
+          "analogy": "查法规时先翻到你要问的那个时间点生效的版本，而不是用最新版去回答旧行为是否合规。",
+          "analogyBreaksDown": "法规有明确生效日期与唯一权威版本；企业文档里同一决策可能分散在多篇、日期相近且互相矛盾，模型要在没有仲裁机制的情况下自行判断哪个版本有效。",
+          "mechanism": "用「date(d) ≤ t_q」的时间过滤加词法与语义混合排序，把版本选择交还给语言模型；这样问答能力不受写入时蒸馏粒度的限制。",
+          "visual": "画一个漏斗：全部文档 → 时间过滤（按提问时间截断）→ 混合检索 top-k → 模型融合作答；每层右侧标注剩余文档数量，显示时间过滤削减最多。",
+          "prerequisites": [
+            "混合检索与排序融合",
+            "时间推理与版本管理",
+            "LLM 上下文构造"
+          ],
+          "selfTest": [
+            "时间截断与混合排序分别解决什么问题？",
+            "为什么把版本选择交给作答模型而不是写死规则？",
+            "如果问题本身没有明确时间点会怎样？"
+          ],
+          "formula": "$R(q, t_q) = \\text{top-}k_{d \\in \\mathcal{M},\\ t_d \\le t_q}\\ \\big[\\lambda\\, s_{lex}(q,d) + (1-\\lambda)\\, s_{sem}(q,d)\\big]$"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-mempp-time-truncated-retrieval",
+          "name": "时间截断检索 (Time-Truncated Retrieval)",
+          "category": "agent",
+          "latex": "$\\mathcal{C}(q) = \\{\\, d \\in \\mathcal{M} : t_d \\le t_q \\,\\},\\qquad \\mathcal{M} = \\text{全部已存文档}$",
+          "symbols": [
+            [
+              "\\mathcal{M}",
+              "完整文档记忆，每篇含日期与作者"
+            ],
+            [
+              "t_d",
+              "文档 d 的日期"
+            ],
+            [
+              "t_q",
+              "问题所询问的时间点"
+            ],
+            [
+              "\\mathcal{C}(q)",
+              "时间上合法的候选文档集合"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：写入时原样存储每篇文档及其日期、作者，不做蒸馏。",
+            "第 2 步：问题带上它询问的时间点 t_q。",
+            "第 3 步：过滤掉日期晚于 t_q 的文档，避免用未来版本回答过去的问题。",
+            "第 4 步：在剩余候选上继续排序与作答，旧版本仍留在记忆中备用。"
+          ],
+          "analogy": "查账时只翻到要问的那个月份为止的账本，后面还没发生的记录不能拿来解释当时的决定。",
+          "pitfalls": [
+            "忘记时间过滤，用最新文档回答历史问题，答案看似合理却不成立",
+            "只按日期过滤而不做相关性排序，候选仍然过多",
+            "把文档日期当成内容生效时间，两者可能不同（推断风险）"
+          ],
+          "code": "cands = [d for d in memory if d.date <= question_time]\nranked = sorted(cands, key=lambda d: score(q, d), reverse=True)\nevidence = ranked[:k]\n",
+          "sources": [
+            {
+              "title": "Mem++: Non-Destructive Memory for Long-Term Organizational LLM Agents",
+              "url": "https://arxiv.org/abs/2610.02002v1"
+            }
+          ]
+        },
+        {
+          "id": "f-mempp-hybrid-fusion",
+          "name": "词法—语义排序融合 (Lexical–Semantic Rank Fusion)",
+          "category": "agent",
+          "latex": "$s(q,d) = \\lambda\\, s_{lex}(q,d) + (1-\\lambda)\\, s_{sem}(q,d),\\qquad \\lambda \\in [0,1]$",
+          "symbols": [
+            [
+              "s_{lex}",
+              "词法匹配得分（如 BM25、关键词重叠）"
+            ],
+            [
+              "s_{sem}",
+              "语义相似度得分（如向量内积/余弦）"
+            ],
+            [
+              "\\lambda",
+              "融合权重"
+            ],
+            [
+              "s(q,d)",
+              "最终融合排序分"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：对候选文档分别计算词法分与语义分。",
+            "第 2 步：把两者归一化到可比尺度（如排名或 min-max）。",
+            "第 3 步：按权重 λ 加权求和得到融合分。",
+            "第 4 步：按融合分排序取 top-k 作为作答证据；摘要只说「融合」，具体形式为推断。"
+          ],
+          "analogy": "找人问事时既看谁说过相关的话（关键词命中），也看谁懂这个领域（语义相近），两者都强的人最可信。",
+          "pitfalls": [
+            "两个分数量纲不同却直接加权，权重失去意义",
+            "把融合当成必然提升，权重需按语料调",
+            "只做语义检索会漏掉精确标识符（编号、专有名词）"
+          ],
+          "code": "lex = normalize(lex_score(q, cands))\nsem = normalize(sem_score(q, cands))\ns = lam * lex + (1 - lam) * sem\ntopk = [cands[i] for i in s.argsort(descending=True)[:k]]\n",
+          "sources": [
+            {
+              "title": "Mem++: Non-Destructive Memory for Long-Term Organizational LLM Agents",
+              "url": "https://arxiv.org/abs/2610.02002v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "组织工作中多位作者跨月把决策记录在文档里",
+          "修订后的决策以新文档形式出现而非编辑旧文档，因此回答需要知道某时间点生效的版本",
+          "多数记忆系统在写入时压缩记录：把文档蒸馏成事实、笔记或图边，从而在任何问题提出前就固定了可回答范围",
+          "Mem++ 是写时蒸馏改为读时选择的非破坏性记忆框架",
+          "Mem++ 原样保存每篇文档及其日期与作者，写时不调用生成模型",
+          "读时只检索日期不晚于提问时间的文档，并融合词法排序与语义排序",
+          "与覆盖旧版本的系统不同，Mem++ 保留旧版本，把选择留给作答模型",
+          "在 OrgMemBench 上超过最强记忆系统基线 8.0 到 13.1 分（两个作答模型）",
+          "用 gpt-4.1-mini 时取得最佳总分，比 RAG 高 2.6 分",
+          "在 LoCoMo 上取得最佳平均 LLM-judge 分数，在 LongMemEval-S 上排第二，仅次于其实体图变体",
+          "作者称基准评测代码已公开"
+        ],
+        "uncertain": [
+          "词法与语义排序的具体融合方式（加权求和/倒数排名融合等）与权重摘要未给出，公式为按摘要重建的通用形式，需核对原文",
+          "8.0–13.1 分的指标定义与两个作答模型的名称摘要未说明，待核实",
+          "LongMemEval-S 上「实体图变体」的具体做法摘要未给",
+          "问题若不含时间信息时的时间过滤行为摘要未说明，待核实"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "把每篇文档原样存下来并记上日期，回答问题时才决定用哪些版本。"
+          },
+          {
+            "level": "入门",
+            "text": "组织里的决策会被新文档取代，旧文档不会消失。多数记忆系统在写入时就把文档压成事实或摘要，等于提前决定了以后能回答什么。Mem++ 反其道而行：写入时只存全文加日期和作者，提问时再按时间过滤、排序挑证据。"
+          },
+          {
+            "level": "进阶",
+            "text": "读时流程是：先用问题所问的时间点 t_q 把候选限制在 date(d) ≤ t_q，再融合词法分与语义分排序取 top-k，最后让作答模型自己选择用哪个版本。因为不做写时蒸馏，可回答的问题集合不被提前锁死；代价是检索与上下文构造更重。摘要报告它在 OrgMemBench 上比最强记忆基线高 8.0–13.1 分，gpt-4.1-mini 下总分比 RAG 高 2.6 分。"
+          },
+          {
+            "level": "专家",
+            "text": "它与写时蒸馏（facts/notes/graph edges）路线是哲学对立：蒸馏降低读时成本、提升特定问题的精度，但会丢掉未能预判为重要的事实，也难以处理版本冲突；Mem++ 把版本歧义留给作答模型，用时间截断保证不引入未来信息。边界在于成本随文档量增长——原样存储加混合检索的读时开销更大，且当问题缺少明确时间点时截断规则失效；另外把版本选择交给模型，意味着模型需具备时间推理能力，否则可能混用多个版本（推断）。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么写时蒸馏会限制系统能回答的问题？",
+            "a": "蒸馏在提问前就决定了哪些信息被保留、以什么粒度表示，未被保留的细节事后无法恢复，可回答范围被提前锁死。"
+          },
+          {
+            "q": "为什么必须做时间截断而不是直接检索全部文档？",
+            "a": "组织记录里同一决策有多个版本，若允许检索未来文档，模型可能用后来的修订回答当时的问题，答案与事实不符。"
+          },
+          {
+            "q": "把版本选择交给作答模型有什么风险？",
+            "a": "模型需要在上下文里比较多份文档的日期与内容并做时间推理；若证据过多或互相矛盾，可能混用版本或选错，摘要未报告此类失败率。"
+          }
+        ],
+        "mechanism": "为什么必须这样设计：组织知识的价值往往在于「某时刻生效的版本」，而这个判断依赖提问本身，写入时无法预知。因此把重活放到读时，用时间过滤限定合法证据集合、用混合排序压缩候选规模，就能在不预先损失信息的前提下把选择权交给模型，避免写入端成为信息瓶颈。",
+        "boundary": "文档量很大时，原样存储加混合检索的读时成本显著高于写时蒸馏；问题若不含时间点，时间截断无从施加；若日期元数据缺失或错误，会引入未来信息或漏掉正确版本；对需要跨文档聚合统计的问题，逐篇检索未必够用（推断）。",
+        "analogyBoundary": "「按月份查账」类比假设日期唯一决定版本；真实组织里同一决策可能同日多稿，或修订日期与生效日期不一致，仅靠日期截断仍会有歧义，最终仍依赖模型判断。",
+        "misconceptions": [
+          "以为 Mem++ 只是「不做摘要」的 RAG，它同时改写了检索的时间条件与排序融合",
+          "以为保留旧版本会造成信息污染，实际上时间截断正是为避免用未来版本回答过去问题",
+          "把 LoCoMo 上的 LLM-judge 分数当成人工评测结论，两者不等价"
+        ],
+        "ownAnalysis": "Mem++ 的定位与「长上下文 vs RAG」之争相关：它其实承认读时选择更贵，换取的是信息不丢失与版本可追溯。可追问之处在评测：OrgMemBench 是面向组织场景的基准，其 8.0–13.1 分提升是否在其他领域同样成立，摘要只给了 LoCoMo 最佳、LongMemEval-S 第二的结果，且 LongMemEval-S 上还输给自家实体图变体——这暗示写时结构化在部分任务上仍有优势（推断）。另外存储与检索成本未在摘要中量化，部署时是关键约束。",
+        "officialNotes": [
+          {
+            "position": "多数记忆系统在写入时蒸馏，Mem++ 改为读时选择：原样存文档加日期作者，写时不调用生成模型，读时按提问时间检索并融合词法/语义排序",
+            "source": "arxiv: https://arxiv.org/abs/2610.02002v1"
+          },
+          {
+            "position": "OrgMemBench 上超最强记忆系统基线 8.0–13.1 分，gpt-4.1-mini 下总分比 RAG 高 2.6 分；LoCoMo 最佳平均 LLM-judge 分，LongMemEval-S 第二",
+            "source": "arxiv: https://arxiv.org/abs/2610.02002v1"
+          }
+        ],
+        "interviewAnswer": "组织里的决策修订是以新文档出现、旧文档不消失，所以「某时间点生效的版本」才是关键。多数记忆系统在写入时就把文档蒸馏成事实或图边，等于提前锁死了能回答的问题范围。Mem++ 改成读时选择：原样存全文加日期作者，写时不调生成模型；提问时先用问题时间截断候选，再融合词法和语义排序，旧版本保留、版本选择交给作答模型。它在 OrgMemBench 上比最强基线高 8 到 13 分，gpt-4.1-mini 下比 RAG 高 2.6 分，代价是读时开销更大。",
+        "studyPath": {
+          "prerequisites": [
+            "RAG 检索与排序",
+            "倒排索引/BM25 与向量检索",
+            "Agent 记忆架构基础"
+          ],
+          "nextSteps": [
+            "读原文确认混合排序与融合权重的具体形式",
+            "在 OrgMemBench 上复现时间截断检索",
+            "对比写时蒸馏（facts/graph）路线的成本与精度"
+          ]
+        }
+      }
+    }
+  ]
+}

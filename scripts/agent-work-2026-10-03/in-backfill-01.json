@@ -1,0 +1,630 @@
+{
+  "batchId": "backfill-01",
+  "mode": "backfill",
+  "date": "2026-10-03",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
+  "items": [
+    {
+      "id": "0b3e16ecf4f67dcb",
+      "title": "cookiespiggy/agentic-rl - Agentic RL 中文零基础教程（33 章）：从概念到 GRPO 实战，含 TRL 最小可跑示例；26–33 章附一套可运行的三方判别模型实证工程（encoder vs LLM-LoRA vs 规则基线）。第 25 章讲清 Jev / TypeSafe System One 与 RL 的能力边界 | Chinese Agentic RL tutorial (33 chapters) + a reproducible discriminative-model benchmark",
+      "category": "posttraining",
+      "channel": "github",
+      "url": "https://github.com/cookiespiggy/agentic-rl",
+      "sources": [
+        {
+          "url": "https://github.com/cookiespiggy/agentic-rl",
+          "name": "github"
+        }
+      ],
+      "tags": [
+        "agent-training",
+        "agentic-rl",
+        "beginner-friendly",
+        "benchmark",
+        "calibration",
+        "chinese-tutorial",
+        "discriminative-model",
+        "grpo",
+        "Python"
+      ],
+      "summary": "Agentic RL 中文零基础教程（33 章）：从概念到 GRPO 实战，含 TRL 最小可跑示例；26–33 章附一套可运行的三方判别模型实证工程（encoder vs LLM-LoRA vs 规则基线）。第 25 章讲清 Jev / TypeSafe System One 与 RL 的能力边界 | Chinese Agentic RL tutorial (33 chapters) + a reproducible discriminative-model benchmark",
+      "authors": [
+        "cookiespiggy"
+      ],
+      "publishedAt": "2026-09-26T23:14:32+08:00",
+      "knowledgeType": "project",
+      "why": "归属「后训练」方向；命中关键词 grpo；GitHub 115 stars；疑似附带开源实现",
+      "relevanceScore": 61.0,
+      "qualitySignals": {
+        "stars": 116,
+        "forks": 13,
+        "codeAvailable": true
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "missing": [
+        "formulas"
+      ],
+      "backfillWeight": 1.0,
+      "existingEnrichment": {
+        "id": "0b3e16ecf4f67dcb",
+        "tldr": "33 章中文 Agentic RL 教程：从概念到 GRPO 实战，并附三方判别模型实证工程。",
+        "keyPoints": [
+          "33 章中文教程，面向零基础读者。",
+          "从概念讲到 GRPO 实战，含 TRL 最小可跑示例。",
+          "26–33 章是一套可运行的三方判别模型实证工程。",
+          "三方为 encoder、LLM-LoRA 与规则基线。",
+          "第 25 章讨论 Jev / TypeSafe System One 与 RL 的能力边界。"
+        ],
+        "why": "中文且自带可跑代码的 Agentic RL 入口不多；它同时覆盖 RL 训练与判别模型选型，都是面试常考块。",
+        "difficulty": "medium",
+        "tags": [
+          "agentic-rl",
+          "grpo",
+          "chinese-tutorial",
+          "discriminative-model",
+          "benchmark",
+          "calibration"
+        ],
+        "entities": [
+          "GRPO",
+          "TRL",
+          "encoder",
+          "LLM-LoRA",
+          "Jev",
+          "TypeSafe System One"
+        ],
+        "diagram": {
+          "kind": "flow",
+          "title": "教程四段学习路径",
+          "caption": "先建直觉，再跑通训练回路，最后用评测工程和边界讨论收口。",
+          "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='教程四段学习路径：概念与RL基础、GRPO与TRL示例、三方判别模型工程、能力边界讨论'><rect x='40' y='16' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>1 概念与 RL 基础</text><text x='424' y='40' font-size='13' text-anchor='end' fill='currentColor'>轨迹与奖励的直觉</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='40' y='70' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>2 GRPO 实战</text><text x='424' y='94' font-size='13' text-anchor='end' fill='currentColor'>含 TRL 最小示例</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='40' y='124' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>3 判别模型工程</text><text x='424' y='148' font-size='13' text-anchor='end' fill='currentColor'>encoder vs LLM-LoRA</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='40' y='178' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>4 能力边界</text><text x='424' y='202' font-size='13' text-anchor='end' fill='currentColor'>Jev 与 RL 之争</text></svg>",
+          "spec": {
+            "type": "flow",
+            "nodes": [
+              {
+                "label": "概念与 RL 基础",
+                "detail": "先建立轨迹与奖励的直觉"
+              },
+              {
+                "label": "GRPO 实战",
+                "detail": "含 TRL 最小可跑示例"
+              },
+              {
+                "label": "判别模型工程",
+                "detail": "encoder vs LLM-LoRA vs 规则基线（26–33 章）"
+              },
+              {
+                "label": "能力边界",
+                "detail": "第 25 章讨论 Jev / TypeSafe System One 与 RL"
+              }
+            ],
+            "edges": [
+              {
+                "from": 0,
+                "to": 1,
+                "label": "前置"
+              },
+              {
+                "from": 1,
+                "to": 2,
+                "label": "转入评测"
+              },
+              {
+                "from": 2,
+                "to": 3,
+                "label": "反思适用性"
+              }
+            ]
+          },
+          "alt": "四个纵向方块依次为概念与 RL 基础、GRPO 实战、判别模型工程、能力边界，箭头自上而下串联。"
+        },
+        "concepts": [
+          {
+            "name": "Agentic RL（智能体强化学习）",
+            "readable": "把语言模型当成会多步行动的策略，用强化学习按最终成败给整条轨迹打分，优化的是「怎么一步步做任务」，而不只是下一个词。教程用 33 章从概念讲到 GRPO 实战。",
+            "analogy": "像教练带选手打完整场比赛后复盘：不是每一拍都纠正，而是看最终比分，把导致赢球的整段决策序列一起加强。",
+            "analogyBreaksDown": "比赛的胜负信号明确，而 Agent 的奖励常来自规则或模型打分，噪声大且可能被奖励黑客攻击；比赛规则固定，Agent 面对的环境与工具接口却会变，同一套策略不一定迁移。",
+            "mechanism": "关键设计选择是把「环境交互 + 奖励」变成可批量采样的轨迹数据：策略模型生成多步动作，环境返回观测与奖励，再用 GRPO 这类策略优化方法更新（具体损失形式摘要未给出）。教程用 TRL 最小示例把这条链路跑通，降低上手门槛。",
+            "visual": "画一条横向轨迹带：左侧是策略模型，中间是若干「动作—环境观测—奖励」的交替方块，右侧是最终奖励；下方用一条回传箭头表示按整条轨迹更新策略，再用颜色深浅表示各步对奖励的贡献（信用分配）。",
+            "prerequisites": [
+              "Python 与 PyTorch 基础",
+              "策略梯度 / PPO 的初级概念",
+              "LLM 微调与推理的基本流程"
+            ],
+            "selfTest": [
+              "Agentic RL 的优化对象是单步输出还是整条轨迹？为什么？",
+              "为什么奖励稀疏、延迟会给训练带来困难？",
+              "它和「指令微调 + 工具调用」有什么本质区别？"
+            ],
+            "formula": ""
+          },
+          {
+            "name": "三方判别模型对照工程（Three-Way Discriminative Benchmark）",
+            "readable": "同一份判别任务上，把 encoder 分类器、LLM 加 LoRA 微调、以及规则基线放进同一评测流程，用同一批数据与指标对比，避免各跑各的、口径不一。教程第 26–33 章给的就是这套可运行工程。",
+            "analogy": "像三个人用同一份试卷、同一套评分标准考试：一个死记规则的、一个专门刷题的、一个通用大模型临时微调，只有口径一致，分数才可比。",
+            "analogyBreaksDown": "考试能保证所有人都做同一道题，而三类模型的输入长度、显存预算与推理成本天生不同，同一批数据下仍难做到真正的同条件；规则基线甚至不需要训练，训练成本这一维无法用同一张表公平体现。",
+            "mechanism": "关键设计选择是固定数据划分与评测指标，只替换判别头：encoder 接分类头、LLM-LoRA 走指令微调、规则基线用手工特征。这样模型之间的差异才能归因到建模路线，而不是评测脚本的变化。",
+            "visual": "画一张三列对比表：行是「准确率类指标 / 训练成本 / 推理延迟 / 可解释性」，列是 encoder、LLM-LoRA、规则基线；每个格子用颜色深浅表示优劣，再单独标出哪些格子在本摘要里没有数据。",
+            "prerequisites": [
+              "文本分类 / 判别任务的基本流程",
+              "LoRA 等参数高效微调方法",
+              "如何设计公平的对照实验"
+            ],
+            "selfTest": [
+              "为什么三方对照比「LLM 对规则基线」两方对照更有信息量？",
+              "如果只统一数据但不统一指标，会引入什么偏差？",
+              "规则基线在什么情况下反而可能胜出？"
+            ],
+            "formula": ""
+          }
+        ],
+        "formulas": [],
+        "selfCheck": {
+          "claims": [
+            "教程共 33 章，面向中文零基础读者。",
+            "内容从概念讲到 GRPO 实战，并含 TRL 最小可跑示例。",
+            "第 26–33 章是一套可运行的三方判别模型实证工程。",
+            "三方为 encoder、LLM-LoRA 与规则基线。",
+            "第 25 章讨论 Jev / TypeSafe System One 与 RL 的能力边界。"
+          ],
+          "uncertain": [
+            "各方实验的具体指标与结论方向（谁更好、差距多少）摘要未给出，待核实。",
+            "GRPO 的具体损失形式与 TRL 示例的依赖版本未在摘要中出现，本条只作通用背景描述。",
+            "33 章目录结构以及代码是否开箱可跑，仅凭仓库自述，待实际克隆验证。"
+          ]
+        },
+        "teaching": {
+          "progressive": [
+            {
+              "level": "一句话",
+              "text": "33 章中文教程：从零学智能体强化学习，直到跑通 GRPO 示例。"
+            },
+            {
+              "level": "入门",
+              "text": "教程按章节递进：先讲智能体与强化学习的基本概念，再讲 GRPO 这类策略优化方法，并给出 TRL 的最小可跑示例；第 26–33 章转入一套判别模型实证工程，把 encoder、LLM-LoRA 和规则基线放在同一评测里比较。"
+            },
+            {
+              "level": "进阶",
+              "text": "价值在于两条线的组合：训练线（概念→GRPO→TRL 可跑示例）让人知道智能体策略怎么用奖励更新；评测线（encoder vs LLM-LoRA vs 规则基线）回答「判别任务到底要不要上大模型」。零基础读者可以先跑通示例再回头补理论，避免一开始卡在 RL 数学上。"
+            },
+            {
+              "level": "专家",
+              "text": "从工程视角看，这类教程的可信度取决于三点：三方对照是否固定了数据划分与指标（否则结论不可比）、TRL 示例是否给出可复现的依赖与显存预算、第 25 章对能力边界的论断是否有实验支撑。摘要只说明这些内容存在，没有给任何数值结论，因此阅读时要严格区分「教程讲了什么」与「教程证明了什么」。"
+            }
+          ],
+          "socratic": [
+            {
+              "q": "如果不做三方对照，只拿 LLM-LoRA 和某个规则基线比，会漏掉什么？",
+              "a": "会漏掉中间选项：encoder 分类器在固定标签、短文本的判别任务上往往成本最低，没有它就无法回答「是否值得上大模型」这个问题。"
+            },
+            {
+              "q": "为什么把「能力边界」单独成章，而不是塞进 GRPO 章节？",
+              "a": "因为知道 RL 不能做什么，比知道怎么调 GRPO 更能防止误用：奖励是否可靠、任务是否可验证，决定了方法适不适用。"
+            }
+          ],
+          "mechanism": "它的设计目标是降低入门门槛，而不是提出新算法：把智能体 RL 拆成概念、算法、可跑示例三层，让人先获得一次成功的训练回路；再用一套判别模型工程展示「同一任务下不同建模路线」的取舍。这样安排理论与工程互为验证，代价是每一层的深度都被压缩，真正前沿的算法细节需要另找论文。",
+          "boundary": "教程是二手整理，不是论文；摘要没有给任何实验数值或消融，因此不能用它作为「GRPO 优于 X」的证据。三方判别工程只覆盖判别式任务（固定标签），不覆盖生成与多步决策本身；第 25 章的能力边界讨论也只是作者观点，需回到一手论文核对。",
+          "analogyBoundary": "「教练复盘比赛」的类比忽略了信用分配的对象：比赛里每个动作的责任相对清楚，而 LLM 轨迹里一次工具调用出错可能源于上游的格式错误，奖励稀疏且延迟；类比也没体现 LLM 的动作空间是离散文本、不可微这一事实。",
+          "misconceptions": [
+            "把 Agentic RL 等同于「微调 + 工具调用」，以为不涉及策略优化。",
+            "看到「零基础教程」就以为内容浅，忽略第 26–33 章是完整评测工程。",
+            "把教程里的 GRPO 示例当成生产级实现，忽略数据与奖励设计才是难点。"
+          ],
+          "ownAnalysis": "（推断）第 25 章把 Jev / TypeSafe System One 与 RL 并列讨论，说明作者关心「不是所有任务都该用 RL 或生成式建模」，这与本批另一条决策式模型实证的方向一致。可疑处：仓库类卡片的摘要只有自述，缺少章节清单与实验设置，「可运行」目前只能视为作者声明；建议克隆后先跑最小示例，再核对三方工程的评测口径。",
+          "officialNotes": [
+            {
+              "position": "仓库自述：这是一份 33 章的 Agentic RL 中文零基础教程，含 GRPO 实战与 TRL 最小可跑示例，第 26–33 章附一套可运行的三方判别模型实证工程。",
+              "source": "https://github.com/cookiespiggy/agentic-rl"
+            }
+          ],
+          "interviewAnswer": "如果被问到 Agentic RL 怎么入门，我会说：先把智能体轨迹当成一条带延迟奖励的序列决策问题，理解策略梯度和 GRPO 这类组内相对优势的思想，然后用 TRL 最小示例跑通一次训练回路，确认奖励与数据管线没问题；接着做一次判别任务的建模选型实测，把 encoder、LoRA 微调和规则基线放在同一评测下比较；最后讨论 RL 的能力边界——哪些任务奖励可靠、哪些不可验证，不该硬套 RL。",
+          "studyPath": {
+            "prerequisites": [
+              "Python 与 PyTorch 基础",
+              "LLM 微调与推理的基本流程",
+              "概率与策略梯度的初级概念"
+            ],
+            "nextSteps": [
+              "读 GRPO / PPO 原论文与 TRL 文档",
+              "复现三方判别工程并记录指标口径",
+              "挑一个可验证任务自建奖励函数"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "28f899c9d5f4731d",
+      "title": "modelscope/ms-swift - Use PEFT or Full-parameter to CPT/SFT/DPO/GRPO 600+ LLMs (Qwen3.8, DeepSeek-V4, GLM-5.1, InternLM3, Llama4, ...) and 300+ MLLMs (Qwen3-VL, Qwen3-Omni, InternVL3.5, Ovis2.5, GLM5.3, Gemma4, Llava, Phi4, ...) (AAAI 2025).",
+      "category": "posttraining",
+      "channel": "github",
+      "url": "https://github.com/modelscope/ms-swift",
+      "sources": [
+        {
+          "url": "https://github.com/modelscope/ms-swift",
+          "name": "github"
+        }
+      ],
+      "tags": [
+        "deepseek",
+        "embedding",
+        "glm",
+        "grpo",
+        "internvl",
+        "kimi",
+        "liger",
+        "llama",
+        "Python"
+      ],
+      "summary": "Use PEFT or Full-parameter to CPT/SFT/DPO/GRPO 600+ LLMs (Qwen3.8, DeepSeek-V4, GLM-5.1, InternLM3, Llama4, ...) and 300+ MLLMs (Qwen3-VL, Qwen3-Omni, InternVL3.5, Ovis2.5, GLM5.3, Gemma4, Llava, Phi4, ...) (AAAI 2025).",
+      "authors": [
+        "modelscope"
+      ],
+      "publishedAt": "2026-09-30T18:45:38+08:00",
+      "knowledgeType": "project",
+      "why": "归属「后训练」方向；命中关键词 sft、dpo、grpo；GitHub 15764 stars；疑似附带开源实现",
+      "relevanceScore": 76.5,
+      "qualitySignals": {
+        "stars": 15771,
+        "forks": 1714,
+        "codeAvailable": true
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "missing": [
+        "formulas"
+      ],
+      "backfillWeight": 1.0,
+      "existingEnrichment": {
+        "id": "28f899c9d5f4731d",
+        "tldr": "ms-swift：用 PEFT 或全参微调，一套代码跑通 CPT/SFT/DPO/GRPO 与 600+ LLM。",
+        "keyPoints": [
+          "支持 PEFT 与全参数两种微调模式，可切换",
+          "覆盖 CPT / SFT / DPO / GRPO 等不同训练阶段",
+          "覆盖 600+ LLM：Qwen3.8、DeepSeek-V4、Llama4 等",
+          "覆盖 300+ MLLM：Qwen3-VL、InternVL3.5、Llava",
+          "标题摘要标注 AAAI 2025"
+        ],
+        "why": "后训练岗位几乎天天要用统一训练框架：一套代码切换 SFT/DPO/GRPO 与 PEFT/全参，能把算法实现和工程踩坑成本压下来，面试可讲具体配方。",
+        "difficulty": "medium",
+        "tags": [
+          "posttraining",
+          "peft",
+          "sft",
+          "dpo",
+          "grpo",
+          "framework"
+        ],
+        "entities": [
+          "ms-swift",
+          "ModelScope",
+          "Qwen3.8",
+          "DeepSeek-V4",
+          "GLM-5.1",
+          "InternLM3",
+          "Llama4",
+          "Qwen3-VL",
+          "Qwen3-Omni",
+          "InternVL3.5",
+          "Ovis2.5",
+          "Llava",
+          "Phi4"
+        ],
+        "diagram": {
+          "kind": "architecture",
+          "title": "ms-swift 统一训练分层",
+          "caption": "记住三层组合：底座模型 × 微调模式 × 训练阶段，被同一套仓库入口收住。",
+          "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='ms-swift 分层结构：底座模型层、微调模式层、训练阶段层、统一训练入口'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>底座模型</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>600+ LLM 与 300+ MLLM</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>微调模式</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>PEFT 或全参数微调</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>训练阶段</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>CPT / SFT / DPO / GRPO</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>统一训练入口</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>一个仓库覆盖组合</text></svg>",
+          "alt": "纵向分层图：底座模型层列出 600+ LLM 与 300+ MLLM，下面是 PEFT 或全参微调模式，再下面是从 CPT 到 GRPO 的训练阶段，最底层是统一的训练入口。"
+        },
+        "concepts": [
+          {
+            "name": "统一后训练流水线（Unified Post-Training Stack）",
+            "readable": "把 CPT、SFT、DPO、GRPO 等不同训练阶段，以及 PEFT/全参两种参数更新方式，收进同一套代码与配置里；换模型或换算法时不用换框架。",
+            "analogy": "像厨房里一台能换刀头的料理机：切丝、切片、绞肉共用同一个机身，你只换刀头（算法）和食材（模型与数据），不用为每道菜买一台机器。",
+            "analogyBreaksDown": "刀头是物理标准化的，接口固定；而训练框架里不同算法的数据格式、显存需求和并行策略差异很大，「换算法」往往仍要改数据预处理与超参，被统一的是入口而不是全部内部实现。",
+            "mechanism": "关键设计是把模型适配层与训练算法层解耦：模型只暴露统一的前向与保存接口，算法只依赖统一的数据批次与损失回调，于是新增一个模型或一个偏好优化算法都不必改动另一侧。",
+            "visual": "画一张二维矩阵，横轴是训练阶段（CPT/SFT/DPO/GRPO），纵轴是参数更新方式（PEFT/全参），每个格子标出是否由同一套脚本覆盖；再叠一层模型清单作为第三维。",
+            "prerequisites": [
+              "Transformer 微调基础",
+              "LoRA 等 PEFT 方法",
+              "DPO / GRPO 等偏好或 RL 后训练目标"
+            ],
+            "selfTest": [
+              "PEFT 与全参微调在显存和效果上各自适合什么场景？",
+              "SFT、DPO、GRPO 的监督信号分别来自哪里？",
+              "为什么「支持 600+ 模型」本身不等于这些模型的训练配方都被验证过？"
+            ],
+            "formula": ""
+          }
+        ],
+        "formulas": [],
+        "selfCheck": {
+          "claims": [
+            "该仓库自称支持用 PEFT 或全参数方式做 CPT/SFT/DPO/GRPO 训练。",
+            "覆盖 600+ LLM，例子包括 Qwen3.8、DeepSeek-V4、GLM-5.1、InternLM3、Llama4。",
+            "覆盖 300+ MLLM，例子包括 Qwen3-VL、Qwen3-Omni、InternVL3.5、Ovis2.5、GLM5.3、Gemma4、Llava、Phi4。",
+            "标题摘要标注 AAAI 2025。"
+          ],
+          "uncertain": [
+            "输入只有一句仓库描述，没有版本号、benchmark 数值或与其它框架的对比，声称的模型覆盖度未独立核实。",
+            "「600+ LLM / 300+ MLLM」是否为 README 持续更新的统计口径，未知。",
+            "未给出具体训练配方（学习率、并行策略、显存占用），需查仓库文档。",
+            "采集标签里出现 glm、kimi、liger、embedding 等词，摘要未展开，含义待核实。"
+          ]
+        },
+        "teaching": {
+          "progressive": [
+            {
+              "level": "一句话",
+              "text": "一个仓库把 600+ 大模型和 300+ 多模态模型的微调训练收进同一套脚本。"
+            },
+            {
+              "level": "入门",
+              "text": "ms-swift 让你用同一套代码，对大量语言模型和多模态模型做继续预训练、SFT、DPO 或 GRPO；参数更新既能只训 LoRA 这类少量参数（PEFT），也能全参微调。它的价值是省掉「每换模型或算法就重搭一次训练管线」的重复劳动。"
+            },
+            {
+              "level": "进阶",
+              "text": "框架层面的关键取舍是抽象边界：模型侧统一成可加载、可前向、可保存的接口，算法侧统一成对 batch 与 loss 的约定，训练器把 PEFT 与全参当作两种可切换的参数策略。对使用者来说，CPT 只需要文本，SFT 需要输入输出对，DPO 需要偏好对，GRPO 需要可打分或可验证的奖励。模型广度高是工程积累，不代表每个模型×算法组合都有等量验证。"
+            },
+            {
+              "level": "专家",
+              "text": "把 ms-swift 放进后训练工具链比较：有的框架偏算法参考实现、有的偏零代码微调，它的差异点是同时覆盖语言与多模态、同时覆盖 PEFT 与全参，并把偏好优化与可验证奖励 RL 放进同一入口，且背靠 ModelScope 模型生态。适用边界：它是训练与轻量评测的集成层，不是推理服务框架，也不是新算法的研究代码；当你要自定义并行策略、非标准 reward 或新架构算子时，抽象层反而成为阻碍。（推断）"
+            }
+          ],
+          "socratic": [
+            {
+              "q": "如果只有 SFT，为什么还需要 DPO 和 GRPO？",
+              "a": "SFT 只模仿正例，无法表达「两个回答里哪个更好」；DPO 用偏好对拉开好答案概率，GRPO 用可验证奖励做在线探索，能优化 SFT 触及不到的推理行为。"
+            },
+            {
+              "q": "PEFT 这么省显存，为什么还要全参微调？",
+              "a": "低秩更新容量有限；当领域分布与底座差异很大（如继续预训练或新模态对齐）时，全参才能充分改变表征，效果上限更高。"
+            },
+            {
+              "q": "「支持 600+ 模型」对使用者意味着什么、不意味着什么？",
+              "a": "意味着加载与训练路径已适配、社区踩坑少；不意味着每个模型都有等量调参与效果验证，选型仍要自己跑对照实验。"
+            }
+          ],
+          "mechanism": "统一框架要解决的核心矛盾是组合爆炸：模型侧差异（架构、模态、位置编码）与算法侧差异（损失、数据格式、采样方式）会相乘。ms-swift 的解法是让两者只通过稳定接口相遇——模型只承诺加载/前向/保存，算法只消费标准 batch 并产出 loss——这样新增模型不必理解所有算法，新增算法也不必适配所有模型。这也是它能同时覆盖文本与多模态、PEFT 与全参的工程前提。",
+          "boundary": "不适合需要自定义并行、算子级优化，或算法本身还在快速变化的场景；仅凭一行仓库描述也无法支撑「某个模型＋某算法组合效果最好」的判断，模型覆盖数量不能替代效果验证。",
+          "analogyBoundary": "料理机类比失效在于：换刀头不影响食材前处理，而训练里换算法常要重做数据格式与显存规划；而且料理机各刀头同等可靠，框架里不同模型-算法组合的验证程度差别很大。",
+          "misconceptions": [
+            "把「支持 600+ 模型」读成「这些模型都调到了 SOTA」。",
+            "认为 PEFT 与全参只差显存，效果可以互换。",
+            "把 CPT/SFT/DPO/GRPO 当成可随意叠加的同层技术，忽略各自的数据前提。"
+          ],
+          "ownAnalysis": "这份输入只有一行仓库描述，是典型的工具卡而不是论文卡：信息量在生态覆盖，不在方法创新。对求职者来说它的用处是把后训练名词串成一条可执行链路——继续预训练扩知识、SFT 学格式、DPO 学偏好、GRPO 学可验证推理。可疑处是「600+/300+」这类统计会随 README 更新漂移，且描述里没有任何性能数字；要在面试里引用，应补上自己实际跑通的模型与显存数据，而不是复述覆盖数量。（推断）",
+          "officialNotes": [
+            {
+              "position": "仓库标题与摘要自称：用 PEFT 或全参对 600+ LLM 与 300+ MLLM 做 CPT/SFT/DPO/GRPO，并标注 AAAI 2025。",
+              "source": "https://github.com/modelscope/ms-swift"
+            }
+          ],
+          "interviewAnswer": "我关注 ms-swift，是因为后训练岗日常要把 CPT、SFT、DPO、GRPO 跑到各种底座上。它是 ModelScope 的训练框架，一套代码同时覆盖 PEFT 和全参，语言模型 600+、多模态 300+。它的价值在抽象边界：模型只暴露加载、前向、保存，算法只消费标准 batch，组合因此不会爆炸。但我不会只看覆盖数量，会挑一个模型和两个算法自己跑对照再讲。",
+          "studyPath": {
+            "prerequisites": [
+              "PyTorch 训练循环与混合精度",
+              "LoRA / PEFT 原理",
+              "DPO、GRPO 的目标函数"
+            ],
+            "nextSteps": [
+              "在仓库里跑通一个 7B 模型的 LoRA SFT",
+              "换同一模型做 DPO，对比数据格式与显存占用",
+              "阅读 GRPO 配置，理解 reward function 的注入点"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "97fae90c627e5adb",
+      "title": "ageerle/ruoyi-ai - Enterprise-grade AI agent framework with multi-provider LLM management, secure knowledge bases and high-precision RAG, visual workflow orchestration, and multi-agent coordination.",
+      "category": "agent",
+      "channel": "github",
+      "url": "https://github.com/ageerle/ruoyi-ai",
+      "sources": [
+        {
+          "url": "https://github.com/ageerle/ruoyi-ai",
+          "name": "github"
+        }
+      ],
+      "tags": [
+        "agent",
+        "ai",
+        "knowledge",
+        "mcp",
+        "rag",
+        "Java"
+      ],
+      "summary": "Enterprise-grade AI agent framework with multi-provider LLM management, secure knowledge bases and high-precision RAG, visual workflow orchestration, and multi-agent coordination.",
+      "authors": [
+        "ageerle"
+      ],
+      "publishedAt": "2026-09-29T18:54:32+08:00",
+      "knowledgeType": "project",
+      "why": "归属「Agent 理论与实践」方向；命中关键词 agent、multi-agent、workflow、mcp；GitHub 5731 stars；疑似附带开源实现",
+      "relevanceScore": 85.2,
+      "qualitySignals": {
+        "stars": 5732,
+        "forks": 1414,
+        "codeAvailable": true
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "missing": [
+        "formulas"
+      ],
+      "backfillWeight": 1.0,
+      "existingEnrichment": {
+        "id": "97fae90c627e5adb",
+        "tldr": "企业级 AI agent 框架：多厂商 LLM 管理、安全知识库与高精度 RAG、可视化编排、多 agent 协作。",
+        "keyPoints": [
+          "企业级 AI agent 框架，定位是把搭 agent 应用的常用能力一次打包。",
+          "多厂商 LLM 统一管理，模型接入可替换。",
+          "提供安全知识库与高精度 RAG。",
+          "提供可视化工作流编排与多 agent 协作。",
+          "仓库标签：agent、ai、knowledge、mcp、rag、Java。"
+        ],
+        "why": "国内 Java 栈落地 agent 的常见选型参考：模型接入、知识库、编排、多 agent 协作一套打包，适合做技术调研入口。",
+        "difficulty": "easy",
+        "tags": [
+          "agent",
+          "rag",
+          "mcp",
+          "workflow",
+          "java"
+        ],
+        "entities": [
+          "ruoyi-ai",
+          "RAG",
+          "LLM",
+          "multi-agent coordination",
+          "knowledge base"
+        ],
+        "diagram": {
+          "kind": "architecture",
+          "title": "ruoyi-ai 能力分层",
+          "caption": "从上到下：编排、智能体、知识、模型四层能力都压在企业级后台基座上，模型层是可替换的多厂商适配。",
+          "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='ruoyi-ai 四层能力与后台基座'><rect x='56' y='14' width='368' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.6'/><text x='72' y='38' font-size='14' text-anchor='start' fill='var(--accent)' font-weight='bold'>编排层</text><text x='408' y='38' font-size='13' text-anchor='end' fill='currentColor'>可视化工作流编排</text><polygon points='240,60 236,52 244,52' fill='var(--line-1)'/><rect x='56' y='60' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='84' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>智能体层</text><text x='408' y='84' font-size='13' text-anchor='end' fill='currentColor'>多 agent 协作</text><polygon points='240,106 236,98 244,98' fill='var(--line-1)'/><rect x='56' y='106' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='130' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>知识层</text><text x='408' y='130' font-size='13' text-anchor='end' fill='currentColor'>安全知识库 + 高精度 RAG</text><polygon points='240,152 236,144 244,144' fill='var(--line-1)'/><rect x='56' y='152' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='176' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>模型层</text><text x='408' y='176' font-size='13' text-anchor='end' fill='currentColor'>多厂商 LLM 统一管理</text><polygon points='240,198 236,190 244,190' fill='var(--line-1)'/><rect x='56' y='198' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='222' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>基座</text><text x='408' y='222' font-size='13' text-anchor='end' fill='currentColor'>Java 企业级后台</text></svg>",
+          "alt": "竖直分层图：最上面是可视化工作流编排层，往下依次是多 agent 协作的智能体层、安全知识库与高精度 RAG 组成的知识层、多厂商 LLM 统一管理的模型层，最底下是 Java 企业级后台基座。"
+        },
+        "concepts": [
+          {
+            "name": "多厂商 LLM 统一管理 (Multi-Provider LLM Management)",
+            "readable": "在业务代码与各家大模型接口之间加一层适配：统一模型清单、密钥与调用方式，业务侧只按名字或能力选模型，换厂商不用改业务逻辑。",
+            "analogy": "像家里所有电器都插在同一个排插上：不管背后是哪个电厂供电，你只需要一个插头标准。",
+            "analogyBreaksDown": "排插只统一了物理接口，而各厂商模型的上下文长度、工具调用格式、价格与限流差异远大于电压差异，适配层要做的是能力归一化，而不只是换个插头。",
+            "mechanism": "关键设计是把模型接入从散落在业务代码里的 SDK 调用，收敛成一个可配置的模型注册与路由模块；多模型对比、降级与切换于是变成配置问题而不是改代码问题。",
+            "visual": "横向图：左边一排业务模块（对话/知识库/工作流），中间一条模型路由总线用 accent 描边，右边三个不同厂商的模型方块，连线上标注模型名与用途。",
+            "prerequisites": [
+              "LLM 接口调用与鉴权（密钥、限流、重试）",
+              "RAG 基本链路（切片、向量检索、重排、生成）"
+            ],
+            "selfTest": [
+              "统一管理这一层解决了什么工程问题？",
+              "换模型厂商时，为什么业务代码可以不动？",
+              "这一层不能替你解决什么问题？"
+            ],
+            "formula": ""
+          },
+          {
+            "name": "高精度 RAG (High-Precision RAG)",
+            "readable": "先把文档切片并向量化，用问题去检索最相关的片段，通常再经重排与过滤，然后拼进提示词让模型作答，使答案落在私有知识上而不是模型记忆里。",
+            "analogy": "开卷考试：先按目录和关键词找到那几页，再照着那几页答题，而不是凭记忆瞎写。",
+            "analogyBreaksDown": "开卷考试的页码是确定的；向量检索靠相似度猜哪几页相关，切片方式、embedding 与重排都会改变命中，而且模型仍可能无视原文乱答。",
+            "mechanism": "所谓高精度通常靠检索后加一道重排或相关性过滤，并把检索结果与引用一起交给模型；框架的价值是把这条链路做成可配置组件（摘要未给具体算法与指标）。",
+            "visual": "漏斗图：最上层是文档库，向下逐级收窄为切片加向量化、召回 top-k、重排过滤、注入提示词生成，每层右侧标注剩余条目数（示意）。",
+            "prerequisites": [
+              "向量检索与 embedding 基础",
+              "提示词构造与上下文窗口限制"
+            ],
+            "selfTest": [
+              "召回与重排分别解决 RAG 的什么问题？",
+              "为什么切片粒度会影响最终回答质量？",
+              "RAG 让模型不再产生幻觉吗？"
+            ],
+            "formula": "\\mathrm{sim}(q,d)=\\frac{\\mathbf{e}_q\\cdot \\mathbf{e}_d}{\\lVert \\mathbf{e}_q\\rVert\\,\\lVert \\mathbf{e}_d\\rVert}"
+          },
+          {
+            "name": "可视化编排驱动的多 Agent 协作 (Visual Orchestration for Multi-Agent Coordination)",
+            "readable": "在画布上把模型调用、知识库检索、工具与条件分支连成一张可执行图，一个节点可以是一个 agent；多 agent 协作就是把这张图扩成多个 agent 分工、由编排器串行或并行调度。",
+            "analogy": "像用流程图软件排一条审批流：谁在什么条件下把任务交给谁，画出来就能跑，改流程不用重写代码。",
+            "analogyBreaksDown": "审批流每一步都是确定的；LLM 节点的输出不确定，同一张图两次执行结果可能不同，画布上的边也无法表达模型自己决定跳转的开放控制流。",
+            "mechanism": "关键选择是把编排从代码搬到可视化图层，让非算法同学也能改流程；代价是复杂的动态控制流（模型自主选工具、循环重试）仍需在节点内部实现，图只表达静态骨架（推断）。",
+            "visual": "画布式图：三个 agent 节点（写作、检索、审校）用箭头串成主干，旁侧挂一个知识库检索节点，一条虚线回到写作节点表示重试，节点左上角留出拖拽配置的图标位。",
+            "prerequisites": [
+              "DAG/流程编排的基本概念",
+              "工具调用（tool calling）与函数调用协议"
+            ],
+            "selfTest": [
+              "可视化编排相对写代码编排，收益与代价分别是什么？",
+              "多 agent 协作一定要用图来表达吗？",
+              "画布上的静态图为什么表达不了模型自主决策的控制流？"
+            ],
+            "formula": ""
+          }
+        ],
+        "formulas": [],
+        "selfCheck": {
+          "claims": [
+            "仓库自述为『企业级 AI agent 框架』，包含多厂商 LLM 管理、安全知识库与高精度 RAG、可视化工作流编排、多 agent 协作四项能力。",
+            "仓库标签为 agent、ai、knowledge、mcp、rag、Java，说明它面向 Java 生态的 agent 平台定位。",
+            "本条目数据标注 codeAvailable=true，即代码可获取。",
+            "摘要只有一句仓库描述，没有给出架构细节、评测指标或性能数字。"
+          ],
+          "uncertain": [
+            "RAG 的『高精度』具体指什么（是否含重排模型、有无评测指标）摘要未说明，待核实。",
+            "支持哪些 LLM 厂商、是否真的支持 MCP、技术栈细节目前只有标签可依据，待核实仓库 README。",
+            "本条目未采集 star 数、许可证、部署要求与并发能力等工程信息。",
+            "本条目未给公式：摘要不足 400 字且没有任何方法细节，按规则允许 formulas 为空数组。"
+          ]
+        },
+        "teaching": {
+          "progressive": [
+            {
+              "level": "一句话",
+              "text": "企业级 agent 框架，模型接入、知识库、编排、多 agent 协作打包好。"
+            },
+            {
+              "level": "入门",
+              "text": "ruoyi-ai 是开源企业级 agent 框架，把搭 agent 应用常要的四件事做完：统一管理多家大模型接入；提供安全知识库与 RAG；用可视化画布编排工作流；支持多 agent 协同。它偏工程落地与选型，摘要没有算法创新与性能指标。"
+            },
+            {
+              "level": "进阶",
+              "text": "从工程角度看它的分层：底层是可替换的模型接入层（多厂商 LLM 管理），中间是知识层（安全知识库加高精度 RAG），上层是编排层与智能体层（可视化工作流编排、多 agent 协作）。这样的分层把常耦合的三件事解耦——模型选型、知识注入、流程控制各自可改。代价是这类框架的价值取决于组件是否可插拔、是否可观测（推断），而摘要只给了能力清单，没有 RAG 评测口径、支持模型列表或并发可靠性设计。"
+            },
+            {
+              "level": "专家",
+              "text": "放在选型语境里比较：Python 生态常见 LangChain/LangGraph 一类编排库，国内企业 Java 栈更看重与既有后台体系、权限与私有化部署的贴合，ruoyi-ai 的定位接近后者（推断）。它的优势应来自把模型管理、知识资产与流程编排收敛到同一后台，便于密钥与知识资产集中治理；风险是框架成为新的依赖面，可插拔性与可观测性不足时反而拖慢迭代。诚实地说，摘要没有任何基准、压测或效果数字，无法判断高精度 RAG 是否优于自建方案，选型必须回到仓库文档与自测。"
+            }
+          ],
+          "socratic": [
+            {
+              "q": "为什么企业不直接用某个大模型的原生接口，而要在中间加一层多厂商管理？",
+              "a": "为了把模型选型变成配置而不是代码：成本、限流、合规与效果变化时可以切换或降级，业务侧不必改动，同一套知识库与工作流也能复用到不同模型上。"
+            },
+            {
+              "q": "已经有 RAG 了，还需要可视化编排吗？",
+              "a": "RAG 只解决给模型看什么资料；真实业务还需要分支、重试、多步工具调用与人工审核，编排解决的是按什么顺序、在什么条件下做，两者互补。"
+            },
+            {
+              "q": "摘要这么短，为什么这张卡还值得看？",
+              "a": "它是一张选型卡：给出能力边界与代码可获取性，适合作为技术调研入口；但缺少评测与设计细节，不能据此判断效果好坏。"
+            }
+          ],
+          "mechanism": "它为什么这样组织：企业落地 agent 的痛点往往不在单个模型，而是接入杂乱、知识私有、流程多变三件事同时出现，所以框架把模型接入、知识库与 RAG、编排、多 agent 协作做成同一后台的分层能力，任一层可替换。收益是复用与合规：密钥与知识资产集中治理，新业务只需组合已有能力；代价是引入新的依赖面，必须评估可插拔性、可观测性与升级成本，否则改一层会牵动全链路。",
+          "boundary": "不适用或会失效的场景：需要极致性能与自研推理栈优化的团队、只要一次简单模型调用的轻量需求（引入框架反而更重）、以及团队不是 Java 技术栈时迁移成本偏高。摘要没有给压测、并发或效果指标，无法据此判断高精度 RAG 是否真的优于自建方案。",
+          "analogyBoundary": "排插的类比只在接口统一这一层成立：模型的上下文长度、工具调用格式、价格与限流差异需要额外归一化；而且排插不改变电器能力，框架也不改变模型能力，它只改变接入与组合的成本。",
+          "misconceptions": [
+            "以为装上框架就有高精度 RAG：框架只是把链路组件化，效果取决于切片、embedding、重排与提示词。",
+            "把多厂商管理理解成自动挑最优模型：摘要只说统一管理，没有说具备自动路由或自动评测选型。",
+            "以为可视化编排等于模型自主决策：画布表达的是静态骨架，动态工具选择仍需节点内部实现（推断）。"
+          ],
+          "ownAnalysis": "和本批次两篇论文放在一起看：FloWright 与 ScholarEvolve 都在训练侧优化工作流或 harness，ruoyi-ai 是运行侧的编排与知识底座，两边互补（推断）。值得留意：摘要极短，像只截取了仓库描述，所以『高精度 RAG』属于自述而非评测结论；项目名带 ruoyi，可能基于若依后台生态（推断，摘要未说明）。选型核查清单：许可证、模型适配列表、RAG 是否含重排与评测、是否支持标签里出现的 mcp 协议。",
+          "officialNotes": [
+            {
+              "position": "仓库描述口径：企业级 AI agent 框架，含多厂商 LLM 管理、安全知识库与高精度 RAG、可视化工作流编排、多 agent 协作。",
+              "source": "https://github.com/ageerle/ruoyi-ai"
+            }
+          ],
+          "interviewAnswer": "面试聊到企业 Java 栈怎么落 agent，我会提 ruoyi-ai 这类框架：四件事打包——多厂商 LLM 管理、安全知识库与高精度 RAG、可视化编排、多 agent 协作。价值是工程复用与合规，模型、知识、流程三层解耦，模型选型变成配置。局限也要说清：摘要只有能力清单，没有评测，没说支持哪些厂商，高精度 RAG 没有指标，所以选型时要去 README 与基准核实可插拔性与升级成本。",
+          "studyPath": {
+            "prerequisites": [
+              "LLM 接口调用基础",
+              "RAG 链路（切片、向量检索、重排）",
+              "Java 后端与微服务基础"
+            ],
+            "nextSteps": [
+              "读仓库 README 与模块划分，确认模型适配与 RAG 实现",
+              "对比 Python 生态的编排方案做一张选型表",
+              "用一个小知识库跑通端到端 demo 并记录检索命中率"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

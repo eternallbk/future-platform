@@ -1,0 +1,185 @@
+{
+  "batchId": "queue-08",
+  "mode": "full",
+  "date": "2026-10-03",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
+  "items": [
+    {
+      "id": "75ce314787189989",
+      "title": "X-Tree: Tokenizing Reusable Experience for Efficient Agent Generalization",
+      "category": "posttraining",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.32993",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.32993",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.32993",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Multi-step agents are trained on flat action streams: SFT and RLVR weight every token uniformly and ignore the sub-procedures that recur across tasks, the hierarchy that lets humans plan top-down from reusable routines. This structure sits unused, and flat training uses each scarce trajectory less fully than its content allows. Recent agents do use that structure, but only as LLM-written skills in context, never in the weights, so their gains do not generalize beyond retrieval. We instead recover this hierarchy from the data itself and train on it, with no LLM calls. Following text tokenizers, which build a vocabulary by counting alone, we score action spans by reusability and merge canonicalized actions into a reusable eXperience tree (X-Tree). Each X-Tree node captures how a frequent and success-bearing skill is composed from sub-skills, guiding efficient generalization. We integrate X-Tree into three training settings: offline RL, with each node as a training instance; online RLVR, with an adaptive skill bonus; and on-policy self-distillation, with X-Tree as the self-teacher's privileged context. Across WebArena, ScienceWorld, and WebShop at three model scales, X-Tree improves over standard recipes at matched data and budget by up to 4.5% SR on WebArena, 5.8% SR on ScienceWorld and 4.1% success on WebShop. Matched analyses attribute the gains to the X-Tree structure and the three integrations.",
+      "authors": [
+        "Sitao Cheng",
+        "Xunjian Yin",
+        "Zhiyuan Sun",
+        "Yuxuan Li",
+        "Ruiwen Zhou",
+        "Xiangru Jian",
+        "Victor Zhong"
+      ],
+      "publishedAt": "2026-09-26T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「后训练」方向；命中关键词 sft、rlvr、distillation；社区热度 2",
+      "relevanceScore": 77.4,
+      "qualitySignals": {
+        "upvotes": 2
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 77.4,
+      "planDepthScore": 63.61
+    },
+    {
+      "id": "c5702c5feb87be26",
+      "title": "On-Policy or Off-Policy Learning? A Systematic Study of Distillation Dynamics",
+      "category": "posttraining",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.35259",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.35259",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.35259",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "On-policy learning has been argued to reduce catastrophic forgetting, produce sparser parameter updates, and improve generalisation. However, existing comparisons between supervised fine-tuning and reinforcement learning vary many factors simultaneously, making the contribution of rollout policy difficult to isolate. We study the effect of rollout policy in a controlled strong-to-weak distillation setting, by independently varying rollout policy, token-level KL direction, and learning rate across the Llama3 and Qwen2.5 model families and reasoning tasks spanning scientific, medical, and arithmetic domains. Our analysis reveals a nuanced picture of distillation dynamics in which rollout policy does not necessarily play a central role. Instead, token-level KL direction more clearly shapes task performance and output coverage, while learning rate governs forgetting and update sparsity. Analysis of KL gradients and experiments along a continuous student-teacher rollout-policy spectrum explain this pattern: forward KL is remarkably robust to rollout policy, with its performance stable and strong despite changes to the rollout policy, whereas reverse KL is substantially more sensitive and favours student-generated rollouts. On-policy data nevertheless improves generalisation to harder variants of the Countdown arithmetic task under both KL directions, although this advantage does not reliably persist after subsequent RLVR. Our broader conclusions remain robust to removing gradient clipping, using sampled KL estimators, and training on tasks requiring longer reasoning chains. Overall, our results challenge the view that on-policy rollouts are inherently preferable and show that their value depends critically on the objective, evaluation setting, and optimisation hyperparameter",
+      "authors": [
+        "Julianna Piskorz",
+        "Antonin Berthon",
+        "Mihaela van der Schaar"
+      ],
+      "publishedAt": "2026-09-28T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「后训练」方向；命中关键词 rlvr、distillation；社区热度 16",
+      "relevanceScore": 75.6,
+      "qualitySignals": {
+        "upvotes": 16
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 75.6,
+      "planDepthScore": 62.92
+    },
+    {
+      "id": "b5b41c240c3c8cc6",
+      "title": "全网最硬核 OpenClaw 2.0 实测：从 ToC 到 ToB 的试探，Agent 网关能重塑工作流边界吗？",
+      "category": "agent",
+      "channel": "leiphone",
+      "url": "https://leiphone.com/category/yanxishe/7bPyLlZDfncTOw5B.html",
+      "sources": [
+        {
+          "url": "https://leiphone.com/category/yanxishe/7bPyLlZDfncTOw5B.html",
+          "name": "leiphone"
+        }
+      ],
+      "tags": [
+        "资讯",
+        "AI",
+        "中文媒体"
+      ],
+      "summary": "8 月 31 日，OpenClaw 2.0 正式发布（版本号： v2026.8.1 ），933 位贡献者、569 位首次贡献者、16,962 个 PR 提交。这组数字让它成为近期最受关注的开源 Agent 更新之一。（雷峰网） 在过去 230 天里，OpenClaw 曾发布 106 个版本，但在 2.0 到来前已经有近 7 周没有更新了。因此，这一次 OpenClaw 不是给 Agent 多补几个工具，而是把安装、浏览器、云会话、记忆管理、插件、安全、多人协作和恢复能力几乎重新梳理了一遍。 因此，一个急需回答的问题是： OpenClaw 2.0 到底是一次声量很大的版本升级，还是把个人 AI Agent 从一个能干活的工具，往可长期运行、可协作、可审计的系统推了一步？ 为回答这个问题，我们选择 OpenClaw v2026.7.1-2 （1.x） 和官方标注为 2.0 的 v2026.8.1 的新版本进行对比。 我们用同一道复杂长任务，对比两个版本的上手门槛、任务推进和交付表现。 OpenClaw v2026.8.1 (2.0) 配置界面增加“询问 OpenClaw” 01 OpenClaw 2.0 优化了什么？ 8 月 31 日，官方将发布的 v2026.8.1 版本称为“自托管 AI 网关”，核心强调把 Discord、Google Chat、iMessage、Matrix、Microsoft Teams、Signal、Slack、Telegram、WhatsApp、Zalo、WebChat 等消息入口和 AI 编程助手、浏览器、终端、本地/远端机器、插件、记忆系统连在一起。因此，2.0 想做的是：模型负责思考，工具负责执行，网关负责把消息入口、文件系统、远端机器、长期记忆、权限审批和团队协作组织进同一个工作流。 但从用户体验看，真正关键的不是功能清单有多长，而是三条主线： 上手：配置重新组织，但工程门槛还在 对比 v2026.7.1-2，2.0 把很多复杂度散落在命令行、配置文件、模型服务商、插件和渠道连接里，2.0 把这些步骤往更结构化的首次引导里收。实测中，新",
+      "authors": [],
+      "publishedAt": "2026-09-30T16:22:00+08:00",
+      "knowledgeType": "interview",
+      "why": "归属「Agent 理论与实践」方向；命中关键词 agent；中文来源，贴近国内求职语境",
+      "relevanceScore": 59.2,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 59.2,
+      "planDepthScore": 62.62
+    },
+    {
+      "id": "ee167de8caea4748",
+      "title": "AdviSD: Learning to Advise Frontier LLMs via Targeted Multi-Turn Self-Distillation",
+      "category": "posttraining",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.38142",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.38142",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.38142",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "A small trainable advisor can steer a frozen language-model executor using natural-language advice. In addition to learning from task rewards, the advisor can use feedback from completed interactions to improve its advice. However, a plausible correction need not change execution, yet learning from such corrections can still affect the advisor's future decisions in other contexts. In a shared-parameter model, we prove that such corrections can limit learning if their targets favor useful advice less strongly than those of other corrections. Keeping them less often than the rest improves the model's eventual performance compared to learning from every correction. Motivated by this, our method, Advisor Self-Distillation (AdviSD), pairs outcome-based reinforcement learning with self-distillation from a feedback-conditioned copy of the advisor selectively. Reflection proposes corrections, and the advisor scores the same recorded executor response with and without its issued advice, using the magnitude of the difference to select decisions for supervision. This approach does not require executor likelihoods or additional executor rollouts. Experiments with Qwen3-8B advisors for Gemini and Claude show that AdviSD outperforms advisor-GRPO by 4.2-6.4 percentage points on BFCL-v3 and by 3.9-5.1 score points on EnvScaler. The trained advisors generalize to out-of-domain tasks and transfer across different executor versions and model families. AdviSD also beats matched-count random selection, supporting the value of its selection rule.",
+      "authors": [
+        "Rishabh Agrawal",
+        "Hejie Cui",
+        "Shasha Li",
+        "Shanchan Wu",
+        "Sercan Ö. Arık"
+      ],
+      "publishedAt": "2026-09-28T12:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「后训练」方向；命中关键词 grpo、distillation",
+      "relevanceScore": 73.7,
+      "qualitySignals": {
+        "upvotes": 3
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 73.7,
+      "planDepthScore": 62.19
+    },
+    {
+      "id": "071d08582672f10b",
+      "title": "The Low-Rank Structure of VLA Reinforcement Learning",
+      "category": "worldmodel",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.34599",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.34599",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.34599",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Reinforcement learning (RL) is increasingly used to post-train vision-language-action (VLA) models, yet how RL reshapes these policies remains poorly understood. We find that RL across widely used flow-based VLA models, including π_{0.5} and GR00T~N1.5/N1.6, on LIBERO, ManiSkill, MetaWorld, and CALVIN induces substantially lower-rank parameter updates that are highly concentrated in the action expert's Timestep Modules, a small and previously overlooked component. Through systematic module-replacement experiments, we further show that these modules capture a disproportionate share of the performance gains from RL. We then characterize what is encoded in these Timestep Modules. First, we show that RL specializes them to the discrete denoising timesteps used during rollouts, and that this discrete-timestep training underlies the low-rank updates. Second, we find that among their outputs, the shift vector changes most distinctly under RL, and through probing, we show that shift update directions strongly predict task success (ROC-AUC up to 99.6%). Third, we find that the geometry of shift updates reflects task relationships, as their pairwise similarity correlates with cross-task transfer patterns. Building on these findings, we show that steering along shift update directions further improves RL-trained policies without additional RL training. Overall, we provide a systematic understanding of how RL reshapes VLA policies by studying how learned signals are encoded in parameter space, offering insights into more efficient and interpretable VLA post-training.",
+      "authors": [
+        "Minjae Oh",
+        "Yoonah Park",
+        "Jongwon Lim",
+        "Yohan Jo"
+      ],
+      "publishedAt": "2026-09-27T12:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「世界模型」方向；命中关键词 vla、vision-language-action；社区热度 1",
+      "relevanceScore": 73.7,
+      "qualitySignals": {
+        "upvotes": 5
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 73.7,
+      "planDepthScore": 62.19
+    }
+  ]
+}

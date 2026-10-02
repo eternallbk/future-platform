@@ -1,0 +1,323 @@
+{
+  "date": "2026-10-03",
+  "generatedAt": "2026-10-03T02:31:20+08:00",
+  "generatedBy": "scripts/plan_agent_batches.py",
+  "policy": "深读清单里可被证据证伪的条目按规则剔除；剔除不删除语料，条目仍留在卡片库可搜索、参与去重。",
+  "rules": {
+    "off-domain": "标题/摘要显示属于另一学科，方法层无可迁移内容",
+    "noise": "命中 deep-read-plan.policy.noiseRules（求职吐槽/情绪帖）或纯 SEO 导流内容",
+    "placeholder": "唯一 URL 为占位符，无真实来源可引用",
+    "job": "岗位帖，事实归 jobs.json，不重复深读",
+    "truncated": "存储摘要是截断片段，无法在不编造的前提下深读"
+  },
+  "skips": [
+    {
+      "id": "ec70af7a045b9f22",
+      "rule": "off-domain",
+      "reason": "标题与摘要均为阿尔茨海默病影像的可解释性（AXIAL），属医学影像诊断，方法层无可迁移到目标方向的内容。",
+      "inPlanQueue": true,
+      "title": "AXIAL: Attention-based eXplainability for Interpretable Alzheimer’s Localized diagnosis using 2D CNNs on 3D MRI brain scans",
+      "category": "foundation",
+      "channel": "s2",
+      "url": "https://doi.org/10.1186/s12911-026-03833-2",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "ad48db42eb955173",
+      "rule": "off-domain",
+      "reason": "摘要为 diffusion MRI 脑白质纤维束追踪（tractography）的 RNN/Transformer 评测，属神经影像学应用，非通用序列建模结论。",
+      "inPlanQueue": true,
+      "title": "A foundation for systematic analysis of transformers and RNNs for tractography",
+      "category": "generative",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.01894v1",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "2cb5ec505adcdc16",
+      "rule": "off-domain",
+      "reason": "摘要为英语语言教育中的 AI 趋势与预测，属教育学综述。",
+      "inPlanQueue": true,
+      "title": "Future of AI in English Language Education: Trends and Predictions",
+      "category": "multimodal",
+      "channel": "s2",
+      "url": "https://doi.org/10.5281/zenodo.18739462",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "e1a60ff5bcdd74ad",
+      "rule": "off-domain",
+      "reason": "摘要为面向领域研究的语言笔记本设计（教育/科研工具），与模型方法无关。",
+      "inPlanQueue": true,
+      "title": "Beyond human readers: designing domain-specific language notebooks for AI-assisted code generation",
+      "category": "multimodal",
+      "channel": "s2",
+      "url": "https://doi.org/10.5281/zenodo.22801493",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "e3c2e19e8960c634",
+      "rule": "off-domain",
+      "reason": "摘要为 AI 在法律领域的适用性、局限与治理，属法学/合规议题。",
+      "inPlanQueue": true,
+      "title": "AI Applicability in Law: Opportunities,Limitations, and Governance in a Hybrid Legal Ecosystem",
+      "category": "multimodal",
+      "channel": "s2",
+      "url": "https://doi.org/10.5281/zenodo.18169951",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "a97194c18ca5df10",
+      "rule": "off-domain",
+      "reason": "摘要为算法正义与负责任 AI 新闻业的比较传播研究，属新闻传播学。",
+      "inPlanQueue": true,
+      "title": "Algorithmic Justice and Responsible AI Journalism: A Comparative Communication Policy Perspective in East Asia",
+      "category": "paper",
+      "channel": "s2",
+      "url": "https://doi.org/10.17613/d0ee4-h2e12",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "2459123f398960a0",
+      "rule": "off-domain",
+      "reason": "摘要为 WiFi CSI 与 IMU 替代的可复现性研究，属无线感知。",
+      "inPlanQueue": true,
+      "title": "Where WiFi Sensing Fails:A Reproducibility Study of CSI-IMU Substitution for Human Activity Recognition",
+      "category": "multimodal",
+      "channel": "s2",
+      "url": "https://openalex.org/W7208797711",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "8398e354a2caa87f",
+      "rule": "off-domain",
+      "reason": "摘要为手法治疗+运动+心理干预的临床试验，属康复医学。",
+      "inPlanQueue": true,
+      "title": "A multimodal manual therapy, exercise, and psychological intervention for painful diabetic neuropathy: the NeuOst feasibility randomised controlled trial.",
+      "category": "multimodal",
+      "channel": "s2",
+      "url": "https://doi.org/10.1097/pr9.0000000000001498",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "56c25a19aad550c4",
+      "rule": "off-domain",
+      "reason": "摘要为可穿戴生物信号的特征生成（DeepFeature），目标域是健康监测，与目标方向的模型方法无交集。",
+      "inPlanQueue": true,
+      "title": "DeepFeature: LLM-Empowered Context-aware Feature Generation for Wearable Biosignals",
+      "category": "paper",
+      "channel": "s2",
+      "url": "https://doi.org/10.1145/3831996",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "f321317c5c6a3438",
+      "rule": "off-domain",
+      "reason": "摘要为耳内加速度计的心跳身份识别，属生物特征识别硬件研究。",
+      "inPlanQueue": true,
+      "title": "AccLock: Unlocking Identity with Heartbeat Using In-Ear Accelerometers",
+      "category": "paper",
+      "channel": "s2",
+      "url": "https://doi.org/10.1145/3832028",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "c0494b509b63aae3",
+      "rule": "off-domain",
+      "reason": "摘要为无序蛋白区域的生成式设计，属蛋白质工程；训练目标虽借用了 RL/稀疏自编码器，但结论不可迁移。",
+      "inPlanQueue": true,
+      "title": "Generative modeling of intrinsically disordered protein regions by reinforcing sparse autoencoder features",
+      "category": "posttraining",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.02189v1",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "6cf8ef4124506a57",
+      "rule": "off-domain",
+      "reason": "摘要为切换拓扑传感器网络的广义 Kalman 一致性滤波，属分布式状态估计/控制理论。",
+      "inPlanQueue": true,
+      "title": "A Dynamic Generalized Kalman Consensus Filter for Switching Sensor Networks",
+      "category": "paper",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.02055v1",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "7a6ec1f53a0bfa09",
+      "rule": "off-domain",
+      "reason": "摘要为大数据在精神病学研究中的进展与约束，属精神病学/流行病学。",
+      "inPlanQueue": true,
+      "title": "Big data and psychiatry: advances, constraints and future directions.",
+      "category": "foundation",
+      "channel": "s2",
+      "url": "https://doi.org/10.1002/wps.70113",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "8b47ba2a673f1961",
+      "rule": "off-domain",
+      "reason": "摘要为从社交媒体主题语料中迭代抽取结构化数据，属计算社会科学方法。",
+      "inPlanQueue": true,
+      "title": "Learning to structure data from user-generated thematic corpora",
+      "category": "paper",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.01463v1",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "49d205ddfa53b616",
+      "rule": "off-domain",
+      "reason": "摘要为异质介质中小吸收阱布置以最小化平均首达时间，属统计物理/扩散理论。",
+      "inPlanQueue": true,
+      "title": "Minimizing capture time with many small traps in heterogeneous media",
+      "category": "paper",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.39990v1",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "f840200576ec6041",
+      "rule": "off-domain",
+      "reason": "摘要为驱动耗散光量子流体的集体激发综述，属量子光学。",
+      "inPlanQueue": true,
+      "title": "Collective excitations of driven-dissipative quantum fluids of light",
+      "category": "paper",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.40110v1",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "06aeb2509b595d9c",
+      "rule": "off-domain",
+      "reason": "摘要为非侵入式脑信号到文本的解码，属神经科学/BCI。",
+      "inPlanQueue": true,
+      "title": "Removing Timing Shortcuts Improves Non-Invasive Brain-to-Text",
+      "category": "paper",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.40359",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "65067c7852d59602",
+      "rule": "off-domain",
+      "reason": "摘要为分子量子动力学模拟的振子-量子比特原语，属量子化学/量子计算。",
+      "inPlanQueue": true,
+      "title": "Oscillator-Qubit Primitives for a Molecular Quantum Dynamics Simulator",
+      "category": "paper",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.40078v1",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "87e3a2859a767275",
+      "rule": "off-domain",
+      "reason": "摘要为埃舍尔《画廊》版画与彭罗斯镶嵌的共形几何分析，属数学/艺术。",
+      "inPlanQueue": true,
+      "title": "Moore, Escher, Penrose: A Conformal Golden Braid",
+      "category": "generative",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.02210v1",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "1cffddbda5b078ac",
+      "rule": "off-domain",
+      "reason": "摘要为计算连续体（云-边-雾）数字孪生框架 Darpan，属分布式系统调度，与 RL 只共享关键词。",
+      "inPlanQueue": true,
+      "title": "Darpan: A Digital Twin Framework for the Next-Generation Computing Continuum",
+      "category": "rl",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.39799v1",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "b267ff96b62b124d",
+      "rule": "off-domain",
+      "reason": "摘要为跨平台数据库客户端 dbx（含 MCP Server 字样但主体是数据库 GUI），不是可深读的技术方法。",
+      "inPlanQueue": true,
+      "title": "t8y2/dbx - 25 MB lightweight cross-platform database client for 100+ databases, including MySQL, PostgreSQL, SQLite, Redis, MongoDB, DuckDB, SQL Server, and Dameng. Built-in AI, MCP Server, CLI, desktop and Docker. | 轻量级跨平台数据库管理工具，支持 MySQL、PostgreSQL、SQLite、Redis、MongoDB、达梦等 100+ 数据库，提供桌面端、Docker、CLI、内置 AI 助手和",
+      "category": "agent",
+      "channel": "gh_trending",
+      "url": "https://github.com/t8y2/dbx",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "df9779ef2a1128bd",
+      "rule": "noise",
+      "reason": "标题与正文是 Codex 海外手机号/GPT-5.6 API 替代的 SEO 导流文，无可核实的工程结论（trend 类）。",
+      "inPlanQueue": true,
+      "title": "Codex一定要海外手机号吗？登录验证与GPT-5.6 API替代方案",
+      "category": "trend",
+      "channel": "programmercarl",
+      "url": "https://programmercarl.com/daichong/0015.codex-phone-verification.html",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "4ee155d21249d863",
+      "rule": "noise",
+      "reason": "牛客求职吐槽帖（面试官滤镜/岗位跟风），命中 plan.policy.noiseRules 的 career-vent。",
+      "inPlanQueue": true,
+      "title": "千万不要对面试官抱有太多滤镜！",
+      "category": "job",
+      "channel": "nowcoder",
+      "url": "https://nowcoder.com/discuss/935450926888812544",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "38a5c854ac8c0e6f",
+      "rule": "noise",
+      "reason": "牛客情绪帖（招聘岗位收缩的体感），命中 plan.policy.noiseRules 的 career-vent。",
+      "inPlanQueue": true,
+      "title": "招聘岗位确实在收缩",
+      "category": "job",
+      "channel": "nowcoder",
+      "url": "https://nowcoder.com/discuss/935301800335245312",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "153213a1b791c02b",
+      "rule": "truncated",
+      "reason": "存储摘要是面经正文的截断片段（结尾为『为什_牛客网_牛客在手』），不足以支撑可证实的深度解析；待人工导入全文。",
+      "inPlanQueue": true,
+      "title": "字节跳动 AI数据运营实习生（自动化方向）-AI数据与安全 一面面经",
+      "category": "job",
+      "channel": "nowcoder",
+      "url": "https://nowcoder.com/discuss/932604724463882240",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "b09e5bcd3bcd6d99",
+      "rule": "placeholder",
+      "reason": "URL 为占位符 https://jobs.bytedance.com/xxx，无真实 JD 链接；按 daily-agent.md 第 3 节不写入 jobs.json，转人工复核。",
+      "inPlanQueue": true,
+      "title": "字节跳动 多模态算法实习生（Seed）",
+      "category": "job",
+      "channel": "inbox",
+      "url": "https://jobs.bytedance.com/xxx",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "07e0024fa4e3d622",
+      "rule": "job",
+      "reason": "腾讯『游戏AI-强化学习算法研究员』岗位帖，对应 jobs.json 中已有的 tencent-game-ai-rl-researcher，不重复深读。",
+      "inPlanQueue": true,
+      "title": "游戏AI-强化学习算法研究员",
+      "category": "rl",
+      "channel": "jobs_tencent",
+      "url": "http://careers.tencent.com/jobdesc.html?postId=1831157606756933632",
+      "stillSearchableInCardLibrary": true
+    },
+    {
+      "id": "ad7ee6cb2ac86747",
+      "rule": "job",
+      "reason": "腾讯『WorkBuddy-Agent Harness 算法工程师』岗位帖，对应 jobs.json 中已有的 tencent-workbuddy-agent-harness，不重复深读。",
+      "inPlanQueue": true,
+      "title": "WorkBuddy-Agent Harness 算法工程师",
+      "category": "job",
+      "channel": "jobs_tencent",
+      "url": "http://careers.tencent.com/jobdesc.html?postId=2098252450778759168",
+      "stillSearchableInCardLibrary": true
+    }
+  ]
+}

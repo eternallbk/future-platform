@@ -1,0 +1,199 @@
+{
+  "batchId": "queue-10",
+  "mode": "full",
+  "date": "2026-10-03",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
+  "items": [
+    {
+      "id": "ca54e0e87014d24a",
+      "title": "NavHarness: Towards Lifelong Embodied Navigation",
+      "category": "worldmodel",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.34276",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.34276",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.34276",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Frontier models can now perform well on individual embodied navigation tasks through multi-round multimodal reasoning with simple tools. Across successive tasks, however, an agent must also rely on an evolving map and earlier search records, both of which may be incomplete or conflict with new observations. We present NavHarness, a training-free embodied harness towards lifelong navigation that makes memory processing part of the navigation loop. During navigation, its multi-round agentic session draws on maps, task records, and house knowledge, checking them against observations and recording corrections to guide its actions. NavHarness preserves this experience across fresh conversations for new tasks or recovery attempts, while outcome verification and run-end summaries support its later reuse. On GOAT-Bench, NavHarness improves s-SR over context-only independent sessions by 18.6 points with Astra and 22.6 with Opus 5. Using SLAM-estimated poses, NavHarness with GPT-6 Astra achieves state-of-the-art task success of 83.7 s-SR with 36.9 e-SR on GOAT-Bench and 85.9 s-SR on IR2R-CE. To understand these gains, we examine how experience is carried between sessions and find that structured recovery handovers outperform length-matched summaries. In extended deployments across houses, consolidation improves navigation beyond retaining maps and task records, with case studies showing how agents use earlier experience to interpret new goals, investigate unresolved questions, and resume failed searches. We suggest that progress towards lifelong navigation depends on how successive reasoning sessions build on prior experience, alongside improvements in single-task capability.",
+      "authors": [
+        "Xunyi Zhao",
+        "Jian Zhou",
+        "Sihao Lin",
+        "Gengze Zhou",
+        "Zerui Li",
+        "Xinyu Yan",
+        "Jiajun Liu",
+        "Anton van den Hengel",
+        "Qi Wu"
+      ],
+      "publishedAt": "2026-09-28T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「世界模型」方向；命中关键词 embodied",
+      "relevanceScore": 64.6,
+      "qualitySignals": {
+        "upvotes": 0
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 64.6,
+      "planDepthScore": 58.71
+    },
+    {
+      "id": "ae5f1b9da8e383f0",
+      "title": "LongTake: Learning to Sustain Dynamics in Long-Horizon Video Generation",
+      "category": "generative",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.38562v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2609.38562v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.CV"
+      ],
+      "summary": "World models, game simulators, and long-take video creation require coherent scene evolution and sustained dynamics over extended durations. Autoregressive (AR) video diffusion provides a natural framework for long-horizon generation, yet extended rollouts often become near-static or lose visual quality. We hypothesize that these failures reflect the limited guidance provided by short-video supervision on how ongoing scene dynamics develops over longer durations. This motivates us to introduce LongTake, a two-stage training pipeline built around Long-Horizon Teacher Forcing (TF) on curated real long videos. Long-Horizon TF trains the AR model to predict later frames conditioned on long ground-truth video prefixes, extending direct supervision beyond the short training horizon. This supervision is designed to help the model sustain dynamics and preserve visual quality during long-horizon generation. Our central finding is that this training stage strengthens direct initialization for distribution matching distillation (DMD) under student self-rollout, without the intermediate few-step distillation stage used in standard pipelines. Under the same five-second DMD training setup, our initialization yields substantially higher dynamic degree than short horizon TF initialization on 30-second rollouts at comparable aesthetic quality, and surpasses the evaluated baselines in both measures. Hybrid DMD further reuses this teacher to extend supervision to later frames of the self-rollout while retaining bidirectional joint supervision over the initial window. On long-horizon self-rollouts, LongTake lies on the Pareto front of dynamic degree and aesthetic quality, and Hybrid DMD attains the highest dynamic degree among evaluated methods at both 30s and 60s.",
+      "authors": [
+        "Byoungwoo Park",
+        "Jaemoo Choi",
+        "Juho Lee",
+        "Yongxin Chen"
+      ],
+      "publishedAt": "2026-09-29T09:23:10+08:00",
+      "knowledgeType": "method",
+      "why": "归属「生成式模型」方向；命中关键词 diffusion、video generation",
+      "relevanceScore": 74.1,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 74.1,
+      "planDepthScore": 58.6
+    },
+    {
+      "id": "bc031c1e6dc62d26",
+      "title": "Validity-Preserving Hierarchical RL for Joint Routing and Switch Placement in EDA",
+      "category": "rl",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.39749v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2609.39749v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.LG"
+      ],
+      "summary": "Routing and switch placement are fundamental combinatorial optimization problems in chip design, requiring the joint optimization of routing topology and physical placement under strict structural, geometric and logical constraints. Existing approaches typically rely on carefully engineered heuristics that incorporate strong problem-specific biases to navigate the enormous space of possible designs. In this work, we introduce a hierarchical reinforcement learning framework for joint routing and switch placement at the level of logical communication routes. Starting from a minimal routing graph, our method progressively constructs increasingly expressive solutions through three coupled operations: switch expansion, switch placement, and route refinement. These operations preserve routing validity by construction, restricting exploration to feasible configurations where every communicating initiator-target pair has one assigned loop-free route. We explore the induced solution space using Gumbel Monte Carlo Tree Search, showing that neural-guided search substantially improves solution quality over non-learning optimization methods. Furthermore, pretraining across floorplans provides a strong initialization for fine-tuning on unseen instances.",
+      "authors": [
+        "Dorian Gailhard",
+        "Ugo Lecerf",
+        "Enzo Tartaglione",
+        "Donatello Conte",
+        "Jhony H. Giraldo"
+      ],
+      "publishedAt": "2026-09-30T01:49:10+08:00",
+      "knowledgeType": "method",
+      "why": "归属「强化学习」方向；命中关键词 reinforcement learning、exploration",
+      "relevanceScore": 70.4,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 70.4,
+      "planDepthScore": 58.49
+    },
+    {
+      "id": "7397e6533ba9328b",
+      "title": "HumanoidToolBench: Benchmarking Humanoid Tool Use from Selection to Mobile Execution",
+      "category": "agent",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.02089v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.02089v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.RO",
+        "cs.AI"
+      ],
+      "summary": "As robotic hardware and learning methods advance, humanoids need tools to perform tasks beyond their inherent physical limits. Successful tool use requires selecting a suitable tool and coordinating manipulation and, when needed, locomotion to complete the task. Existing benchmarks do not jointly evaluate these capabilities on a humanoid. We introduce HumanoidToolBench, an 18-task benchmark spanning three scenarios, three execution levels, and two tool-set modes, together with ToolBook, a dataset of 3.1k demonstrations collected in simulation and on a real Unitree G1. Evaluation of seven policies in simulation and three on the real robot reveals substantial gaps between selecting a suitable tool and completing the task. Focused GR00T N1.7 probes show reduced selection accuracy on unseen tools and continued task execution under unrelated instructions. Code and data are available at https://snu-pi.github.io/HumanoidToolBench/.",
+      "authors": [
+        "Kyochul Jang",
+        "Seohyeon Park",
+        "Ohchul Kwon",
+        "Sangjun Park",
+        "Junhyeok Choi",
+        "Seungyeop Yi",
+        "Chaeyun Kim",
+        "Sangkyu Lee",
+        "Idan Szpektor",
+        "Avi Caciularu",
+        "Jongmin Park",
+        "Youngjae Yu"
+      ],
+      "publishedAt": "2026-10-02T01:21:54+08:00",
+      "knowledgeType": "method",
+      "why": "归属「Agent 理论与实践」方向；命中关键词 tool use；疑似附带开源实现",
+      "relevanceScore": 72.4,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 72.4,
+      "planDepthScore": 57.53
+    },
+    {
+      "id": "7c2cfefa9fa6ab63",
+      "title": "VTR-Bench: A Systematic Benchmark for Evaluating Visual Text Rendering in Video Generation",
+      "category": "generative",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2610.01499",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2610.01499",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.01499",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Recent video generation models can produce highly realistic videos from natural language instructions, with visual quality approaching cinematic standards. Existing evaluation benchmarks, however, predominantly assess visual quality, aesthetic appeal and physical plausibility, while paying limited attention to text, an essential medium for conveying information in everyday scenes. A generated video may appear visually compelling and feature lifelike subjects, yet still render the text within the scene incorrectly. To address this overlooked dimension, we introduce VTR-Bench, a systematic benchmark for evaluating the Visual Text Rendering capabilities of video generation models. VTR-Bench situates text within concrete application scenarios, such as advertisements and scientific videos, with 300 carefully constructed prompts spanning five scenario categories. We develop an automated evaluation pipeline with human alignments that separately assesses text fidelity through carrier-specific transcription and scene and motion requirements through a prompt-specific chain of query. Beyond evaluation, we introduce a Keyframe-Guided Agentic Framework in which a Director agent coordinates image and video generation with visual evaluation, guiding iterative refinement and candidate selection through visual feedback. Experiments on 11 state-of-the-art models reveal widespread difficulties in accurately rendering scene text, with the best-performing model recording an overall word error rate (WER) of 0.250. We further analyze text rendering failures to characterize the challenges faced by current video generation models. These findings highlight visual text rendering as a key challenge for video generation and demonstrate a practical path toward improvement. Code is available at https",
+      "authors": [
+        "Yu Huang",
+        "Jungang Li",
+        "Zhiyuan Wang",
+        "Yonghua Hei",
+        "Song Dai",
+        "Jiayu Yang",
+        "Deyuan Liu",
+        "Xiang Zheng",
+        "Xiaoshuang Shi",
+        "Hao Cheng",
+        "Kaidi Xu"
+      ],
+      "publishedAt": "2026-10-01T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「生成式模型」方向；命中关键词 video generation；社区热度 1",
+      "relevanceScore": 70.6,
+      "qualitySignals": {
+        "upvotes": 1
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 70.6,
+      "planDepthScore": 57.34
+    }
+  ]
+}

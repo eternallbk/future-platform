@@ -1,0 +1,186 @@
+{
+  "batchId": "queue-06",
+  "mode": "full",
+  "date": "2026-10-03",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
+  "items": [
+    {
+      "id": "a2675c908b72c1ca",
+      "title": "Keyword Harnesses Fail Open: A Cheap Diagnostic Ladder for Tool-Use Claims in Small Language Models",
+      "category": "posttraining",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.02142v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.02142v1",
+          "name": "arxiv"
+        },
+        {
+          "url": "https://huggingface.co/papers/2610.02142",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.02142",
+          "name": "canonical"
+        }
+      ],
+      "tags": [
+        "cs.CL"
+      ],
+      "summary": "Keyword-matching benchmarks can credit small models for tool use they never perform. We document such a false positive in a matched-architecture pair of Spanish security language models and propose a ladder of strict, cheap diagnostics. A 661.6M parameter model (approx. 65% code/technical text; no dedicated SFT) and a 1,109M model (web-heavy multi-phase curriculum; 6B-token tool-SFT) share decoder, tokenizer, and special tokens, scoring almost identically on lenient tool-use metrics (B4: 0.660 vs. 0.650). Verbatim-reproduction checks on training examples separate them completely: the 600M emits valid tool calls with generalized arguments on 6/6 examples; the 1B does so on 0/6 across checkpoints. A first-token probe localizes the 1B's failure to a missing prior (prob. $10^{-4}$--$10^{-5}$ on ), which was erased by its web-heavy training phase. A targeted SFT recipe (diverse corpus, 5x higher learning rate, 2,202 steps, ~3.3 GPU-hours) repairs the 1B using three orders of magnitude fewer tokens than the failed phase. On all 269 corpus rows, valid emission rises from 0.100 to 0.959 (600M: 0.926). On 238 unseen prompts, the repaired 1B passes 0.536 vs. the 600M's 0.428 ($p = 0.004$). Embedding-drift checks show the repair did not move the trigger token's tied embedding (97.7% of the bf16 table remains bit-identical), meaning changes live in the surrounding network. Both models over-trigger, rarely answering negative prompts without a call (0.09 for 600M, 0.17 for repaired 1B). Factorial analyses confirm all repair configurations install the format, though suppression benefits from a diverse corpus remain a hypothesis due to seed sensitivity. This cheap diagnostic ladder costs minutes of CPU time and should gate tool-use claims on small models.",
+      "authors": [
+        "Juan S. Santillana"
+      ],
+      "publishedAt": "2026-10-01T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「后训练」方向；命中关键词 sft；疑似附带开源实现",
+      "relevanceScore": 65.4,
+      "qualitySignals": {
+        "upvotes": 0
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 65.4,
+      "planDepthScore": 65.82
+    },
+    {
+      "id": "ffccce0f53a7f7d2",
+      "title": "CARM: Cancellation-Aware Response Masking for LLM Reinforcement Learning",
+      "category": "posttraining",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.02039v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.02039v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.LG",
+        "cs.AI",
+        "cs.CL"
+      ],
+      "summary": "Recent years have witnessed the rapid adoption of reinforcement learning (RL) in large language model (LLM) post-training, with substantial gains in mathematical reasoning and code generation. In practical systems, however, policy updates and differences between rollout and training engines can make sampled responses off-policy. Sequence-level masking addresses this mismatch by deciding whether an entire response should contribute to optimization. A common masking rule uses the length-normalized geometric mean of sampled token probability ratios. Its signed log-ratios can cancel across positions, concealing substantial bidirectional policy drift. We propose \\emph{Cancellation-Aware Response Masking} (CARM), a sequence-level mask that takes the absolute value of each token log-ratio before averaging, preventing opposing probability changes from canceling. We prove that accepted responses satisfy a joint bound on the fraction of sampled-token ratios outside a prescribed band and their mean log-distance beyond its boundaries. Experiments on mathematical reasoning and code generation show that CARM improves mean@16 averaged over AIME 2024/2025/2026 and BeyondAIME by up to $3.13$ percentage points over geometric-mean masking, and increases average pass@1 across four code benchmarks by $2.88$ points over the strongest evaluated baseline. These findings support CARM as a theoretically grounded and effective method for response-level off-policy control in LLM reinforcement learning.",
+      "authors": [
+        "Yafei Zhang",
+        "Songshuo Lu",
+        "Sicong Liao",
+        "Zhi Chen",
+        "Yaohua Tang"
+      ],
+      "publishedAt": "2026-10-02T00:51:56+08:00",
+      "knowledgeType": "method",
+      "why": "归属「后训练」方向；命中关键词 post-training；疑似附带开源实现",
+      "relevanceScore": 65.4,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 65.4,
+      "planDepthScore": 65.82
+    },
+    {
+      "id": "6a22b0c8beb59101",
+      "title": "Network World Models as Environments for Algorithm Design on Complex Systems",
+      "category": "worldmodel",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.01048v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.01048v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.AI"
+      ],
+      "summary": "World models, which simulate an environment and predict how it changes under actions, are increasingly used in real-world applications such as robotics. Complex systems call for the same tool because the effect of an action is not immediate. Seeding nodes for a campaign, or immunizing nodes against an epidemic, changes little on its own; what matters is the outcome that unfolds over the steps that follow. Designing an algorithm that selects such actions to maximize expected performance on a task is inherently iterative, and every candidate must be scored by the outcome it produces. Obtaining that outcome has relied on simulation, whose cost becomes a bottleneck when candidates are evaluated over many sampled trajectories. We propose an action-conditioned Network World Model that learns a network's diffusion dynamics under interventions over time, applies each action to the network, and predicts the outcome that follows. It serves as a fast evaluator inside an algorithm design loop in which a coding agent designs and refines executable algorithms using feedback from full rollouts, action-level credit, and counterfactual probes over alternative interventions. Across eight network tasks and five diffusion models, the designed algorithms match or exceed the strongest reported baseline in 138 of 141 settings while enabling up to 14.5 times faster rollouts than Monte Carlo simulation. Code will be released upon acceptance.",
+      "authors": [
+        "Rishab Alagharu",
+        "Hongji Pu",
+        "Zeeshan Memon",
+        "Xinyuan Song",
+        "Yuntong Hu",
+        "Liang Zhao"
+      ],
+      "publishedAt": "2026-10-01T12:44:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「世界模型」方向；命中关键词 world model；疑似附带开源实现",
+      "relevanceScore": 65.2,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 65.2,
+      "planDepthScore": 65.74
+    },
+    {
+      "id": "eebff77cf06b8b95",
+      "title": "iSEE: Object Permanence Through Self-Supervision",
+      "category": "worldmodel",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.01201v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.01201v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.CV"
+      ],
+      "summary": "Object permanence, keeping track of an object's identity and position while it is occluded, is central to video representations that track, predict and plan. Trackers that achieve it learn from boxes, track identities and visibility labels. On the other hand, self-supervised object-centric methods discover objects without labels: through slot attention, it represents a video as slots that bind to objects and follow them across frames. However, these slots are lost under occlusion, making the desired permanence impossible. Reasoning permanence is a hard problem because it requires to detect when an object becomes occluded, re-identify when object reappears, and keep the object's hidden position continuous, using reapperance as the only learning cue. To address this, we propose iSEE, a novel framework that offers all three aforementioned requirements, without any labels whatsoever. We built iSEE using the following three proposed components: (i) Object evidence modelling: a slot's attention, compared with its own past, reveals when its object is hidden. (ii) Appearance-position separation: two slot streams let the appearance be held for re-identification while the position keeps changing. (iii) Permanence from reappearance: a walker follows the hidden object's position, trained only on where the object reappears. On LA-CATER static, iSEE returns a reappearing object to its own slot after 86% of occlusions, against 32% for SlotContrast, and localises it while hidden within 4.1 mAP of the label-trained SoTA RAM. The two streams also allow downstream planning, with the position stream as the action of a world model. Project page: https://insait-institute.github.io/iSEE/",
+      "authors": [
+        "Pramish Paudel",
+        "Ajad Chhatkuli",
+        "Luc Van Gool",
+        "Danda Pani Paudel"
+      ],
+      "publishedAt": "2026-10-01T15:12:08+08:00",
+      "knowledgeType": "method",
+      "why": "归属「世界模型」方向；命中关键词 world model；疑似附带开源实现",
+      "relevanceScore": 65.2,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 65.2,
+      "planDepthScore": 65.74
+    },
+    {
+      "id": "99373303e219b8c5",
+      "title": "FutureWorlds: Learning Robotic World Models from Alternative Futures",
+      "category": "worldmodel",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.01019v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.01019v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.CV",
+        "cs.RO"
+      ],
+      "summary": "Robotic world models predict action-conditioned future scenes, providing a foundation for understanding action outcomes. However, turning alternative predictions into useful learning signals remains challenging: similar candidates limit informative quality comparisons, while diverging trajectories require persistent maintenance of their individual histories. We introduce FutureWorlds, a framework that unifies candidate construction, history maintenance, and learning from relative quality. Built on a multimodal discrete autoregressive model, FutureWorlds uses diverse beam search during reinforcement learning to construct candidate futures that balance confidence and diversity. Candidate-specific bounded memory preserves scene states and ensures that generation and policy scoring use matching histories. We further propose MemSPO (Memory-Conditioned Search-Guided Policy Optimization), which converts video trajectory rewards into group-relative advantages to optimize the world model. On RT-1, BridgeV2, and RoboCasa, FutureWorlds reduces LPIPS for 32-frame predictions by 14.78%, 20.84%, and 9.12%, respectively, relative to the strongest baseline on each dataset. Under fixed evaluation configurations, only 200 MemSPO updates further improve generation quality and support continued prediction beyond the training horizon. Memory ablations, decoding sensitivity analysis, and optical-flow evaluation show that these gains extend beyond visual quality to more accurate motion prediction and more consistent object states. Project page and code: https://github.com/Alexander-wu/FutureWorlds.",
+      "authors": [
+        "Hao Wu",
+        "Shengju Qian",
+        "Weiyan Wang",
+        "Fan Xu",
+        "Fan Zhang",
+        "Yuanpeng He",
+        "Qingsong Wen",
+        "Yuxuan Liang"
+      ],
+      "publishedAt": "2026-10-01T12:04:31+08:00",
+      "knowledgeType": "method",
+      "why": "归属「世界模型」方向；命中关键词 world model；疑似附带开源实现",
+      "relevanceScore": 65.1,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 65.1,
+      "planDepthScore": 65.7
+    }
+  ]
+}
