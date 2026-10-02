@@ -55,3 +55,6 @@ research/_probe/
 research/_scratch/
 research/__pycache__/
 research/channel_probe.json
+
+# Throwaway screenshots written by the UI guards
+docs/screenshots/_*.png
