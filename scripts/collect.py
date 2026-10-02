@@ -2019,7 +2019,7 @@ def read_json(path: Path, fallback):
     return fallback
 
 
-def build_all_items(state, fresh):
+def build_all_items(state, fresh, cfg=None):
     canonical = state.get("canonical") or {}
     merged = dict(canonical)
     for item in fresh:
@@ -2046,9 +2046,25 @@ def build_all_items(state, fresh):
     # forever. Rebuilding from `canonical` is exactly how that happened: the
     # library sat at 763 with 209 human-removed items still listed.
     blocked_ids = set(state.get("blockedIds") or [])
+    # Drop `unclassified` items from the published corpus.
+    #
+    # WHY: an item with an empty `categoryHits` matched NO keyword for any tracked
+    # direction, so it cannot serve any of them - measured, that bucket is off-topic
+    # news (BYD industry pieces, a chemistry response model, a location-tracking CLI,
+    # Cursor plugin specs, EU AI Act commentary). The reader asked explicitly for
+    # "no news unrelated to job-hunting, interview prep or real technical topics", and
+    # these were 85 of 720 items while also being 11.8% of all attention.
+    #
+    # They are dropped from the OUTPUT only, not from `state["canonical"]`. That
+    # matters: if keywords improve later, `--rescore` reclassifies the stored items
+    # and the good ones come back automatically. The cost of keeping them in state is
+    # a few hundred KB, which is cheap insurance against an irreversible decision.
+    drop_unclassified = bool((((cfg or {}).get("limits")) or {}).get("dropUnclassified", True))
     out = []
     for item in merged.values():
         if blocked_ids and item.get("id") in blocked_ids:
+            continue
+        if drop_unclassified and item.get("category") == "unclassified":
             continue
         row = {k: item.get(k) for k in keep if item.get(k) is not None}
         row.setdefault("sources", [])
@@ -2314,11 +2330,22 @@ def collect_channels(wanted, cfg, per_channel, log):
     """
     results, raw_items = {}, []
 
+    # Per-channel allowance. A flat cap fought the reader's stated priority: 面经 and
+    # 算法题 arrive mostly through `nowcoder`, and capping it at the global 12 kept
+    # `coding` at 56 items while `agent` grew to 130 - even though interview material
+    # is the most perishable content here and the reader wants relatively more of it.
+    # `channelIntakeOverride` lets a scarce, high-value source deliver more per run
+    # without raising the global limit (which would let the bulk research feeds flood
+    # the corpus again).
+    overrides = cfg.get("channelIntakeOverride") or {}
+    caps = {cid: int(overrides.get(cid, per_channel) or per_channel) for cid in wanted}
+
     def task(cid):
         t = time.time()
         attempts: list = []
+        n_cap = caps.get(cid, per_channel)
         try:
-            rows = COLLECTORS[cid](cfg, log, per_channel) or []
+            rows = COLLECTORS[cid](cfg, log, n_cap) or []
             primary_err = None
         except Exception as e:
             rows, primary_err = [], f"{type(e).__name__}: {e}"
@@ -2331,7 +2358,7 @@ def collect_channels(wanted, cfg, per_channel, log):
                     continue
                 log(f"    {cid}: 主源无结果，尝试备用源 {bid}", "warn")
                 try:
-                    alt = COLLECTORS[bid](cfg, log, per_channel) or []
+                    alt = COLLECTORS[bid](cfg, log, caps.get(bid, per_channel)) or []
                 except Exception as e:                              # noqa: BLE001
                     attempts.append({"id": bid, "result": f"error: {type(e).__name__}: {e}"})
                     continue
@@ -2841,7 +2868,10 @@ def run(args) -> int:
     blocked_urls = {str(u).lower().rstrip("/") for u in (state.get("blockedUrls") or [])}
 
     fresh, updated, dup_count, dropped, blocked = [], [], 0, 0, 0
+    unclassified_dropped = 0
     min_rel = float((cfg.get("scoring") or {}).get("minRelevance", 0) or 0)
+    # Default True: keep unclassified items out of the corpus (see the gate below).
+    drop_unclassified = bool((cfg.get("limits") or {}).get("dropUnclassified", True))
 
     for raw in raw_items:
         spec = CHANNEL_SPECS.get(raw.get("sourceId"), {"tier": "P2"})
@@ -2872,6 +2902,17 @@ def run(args) -> int:
                 continue
         if item["relevanceScore"] < min_rel:
             dropped += 1
+            continue
+        # `unclassified` never enters the corpus.
+        #
+        # An item that matched no category keyword cannot serve any tracked direction,
+        # and letting them in wasted part of the 120k-entry de-duplication budget on
+        # content that is invisible anyway (build_all_items drops it from the output).
+        # Dropping at ingest is what makes "we do not keep unclassified cards" true
+        # rather than cosmetic. Counted separately so the log distinguishes
+        # "not good enough" from "matched nothing".
+        if drop_unclassified and item.get("category") == "unclassified":
+            unclassified_dropped += 1
             continue
         cid = deduper.lookup(item)
         if cid:
@@ -2913,19 +2954,35 @@ def run(args) -> int:
     # ------------------------------------------------------------------
     per_cat_cap = int((cfg.get("limits") or {}).get("perCategoryPerRun", 0) or 0)
     if per_cat_cap > 0:
+        # The cap is per category, but the reader wants a specific MIX: interview
+        # write-ups and algorithm problems matter more, and they decay fastest (a 2024
+        # 面经 is nearly worthless for a 2026 application). `categoryIntakeWeight`
+        # scales each category's ceiling, so the desired mix is expressed as data in
+        # collector.config.json and can be retuned without touching this code.
+        intake_w = cfg.get("categoryIntakeWeight") or {}
+        caps = {}
+        for cid in cfg["categories"]:
+            w = float(intake_w.get(cid, 1.0) or 0.0)
+            caps[cid] = int(round(per_cat_cap * w))
         kept, used, trimmed = [], {}, 0
         for it in fresh:
             c = it.get("category") or "trend"
-            if used.get(c, 0) >= per_cat_cap:
+            if used.get(c, 0) >= caps.get(c, per_cat_cap):
                 trimmed += 1
                 continue
             used[c] = used.get(c, 0) + 1
             kept.append(it)
         if trimmed:
-            over = sorted(((c, n) for c, n in used.items() if n >= per_cat_cap),
-                          key=lambda kv: -kv[1])[:5]
-            log(f"per-category cap {per_cat_cap}: dropped {trimmed} item(s); "
-                f"busiest: {', '.join(f'{c}={n}' for c, n in over)}", "info")
+            over = sorted(((c, n) for c, n in used.items()
+                           if n >= caps.get(c, per_cat_cap)), key=lambda kv: -kv[1])[:5]
+            log(f"per-category intake caps {json.dumps(caps, ensure_ascii=False)}: "
+                f"dropped {trimmed} item(s); busiest: "
+                f"{', '.join(f'{c}={n}' for c, n in over)}", "info")
+            # Report the categories the reader cares about, so it is obvious whether
+            # the interview/algorithm mix is actually being fed.
+            for cid in ("coding", "job", "exam"):
+                if caps.get(cid):
+                    log(f"  {cid}: {used.get(cid, 0)}/{caps[cid]} 条", "info")
         fresh = kept
 
     deduper.prune()
@@ -2935,10 +2992,13 @@ def run(args) -> int:
     state["hashes"] = deduper.hashes
 
     log(f"deduped: new={len(fresh)} updated={len(updated)} duplicate_hits={dup_count} "
-        f"dropped={dropped} blocklisted={blocked}", "ok")
+        f"dropped={dropped} blocklisted={blocked} unclassified={unclassified_dropped}", "ok")
     if blocked:
         log(f"  {blocked} item(s) skipped by the blocklist (removed earlier by "
             f"prune_items.py / dedupe_deep.py); they will not come back", "info")
+    if unclassified_dropped:
+        log(f"  {unclassified_dropped} item(s) matched NO category keyword and were not "
+            f"stored (off-topic news cannot serve any direction)", "info")
 
     duration = round(time.time() - t0, 1)
     ok_channels = sum(1 for r in results.values() if r["status"] == "ok")
@@ -3007,7 +3067,7 @@ def run(args) -> int:
         return 0
 
     day = date_key(started)
-    all_items = build_all_items(state, fresh)
+    all_items = build_all_items(state, fresh, cfg)
     stats = compute_stats(all_items)
     # A narrowed run (`--only a,b`) exists to test or re-check specific channels.
     #
@@ -3054,7 +3114,12 @@ def run(args) -> int:
         "generatedAt": iso(now_cst()), "lastRunAt": iso(now_cst()), "date": day,
         "collectorVersion": COLLECTOR_VERSION, "channelsOk": run_record["channelsOk"],
         "channelsTotal": run_record["channelsTotal"], "newItems": len(fresh),
-        "totalItems": len(all_items), "durationSec": duration,
+        # Count what is actually PUBLISHED. `all_items` is the stored corpus, which
+        # still holds `unclassified` entries (kept in state so a later keyword change
+        # can bring the good ones back), but the index drops them - so reporting the
+        # stored count made selfcheck warn "manifest.totalItems=720 but index has 635".
+        "totalItems": len(build_all_items(state, [], cfg)),
+        "storedItems": len(all_items), "durationSec": duration,
         "targetDate": cfg.get("targetDate"), "targetLabel": cfg.get("targetLabel"),
         "status": status, "itemsFile": f"digest/{day}.json", "stats": stats,
         "summary": summary,
@@ -3250,7 +3315,7 @@ def rescore_all(cfg, log) -> int:
     # rescore (see write_taxonomy's docstring).
     write_taxonomy(cfg)
 
-    all_items = build_all_items(state, [])
+    all_items = build_all_items(state, [], cfg)
     atomic_write_json(INDEX_DIR / "index.json",
                       {"generatedAt": iso(now_cst()), "count": len(all_items), "items": all_items})
     atomic_write_json(DATA_DIR / "items.json",

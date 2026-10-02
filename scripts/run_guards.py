@@ -87,6 +87,31 @@ def main() -> int:
         else:
             results.append(("布局溢出体检", False, "audit-layout.mjs missing"))
 
+    # --- Health check: interaction regressions that no static check can see ---
+    #
+    # Both of these were REAL bugs found this way, and both are invisible to every
+    # other check: they neither overflow nor error, the markup is valid, and the DOM
+    # state is correct. Only driving the browser reveals them.
+    #   text-stacking : a `place-items: center` grid split a Chinese label one
+    #                   character per line ("公" above "开"), which read as a broken
+    #                   table column;
+    #   collapse      : the author rule `.formula-body { display: grid }` beat the
+    #                   user-agent `[hidden] { display: none }`, so every collapse
+    #                   control set the attribute, updated aria, and changed nothing
+    #                   on screen - the button looked completely dead.
+    if not args.skip_layout:                      # same browser cost class as layout
+        for label, script, extra in (
+            ("文字竖排（一字一行）体检", "verify-text-stacking.mjs",
+             ["--routes", "dashboard,knowledge,formulas,pipeline,skills,exam"]),
+            ("折叠控件行为回归", "verify-collapse.mjs", ["--route", "formulas"]),
+        ):
+            p = SCRIPTS / script
+            if p.exists():
+                ok, tail = run("ui", [NODE, str(p)] + extra, timeout=1500)
+                results.append((label, ok, tail))
+            else:
+                results.append((label, False, f"{script} missing"))
+
     print("")
     print("=" * 74)
     print("产物守卫")

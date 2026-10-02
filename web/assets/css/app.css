@@ -23,6 +23,20 @@
 * { min-width: 0; }
 * { overflow-wrap: break-word; }
 
+/* The `hidden` attribute must win.
+ *
+ * WHY this is needed: `[hidden] { display: none }` lives in the USER-AGENT
+ * stylesheet, so ANY author rule that sets `display` on the same element beats it.
+ * `.formula-body { display: grid }` and `.module-body { ... }` did exactly that, so
+ * the collapse toggles on 公式剖析 and the knowledge cards set the attribute, updated
+ * `aria-expanded`, and reported correct state to the DOM - while the panel stayed
+ * fully visible. The control looked completely dead.
+ *
+ * Every collapse/expand in this app toggles the `hidden` attribute, so this single
+ * rule fixes all of them at once instead of patching each component's display value.
+ */
+[hidden] { display: none !important; }
+
 /* ==========================================================================
    1. APP SHELL
    ========================================================================= */
@@ -198,6 +212,7 @@
   font-size: var(--fs-3xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .nav-item.is-active .nav-count { background: var(--accent); color: var(--accent-fg); }
 .nav-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cat, var(--accent)); flex: 0 0 auto; box-shadow: 0 0 8px -1px var(--cat, var(--accent)); }
@@ -321,6 +336,11 @@ button.chip:hover { border-color: var(--line-2); color: var(--fg-0); background:
   border-radius: var(--r-xs);
   font-size: var(--fs-3xs); font-weight: 700;
   font-variant-numeric: tabular-nums;
+  /* `place-items: center` on an inline-grid makes EVERY child a grid item, and a
+     bare text node is split into one item per character in some engines. Chinese
+     labels therefore stacked vertically: the 认证 column rendered "公" above "开"
+     and the row looked broken. nowrap keeps the label on one line. */
+  white-space: nowrap;
 }
 .badge-ok { background: color-mix(in oklab, var(--ok) 18%, transparent); color: var(--ok); }
 .badge-warn { background: color-mix(in oklab, var(--warn) 18%, transparent); color: var(--warn); }
@@ -1613,19 +1633,45 @@ table.tbl td.num, table.tbl th.num { text-align: right; font-variant-numeric: ta
 #rail-status {
   min-width: 0; max-width: 100%;
   display: flex; flex-wrap: nowrap; align-items: center;
-  overflow: hidden;
+  /* Four pieces (icon, state label, relative time, channel ratio) need ~247px while
+     the rail offers ~207px at a 1200px viewport. `overflow: hidden` silently cut the
+     LAST child: the ratio chip measured 18px through a 57px content box, so its text
+     disappeared completely.
+     The row is a fixed budget, so the pieces must FIT rather than overflow: the icon
+     is decorative and tiny, the label and timestamp are capped and ellipsised, and the
+     ratio chip keeps its intrinsic width. */
+  gap: var(--sp-1);
+  overflow: visible;
 }
 #rail-status > * { min-width: 0; }
 #rail-status > svg { flex: 0 0 auto; }
-/* The label is the flexible element: it truncates so the timestamp and the
-   channel-ratio chip always stay fully visible. The timestamp keeps its
-   `margin-left: auto` so short labels still push it to the right edge, but it is
-   capped so a long relative time ("43 分钟前") cannot itself cause overflow. */
+/* The label gives up space first, and truncates WITH an ellipsis so the truncation is
+   visible rather than silent. It must NOT grow: with `flex: 1 1 auto` it claimed
+   103px for 55px of text while the chip was crushed to 18px, because a growable item
+   absorbs free space before fixed siblings are honoured. `0 1 auto` sizes to content
+   and shrinks only when space actually runs out - which is why BOTH flexible members
+   need an explicit `flex-shrink`, or they simply refuse to give up their content width
+   and the row overflows instead. */
 #rail-status > span:not(.tnum) {
-  flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex: 0 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-#rail-status > span[data-tip="最近一次采集"] { flex: 0 1 auto; max-width: 6.5em; }
-#rail-status > span.tnum { flex: 0 0 auto; white-space: nowrap; }
+/* The timestamp is the element that absorbs slack (it carries `margin-left: auto` so
+   short labels still push it right), but it must not GROW either: measured, with
+   `flex: 1 1 auto` it took 133px for 49px of text and crushed the ratio chip to 26px -
+   the same greedy-sibling bug as the label, just moved one element to the right. */
+#rail-status > span[data-tip="最近一次采集"] {
+  flex: 0 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-3xs);
+}
+/* The ratio chip is the one element that must never be squeezed: 2-6 characters of
+   tabular digits, and it was precisely the thing being clipped away. */
+#rail-status > span.tnum {
+  flex: 0 0 auto; white-space: nowrap;
+  font-size: var(--fs-3xs);
+  padding-inline: 4px;
+}
 
 /* --- Tabs -------------------------------------------------------------- */
 .tabs { display: flex; align-items: center; gap: var(--sp-1); border-bottom: 1px solid var(--line-0); margin-bottom: var(--sp-4); overflow-x: auto; }
@@ -1675,6 +1721,13 @@ table.tbl td.num, table.tbl th.num { text-align: right; font-variant-numeric: ta
    so widening the floor here costs nothing. */
 @media (max-width: 1280px) {
   :root { --aside-w: 300px; }
+  /* The sidebar status line holds four items (state, relative time, channel ratio)
+     which need ~247px of content. Below ~1280px the rail's content box dropped to
+     ~207px and the ratio chip was clipped away entirely - measured: an 18px client box
+     around 57px of content. Widening the rail is the honest fix: the alternative is
+     silently hiding data, and there is room for it here because `.main-inner` still has
+     its own padding. */
+  :root { --rail-w: 272px; }
 }
 
 @media (max-width: 1180px) {

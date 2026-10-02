@@ -390,6 +390,85 @@ function formulaDetailHtml(f, collapsed = false) {
 
 /* ============================== PROBLEMS =============================== */
 
+/* ======================= INTERVIEW PANEL ================================ */
+/**
+ * Renders web/data/interview.json (built by scripts/build_interview_index.py).
+ *
+ * WHY this is its own panel: interview write-ups are the most PERISHABLE content in
+ * the workbench - a 2024 面经 is nearly worthless for a 2026 application - and the raw
+ * `summary` of a forum post is mostly venting plus a referral code. The reader asked
+ * for deeper, better-organised interview material, so this leads with what is still
+ * fresh and answers "which company, which round, what did they ask".
+ *
+ * The extraction is deterministic rules, not an LLM, so it runs every day and every
+ * field can be checked against the source title. Degrades to nothing when absent.
+ */
+function interviewPanel() {
+  const d = state.interview;
+  if (!d || !d.count) return '';
+  const items = Array.isArray(d.items) ? d.items : [];
+  const fresh = items.slice(0, 6);
+  const chip = (name, n, cat) => `<span class="chip" data-cat="${attr(cat || 'coding')}"
+      style="cursor:default">${esc(name)} <span class="tnum" style="opacity:.65">${n}</span></span>`;
+
+  return `
+  <div class="panel" style="margin-bottom:var(--sp-5)">
+    <div class="panel-head"><div class="panel-title">${icon('i-briefcase')} 面经速览（时效优先）</div>
+      <span class="result-line" style="margin-left:auto">${d.count} 条 · 含手撕题 ${d.withCoding} 条</span></div>
+    <div class="panel-body">
+      <div class="prose" style="font-size:var(--fs-2xs);margin-bottom:var(--sp-3)">
+        <p>面经是这套工作台里<strong>时效性最强</strong>的内容，所以按发布时间倒序，并抽取了公司、轮次、结果与考察主题。
+        抽取规则是确定性的（<code>scripts/build_interview_index.py</code>，不用模型），可以逐条对照原帖核对。</p>
+      </div>
+
+      <div class="grid grid-2" style="gap:var(--sp-4)">
+        <div>
+          <div class="eyebrow">公司分布（你正在准备哪几家）</div>
+          <div class="row" style="flex-wrap:wrap;gap:6px">
+            ${(d.companies || []).slice(0, 10).map((c) => chip(c.name, c.count, 'job')).join('') || '<span class="text-3">—</span>'}
+          </div>
+          <div class="eyebrow" style="margin-top:var(--sp-3)">轮次</div>
+          <div class="row" style="flex-wrap:wrap;gap:6px">
+            ${(d.rounds || []).map((c) => chip(c.name, c.count, 'coding')).join('') || '<span class="text-3">—</span>'}
+          </div>
+          <div class="eyebrow" style="margin-top:var(--sp-3)">结果</div>
+          <div class="row" style="flex-wrap:wrap;gap:6px">
+            ${(d.outcomes || []).map((c) => chip(c.name, c.count, 'job')).join('') || '<span class="text-3">—</span>'}
+          </div>
+        </div>
+        <div>
+          <div class="eyebrow">考察主题（决定你该练什么）</div>
+          <div class="row" style="flex-wrap:wrap;gap:6px">
+            ${(d.topics || []).map((c) => chip(c.name, c.count, 'posttraining')).join('') || '<span class="text-3">—</span>'}
+          </div>
+        </div>
+      </div>
+
+      <div class="eyebrow" style="margin-top:var(--sp-4)">最近的面经</div>
+      <ul class="kcard-points" data-cat="coding">
+        ${fresh.map((r) => {
+          // Skip a chip whose text is already visible in the title: many 面经 titles
+          // contain the round ("面经60：江波龙 | 嵌入式软件 | 二面") and the company, so
+          // printing them again read as "…| 二面 · 二面 / 通过 · …".
+          const inTitle = (s) => s && String(r.title).includes(s);
+          const bits = [r.company, r.round, r.outcome].filter((x) => x && !inTitle(x));
+          return `<li><span>${r.url
+            ? `<a href="${attr(safeUrl(r.url))}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a>`
+            : esc(r.title)}
+            <span class="text-3" style="font-size:var(--fs-3xs)">
+              ${bits.length ? ` · ${esc(bits.join(' / '))}` : ''}
+              ${r.publishedAt ? ` · ${esc(String(r.publishedAt).slice(0, 10))}` : ''}
+              ${r.hasCoding ? ' · <b style="color:var(--accent)">含手撕题</b>' : ''}
+            </span></span></li>`;
+        }).join('') || '<li><span class="text-3">暂无</span></li>'}
+      </ul>
+      <div class="text-3" style="font-size:var(--fs-3xs)">
+        生成时间 ${esc(String(d.generatedAt || '—'))} · 规则抽取，未命中公司/轮次的条目按标题原样列出
+      </div>
+    </div>
+  </div>`;
+}
+
 export const ProblemsView = {
   title: '题库定位',
   render(params) {
@@ -429,6 +508,8 @@ export const ProblemsView = {
         </div>
       </div>
     </div>
+
+    ${interviewPanel()}
 
     <div class="panel" style="margin-bottom:var(--sp-5)">
       <div class="panel-head"><div class="panel-title">${icon('i-target')} 主题热力与掌握度</div>

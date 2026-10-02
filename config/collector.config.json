@@ -3,14 +3,21 @@
   "targetDate": "2027-04-01",
   "targetLabel": "目标投递窗口（2027 届春招）",
   "interests": {
-    "multimodal": 1.0,
-    "posttraining": 1.0,
-    "worldmodel": 1.0,
-    "rl": 0.9,
-    "generative": 0.75,
-    "agent": 0.7,
-    "foundation": 0.6,
-    "engineering": 0.65
+    "coding": 1.35,
+    "job": 1.3,
+    "exam": 1.2,
+    "multimodal": 1.1,
+    "posttraining": 1.1,
+    "worldmodel": 1.05,
+    "rl": 1.0,
+    "generative": 0.85,
+    "agent": 0.8,
+    "engineering": 0.8,
+    "foundation": 0.75,
+    "paper": 0.55,
+    "course": 0.6,
+    "trend": 0.45,
+    "unclassified": 0.0
   },
   "http": {
     "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 FutureWorkbench/1.0 (+personal academic research; contact: local)",
@@ -23,7 +30,8 @@
   "limits": {
     "perChannel": 12,
     "maxNewPerRun": 60,
-    "perCategoryPerRun": 8
+    "perCategoryPerRun": 8,
+    "dropUnclassified": true
   },
   "scoring": {
     "freshnessHalfLifeDays": 7.0,
@@ -99,5 +107,31 @@
   "retention": {
     "archiveAfterDays": 90,
     "keepDayFiles": 400
+  },
+  "categoryIntakeWeight": {
+    "coding": 1.8,
+    "job": 1.5,
+    "exam": 1.3,
+    "multimodal": 1.0,
+    "posttraining": 1.0,
+    "worldmodel": 1.0,
+    "rl": 1.0,
+    "generative": 0.9,
+    "agent": 0.9,
+    "engineering": 0.9,
+    "foundation": 0.8,
+    "paper": 0.6,
+    "course": 0.6,
+    "trend": 0.4,
+    "unclassified": 0.0
+  },
+  "channelIntakeOverride": {
+    "nowcoder": 30,
+    "inbox": 40,
+    "jobs_tencent": 20,
+    "jobs_deepseek": 12,
+    "arxiv": 12,
+    "hf_papers": 12,
+    "github": 12
   }
 }

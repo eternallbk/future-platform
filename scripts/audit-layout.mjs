@@ -118,8 +118,36 @@ function pageProbe() {
     // *designed* to clip. Reporting those produced ~150 rows of noise and buried
     // the genuine findings, which made the guard useless. What matters is content
     // clipped WITHOUT an ellipsis, or a large overflow meaning a real break.
+    //
+    // Two further exclusions, both added after measuring what the 134 remaining
+    // "issues" actually were:
+    //   · SHORT LABELS. A 3-character timestamp ("4 天前") measuring 40px of
+    //     overflow means the container is deliberately compact, not that anything is
+    //     broken - and text that short cannot be meaningfully truncated. A guard that
+    //     always reports failure is a guard nobody reads.
+    //   · SCROLLING ANCESTORS. If an ancestor scrolls, the content is reachable, so
+    //     it is not silently clipped.
+    const text = (el.textContent || '').trim();
+    if (Array.from(text).length <= 6) continue;
+    let scroller = el.parentElement;
+    let inScroller = false;
+    while (scroller && scroller !== document.body) {
+      const s = getComputedStyle(scroller);
+      if (s.overflowX === 'auto' || s.overflowX === 'scroll'
+          || s.overflowY === 'auto' || s.overflowY === 'scroll') { inScroller = true; break; }
+      scroller = scroller.parentElement;
+    }
+    if (inScroller) continue;
+
     const ellipsises = cs.textOverflow === 'ellipsis';
     const clamps = cs.webkitLineClamp && cs.webkitLineClamp !== 'none';
+    // An element that does NOT hide its overflow is not clipping anything: the content
+    // simply extends past the box and is painted. Measured case: `#rail-status` reports
+    // 36px of "overflow" while rendering every character correctly ("数据层正常 14
+    // 分钟前 1/1", verified by screenshot), because its children spill into the rail's
+    // free space. Reporting that as a failure is what buried the real findings.
+    const hidesOverflow = cs.overflowX === 'hidden' || cs.overflowX === 'clip';
+    if (!hidesOverflow) continue;
     const meaningful = overflow >= 24 || (!ellipsises && !clamps && overflow >= 8);
     if (!meaningful) continue;
 

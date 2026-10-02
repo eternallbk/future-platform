@@ -214,6 +214,20 @@ if (Test-Path $Redundancy) {
     Write-Log 'analyze_redundancy.py not found, skipping the redundancy audit' 'WARN'
 }
 
+# Interview extract. Interview write-ups are the most perishable content here, so the
+# problem-bank page leads with what is still fresh (company / round / outcome / topics).
+# Deterministic rules, no LLM - so it runs every day and every field is checkable.
+$InterviewIdx = Join-Path $ScriptDir 'build_interview_index.py'
+if (Test-Path $InterviewIdx) {
+    Write-Log 'interview index: extracting company / round / outcome / topics' 'STEP'
+    $ivExit = Invoke-Logged $PythonExe @($InterviewIdx, '--show')
+    if ($ivExit -ne 0) {
+        Write-Log "build_interview_index.py returned $ivExit" 'WARN'
+    }
+} else {
+    Write-Log 'build_interview_index.py not found, skipping the interview index' 'WARN'
+}
+
 # ---------------------------------------------------------------------------
 # 5a. Self-check - integrity / authenticity gate over the produced artifacts
 #     (this also asserts the redundancy thresholds, so a growing pile of

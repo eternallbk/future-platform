@@ -995,6 +995,7 @@ export const state = {
   proposals: null,      // latest deterministic self-iteration proposal file
   enrichment: {},       // layer-2 agent deep-read output, keyed by item id
   redundancy: null,     // optional redundancy audit (analyze_redundancy.py)
+  interview: null,      // optional interview extract (build_interview_index.py)
   enrichedCount: 0,
   papers: [],
   milestones: [],
@@ -1112,7 +1113,7 @@ export const Store = {
     const stamp = Date.now();
     const q = (p) => `${p}?t=${stamp}`;
 
-    const [manifest, digest, jobsKb, learningKb, sourceRegistry, channels, runs, index, proposals, enrichment, deepPlan, redundancy] = await Promise.all([
+    const [manifest, digest, jobsKb, learningKb, sourceRegistry, channels, runs, index, proposals, enrichment, deepPlan, redundancy, interview] = await Promise.all([
       this.json(q('manifest.json')),
       this.json(q('digest/today.json')),
       this.json(q('jobs.json')),
@@ -1127,6 +1128,8 @@ export const Store = {
       // Optional: written by analyze_redundancy.py. Absent on a fresh clone, so it
       // must degrade to null rather than adding a load error to the UI.
       this.json(q('redundancy-report.json'), null),
+      // Optional: written by build_interview_index.py (面经速览 panel).
+      this.json(q('interview.json'), null),
     ]);
 
     state.manifest = manifest;
@@ -1139,6 +1142,7 @@ export const Store = {
     state.proposals = proposals || null;
     state.deepReadPlan = deepPlan || null;
     state.redundancy = redundancy || null;
+    state.interview = interview || null;
 
     /* Items: prefer the flat search index; otherwise reconstruct from runs. */
     let items = [];

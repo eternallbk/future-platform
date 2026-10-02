@@ -147,7 +147,10 @@ add("OK" if mrel else "MISSING", "采集相关度门槛",
 # ================================================ 6. 守卫是否在每日路径上
 for label, script in (
     ("公式渲染守卫", "check-formulas.mjs"),
+    ("公式符号完整性守卫", "tex-audit.mjs"),
     ("布局溢出审计", "audit-layout.mjs"),
+    ("文字竖排体检", "verify-text-stacking.mjs"),
+    ("折叠控件回归", "verify-collapse.mjs"),
     ("关键词自动调优", "tune_keywords.py"),
 ):
     exists = (SCRIPTS / script).exists()
@@ -159,6 +162,19 @@ for label, script in (
             f"{script} 存在但每日流程不调用 -> 问题只能靠人发现")
     else:
         add("MISSING", label, f"{script} 不存在")
+
+# 面经抽取是否在每日路径上（用户要求提升面经比重并细化解析）
+if (SCRIPTS / "build_interview_index.py").exists() and "build_interview_index" in runner:
+    add("OK", "面经结构化抽取", "每日抽取公司/轮次/结果/主题，供题库定位页「面经速览」使用")
+else:
+    add("MISSING", "面经结构化抽取", "build_interview_index.py 未接入每日流程")
+
+# 未分类卡片是否被拒之门外（用户要求不保存无关资讯）
+if "dropUnclassified" in collect:
+    add("OK", "未分类卡片不入库",
+        "采集阶段丢弃 + 索引重建过滤（存储层保留，便于日后关键词改进后重新归类）")
+else:
+    add("MISSING", "未分类卡片不入库", "未分类条目仍会进入语料")
 
 # ================================================ 7. 深读层
 add("OK" if ("selfCheck" in agent and "uncertain" in agent) else "MANUAL",

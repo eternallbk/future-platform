@@ -64,6 +64,9 @@ DATA_FILES = [
     # maintenance signal the reader should be able to see without opening the repo.
     # It contains only counts, token frequency and item titles, no private state.
     "redundancy-report.json",
+    # Interview extract (build_interview_index.py): company / round / outcome /
+    # topics per 面经. Public - it only restates item titles and links.
+    "interview.json",
 ]
 
 # Front-end SOURCE files: the parts are concatenated into app.js at build time,
