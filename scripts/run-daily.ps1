@@ -39,6 +39,7 @@ param(
     [string]$Only = '',        # comma-separated channel ids (debugging)
     [int]$Limit = 0,           # per-channel item cap; 0 = use config value
     [switch]$Status,           # print current status and exit
+    [switch]$Force,            # ignore the freshness guard and fetch anyway
     [switch]$Init              # first-time setup: dirs + config template
 )
 
@@ -143,6 +144,53 @@ if ($Status) {
 
 Write-Log "===== Future daily run started | Shanghai $($Now.ToString('yyyy-MM-dd HH:mm:ss')) =====" 'STEP'
 Write-Log "Python: $PythonExe"
+
+# ---------------------------------------------------------------------------
+# 2b. Single-instance lock.
+#
+#     WHY: this script now has TWO possible triggers - Windows Task Scheduler at
+#     20:00 and the DSH automation at 20:00. Without a lock, both would run a full
+#     collection: the only existing guard was the layer-2 agent day-stamp, which sits
+#     AFTER collection, so the expensive half (network fetch, scoring, dedupe,
+#     scoring writes) would execute twice and the second writer would win.
+#     A named mutex is the right primitive: it is released by the OS even if the
+#     process is killed, so it cannot go stale the way a lock file can.
+# ---------------------------------------------------------------------------
+$script:RunMutex = New-Object System.Threading.Mutex($false, 'Global\FutureWorkbenchDailyRun')
+$haveLock = $false
+try { $haveLock = $script:RunMutex.WaitOne(0) } catch { $haveLock = $false }
+if (-not $haveLock) {
+    Write-Log 'another daily run is already in progress - exiting without doing anything' 'WARN'
+    exit 0
+}
+
+# ---------------------------------------------------------------------------
+# 2c. Freshness guard.
+#
+#     A second trigger that arrives after the first one FINISHED is not caught by the
+#     mutex, and would redo the whole pipeline for no benefit (and re-publish). If the
+#     data layer was already refreshed recently, a scheduled trigger should stand down.
+#     Manual runs pass -Force to fetch anyway, which is what a human debugging wants.
+# ---------------------------------------------------------------------------
+$FreshnessMinutes = 45
+if (-not $Force) {
+    $lastIso = & $PythonExe -c "import json;d=json.load(open(r'$DataDir\manifest.json',encoding='utf-8')) if __import__('os').path.exists(r'$DataDir\manifest.json') else {};print(d.get('lastRunAt') or '')" 2>$null
+    $lastIso = ("$lastIso").Trim()
+    if ($lastIso) {
+        try {
+            $lastDt = [DateTimeOffset]::Parse($lastIso).ToOffset([TimeSpan]::FromHours(8))
+            $ageMin = [math]::Round(([DateTimeOffset]::new($Now, [TimeSpan]::FromHours(8)) - $lastDt).TotalMinutes, 1)
+            if ($ageMin -ge 0 -and $ageMin -lt $FreshnessMinutes) {
+                Write-Log ("data was refreshed $ageMin min ago (< $FreshnessMinutes min) - standing down; " +
+                           "pass -Force to fetch anyway") 'WARN'
+                exit 0
+            }
+            Write-Log "last successful data refresh: $lastIso ($ageMin min ago) - proceeding" 'INFO'
+        } catch {
+            Write-Log "could not parse lastRunAt ('$lastIso') - proceeding anyway" 'WARN'
+        }
+    }
+}
 
 # ---------------------------------------------------------------------------
 # 3. Optional first-time init

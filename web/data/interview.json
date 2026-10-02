@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-02T20:11:24+08:00",
+ "generatedAt": "2026-10-02T20:30:25+08:00",
  "source": "build_interview_index.py (deterministic rules, no LLM)",
  "count": 27,
  "note": "面经时效性最强，按发布时间倒序；公司/轮次/结果/主题由规则抽取，可逐条核对",
@@ -100,7 +100,7 @@
  "outcomes": [
   {
    "name": "通过",
-   "count": 18
+   "count": 19
   },
   {
    "name": "未通过",
@@ -123,10 +123,10 @@
    "lastSeen": "2026-10-02T20:11:22+08:00",
    "company": "理想汽车",
    "round": "一面",
-   "outcome": "",
+   "outcome": "通过",
    "topics": [],
    "hasCoding": false,
-   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+   "summary": "在程序构建链条中，汇编与链接各自承担什么角色，二者核心差异体现在哪里？汇编阶段生成的目标文件通常包含哪些内容，这些内容对后续构建有何意义？链接器在合并多个目标文件与库时，主要解决哪些与符号、地址和引用相关的问题？AUTOSAR 为何采用分层设计，其整体架构通常如何划分？在 AUTOSAR 架构里，M_牛客网_牛客在手,offer不愁"
   },
   {
    "id": "4b6abf3be439f9c7",

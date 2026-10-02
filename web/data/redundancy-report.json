@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T20:11:23+08:00",
+  "generatedAt": "2026-10-02T20:30:25+08:00",
   "corpus": 664,
   "enriched": 116,
   "l0": {
@@ -141,7 +141,7 @@
       ]
     },
     {
-      "token": "专家",
+      "token": "法专",
       "items": 6,
       "categories": {
         "posttraining": 2,
@@ -155,7 +155,7 @@
       ]
     },
     {
-      "token": "法专",
+      "token": "专家",
       "items": 6,
       "categories": {
         "posttraining": 2,
@@ -275,7 +275,7 @@
       ]
     },
     {
-      "token": "风控",
+      "token": "控算",
       "items": 5,
       "categories": {
         "job": 5
@@ -287,7 +287,7 @@
       ]
     },
     {
-      "token": "控算",
+      "token": "风控",
       "items": 5,
       "categories": {
         "job": 5
@@ -452,7 +452,7 @@
       ]
     },
     {
-      "token": "推荐",
+      "token": "荐算",
       "items": 4,
       "categories": {
         "job": 4
@@ -464,7 +464,7 @@
       ]
     },
     {
-      "token": "荐算",
+      "token": "推荐",
       "items": 4,
       "categories": {
         "job": 4
@@ -502,18 +502,6 @@
       ]
     },
     {
-      "token": "下你",
-      "items": 4,
-      "categories": {
-        "coding": 4
-      },
-      "sampleTitles": [
-        "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
-        "面试官：\"介绍一下你怎么排查 CPU 飙高的线上问题的？\"",
-        "面试官：“讲一下你怎么把接口性能从15.8秒优化到 300毫秒的？”"
-      ]
-    },
-    {
       "token": "介绍",
       "items": 4,
       "categories": {
@@ -523,6 +511,18 @@
         "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
         "银行科技岗工作内容介绍——总行科技部",
         "面试官：\"介绍一下你怎么排查 CPU 飙高的线上问题的？\""
+      ]
+    },
+    {
+      "token": "你怎",
+      "items": 4,
+      "categories": {
+        "coding": 4
+      },
+      "sampleTitles": [
+        "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
+        "面试官：\"介绍一下你怎么排查 CPU 飙高的线上问题的？\"",
+        "面试官：“讲一下你怎么把接口性能从15.8秒优化到 300毫秒的？”"
       ]
     }
   ],
@@ -600,7 +600,7 @@
   ],
   "l2_metric": "title-prefix repetition (segmentation-free)",
   "l3_lowInformation": {
-    "shortSummary": 8,
+    "shortSummary": 4,
     "noSummary": 0,
     "unclassified": 0,
     "belowGate": 77,

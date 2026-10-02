@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-02T20:11:25+08:00",
+ "generatedAt": "2026-10-02T20:30:26+08:00",
  "generatedBy": "plan_deep_read.py",
  "policy": {
   "perCategoryMin": 2,
@@ -29,7 +29,7 @@
   "corpus": 664,
   "alreadyEnriched": 116,
   "candidates": 550,
-  "skimmed": 46,
+  "skimmed": 48,
   "selected": 92,
   "categories": 11
  },
@@ -43,7 +43,7 @@
   "coding": {
    "quota": 10,
    "picked": 10,
-   "candidates": 16,
+   "candidates": 14,
    "categoryWeight": 1.0
   },
   "engineering": {
@@ -931,6 +931,24 @@
    }
   },
   {
+   "id": "e49b616b91114a52",
+   "title": "AoqunJin/Awesome-VLA-Post-Training - A collection of vision-language-action model post-training methods.",
+   "category": "worldmodel",
+   "channel": "github",
+   "relevanceScore": 68.4,
+   "depthScore": 62.86,
+   "url": "https://github.com/AoqunJin/Awesome-VLA-Post-Training",
+   "hasSummary": true,
+   "scoreBreakdown": {
+    "relevance": 30.780000000000005,
+    "content": 2.08,
+    "code": 8.0,
+    "peer": 0.0,
+    "trust": 7.000000000000001,
+    "material": 15.0
+   }
+  },
+  {
    "id": "7397e6533ba9328b",
    "title": "HumanoidToolBench: Benchmarking Humanoid Tool Use from Selection to Mobile Execution",
    "category": "agent",
@@ -1033,24 +1051,6 @@
     "relevance": 23.535,
     "content": 18.0,
     "code": 0.0,
-    "peer": 0.0,
-    "trust": 7.000000000000001,
-    "material": 15.0
-   }
-  },
-  {
-   "id": "e49b616b91114a52",
-   "title": "AoqunJin/Awesome-VLA-Post-Training - A collection of vision-language-action model post-training methods.",
-   "category": "worldmodel",
-   "channel": "github",
-   "relevanceScore": 68.4,
-   "depthScore": 62.12,
-   "url": "https://github.com/AoqunJin/Awesome-VLA-Post-Training",
-   "hasSummary": true,
-   "scoreBreakdown": {
-    "relevance": 30.780000000000005,
-    "content": 1.3399999999999999,
-    "code": 8.0,
     "peer": 0.0,
     "trust": 7.000000000000001,
     "material": 15.0
@@ -2095,29 +2095,29 @@
    "why": "看起来不是手撕题（本文归类可能错误）"
   },
   {
+   "id": "09c97b054af752b7",
+   "title": "4.2.3 银行技术面---技术基础类问题（数据库-重中之重）",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
+   "id": "f470beb4b58bd5b0",
+   "title": "请假面了大疆,搞得没心情上班了",
+   "category": "coding",
+   "rule": "category-mismatch",
+   "why": "看起来不是手撕题（本文归类可能错误）"
+  },
+  {
    "id": "d09a269f311b2a28",
    "title": "第一现场上海杨浦高质量大圈品茶工作室海选溪月润清",
    "category": "coding",
    "rule": "category-mismatch",
    "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "4ee155d21249d863",
-   "title": "千万不要对面试官抱有太多滤镜！",
-   "category": "coding",
-   "rule": "category-mismatch",
-   "why": "看起来不是手撕题（本文归类可能错误）"
-  },
-  {
-   "id": "72fbe46b74bb5d67",
-   "title": "Advisory Group on Mathematics and Artificial Intelligence",
-   "category": "course",
-   "rule": "category-mismatch",
-   "why": "看起来不是课程（缺少课程/lecture/tutorial/公开课等标志）"
   }
  ],
  "skimByRule": {
   "referral-code": 3,
-  "category-mismatch": 43
+  "category-mismatch": 45
  }
 }
