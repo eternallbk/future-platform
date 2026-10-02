@@ -90,7 +90,19 @@ try {
   const S = (m, p) => send(m, p, sessionId);
   await S('Page.enable'); await S('Runtime.enable');
   await S('Page.navigate', { url: `${base}/index.html#/${route}` });
-  await sleep(5200);
+  // Poll for the view rather than waiting a fixed time. Against the PUBLISHED site the
+  // payload is ~4 MB over the network, so a fixed 5.2s caught the page mid-load and
+  // reported "no collapsible head found" - a measurement artefact that looks exactly
+  // like a site regression. This check must work against both dist/ and the live URL.
+  await sleep(1200);
+  for (let i = 0; i < 45; i++) {
+    const q = await S('Runtime.evaluate', {
+      expression: `document.querySelectorAll('[data-act="toggle-expand"]').length`,
+      returnByValue: true,
+    });
+    if ((q.result.value || 0) > 0) break;
+    await sleep(1000);
+  }
 
   const evalJson = async (expr) => JSON.parse(
     (await S('Runtime.evaluate', { expression: expr, returnByValue: true })).result.value);

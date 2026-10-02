@@ -17,7 +17,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { serveDir } from './serve-dist.mjs';
+import { serveDir, waitForRender, RENDERED_EXPR } from './serve-dist.mjs';
 
 const CHROME = [process.env.CHROME_PATH,
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -123,7 +123,18 @@ try {
   console.log('='.repeat(74));
   for (const route of routes) {
     await S('Page.navigate', { url: `${base}/index.html#/${route}` });
-    await sleep(2600);
+    // MUST wait for a real render. This guard is a NEGATIVE assertion ("no stacked
+    // text"), so on an empty page it passes trivially - measured against the published
+    // site it reported "未发现竖排文字" while the page still said "数据加载中…". A failure
+    // to render is therefore counted as a failure, not as a clean result.
+    const evaluate = async (expr) => (await S('Runtime.evaluate',
+      { expression: expr, returnByValue: true })).result.value;
+    const rendered = await waitForRender(evaluate, RENDERED_EXPR, 45000);
+    if (!rendered) {
+      console.log(`  [FAIL] ${route}   页面未完成渲染（无法判定，视为失败）`);
+      total++;
+      continue;
+    }
     const r = await S('Runtime.evaluate', { expression: PROBE, returnByValue: true });
     const bad = JSON.parse(r.result.value);
     if (bad.length) {

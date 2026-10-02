@@ -31,9 +31,40 @@ const MIME = {
 };
 
 /**
- * Start serving `rootDir` on an ephemeral port.
- * @returns {Promise<{url: string, close: () => Promise<void>}>}
+ * Wait until the SPA has actually rendered its view.
+ *
+ * WHY this matters more than it looks: every UI guard here is a negative assertion
+ * ("no stacked text", "nothing clipped"). Against an EMPTY page they all pass
+ * trivially. Measured: `verify-text-stacking.mjs` reported "未发现竖排文字" against the
+ * published site while the page still said "数据加载中…" - the published payload is
+ * ~4 MB over the network, so a fixed wait is not enough. A guard that succeeds because
+ * nothing rendered is worse than no guard, because it reports safety it never checked.
+ *
+ * @param {(expr: string) => Promise<any>} evaluate  CDP Runtime.evaluate wrapper
+ *        returning the result value.
+ * @param {string} readyExpr  expression that is true once the view has rendered.
+ * @param {number} timeoutMs
  */
+export async function waitForRender(evaluate, readyExpr, timeoutMs = 45000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      if ((await evaluate(readyExpr)) === true) return true;
+    } catch { /* page still navigating */ }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  return false;
+}
+
+/**
+ * True when the shell has finished loading and the route has real content.
+ * Deliberately checks that the "数据加载中" placeholder is gone AND that the document
+ * has substantial text, so it fails loudly rather than silently passing.
+ */
+export const RENDERED_EXPR =
+  "document.body.innerText.indexOf('数据加载中') === -1"
+  + " && document.body.innerText.length > 800";
+
 export async function serveDir(rootDir) {
   const root = resolve(rootDir);
   if (!existsSync(root)) throw new Error(`serveDir: ${root} does not exist`);
