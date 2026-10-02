@@ -67,6 +67,11 @@ DATA_FILES = [
     # Interview extract (build_interview_index.py): company / round / outcome /
     # topics per 面经. Public - it only restates item titles and links.
     "interview.json",
+    # Corpus audit (audit_corpus.py): per-item verdicts, reasons and the removal
+    # worklist. Published so the maintenance view can show WHY something is a removal
+    # candidate rather than only reporting how many items exist. Titles and reasons
+    # only, no private state.
+    "corpus-audit.json",
 ]
 
 # Front-end SOURCE files: the parts are concatenated into app.js at build time,

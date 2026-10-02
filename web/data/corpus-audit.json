@@ -1,0 +1,267 @@
+{
+ "generatedAt": "2026-10-03T01:46:37+08:00",
+ "corpus": 708,
+ "knowledgeTypes": {
+  "method": 409,
+  "project": 118,
+  "fundamentals": 13,
+  "coding": 36,
+  "job": 30,
+  "interview": 66,
+  "other": 34,
+  "news": 2
+ },
+ "drop": [
+  {
+   "id": "aa59255c96356e14",
+   "title": "Polymer informatics: A review of ai-driven structure-property modeling",
+   "category": "paper",
+   "knowledgeType": "method",
+   "relevance": 72.1,
+   "reason": "与 AI/算法无关的内容",
+   "deepRead": true
+  },
+  {
+   "id": "7d02e98128d5425f",
+   "title": "BEYOND SATISFACTION: PREDICTORS AND CORRELATES OF MARITAL HEALTH",
+   "category": "paper",
+   "knowledgeType": "method",
+   "relevance": 72.1,
+   "reason": "与 AI/算法无关的内容",
+   "deepRead": false
+  },
+  {
+   "id": "be4d858251a79a0a",
+   "title": "PassGPT+: Leveraging Linguistic Priors for Password Modeling",
+   "category": "generative",
+   "knowledgeType": "method",
+   "relevance": 62.4,
+   "reason": "与 AI/算法无关的内容",
+   "deepRead": false
+  },
+  {
+   "id": "cd5b4825996f9d11",
+   "title": "Show HN: Needle2: 14MB agentic LLM for phones, wearables, smart home a",
+   "category": "agent",
+   "knowledgeType": "other",
+   "relevance": 32.3,
+   "reason": "相关度过低（32 < 35）",
+   "deepRead": false
+  },
+  {
+   "id": "e084d5fc649e0405",
+   "title": "Show HN: RULER – Easily apply RL to any agent",
+   "category": "agent",
+   "knowledgeType": "other",
+   "relevance": 32.2,
+   "reason": "相关度过低（32 < 35）",
+   "deepRead": false
+  },
+  {
+   "id": "93fd45570461f7fb",
+   "title": "Introducing MentalHealthBench",
+   "category": "paper",
+   "knowledgeType": "news",
+   "relevance": 28.7,
+   "reason": "相关度过低（29 < 35）",
+   "deepRead": false
+  },
+  {
+   "id": "87b51e435bb25441",
+   "title": "nomic-ai/colnomic-embed-multimodal-3b",
+   "category": "multimodal",
+   "knowledgeType": "other",
+   "relevance": 27.0,
+   "reason": "相关度过低（27 < 35）",
+   "deepRead": false
+  }
+ ],
+ "watch": [
+  {
+   "id": "a1642ac8a891453d",
+   "title": "jonyzhang2023/awesome-embodied-vla-va-vln - A curated list of state-of",
+   "category": "worldmodel",
+   "relevance": 60.2
+  },
+  {
+   "id": "b7b17a114ffa47c7",
+   "title": "XuankunRong/Awesome-LVLM-Safety - A curated list of resources dedicate",
+   "category": "multimodal",
+   "relevance": 58.4
+  },
+  {
+   "id": "beb8222de71bd303",
+   "title": "DravenALG/awesome-vla-wam - A Curated List of Vision-Language-Action (",
+   "category": "worldmodel",
+   "relevance": 55.7
+  },
+  {
+   "id": "8234937befe52479",
+   "title": "SergioTermann/awesome-post-training-RL - A curated list of papers on r",
+   "category": "posttraining",
+   "relevance": 55.4
+  },
+  {
+   "id": "2f54c259537cca42",
+   "title": "ComposioHQ/awesome-claude-skills - A curated list of awesome Claude Sk",
+   "category": "course",
+   "relevance": 53.4
+  },
+  {
+   "id": "12012beb2f76b18b",
+   "title": "showlab/Awesome-Video-Diffusion - A curated list of recent diffusion m",
+   "category": "generative",
+   "relevance": 52.2
+  },
+  {
+   "id": "06f0f09d544b5640",
+   "title": "AI-Efficiency/Awesome-Efficient-Diffusion - A curated list of papers a",
+   "category": "posttraining",
+   "relevance": 52.2
+  },
+  {
+   "id": "fd4f3b82268aa645",
+   "title": "在三张圆明园鼠首照片里，我们看到了3D AI的Harness时刻",
+   "category": "agent",
+   "relevance": 50.5
+  },
+  {
+   "id": "49dee6d5c0b1bd6f",
+   "title": "liudaizong/Awesome-LVLM-Attack - 😎 up-to-date & curated list of awesom",
+   "category": "multimodal",
+   "relevance": 50.0
+  },
+  {
+   "id": "f70b0915b6c9ae6c",
+   "title": "AI办公进入「上下文战争」，百度如何出牌？",
+   "category": "agent",
+   "relevance": 45.6
+  },
+  {
+   "id": "f0d0edeeadc93486",
+   "title": "Muse爆火，dots入场：Personal Agent开始和互联网平台抢入口",
+   "category": "agent",
+   "relevance": 45.3
+  },
+  {
+   "id": "e0e629146a0ff055",
+   "title": "对比 Codex，免费的 AgnesCode 也能在底层算子优化任务中打得有来有回",
+   "category": "agent",
+   "relevance": 45.3
+  },
+  {
+   "id": "c2f6a5d7f09e4caa",
+   "title": "GPT-6 Astra 上手体验：花了一周，它真在电脑里建了座曼哈顿！",
+   "category": "agent",
+   "relevance": 45.3
+  },
+  {
+   "id": "c9d187c10b55197c",
+   "title": "拆解 WorkBuddy、千问办公和豆包工作，它们其实不是同一种产品",
+   "category": "agent",
+   "relevance": 45.2
+  },
+  {
+   "id": "4dfc7feb27f358ba",
+   "title": "实测 Seedance 2.5 vs 可灵 3.0，谁能让我们无痛当上视频导演？",
+   "category": "agent",
+   "relevance": 45.2
+  },
+  {
+   "id": "72fbe46b74bb5d67",
+   "title": "Advisory Group on Mathematics and Artificial Intelligence",
+   "category": "course",
+   "relevance": 44.0
+  },
+  {
+   "id": "3178e26b006c9e5f",
+   "title": "Better prompt caching for GPT-6",
+   "category": "engineering",
+   "relevance": 43.7
+  },
+  {
+   "id": "e7d39fcf160b4158",
+   "title": "Disrupting a coordinated model-distillation campaign",
+   "category": "posttraining",
+   "relevance": 43.2
+  },
+  {
+   "id": "39afa14494a6ae0c",
+   "title": "arXiv最严新规！每人每月最多提交2篇，拒稿不退额度",
+   "category": "paper",
+   "relevance": 43.1
+  },
+  {
+   "id": "6314bd72d02f0b0e",
+   "title": "Async GRPO with LoRA across HF Jobs: a bucket, a proxy, and no NCCL",
+   "category": "posttraining",
+   "relevance": 41.9
+  },
+  {
+   "id": "671a1808641c9864",
+   "title": "Rebuilding AUTOMATIC1111 with Gradio Workflow",
+   "category": "agent",
+   "relevance": 41.9
+  },
+  {
+   "id": "0723bd39029cf894",
+   "title": "Fine-tuning a 350M Model for Better Structured Outputs in 100 GRPO Ste",
+   "category": "posttraining",
+   "relevance": 41.9
+  },
+  {
+   "id": "bda9d49beef12799",
+   "title": "openJiuwen X-Router自演进模型路由技术首发，昇腾亲和，Agent越跑越省，实测减少50+%Token消耗",
+   "category": "agent",
+   "relevance": 41.1
+  },
+  {
+   "id": "eeedabe71ad7374f",
+   "title": "丘成桐新论文致谢了GPT和Claude",
+   "category": "paper",
+   "relevance": 40.4
+  },
+  {
+   "id": "57dd2eb9b69a82c9",
+   "title": "uncbiag/Awesome-Foundation-Models - A curated list of foundation model",
+   "category": "course",
+   "relevance": 39.5
+  },
+  {
+   "id": "96a43b30b8cf8025",
+   "title": "Show HN: NCompass Technologies – yet another AI Inference API, but hea",
+   "category": "engineering",
+   "relevance": 39.4
+  },
+  {
+   "id": "d70d3c6f41e9bcb6",
+   "title": "How UK AISI and EvalEval Are Making Benchmark Results Reproducible",
+   "category": "paper",
+   "relevance": 38.9
+  },
+  {
+   "id": "6031cbf3c385afba",
+   "title": "Give Your Coding Agents a Memory You Own",
+   "category": "agent",
+   "relevance": 38.9
+  },
+  {
+   "id": "ff8d6271cde0ec90",
+   "title": "How Hugging Face Inference Endpoints, Jobs, and Buckets Power Search o",
+   "category": "engineering",
+   "relevance": 38.9
+  },
+  {
+   "id": "7cfb49b85943381c",
+   "title": "Measuring benchmark optimization in speech recognition",
+   "category": "paper",
+   "relevance": 38.9
+  },
+  {
+   "id": "f5dc7d71fa51deb4",
+   "title": "Launch HN: machine0 (YC S26) – Persistent CPU and GPU VMs from the CLI",
+   "category": "agent",
+   "relevance": 37.4
+  }
+ ]
+}

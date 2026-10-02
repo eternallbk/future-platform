@@ -244,6 +244,9 @@ def main(argv=None) -> int:
                     help="never prune items whose category is job (default on)")
     ap.add_argument("--prune-jobs", dest="keep_jobs", action="store_false")
     ap.add_argument("--show", type=int, default=0, help="print this many removal candidates")
+    ap.add_argument("--ids-file", default="",
+                    help="JSON produced by audit_corpus.py --json; its `drop[]` ids are "
+                         "removed exactly, bypassing this script's own heuristics")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
@@ -252,6 +255,24 @@ def main(argv=None) -> int:
     if not items:
         print("items/index.json is empty; nothing to do")
         return 0
+
+    # --- explicit removal list (from the corpus audit) ----------------------
+    # WHY this mode exists: this script's heuristics are broad (importance score,
+    # near-duplicates, noise rules) and are meant for bulk housekeeping. Judging
+    # individual items - "is THIS paper about a topic the workbench tracks?" - needs
+    # reading the item, which audit_corpus.py does. `--ids-file` lets that judgement
+    # drive the removal while still going through THIS script's blocklist machinery,
+    # so the removal is recorded and cannot be undone by the next collection.
+    explicit_ids: set[str] = set()
+    if args.ids_file:
+        report = load(Path(args.ids_file), {}) or {}
+        for row in (report.get("drop") or []):
+            if row.get("id"):
+                explicit_ids.add(row["id"])
+        if not explicit_ids:
+            print(f"  {args.ids_file}: no `drop[].id` entries found")
+        else:
+            print(f"  从 {args.ids_file} 读取到 {len(explicit_ids)} 条待下架 id")
 
     state = load(STATE, {}) or {}
     blocked_ids = set(state.get("blockedIds") or [])
@@ -286,11 +307,21 @@ def main(argv=None) -> int:
     for row in scored:
         it = row["item"]
         iid = it.get("id")
+        if explicit_ids and iid in explicit_ids:
+            remove.append({**row, "removeWhy": "audit_corpus.py 判定为与求职学习无关"})
+            continue
         if iid in dup_ids:
             why = f"与 {next(d['dupOf'] for d in dup_drop if d['item'].get('id') == iid)} 标题近似重复"
             remove.append({**row, "removeWhy": why})
             continue
         if args.keep_jobs and it.get("category") == "job" and row["tier"] != "noise":
+            keep.append(row)
+            continue
+        # With --ids-file the caller has named the exact items to remove, so the broad
+        # heuristics stay out of the way. Without this, passing a 7-item audit list
+        # would ALSO trigger the importance/noise rules and remove a much larger set -
+        # a destructive surprise in a tool whose whole point is precision here.
+        if explicit_ids:
             keep.append(row)
             continue
         if row["tier"] == "noise" or row["score"] < args.min_keep_score:

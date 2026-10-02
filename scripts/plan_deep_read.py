@@ -169,6 +169,7 @@ def depth_score(item: dict) -> tuple[float, dict]:
     """How much does this item deserve a deep read? Higher is better."""
     rel = float(item.get("relevanceScore") or 0)
     cat = item.get("category") or "trend"
+    ktype = str(item.get("knowledgeType") or "other")
 
     content = min(1.0, len(str(item.get("summary") or "")) / 900.0)
     has_code = 1.0 if item.get("codeAvailable") else 0.0
@@ -180,6 +181,30 @@ def depth_score(item: dict) -> tuple[float, dict]:
                "rl", "coding", "foundation", "engineering", "agent"):
         is_material = 1.0
 
+    # Knowledge-type weight: depth should be spent where it BUILDS the library the
+    # reader wants, not merely where papers already are.
+    #
+    # WHY: measured, 23.7% of research papers were already deep-read while only 2.8%
+    # of algorithm problems and 0% of fundamentals were - the exact opposite of the
+    # workbench's purpose. A 算法题 is one of the highest-value things to deep-read
+    # (complexity, approach, pitfalls, which company asks it), and 八股 likewise.
+    # Papers are plentiful and already well covered, so they get a smaller share.
+    #
+    # `project` is deliberately mid: explaining what a framework is FOR is useful, but
+    # there are 118 of them and they do not each need a full breakdown.
+    TYPE_DEPTH_VALUE = {
+        "coding": 1.45,         # 算法题/手撕：写清思路、复杂度、易错点、出处
+        "fundamentals": 1.40,   # 八股/基础：正是要沉淀的知识点
+        "interview": 1.25,      # 面经：提炼公司与考点
+        "method": 0.85,         # 论文/深度解析：量大且已覆盖较多
+        "job": 0.70,            # 岗位进岗位看板，不必逐条深读
+        "project": 0.80,
+        "news": 0.25,
+        "opinion": 0.25,
+        "other": 0.50,
+    }
+    typew = TYPE_DEPTH_VALUE.get(ktype, 0.6)
+
     parts = {
         "relevance": rel * 0.45,
         "content": content * 100 * 0.18,
@@ -189,7 +214,7 @@ def depth_score(item: dict) -> tuple[float, dict]:
         "material": is_material * 100 * 0.15,
     }
     catw = CATEGORY_DEPTH_VALUE.get(cat, 0.5)
-    return round(sum(parts.values()) * (0.6 + 0.4 * catw), 2), parts
+    return round(sum(parts.values()) * (0.6 + 0.4 * catw) * typew, 2), parts
 
 
 FORMULA_CATEGORIES = {
