@@ -1,81 +1,17 @@
 {
- "generatedAt": "2026-10-03T01:46:37+08:00",
- "corpus": 708,
+ "generatedAt": "2026-10-03T01:49:37+08:00",
+ "corpus": 701,
  "knowledgeTypes": {
-  "method": 409,
+  "method": 406,
   "project": 118,
   "fundamentals": 13,
   "coding": 36,
   "job": 30,
   "interview": 66,
-  "other": 34,
-  "news": 2
+  "other": 31,
+  "news": 1
  },
- "drop": [
-  {
-   "id": "aa59255c96356e14",
-   "title": "Polymer informatics: A review of ai-driven structure-property modeling",
-   "category": "paper",
-   "knowledgeType": "method",
-   "relevance": 72.1,
-   "reason": "与 AI/算法无关的内容",
-   "deepRead": true
-  },
-  {
-   "id": "7d02e98128d5425f",
-   "title": "BEYOND SATISFACTION: PREDICTORS AND CORRELATES OF MARITAL HEALTH",
-   "category": "paper",
-   "knowledgeType": "method",
-   "relevance": 72.1,
-   "reason": "与 AI/算法无关的内容",
-   "deepRead": false
-  },
-  {
-   "id": "be4d858251a79a0a",
-   "title": "PassGPT+: Leveraging Linguistic Priors for Password Modeling",
-   "category": "generative",
-   "knowledgeType": "method",
-   "relevance": 62.4,
-   "reason": "与 AI/算法无关的内容",
-   "deepRead": false
-  },
-  {
-   "id": "cd5b4825996f9d11",
-   "title": "Show HN: Needle2: 14MB agentic LLM for phones, wearables, smart home a",
-   "category": "agent",
-   "knowledgeType": "other",
-   "relevance": 32.3,
-   "reason": "相关度过低（32 < 35）",
-   "deepRead": false
-  },
-  {
-   "id": "e084d5fc649e0405",
-   "title": "Show HN: RULER – Easily apply RL to any agent",
-   "category": "agent",
-   "knowledgeType": "other",
-   "relevance": 32.2,
-   "reason": "相关度过低（32 < 35）",
-   "deepRead": false
-  },
-  {
-   "id": "93fd45570461f7fb",
-   "title": "Introducing MentalHealthBench",
-   "category": "paper",
-   "knowledgeType": "news",
-   "relevance": 28.7,
-   "reason": "相关度过低（29 < 35）",
-   "deepRead": false
-  },
-  {
-   "id": "87b51e435bb25441",
-   "title": "nomic-ai/colnomic-embed-multimodal-3b",
-   "category": "multimodal",
-   "knowledgeType": "other",
-   "relevance": 27.0,
-   "reason": "相关度过低（27 < 35）",
-   "deepRead": false
-  }
- ],
+ "drop": [],
  "watch": [
   {
    "id": "a1642ac8a891453d",

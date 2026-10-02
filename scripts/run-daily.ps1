@@ -271,6 +271,23 @@ if (Test-Path $InterviewIdx) {
     Write-Log 'build_interview_index.py not found, skipping the interview index' 'WARN'
 }
 
+# Corpus audit: per-item "is this worth accumulating?" verdicts plus a removal
+# worklist. Report only - removal stays a deliberate human action via
+# `prune_items.py --ids-file`. Run AFTER collection so the published report always
+# describes the corpus that exists now; generating it before collection left a stale
+# report on the site still listing items that had already been removed.
+$CorpusAudit = Join-Path $ScriptDir 'audit_corpus.py'
+if (Test-Path $CorpusAudit) {
+    Write-Log 'corpus audit: per-item knowledge verdicts + removal worklist' 'STEP'
+    $caReport = Join-Path $Root 'web\data\corpus-audit.json'
+    $caExit = Invoke-Logged $PythonExe @($CorpusAudit, '--json', $caReport)
+    if ($caExit -ne 0) {
+        Write-Log "audit_corpus.py returned $caExit" 'WARN'
+    }
+} else {
+    Write-Log 'audit_corpus.py not found, skipping the corpus audit' 'WARN'
+}
+
 # ---------------------------------------------------------------------------
 # 5a. Self-check - integrity / authenticity gate over the produced artifacts
 #     (this also asserts the redundancy thresholds, so a growing pile of
