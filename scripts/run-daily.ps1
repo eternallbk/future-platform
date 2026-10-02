@@ -150,16 +150,22 @@ Write-Log "Python: $PythonExe"
 #
 #     ARCHITECTURE (changed 2026-10-02): there is now exactly ONE trigger - the DSH
 #     automation task, which runs this script when it fires. The Windows Task
-#     Scheduler trigger is DISABLED (task definition kept for manual `schtasks /Run`),
-#     so a single-instance mutex used to guard against two simultaneous triggers is no
-#     longer needed and was removed.
+#     Scheduler trigger is DISABLED, so a single-instance mutex used to guard against
+#     two simultaneous triggers was removed as dead code.
+#
+#     NOTE ON MANUAL RUNS: a disabled scheduled task cannot be started with
+#     `schtasks /Run` (it fails with "could not run because it is disabled", even
+#     though AllowDemandStart is true). The manual entry point is therefore to run
+#     THIS SCRIPT directly:
+#         powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-daily.ps1 -Force
+#     Re-enable the task first (Enable-ScheduledTask) if you specifically want to
+#     exercise the Task Scheduler path.
 #
 #     What remains is the cheap idempotency check that protects against the real
-#     remaining risk: an accidental double fire (a retry, a manual run, a resumed
-#     schedule). If the data layer was refreshed moments ago there is nothing to gain
-#     from redoing the whole pipeline. The window is small (5 min) so it stays out of
-#     the way - any legitimate re-run is at least that far apart - and `-Force`
-#     bypasses it entirely for deliberate refreshes.
+#     remaining risk: an accidental double fire (a retry, a resumed schedule). If the
+#     data layer was refreshed moments ago there is nothing to gain from redoing the
+#     whole pipeline. The window is small (5 min) so it stays out of the way - any
+#     legitimate re-run is at least that far apart - and `-Force` bypasses it.
 # ---------------------------------------------------------------------------
 $FreshnessMinutes = 5
 if (-not $Force) {
