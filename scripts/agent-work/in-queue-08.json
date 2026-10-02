@@ -1,0 +1,105 @@
+{
+ "batchId": "queue-08",
+ "mode": "full",
+ "items": [
+  {
+   "id": "8169a50640e190c4",
+   "title": "PixelDense: Dense Prediction as Representation Alignment for Pixel Diffusion",
+   "category": "generative",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2610.00483",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2610.00483",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2610.00483",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-30T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 61.9,
+   "summary": "Representation alignment (REPA) accelerates diffusion transformer training, but its alignment targets are almost exclusively semantic encoders such as DINOv2 and CLIP. Recent analysis points to spatial structure, not global semantics, as the carrier of the alignment effect, yet dense-prediction foundation models trained to predict that structure remain overlooked as REPA targets. In pixel-space diffusion, SAM2, Depth Anything v2, and Metric3D v2 each outperform the DINOv2-only GenEval baseline, with the two geometric teachers leading the segmentation teacher. A flat sum of all four teachers, however, lands below the best single geometric teacher, as semantic and geometric gradients compete for one denoiser projection. We introduce PixelDense, which routes DINOv2 and SAM2 through a semantic projection stream, routes Depth Anything v2 and Metric3D v2 through a geometric projection stream, and adds a weight-space orthogonality penalty that keeps the two streams in disjoint subspaces. All four teachers are frozen during training and dropped at inference. Applied to PixelGen and DeCo with a single recipe, PixelDense improves GenEval, DPG-Bench, and HPS v2.1, raises PixelGen-XXL's GenEval Overall from 0.7927 to 0.8093, and beats every single-teacher and unfactored multi-teacher variant. In partial-noise reconstruction, independent panoptic, depth, and surface-normal probes show up to 53.1% PQ gain and 36.0% depth AbsRel reduction at τ=0.5 across COCO and Flickr30K. From random initialization, PixelDense also reaches the baseline's peak GenEval 1.23x faster. In SDEdit editing on PIE-Bench, PixelDense keeps more of the source background and layout at every edit strength, raising background PSNR by up to 2.2 dB.",
+   "depthScore": 63.78
+  },
+  {
+   "id": "5f328ad857313df1",
+   "title": "Scaling and Distilling Text Embeddings for Better Diffusibility",
+   "category": "generative",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2610.01016",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2610.01016",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2610.01016",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-10-01T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 58.3,
+   "summary": "Diffusion language models (DLMs) offer a promising alternative to autoregressive (AR) language generation. Recent advances in continuous DLMs, which apply latent diffusion to continuous text embeddings, raise a practical question: which embedding makes the best latent space, i.e., the most diffusible? To answer this, we search through different embeddings and find that scaling the embedding model to stronger ones within the same family (T5 to T5Gemma-1 to T5Gemma-2) greatly improves generative performance. But the raw T5Gemma-2 embeddings are still not optimal. They are so discriminative that even the embeddings of plausible alternative words are separated, which makes the generation vulnerable to imperfect sampling. Consequently, continuous diffusion often fails to reach any of them and ends up at an invalid embedding instead. To address this, we distill T5Gemma-2 into a student encoder that learns the teacher's decoded probabilities as soft labels. Learning from such soft labels makes the student pull the alternative embeddings closer while maintaining the encoding-decoding mechanism. The distilled embeddings form a more connected and diffusible latent space, improving over the vanilla T5Gemma-2 embeddings. As a result, our medium-sized DLM achieves Gen. PPL 17.8 (against real-text PPL 15.4) at real-text entropy on OpenWebText, outperforming GPT-2-M on Gen. PPL.",
+   "depthScore": 62.26
+  },
+  {
+   "id": "e57400cfc63e2ecc",
+   "title": "SILSA: Sliding-Window Slice Latents for Topology-Preserving High-Resolution 3D Generation",
+   "category": "generative",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2610.02201",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2610.02201",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2610.02201",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-10-01T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 56.8,
+   "summary": "High-resolution 3D generation increasingly relies on voxel latents and multi-stage pipelines that first predict active structure and then synthesize local geometry. While effective, this design fragments continuous surfaces into many local tokens, inflates generation cost, and often weakens topological consistency for thin or highly connected shapes. We introduce SILSA, a topology-aware 3D generation framework that represents shapes with compact sliding-window slice latents. Instead of generating expensive voxel tokens, SILSA uses a fixed set of overlapping slices along the three canonical axes, where each token summarizes a local depth window to preserve cross-sectional continuity and support single-stage rectified-flow generation. A Slice VAE encodes oriented surface samples into multi-axis slice latents and reconstructs them with a sparse volumetric decoder, while a Volumetric Anchor Lattice coordinates directional slice streams through a shared 3D workspace. To preserve structural correctness, we introduce slice-level topology supervision that matches persistence diagrams and aligns Betti transitions across neighboring slices. Experiments show that SILSA improves structural fidelity while substantially reducing generation cost. SILSA improves PSNR by 8.7%, coverage by 5.96 absolute points, and Betti error by 9.2% over the strongest baseline, while using 70.0% fewer tokens than the next-most compact baseline and over 98% fewer tokens than sparse or hierarchical tokenizers, effectively reducing training memory by 40.4% and inference time by 58.5%. Qualitative results further show improved preservation of thin structures, repeated components, and long-range connectivity.",
+   "depthScore": 61.63
+  },
+  {
+   "id": "07bc5c3687968645",
+   "title": "携程AI应用开发实习一面（OC）",
+   "category": "job",
+   "channel": "nowcoder",
+   "url": "https://nowcoder.com/discuss/933058120102739968",
+   "sources": [
+    {
+     "url": "https://nowcoder.com/discuss/933058120102739968",
+     "name": "nowcoder"
+    }
+   ],
+   "tags": [
+    "牛客",
+    "面经"
+   ],
+   "publishedAt": "2026-10-01T18:50:15+08:00",
+   "lang": "zh",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 64.6,
+   "summary": "9-23晚上一面，9-24早上OC。感觉是携程很多实习生离职了，很缺人。面试体验非常好，面试官还会帮我总结我说的东西，对问题的描述也非常清晰。40分钟自我介绍实习Agent上下文管理1.对Agent上下文管理有什么了解？2.除了工具压缩还有哪些压缩机制？3.保留什么？压缩什么？采用什么方式？4.什么_牛客网_牛客在手,offer不愁",
+   "depthScore": 25.93
+  }
+ ]
+}

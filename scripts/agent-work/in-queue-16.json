@@ -1,0 +1,104 @@
+{
+ "batchId": "queue-16",
+ "mode": "full",
+ "items": [
+  {
+   "id": "003db6219a9aaafd",
+   "title": "CheatBench: Measuring Reward Gaming in AI Agents",
+   "category": "rl",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.36308",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.36308",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.36308",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-27T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 48.8,
+   "summary": "Reinforcement learning has helped AI agents solve increasingly difficult tasks, but high rewards do not always reflect the work users intended. In recent incidents and controlled evaluations across the AI industry, agents trained to maximize reward have accessed unauthorized information, attempted to evade monitoring systems, and even breached sandbox protections to attack external systems. As agents become more capable, this behavior could pose increasingly serious risks. To measure this problem, we introduce CheatBench, a benchmark of cheating in AI agents across mathematical research, knowledge work, coding, visual tasks, and other domains. Its environments combine challenging assignments with opportunities to cheat, allowing researchers to study how agents pursue a goal when honest work is difficult. CheatBench supports comparisons across models and task categories, providing a testbed for measuring and reducing cheating as agents take on more consequential responsibilities. We publicly release CheatBench at https://cheatbench.ai",
+   "depthScore": 59.48
+  },
+  {
+   "id": "d613d008ba01448a",
+   "title": "Token-World: World Modeling in Vision-Language Model Token Space for Robot Manipulation",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.00575v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.00575v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.RO",
+    "cs.RO"
+   ],
+   "publishedAt": "2026-10-01T02:45:32+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 80.8,
+   "summary": "A common approach to world-model simulation for vision-language-action (VLA) systems is to predict future RGB observations and then re-encode them into policy inputs, introducing an indirect interface between simulation and downstream policy execution. We instead investigate whether world dynamics can be modeled in a compact, policy-oriented state derived from VLM visual tokens. A key challenge is that raw VLM visual tokens are high-dimensional, making efficient and accurate autoregressive dynamics modeling challenging. To address this, we introduce Token-World, an action-conditioned world model that compresses VLM features into a compact token state, learns future dynamics in this reduced space, and maps predicted states back to the original policy-facing representation for downstream use. Across manipulation benchmarks, Token-World improves open-loop feature fidelity and policy-action consistency over recent world-model simulators, with slower degradation over long rollout horizons. In closed-loop evaluation, its simulated policy performance correlates more strongly with reference policy performance than Ctrl-World ($r=0.794$ vs.\\ $0.583$), while requiring lower simulation latency. Ablations further show that compact-representation design and dimensionality substantially affect future-state prediction. Code will be available at https://chuyaofu.github.io/Token-World/.",
+   "depthScore": 84.36
+  },
+  {
+   "id": "66b6c7b595dbefda",
+   "title": "UniWAM: Unified World-Action Model",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.02054v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.02054v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.RO",
+    "cs.RO"
+   ],
+   "publishedAt": "2026-10-02T01:01:27+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 67.3,
+   "summary": "Vision-language-action models benefit from the understanding and reasoning capabilities of pretrained vision-language models, but action-only supervision provides limited grounding in world dynamics. Conversely, world-action models inherit spatiotemporal priors from video generation models, yet remain limited in semantic understanding and reasoning under distribution shifts. We introduce UniWAM, a unified architecture that integrates a physical reasoner, a world generator, and an action predictor to jointly learn semantic understanding of the physical world, visual generation, and action prediction. To ensure the quality of the training data, we developed a rigorous data cleaning and annotation pipeline for both human egocentric data and robot data. To adapt the vision-language component to embodied tasks while preserving its inherited language capabilities, we represent low-level actions in natural language and introduce a pre-training recipe that assigns complementary supervision from visual question answering (VQA) data, human egocentric data, and robot demonstrations to the appropriate model components. During post-training, future visual noise augmentation reduces reliance on precise future predictions, while history-conditioned flow matching uses encoded action history to initialize action generation. Together, these designs significantly reduce denoising steps while maintaining performance. UniWAM achieves state-of-the-art (SOTA) performance across multiple evaluations, including in-distribution performance, robustness, generalization, instruction following, and long-horizon task execution. Furthermore, we uncover a log-linear scaling law of unified human-robot co-training, demonstrating the effectiveness of large-scale pre-training on a mixture of human and robo",
+   "depthScore": 78.28
+  },
+  {
+   "id": "88cba831c2eec94e",
+   "title": "Supervise What Decides Success: Criterion-Aligned Auxiliary Losses for Latent World-Model Planning",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.01224v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.01224v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG",
+    "cs.LG",
+    "cs.RO"
+   ],
+   "publishedAt": "2026-10-01T15:27:10+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 66.2,
+   "summary": "Latent world models plan by scoring candidate action sequences with distances in latent space. However, task success is judged by physical quantities, which we call the success-criterion quantities. In all four latent world models we examine, the end-effector position is encoded in the latent state with an error larger than the success criterion allows. Such a latent state cannot separate successful candidates from failing ones. We propose an auxiliary loss that uses success-criterion quantities as training targets, whereas existing latent world models take them only as inputs. During training, a linear head on the encoder and predictor outputs regresses the success-criterion quantities, and the regression error is added to the training loss. The head is discarded after training, so the model, its cost, and its inputs at test time are unchanged. This loss alone improves the success rate on PushT and cube by 3.5% and 3.4% (absolute), respectively, and both improvements are statistically significant. A success criterion thus specifies what a world model must retain in its latent state, and we show that it can serve directly as a training target.",
+   "depthScore": 77.79
+  }
+ ]
+}

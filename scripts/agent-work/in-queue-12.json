@@ -1,0 +1,103 @@
+{
+ "batchId": "queue-12",
+ "mode": "full",
+ "items": [
+  {
+   "id": "2cb831a4994e7d2c",
+   "title": "Train for Accuracy, Execute at Scale: Architecture-Preserving Inference for Equivariant Atomistic Foundation Models",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.01036v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.01036v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cond-mat.mtrl-sci",
+    "cond-mat.mtrl-sci"
+   ],
+   "publishedAt": "2026-10-01T12:23:42+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 65.9,
+   "summary": "Equivariant atomistic foundation models provide broadly transferable interatomic potentials trained against quantum-mechanical reference data, but their repeated execution at simulation scale remains computationally and memory intensive. We present Symmetrix-XL, an inference engine that scales pretrained MACE checkpoints without retraining, distillation, or modification of their learned weights. It combines streamed-edge execution to avoid graph-wide materialization of expanded edge intermediates, model-specialized code generation to compile checkpoint-specific operators, and tiled execution to reuse a bounded device-memory workspace. On complete LAMMPS-step benchmarks, Symmetrix-XL reduces inference time by 3.1-5.0 times relative to ML-IAP + cuEquivariance across tested A100 and RTX 5090 workloads. On a single A100 80 GB GPU, the tested MACE-OMAT-0 capacity boundary increases from 24,565 atoms to 11.24 million atoms. This substantially lowers the hardware threshold for simulations that would otherwise require spatial decomposition across many GPUs and compute nodes. The same backend weak-scales to 703 million atoms on 64 A800 GPUs at 93.8 percent efficiency. Energy, force, stress, molecular-dynamics stability, and Matbench Discovery evaluations reproduce reference MACE behavior within measured tolerances. Case studies spanning solid-state, interfacial, and reactive systems demonstrate the increased capacity in realistic workflows. These results establish post-training execution as a scaling axis complementary to model redesign, compression, and distributed scale-out, and show that the practical accuracy-cost frontier depends on both model architecture and inference execution.",
+   "depthScore": 77.66
+  },
+  {
+   "id": "d5797a577a0b337d",
+   "title": "LineupRL: Verifiable Reinforcement Learning for Time Series Captioning via Caption-to-Series Identification",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.01800v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.01800v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.AI",
+    "cs.AI"
+   ],
+   "publishedAt": "2026-10-01T22:43:21+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 81.1,
+   "summary": "Time series captioning is a fundamental step in time series understanding and can also serve as the bridge between signal and natural language. Supervised fine-tuning (SFT) relies on a larger model's captions and cannot exceed their quality. Reinforcement learning (RL) can, but its rewards were designed for other modalities and other tasks, and they transfer poorly to open-ended generation in the time series domain. We address this by proposing LineupRL, a reinforcement learning with verifiable rewards (RLVR) pipeline whose reward is caption-to-series identification. The reward model is a frozen large language model (LLM) verifier that reads the generated caption and the candidate time series as raw values, never the chart, and must pick the described time series from multiple distractors. Matching is a far lighter demand on the verifier than writing questions or judging a caption, so an off-the-shelf LLM can supply the reward. Across two captioning benchmarks, and on forecasting and reconstruction where the predictor sees only the caption, LineupRL outperforms SFT and RL baselines on every metric. The 3B vision language model (VLM) trained by LineupRL also outperforms, at 1/24 of the parameters, the 72B VLM whose captions the SFT baseline is distilled from. Our case study shows that LineupRL resists reward hacking, and that the captioner it trains both traces the trend and names the values at key points.",
+   "depthScore": 76.5
+  },
+  {
+   "id": "ffef356681d5686d",
+   "title": "From Search to Signal: Online Post-Training in Automatic Heuristic Design",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39383v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39383v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG",
+    "cs.AI"
+   ],
+   "publishedAt": "2026-09-29T21:33:10+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 63.1,
+   "summary": "Large language model (LLM)-based automatic heuristic design (AHD) iteratively proposes and refines heuristics, pairing design rationales with executable code. Task-specific evaluators assess programs; execution outcomes and performance scores guide search. Many AHD systems keep the generator frozen; EvoTune and Co-Evolution of Algorithms and Language Model (CALM) instead update it from evaluated candidates. When such outcomes drive reinforcement learning with verifiable rewards (RLVR), they create a search-coupled loop: the evaluated candidate stream supplies both search-state updates and training signals for the model that generates future candidates. Yet validity and performance do not uniquely determine useful model updates; converting them into learning signals must account for the prompt and evolving search state that produced each candidate. We formulate online post-training of small open-weight LLMs in AHD as context-dependent signal construction and develop alternative mappings from program validity, task performance, and generation context to update signals. Using shared evaluated rollouts and matched update budgets, controlled experiments across AHD tasks and model families compare these mappings with online post-training baselines, testing their effects on validity, performance among valid proposals, and the yield of valid proposals that improve under contextual comparisons. Complementary checkpoint, frozen-search, and live-system evaluations assess whether proposal-level gains appear in updated checkpoint behavior and subsequent search, rather than arising solely from accumulated search state. A resource-matched comparison under pre-specified cost accounting tests whether online updating adds value beyond additional search with a frozen generator. Together,",
+   "depthScore": 76.39
+  },
+  {
+   "id": "6c50b68786c40dfc",
+   "title": "DMAD: Distribution Matching as Adversarial Distillation for Fast Visual Generation",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.02188v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.02188v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV",
+    "cs.CV",
+    "cs.AI"
+   ],
+   "publishedAt": "2026-10-02T01:59:01+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 59.4,
+   "summary": "Distribution Matching Distillation (DMD) trains a few-step student from the difference between separately estimated target and student scores, so it must keep an auxiliary diffusion model fitted to the student's evolving distribution at extra memory and computation cost. We introduce DMAD, Distribution Matching as Adversarial Distillation, which recasts distribution matching as classification and learns the required log-density ratios directly. Two discriminator heads on a shared backbone distinguish real data and teacher samples from the student's, and linear losses on their logits train the student without auxiliary score fitting. We prove that at the discriminator optimum these losses recover the distribution-matching gradient underlying DMD, through the classical identity linking discriminator logits to log-density ratios. We further introduce gap-based reweighting, which adapts teacher supervision across noise levels from the real-data head's empirical logit gap between real and teacher samples. DMAD reaches a Fréchet Inception Distance (FID) of 1.04 with one-step generation on ImageNet-64x64, 14.47 with four-step SDXL on COCO-10K, and a VBench total score of 85.15 with four-step Wan2.1-T2V-14B, the best values among the compared few-step methods and the multi-step teachers. On MiniMax-H3-33B, our four-step student achieves overall human preference rates of 79.1% over DMD2 and 84.6% over rCM for joint audio-video generation, excluding ties. Our code, models and demos are available at https://yzmblog.github.io/projects/DMAD.",
+   "depthScore": 74.73
+  }
+ ]
+}

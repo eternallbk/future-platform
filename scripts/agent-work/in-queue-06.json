@@ -1,0 +1,106 @@
+{
+ "batchId": "queue-06",
+ "mode": "full",
+ "items": [
+  {
+   "id": "567c7131b3a62afc",
+   "title": "The Evolution of Attention in Large Language Models: Mechanisms, Trade-offs, and Emerging Trends",
+   "category": "foundation",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.39661",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.39661",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.39661",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-29T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 53.4,
+   "summary": "Self-attention gives LLMs fine-grained, query-dependent access to context, but dense token interactions incur quadratic prefill cost and a key--value cache growing with context length. Research thus spans explicit-memory compression, sparse access, recurrent state construction, structured state dynamics, and heterogeneous mechanism composition. This survey analyzes these developments as model-internal contextual memory. We introduce a five-dimensional lens---Memory Representation, Memory Update, Access, Readout, and Integration---describing what is represented, how it changes, what is query-eligible, how it is read, and how readouts form outputs. This lens compares overlapping research lines without imposing one computational model. We reconstruct mechanism-level developments and architectural adoption using 59 release-level records from 14 major model lineages and 11 high-performing open-weight endpoints. First, explicit-memory and recurrent-state methods retain distinct interfaces but increasingly control overlapping memory functions. Second, heterogeneous architectures increasingly coordinate across network depth: layer-wise composition distributes complementary memory processing across representational stages, while cross-layer reuse carries selected memory and routing artifacts forward. Depth thus becomes a dimension along which contextual memory is constructed and managed. Third, these developments motivate a stateful multidimensional memory-routing hypothesis: persistent memory is organized across temporal scope, network depth, substrate type, and representation granularity, while coordinated Sparse Write and Sparse Read determine what is maintained and what contributes to each query. Overall, efficient sequence architecture design increasingly concerns the organ",
+   "depthScore": 56.35
+  },
+  {
+   "id": "7c9a6438bd4ebde0",
+   "title": "Retrieval Capacity of Self-Attention Under Competition",
+   "category": "foundation",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.37879",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.37879",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.37879",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-28T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 50.5,
+   "summary": "How many tokens from its context does a language model actually use, and what determines that number? We study this question through self-attention. Without retraining, we retain only the tokens with the highest attention weights at each head, layer, and query, keeping their original weights unchanged. By varying the selected set size and measuring the increase in negative log-likelihood (NLL), we estimate the effective attention set size needed to stay within a chosen loss tolerance. Relatively small selected sets can keep NLL close to the full-attention baseline, although the required size varies across models. Attention-based selection substantially outperforms random selection. Selected sets exhibit geometric structure, although geometric separation alone does not establish that model loss is preserved. Extending context while evaluating the same prediction targets increases the required set size, while its fraction of context decreases over the tested range. Experiments with a fixed supporting fact show that additional background pushes its tokens down the attention ranking and reduces their attention mass. Renormalizing the retained weights can substantially reduce the required set size, showing that it also depends on how selected representations are combined. Conditional theoretical models explain how competition and attention-mass retention can produce growing set sizes without more distinct information to retrieve. These results provide a way to measure effective attention set size in language models and investigate its dependence on context, competition, and aggregation.",
+   "depthScore": 55.2
+  },
+  {
+   "id": "04fcddde1afe9558",
+   "title": "Kimi 和 DeepSeek，为什么出现在同一张模型架构图里？",
+   "category": "foundation",
+   "channel": "leiphone",
+   "url": "https://leiphone.com/category/yanxishe/S39sSkqntdgkDuJu.html",
+   "sources": [
+    {
+     "url": "https://leiphone.com/category/yanxishe/S39sSkqntdgkDuJu.html",
+     "name": "leiphone"
+    }
+   ],
+   "tags": [
+    "资讯",
+    "AI",
+    "中文媒体"
+   ],
+   "publishedAt": "2026-09-30T15:45:00+08:00",
+   "lang": "zh",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 63.7,
+   "summary": "大模型 Attention 路线变迁：从分流到重组。 作者丨李娜 编辑丨岑峰 一张大模型架构图里，同时出现了 Kimi 和 DeepSeek 的影子。 GLM-5.3-Flash项目配置文件：45层架构中，34层采用Kimi路线的KDA线性注意力，另外11层采用DeepSeek路线的KPool-DSA稀疏注意力 今年以来，大模型架构里出现了一条越来越清晰的变化：一些混合注意力架构中原本由全局Attention承担的角色，开始被Sparse Attention(稀疏注意力)接替。 要理解这个变化，得先回到 Attention 本身。 Attention解决的是一个基础问题：模型处理当前token时，能不能在越来越长的历史里，找到真正有用的信息。 大致来看，目前常见的Attention机制可以理解成三类： 全局注意力（Full / Global Attention） 直接读取完整的token历史，信息保留最充分，但计算和缓存成本也最高； 线性注意力（Linear Attention） 把历史压缩进更紧凑的状态，以降低长序列的计算成本； 稀疏注意力（Sparse Attention） 则保留更完整的历史，只选择其中一部分重要信息参与计算。过去几年出现的很多 高效注意力（Efficient Attention） ，主要就在后两种方向上继续演化。 最开始，经典 Transformer 主要使用 Full Attention，Full Attention让模型可以直接访问完整的token级历史，代价是计算和KV Cache随上下文迅速增长。连带着训练和推理成本也随之大幅增加。 过去几年，大家对 Attention 的改造，本质上都是在能力和成本之间找平衡。于是，作为折中方案的混合注意力架构逐渐流行起来：不同机制被放进同一套模型里分工，高效Attention负责降低成本，少量全局Attention保留直接访问完整历史的机会。 从不同Attention路线，看大模型公司的选择 到了今年，很多混合注意力架构里由全局Attention承担的角色，开始出现被Sparse Attention接",
+   "depthScore": 54.27
+  },
+  {
+   "id": "f8f027476fe03e67",
+   "title": "SemanTok: Predictable Semantic Tokens for Efficient Autoregressive Video Generation",
+   "category": "generative",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.00686v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.00686v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV",
+    "cs.CV",
+    "cs.LG"
+   ],
+   "publishedAt": "2026-10-01T04:29:37+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 65.0,
+   "summary": "Recent video-based world models pair the scalability of autoregressive (AR) prediction with the visual quality of diffusion models. The choice of scene tokenizer is paramount for the optimal performance of each of these, both in terms of fidelity and semantics. Flexible-length, coarse-to-fine tokenizers yield exactly that: the first coarse tokens carry the clip's global semantics while later tokens further specify details. Existing flexible tokenizers only apply a representation-alignment (REPA) loss on early decoder hidden states, a target the decoder can partly meet from its noised input instead. We introduce SemanTok, a flexible video tokenizer that feeds frozen DINO features into its encoder and adds lightweight heads that reconstruct them from each retained token prefix alone. SemanTok achieves high semantic alignment and video fidelity at every AR model size: a 201M SemanTok AR model matches or beats a VideoFlexTok AR model $3.4\\times$ its size, and larger SemanTok AR models further improve fidelity. It keeps semantic alignment on out-of-distribution classes and gives the decoder higher semantic alignment at every noise level, including pure noise. It performs well in both reconstruction and generation, and its short token prefixes are cheaper to predict and give better generation fidelity, with pixel detail deferred to later tokens.",
+   "depthScore": 72.61
+  }
+ ]
+}

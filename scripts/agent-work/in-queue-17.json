@@ -1,0 +1,112 @@
+{
+ "batchId": "queue-17",
+ "mode": "full",
+ "items": [
+  {
+   "id": "487e45567394eb7d",
+   "title": "JEPA-TTT: Persistent Test-Time Training of Latent World Models for Planning under Dynamics Shifts",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.00722v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.00722v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG",
+    "cs.LG"
+   ],
+   "publishedAt": "2026-10-01T05:13:59+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 65.1,
+   "summary": "World models enable agents to plan by predicting future states of the environment, but their predictions can become unreliable when test-time dynamics differ from those seen during training. We present JEPA-TTT, which adapts the latent dynamics predictor of a pretrained action-conditioned Joint-Embedding Predictive Architecture world model throughout test time. Self-supervised updates accumulate across episodes, while the visual encoder and reward head remain fixed, preserving the pretrained representation and task objective. Planning requires neither a goal image nor online environment reward. JEPA-TTT uses dense replay, which forms prediction windows at every temporal offset, retains them in a growing buffer, and samples minibatches from that buffer for predictor updates. Across eight dynamics shifts in four continuous-control environments, JEPA-TTT improves planning on every shift. After 500 test-time episodes, it reduces autoregressive latent prediction error by 83% on average and improves planning performance by 153% over the frozen JEPA world model. These results show that persistent self-supervised test-time training can adapt a pretrained latent world model under changed dynamics.",
+   "depthScore": 77.3
+  },
+  {
+   "id": "3065a7da249d13c3",
+   "title": "Reconstruct, Practice, Go Real: Guided Self-Improvement for Embodied Agents",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.02204v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.02204v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.RO",
+    "cs.RO",
+    "cs.AI",
+    "eess.SY"
+   ],
+   "publishedAt": "2026-10-02T01:59:50+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 59.4,
+   "summary": "Building reliable robot capabilities across diverse tasks requires substantial human effort to develop and maintain skills, design rewards, and integrate perception with control. We present Reconstruct, Practice, Go Real (RPG), a framework for autonomous improvement of robot execution systems without updating model weights. RPG identifies manipulation capabilities in an offline dataset and constructs related practice tasks in simulation. During practice, RPG uses execution feedback, privileged simulator state, and available dataset videos to diagnose failures. It develops new reusable symbolic skills, refines existing skills, and revises the system prompt based on these diagnoses. Cross-task evaluation tests individual candidate changes and merged revisions before they are retained for reuse. At test time, a multimodal LLM uses the resulting system prompt and skill library to coordinate perception and robot control. On held-out initializations of 22 manipulation tasks, RPG improves task success from 28.6% after the first practice round to 95.0% after 15 rounds, outperforming all evaluated baselines, including ASPIRE (75.5%) and CaP-Agent0 powered by GPT-6 Astra Pro (60.0%). After a common calibration and hardware-adaptation procedure, the frozen system succeeds in all 30 physical trials, with ten trials on each of three tasks. Project Website: https://rpg-robot.github.io/",
+   "depthScore": 74.73
+  },
+  {
+   "id": "44c5c6789d8a432d",
+   "title": "Physis-Lang: Self-Evolving Language as a Physical Representation for Video World Model",
+   "category": "worldmodel",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.40358",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.40358",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40358",
+     "name": "canonical"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40358v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV"
+   ],
+   "publishedAt": "2026-09-29T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 55.6,
+   "summary": "Video world models are expected to predict how the physical world evolves, yet they often produce visually plausible videos that violate basic physical principles. Existing approaches commonly assume that natural language is insufficient to represent the physical knowledge required for reliable generation, and therefore introduce additional visual, latent, numerical, or planning-based signals. We revisit this assumption and introduce Physis-Lang, a self-evolving framework that treats physical language as a shared and optimizable representation across data curation, model training, and video generation. Physis-Lang represents physical processes through language that describes their relevant entities, causes, interactions, governing principles, temporal evolution, and effects. To improve this representation, we construct PhysCapBench, which decomposes physical processes into atomic assertions and evaluates captions using recall and precision. An agentic loop iteratively analyzes assertion-level errors and refines the instruction used to produce physical captions. Physis-Lang further converts model deficiencies into textual descriptions and uses language-guided retrieval to identify visually diverse videos that cover missing physical processes. Experiments on four widely used physical video benchmarks with Wan and Cosmos backbones demonstrate consistent improvements in physical plausibility. Notably, starting from open-source Cosmos3-Nano backbones, our Physis-Lang-enhanced models surpass the leading proprietary Veo 3.1 model.",
+   "depthScore": 73.02
+  },
+  {
+   "id": "1bb1dcc65cda2a4e",
+   "title": "EVOKE: Eliciting World Knowledge in Agents for Transferable Decision-Making",
+   "category": "worldmodel",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.38334",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.38334",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.38334",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-28T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 62.6,
+   "summary": "Large language models (LLMs) are increasingly deployed as agents for multi-step decision-making, yet transfer poorly to unseen environments. World-model methods address this by training agents to predict future observations, at the cost of additional training and errors that compound when predictions are used for planning. However, for LLM agents operating in digital environments, much of this world knowledge is already internalized during pretraining, which shifts the problem from acquiring it to eliciting it. We argue that typical post-training provides little pressure for such elicitation, since supervision under a single goal at each visited state inadvertently drives policies to rely on superficial contextual habits. We introduce EVOKE, a post-training method that supplies this pressure through goal diversity at fixed states. Motivated by theory showing that an agent competent across diverse goals must encode a world model recoverable from its action preferences, EVOKE holds the environment state and interaction history fixed and ranks the same candidate actions under alternative goals, forcing action preferences to change, so that a policy relying on contextual habits or single-goal correlations cannot order them correctly. This implicitly elicits the policy's pretrained world knowledge to inform decisions. We evaluate EVOKE across diverse tasks in three backbones, demonstrating improved task performance, unseen environment generalization, and data efficiency. We further conduct controlled analyses to better understand what drives these gains. These findings offer a new perspective on eliciting internalized world knowledge for transferable action through direct decision supervision.",
+   "depthScore": 68.17
+  }
+ ]
+}

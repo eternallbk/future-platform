@@ -1,0 +1,786 @@
+{
+  "batchId": "queue-13",
+  "entries": [
+    {
+      "id": "7d2f1016a053206d",
+      "tldr": "用游戏自博弈发现可直接上手玩的运动技能：人类接管高层策略后，靠少数离散技能组合解 Maze、CubePush 等新任务。",
+      "keyPoints": [
+        "分层智能体与自己的历史版本自博弈，获得技能发现信号",
+        "高层策略从少量离散技能中选择，低层策略学技能对应行为",
+        "技能切换产生涌现连招，表达力超过单个技能原语",
+        "训练后人类直接替换高层策略，用同一套技能操控智能体",
+        "在 Ant、Franka 机械臂、G1 上验证，人类零训练组合解新任务"
+      ],
+      "why": "技能发现＋自博弈＋人机可控是具身智能岗位的交叉热点；把低层控制抽象成人类可复用的离散接口，是面试里讲得清的系统设计故事。",
+      "difficulty": "hard",
+      "tags": [
+        "skill-discovery",
+        "self-play",
+        "hierarchical-rl",
+        "embodied-ai",
+        "posttraining"
+      ],
+      "entities": [
+        "GGSD",
+        "Ant",
+        "Franka-arm",
+        "Unitree G1",
+        "Maze",
+        "CubePush"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "GGSD 分层技能与人类接管",
+        "caption": "技能发现被拆成两层：高层选技能、低层执行，人类最终替换高层就能直接玩。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='GGSD 分层技能流程：高层技能策略、低层技能执行、竞争性游戏自博弈、人类接管高层'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>高层技能策略</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>从少量离散技能中选 z</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>低层技能执行</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>条件于 z 学动作</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>竞争性游戏自博弈</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>对手是历史策略副本</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>人类接管高层</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>零训练组合解新任务</text></svg>",
+        "alt": "纵向流程图：高层技能策略从少量离散技能中选出 z，交给以技能为条件的低层策略执行，训练时与自身历史策略副本自博弈，训练后人类可替换高层直接控制智能体。"
+      },
+      "concepts": [
+        {
+          "name": "可玩技能（Playable Skill）",
+          "readable": "指人类能用少量离散指令直接调用、语义互不重复、看得懂且表达力够的运动技能。它把关节力矩这类低层动作压缩成几个可被真人按下的按钮。",
+          "analogy": "像格斗游戏的出招表：玩家不控制每块肌肉，只按轻拳、重踢几个键，按键顺序不同就打出一套连招。",
+          "analogyBreaksDown": "游戏按键对应的动画是人工设计且确定的，而这里的技能是策略自己学出来的，语义边界可能重叠或含混；同一个键在不同状态下的效果也会变化，不能像固定动画那样预测。",
+          "mechanism": "用竞争性游戏当技能发现的评分器：只有能帮智能体赢的行为才会被保留；再配合离散技能瓶颈，迫使不同技能承担不同语义，低层策略以技能为条件学习执行，于是技能既好区分又能被人类调用。",
+          "visual": "横轴画技能索引 z=0..k，每个技能一个小色块；纵轴画它在若干任务上的使用频率热力图，越深表示越常用。理想图景是每个技能都有自己一列高亮，说明语义没有塌缩成同一个行为。",
+          "prerequisites": [
+            "强化学习基础（策略梯度、优势函数）",
+            "分层强化学习 / options 框架的基本概念",
+            "自博弈（self-play）的设定"
+          ],
+          "selfTest": [
+            "为什么技能集要小且离散，而不是让人类直接给连续的低层动作？",
+            "涌现连招说明什么？它和单个技能的表达力是什么关系？",
+            "人类在训练后替换高层策略，为什么不需要重新训练低层策略？"
+          ],
+          "formula": "\\pi_\\theta(z\\mid s)\\;\\text{（高层）},\\quad \\pi_\\phi(a\\mid s,z)\\;\\text{（低层）}"
+        },
+        {
+          "name": "自博弈技能发现（Self-Play Skill Discovery）",
+          "readable": "让当前策略和自己的历史版本对战，用胜负结果作为筛选信号，把「哪些行为有用」传导到技能空间，从而不需要人工标注技能标签。",
+          "analogy": "像自己跟自己下棋复盘：不需要教练指出哪一步好，只看输赢，就能逐步筛掉没用的走法。",
+          "analogyBreaksDown": "棋类胜负是干净的标量奖励，而连续控制里胜负稀疏、受物理与初始状态影响大；「赢」并不唯一对应某个技能，也可能出现钻对手空子而非真正有用的行为。",
+          "mechanism": "用历史策略副本当对手形成自动课程：对手随自身变强而变强，奖励信号不会枯竭，省掉手工奖励工程；技能选择交给高层，由竞争压力筛出语义独立、能赢球的行为。",
+          "visual": "画左右两条随时间上升的能力曲线（当前策略 vs 历史对手），中间用双向箭头表示「对手来自过去的自己」，两条曲线交错上升，表示难度自动递增。",
+          "prerequisites": [
+            "自博弈与对抗训练",
+            "分层强化学习",
+            "连续控制/运动控制环境基础"
+          ],
+          "selfTest": [
+            "如果对手固定不变，训练后期会出现什么问题？",
+            "自博弈提供的奖励与手工设计奖励相比，优势与代价各是什么？",
+            "为什么技能筛选信号来自胜负，而不是来自「技能之间是否可区分」？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-ggsd-hierarchical-pg",
+          "name": "分层技能策略梯度（Hierarchical Skill Policy Gradient）",
+          "category": "rl",
+          "latex": "\\nabla J=\\mathbb{E}\\Big[\\sum_t \\nabla_\\theta\\log\\pi_\\theta(z_t\\mid s_t)\\,\\hat A_t+\\nabla_\\phi\\log\\pi_\\phi(a_t\\mid s_t,z_t)\\,\\hat A_t\\Big]",
+          "symbols": [
+            ["s_t", "t 时刻的状态"],
+            ["z_t", "高层选出的离散技能编号"],
+            ["a_t", "低层实际执行的动作"],
+            ["π_θ", "高层技能选择策略"],
+            ["π_φ", "以技能为条件的低层策略"],
+            ["Â_t", "优势估计，由自博弈对抗结果换算而来"]
+          ],
+          "derivation": [
+            "第 1 步：把控制拆成两层决策，高层只回答「用哪个技能」，低层回答「这个技能怎么落到关节动作」，策略因此分解为 π_θ(z|s)·π_φ(a|s,z)。",
+            "第 2 步：对两层分别取对数似然梯度，用同一个优势估计 Â_t 加权：带来胜利的行为被强化，导致失败的行为被抑制。",
+            "第 3 步：对手是历史策略副本，Â_t 由对抗结果给出，于是不需要人工设计奖励就能持续提供梯度信号。（按摘要重建的通用形式，非原文公式）"
+          ],
+          "analogy": "像公司里主管只决定「做哪个项目」、员工决定「具体怎么做」，季度业绩同时决定主管的选项目思路和员工的执行方式是被强化还是被削弱。",
+          "pitfalls": [
+            "把两层写成同一个策略、去掉技能瓶颈——那就退化成普通 RL，人类仍无法用少量指令接管",
+            "以为 Â_t 必须来自手工奖励；自博弈里它可以来自胜负/对抗信号",
+            "忽略技能塌缩：离散瓶颈下若缺少区分压力，多个技能会学成同一个行为"
+          ],
+          "code": "import torch\n# logp_hi: 高层技能 log 概率, logp_lo: 低层动作 log 概率, adv: 自博弈优势\nloss = -(logp_hi * adv.detach() + logp_lo * adv.detach()).mean()\nloss.backward()  # 同一个优势同时更新两层",
+          "sources": [
+            {
+              "title": "Game-Guided Skill Discovery through Self-Play for Playable Agent Control",
+              "url": "https://huggingface.co/papers/2609.40137"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "GGSD 用游戏中的自博弈发现能被人类直接玩的运动技能。",
+          "分层智能体与自己的过去版本竞争，高层策略从少量离散技能集中选择，低层策略以技能为条件学习行为。",
+          "训练后人类可以替换高层策略，用同一批离散技能直接控制智能体。",
+          "技能之间的切换会产生涌现的连招行为，表达力超过单个技能原语。",
+          "在 Ant、Franka 机械臂和 Unitree G1 上，人类无需额外训练即可用这些技能组合解决未见过的 Maze 与 CubePush 任务。"
+        ],
+        "uncertain": [
+          "摘要未给出技能数量、技能编码维度、训练步数等超参，「少量离散技能」的具体规模待核实。",
+          "自博弈对手如何采样与更新、胜负信号如何换算成策略梯度里的优势，摘要未说明。",
+          "Maze / CubePush 的成功率与人类被试规模摘要未给，需查原文实验表。",
+          "公式 f-ggsd-hierarchical-pg 是按摘要重建的通用分层策略梯度，非原文形式，需核对。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "让 AI 在游戏里跟自己打架，学会几招人类能直接按键使出的动作。"
+          },
+          {
+            "level": "入门",
+            "text": "智能体分两层：上层从很少的几个技能里挑一个，下层负责把技能执行成具体动作。陪练是它自己的旧版本，赢得多说明技能有用，于是不用人工标注就能筛出语义清楚、可被人类直接调用的技能。"
+          },
+          {
+            "level": "进阶",
+            "text": "关键设计是离散技能瓶颈：高层只能从固定小集合里选技能，迫使不同技能承担不同语义，人类才有按钮可按；低层以技能为条件负责执行稳定性。用历史策略副本当对手形成自动课程，避免手写奖励。技能切换带来涌现连招，使小技能集也能覆盖复杂任务，但技能是否真正语义分离，取决于竞争压力是否足够。"
+          },
+          {
+            "level": "专家",
+            "text": "与无监督技能发现相比，GGSD 不靠内在奖励最大化可区分性，而是把竞争性游戏结果当外部信号，技能因此偏向「能赢」而非「好区分」；与端到端 RL 或模仿学习相比，它牺牲部分最优性，换取人机共享的离散接口。适用边界在于必须存在可自博弈的胜负信号，且任务能被少量技能组合覆盖；对没有对抗结构、只有稀疏成功判定的长程操作任务，技能可能退化成少数万能行为。（推断）"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "如果不加「离散小技能集」这个瓶颈，会怎样？",
+            "a": "技能会退化成连续隐变量，人类没有可对应的按钮；同时多个技能容易学成同一行为，语义区分消失。"
+          },
+          {
+            "q": "为什么用历史版本的自己当对手，而不是固定规则 AI 或更强的专家？",
+            "a": "固定对手被战胜后就失去梯度，专家又难获取；历史副本随自身变强而变强，形成自动递增的课程，信号长期不枯竭。"
+          },
+          {
+            "q": "涌现连招为什么重要？",
+            "a": "它说明少量技能通过组合能覆盖训练时没见过的任务，这正是「可玩技能」比单技能回放更有价值的地方。"
+          }
+        ],
+        "mechanism": "必须这样设计的理由是：可玩性要求人类以极低带宽（几个按钮）介入，而低带宽要求技能语义互斥且稳定，这两点靠无监督多样性目标很难同时满足。把技能发现挂到竞争性游戏结果上，等于用一个不需要人工设计的任务信号做筛选：只有真正影响胜负的行为才会被保留。分层还解耦了两个优化难度——选技能是离散低维问题，执行技能是连续高维问题，分开学比端到端更稳。",
+        "boundary": "没有可自博弈的胜负结构、或任务需要长程精细时序且难以被少数技能覆盖时，方法失效；对手是自身副本意味着能力上限受自身探索范围限制，早期技能库退化后很难恢复；真人接管也只在技能语义足够区分、且真人能快速熟悉按键映射时才成立。",
+        "analogyBoundary": "用「格斗游戏出招表」类比时，按键对应的动画是人工设计且确定的；GGSD 的技能是学出来的，同一技能在不同状态下的动作分布不同，边界可能模糊。另外游戏按键没有失败代价，而真实机械臂撞一次就可能损坏。",
+        "misconceptions": [
+          "以为人类接管后还要微调低层策略——摘要说无需额外训练即可组合解题。",
+          "以为技能越多越好用；技能越多越难保证语义互斥与人类可记。",
+          "把自博弈对手当成「和自己完全一样」的当前策略；实际用的是历史版本副本。"
+        ],
+        "ownAnalysis": "把 GGSD 与分层 RL（options / feudal 结构）和无监督技能发现放在一起看，它的新意更多在「评价信号来自自博弈」而不是分层本身；技能条件低层策略＋离散高层是成熟配方，竞争性游戏提供了不错的自动奖励。可疑处：摘要没有给出技能数量、也没有技能塌缩的度量，更没有人类接管的学习曲线；「可玩」的强主张需要人类被试实验支撑，摘要只说了能解 Maze 与 CubePush。（推断）",
+        "officialNotes": [
+          {
+            "position": "摘要称 GGSD 能产出人类可玩、可组合以解决未见任务（Maze、CubePush）的技能，且无需额外训练。",
+            "source": "https://huggingface.co/papers/2609.40137"
+          }
+        ],
+        "interviewAnswer": "GGSD 想解决具身智能体的低带宽控制问题：与其让人给关节力矩，不如让人只选技能。它用分层策略加自博弈，高层在很小的离散技能集上选择，低层学技能条件行为，对手是历史策略副本，所以不需要手写奖励。技能语义清晰、可解释，技能切换还能涌现连招。在 Ant、Franka 和 G1 上，人类替换高层后零训练解了 Maze 和 CubePush。我会追问技能数量与人类被试规模。",
+        "studyPath": {
+          "prerequisites": [
+            "强化学习基础（策略梯度、优势函数、GAE）",
+            "分层 RL / options 框架",
+            "自博弈与对抗训练的基本概念"
+          ],
+          "nextSteps": [
+            "读原文实验部分，核对技能数量、技能塌缩度量与人类被试设计",
+            "在玩具环境里实现最小分层策略＋离散技能瓶颈",
+            "对比 DIAYN 类无监督技能发现方法的目标函数差异"
+          ]
+        }
+      }
+    },
+    {
+      "id": "28f899c9d5f4731d",
+      "tldr": "ms-swift：用 PEFT 或全参微调，一套代码跑通 CPT/SFT/DPO/GRPO 与 600+ LLM。",
+      "keyPoints": [
+        "支持 PEFT 与全参数两种微调模式，可切换",
+        "覆盖 CPT / SFT / DPO / GRPO 等不同训练阶段",
+        "覆盖 600+ LLM：Qwen3.8、DeepSeek-V4、Llama4 等",
+        "覆盖 300+ MLLM：Qwen3-VL、InternVL3.5、Llava",
+        "标题摘要标注 AAAI 2025"
+      ],
+      "why": "后训练岗位几乎天天要用统一训练框架：一套代码切换 SFT/DPO/GRPO 与 PEFT/全参，能把算法实现和工程踩坑成本压下来，面试可讲具体配方。",
+      "difficulty": "medium",
+      "tags": [
+        "posttraining",
+        "peft",
+        "sft",
+        "dpo",
+        "grpo",
+        "framework"
+      ],
+      "entities": [
+        "ms-swift",
+        "ModelScope",
+        "Qwen3.8",
+        "DeepSeek-V4",
+        "GLM-5.1",
+        "InternLM3",
+        "Llama4",
+        "Qwen3-VL",
+        "Qwen3-Omni",
+        "InternVL3.5",
+        "Ovis2.5",
+        "Llava",
+        "Phi4"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "ms-swift 统一训练分层",
+        "caption": "记住三层组合：底座模型 × 微调模式 × 训练阶段，被同一套仓库入口收住。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='ms-swift 分层结构：底座模型层、微调模式层、训练阶段层、统一训练入口'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>底座模型</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>600+ LLM 与 300+ MLLM</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>微调模式</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>PEFT 或全参数微调</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>训练阶段</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>CPT / SFT / DPO / GRPO</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>统一训练入口</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>一个仓库覆盖组合</text></svg>",
+        "alt": "纵向分层图：底座模型层列出 600+ LLM 与 300+ MLLM，下面是 PEFT 或全参微调模式，再下面是从 CPT 到 GRPO 的训练阶段，最底层是统一的训练入口。"
+      },
+      "concepts": [
+        {
+          "name": "统一后训练流水线（Unified Post-Training Stack）",
+          "readable": "把 CPT、SFT、DPO、GRPO 等不同训练阶段，以及 PEFT/全参两种参数更新方式，收进同一套代码与配置里；换模型或换算法时不用换框架。",
+          "analogy": "像厨房里一台能换刀头的料理机：切丝、切片、绞肉共用同一个机身，你只换刀头（算法）和食材（模型与数据），不用为每道菜买一台机器。",
+          "analogyBreaksDown": "刀头是物理标准化的，接口固定；而训练框架里不同算法的数据格式、显存需求和并行策略差异很大，「换算法」往往仍要改数据预处理与超参，被统一的是入口而不是全部内部实现。",
+          "mechanism": "关键设计是把模型适配层与训练算法层解耦：模型只暴露统一的前向与保存接口，算法只依赖统一的数据批次与损失回调，于是新增一个模型或一个偏好优化算法都不必改动另一侧。",
+          "visual": "画一张二维矩阵，横轴是训练阶段（CPT/SFT/DPO/GRPO），纵轴是参数更新方式（PEFT/全参），每个格子标出是否由同一套脚本覆盖；再叠一层模型清单作为第三维。",
+          "prerequisites": [
+            "Transformer 微调基础",
+            "LoRA 等 PEFT 方法",
+            "DPO / GRPO 等偏好或 RL 后训练目标"
+          ],
+          "selfTest": [
+            "PEFT 与全参微调在显存和效果上各自适合什么场景？",
+            "SFT、DPO、GRPO 的监督信号分别来自哪里？",
+            "为什么「支持 600+ 模型」本身不等于这些模型的训练配方都被验证过？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "该仓库自称支持用 PEFT 或全参数方式做 CPT/SFT/DPO/GRPO 训练。",
+          "覆盖 600+ LLM，例子包括 Qwen3.8、DeepSeek-V4、GLM-5.1、InternLM3、Llama4。",
+          "覆盖 300+ MLLM，例子包括 Qwen3-VL、Qwen3-Omni、InternVL3.5、Ovis2.5、GLM5.3、Gemma4、Llava、Phi4。",
+          "标题摘要标注 AAAI 2025。"
+        ],
+        "uncertain": [
+          "输入只有一句仓库描述，没有版本号、benchmark 数值或与其它框架的对比，声称的模型覆盖度未独立核实。",
+          "「600+ LLM / 300+ MLLM」是否为 README 持续更新的统计口径，未知。",
+          "未给出具体训练配方（学习率、并行策略、显存占用），需查仓库文档。",
+          "采集标签里出现 glm、kimi、liger、embedding 等词，摘要未展开，含义待核实。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "一个仓库把 600+ 大模型和 300+ 多模态模型的微调训练收进同一套脚本。"
+          },
+          {
+            "level": "入门",
+            "text": "ms-swift 让你用同一套代码，对大量语言模型和多模态模型做继续预训练、SFT、DPO 或 GRPO；参数更新既能只训 LoRA 这类少量参数（PEFT），也能全参微调。它的价值是省掉「每换模型或算法就重搭一次训练管线」的重复劳动。"
+          },
+          {
+            "level": "进阶",
+            "text": "框架层面的关键取舍是抽象边界：模型侧统一成可加载、可前向、可保存的接口，算法侧统一成对 batch 与 loss 的约定，训练器把 PEFT 与全参当作两种可切换的参数策略。对使用者来说，CPT 只需要文本，SFT 需要输入输出对，DPO 需要偏好对，GRPO 需要可打分或可验证的奖励。模型广度高是工程积累，不代表每个模型×算法组合都有等量验证。"
+          },
+          {
+            "level": "专家",
+            "text": "把 ms-swift 放进后训练工具链比较：有的框架偏算法参考实现、有的偏零代码微调，它的差异点是同时覆盖语言与多模态、同时覆盖 PEFT 与全参，并把偏好优化与可验证奖励 RL 放进同一入口，且背靠 ModelScope 模型生态。适用边界：它是训练与轻量评测的集成层，不是推理服务框架，也不是新算法的研究代码；当你要自定义并行策略、非标准 reward 或新架构算子时，抽象层反而成为阻碍。（推断）"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "如果只有 SFT，为什么还需要 DPO 和 GRPO？",
+            "a": "SFT 只模仿正例，无法表达「两个回答里哪个更好」；DPO 用偏好对拉开好答案概率，GRPO 用可验证奖励做在线探索，能优化 SFT 触及不到的推理行为。"
+          },
+          {
+            "q": "PEFT 这么省显存，为什么还要全参微调？",
+            "a": "低秩更新容量有限；当领域分布与底座差异很大（如继续预训练或新模态对齐）时，全参才能充分改变表征，效果上限更高。"
+          },
+          {
+            "q": "「支持 600+ 模型」对使用者意味着什么、不意味着什么？",
+            "a": "意味着加载与训练路径已适配、社区踩坑少；不意味着每个模型都有等量调参与效果验证，选型仍要自己跑对照实验。"
+          }
+        ],
+        "mechanism": "统一框架要解决的核心矛盾是组合爆炸：模型侧差异（架构、模态、位置编码）与算法侧差异（损失、数据格式、采样方式）会相乘。ms-swift 的解法是让两者只通过稳定接口相遇——模型只承诺加载/前向/保存，算法只消费标准 batch 并产出 loss——这样新增模型不必理解所有算法，新增算法也不必适配所有模型。这也是它能同时覆盖文本与多模态、PEFT 与全参的工程前提。",
+        "boundary": "不适合需要自定义并行、算子级优化，或算法本身还在快速变化的场景；仅凭一行仓库描述也无法支撑「某个模型＋某算法组合效果最好」的判断，模型覆盖数量不能替代效果验证。",
+        "analogyBoundary": "料理机类比失效在于：换刀头不影响食材前处理，而训练里换算法常要重做数据格式与显存规划；而且料理机各刀头同等可靠，框架里不同模型-算法组合的验证程度差别很大。",
+        "misconceptions": [
+          "把「支持 600+ 模型」读成「这些模型都调到了 SOTA」。",
+          "认为 PEFT 与全参只差显存，效果可以互换。",
+          "把 CPT/SFT/DPO/GRPO 当成可随意叠加的同层技术，忽略各自的数据前提。"
+        ],
+        "ownAnalysis": "这份输入只有一行仓库描述，是典型的工具卡而不是论文卡：信息量在生态覆盖，不在方法创新。对求职者来说它的用处是把后训练名词串成一条可执行链路——继续预训练扩知识、SFT 学格式、DPO 学偏好、GRPO 学可验证推理。可疑处是「600+/300+」这类统计会随 README 更新漂移，且描述里没有任何性能数字；要在面试里引用，应补上自己实际跑通的模型与显存数据，而不是复述覆盖数量。（推断）",
+        "officialNotes": [
+          {
+            "position": "仓库标题与摘要自称：用 PEFT 或全参对 600+ LLM 与 300+ MLLM 做 CPT/SFT/DPO/GRPO，并标注 AAAI 2025。",
+            "source": "https://github.com/modelscope/ms-swift"
+          }
+        ],
+        "interviewAnswer": "我关注 ms-swift，是因为后训练岗日常要把 CPT、SFT、DPO、GRPO 跑到各种底座上。它是 ModelScope 的训练框架，一套代码同时覆盖 PEFT 和全参，语言模型 600+、多模态 300+。它的价值在抽象边界：模型只暴露加载、前向、保存，算法只消费标准 batch，组合因此不会爆炸。但我不会只看覆盖数量，会挑一个模型和两个算法自己跑对照再讲。",
+        "studyPath": {
+          "prerequisites": [
+            "PyTorch 训练循环与混合精度",
+            "LoRA / PEFT 原理",
+            "DPO、GRPO 的目标函数"
+          ],
+          "nextSteps": [
+            "在仓库里跑通一个 7B 模型的 LoRA SFT",
+            "换同一模型做 DPO，对比数据格式与显存占用",
+            "阅读 GRPO 配置，理解 reward function 的注入点"
+          ]
+        }
+      }
+    },
+    {
+      "id": "7ca2e20b3b95038a",
+      "tldr": "AED 收集 5 万条智能体错误-诊断对；配套流水线让首轮修正把匹配重放验证通过率从 18.4% 提到 51.1%。",
+      "keyPoints": [
+        "AED 含 50,228 条错误-诊断对，来自 9,961 个源任务",
+        "覆盖 33 个环境、19 个 harness 家族、23 个策略模型",
+        "五阶段 AET：采集失败、生成诊断与修正、证据核查、重放对比、构造训练视图",
+        "3,062 对匹配重放中，首轮修正把验证通过率从 18.4% 提到 51.1%",
+        "全诊断微调让 Qwen3-8B 的精确步骤一致率从 47.2% 升到 63.6%"
+      ],
+      "why": "失败轨迹比成功轨迹信息量大：能定位该改哪一步、能造纠错数据，对 agent 后训练与评测岗位是可直接复用的数据工程范式。",
+      "difficulty": "medium",
+      "tags": [
+        "agent",
+        "error-analysis",
+        "posttraining",
+        "dataset",
+        "sft",
+        "replay"
+      ],
+      "entities": [
+        "Agent Error Dataset",
+        "AED",
+        "AET",
+        "Qwen3-8B",
+        "WebShop-lite"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "AET 五阶段流水线",
+        "caption": "AED 不只要失败样本，还要能核查的诊断和可对照的修正。",
+        "svg": "<svg viewBox='0 0 560 300' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='AET 五阶段流水线：采集自然失败、生成诊断与修正、对照证据核查、匹配重放对比、构造训练视图'><rect x='56' y='16' width='448' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>一 采集自然失败</text><text x='488' y='40' font-size='13' text-anchor='end' fill='currentColor'>保留源轨迹与执行元数据</text><line x1='280' y1='54' x2='280' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='280,70 276,62 284,62' fill='var(--line-1)'/><rect x='56' y='70' width='448' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>二 生成诊断与修正</text><text x='488' y='94' font-size='13' text-anchor='end' fill='currentColor'>给出首轮修正方案</text><line x1='280' y1='108' x2='280' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='280,124 276,116 284,116' fill='var(--line-1)'/><rect x='56' y='124' width='448' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>三 对照记录证据核查</text><text x='488' y='148' font-size='13' text-anchor='end' fill='currentColor'>用环境反馈验伪</text><line x1='280' y1='162' x2='280' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='280,178 276,170 284,170' fill='var(--line-1)'/><rect x='56' y='178' width='448' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>四 匹配重放对比</text><text x='488' y='202' font-size='13' text-anchor='end' fill='currentColor'>修正与原动作重试对照</text><line x1='280' y1='216' x2='280' y2='224' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='280,232 276,224 284,224' fill='var(--line-1)'/><rect x='56' y='232' width='448' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='256' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>五 构造训练视图</text><text x='488' y='256' font-size='13' text-anchor='end' fill='currentColor'>诊断视图与 actor 恢复视图</text></svg>",
+        "alt": "纵向五阶段流程图：采集自然失败并保留源轨迹与执行元数据，生成诊断与修正，对照记录证据核查，做修正与原动作重试的匹配重放对比，最后构造诊断与 actor 恢复两个训练视图。"
+      },
+      "concepts": [
+        {
+          "name": "错误-诊断对（Error-Diagnosis Pair）",
+          "readable": "把一条失败轨迹（观测、动作、环境反馈）与「哪一步该改、改成什么」的诊断绑在一起，形成可复用、可复核的训练与分析样本。",
+          "analogy": "像驾校教练的错题本：不只看你最后没停进车位，而是记下在哪个点打晚了方向盘、应该打多少。",
+          "analogyBreaksDown": "教练能实时看到你的操作并知道正确动作；这里的诊断由模型生成、再被证据核查，可能给出看着合理但与环境反馈矛盾的修正，而且正确修法往往不唯一。",
+          "mechanism": "保留源轨迹与执行元数据，让诊断可以脱离原始 rollout 被重新生成和复核；同时对可重放任务用同 checkpoint 的原动作重试做对照，把「修正是否真的更好」变成可测的因果比较，而不是主观判断。",
+          "visual": "左边一条时间轴画出轨迹每一步的动作与观测，把出错步标红；右边用箭头指向一个蓝色的建议替换动作，两者之间拉一条灰线连到标注「环境记录证据」的框。",
+          "prerequisites": [
+            "LLM agent 的 ReAct / 工具调用循环",
+            "SFT 数据构造基础",
+            "可复现执行（replay）的概念"
+          ],
+          "selfTest": [
+            "一条失败轨迹里哪些信息是最终 reward 给不出的？",
+            "为什么诊断必须被记录证据核查，而不能直接当标签？",
+            "同一失败可以有两种合理修法时，数据该怎么记？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "匹配重放对比（Matched Replay Comparison）",
+          "readable": "在同一个环境、同一个 checkpoint、同样的执行设置下，把模型提出的修正与原动作重试各跑一遍，用验证器通过率判断修正是否真的更好。",
+          "analogy": "像 A/B 测试：同一批用户、同一时间窗口，只改一个变量，才敢说新版更好。",
+          "analogyBreaksDown": "A/B 测试里用户群体稳定且可随机化，而 agent 环境带随机性与非确定性工具返回；即使「匹配设置」也可能因外部状态变化而无法完全复现，所以对照只是近似因果。",
+          "mechanism": "关键设计是把诊断与 actor 恢复拆成两个训练视图：诊断视图学「说出该改哪一步」，恢复视图学「在状态里执行修复动作」，避免两个目标互相污染；重放对照则为修正提供可验证的标签来源。",
+          "visual": "画两条平行泳道，起点是同一个 checkpoint，一条走「模型修正」、一条走「原动作重试」，终点各立一根柱子里标通过率 51.1% 与 18.4%。",
+          "prerequisites": [
+            "verifier / 单元测试式判定",
+            "策略评估与方差控制"
+          ],
+          "selfTest": [
+            "为什么不能直接比较修正前后的通过率，而要配重试基线？",
+            "「匹配」需要对齐哪些条件？漏掉哪个最致命？",
+            "为什么诊断和 actor 恢复要分成两个训练视图？"
+          ],
+          "formula": "\\Delta=\\mathrm{Pass}(\\text{correction})-\\mathrm{Pass}(\\text{retry})"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-aed-replay-gain",
+          "name": "重放修正增益（Matched-Replay Correction Gain）",
+          "category": "agent",
+          "latex": "\\Delta_{\\text{pp}}=\\mathrm{Pass}(\\text{correction})-\\mathrm{Pass}(\\text{retry}),\\quad N=3062",
+          "symbols": [
+            ["N", "匹配重放对的数量，摘要给出 3,062"],
+            ["Pass(correction)", "首轮修正方案的验证器通过率，摘要给出 51.1%"],
+            ["Pass(retry)", "同 checkpoint 原动作重试的通过率，摘要给出 18.4%"],
+            ["Δ_pp", "修正相对重试的增益，摘要给出 32.7 个百分点"]
+          ],
+          "derivation": [
+            "第 1 步：为每条自然失败的轨迹准备两个可执行方案——模型给出的修正 c 与原始动作重试 r。",
+            "第 2 步：在匹配的执行设置（同环境、同 checkpoint、同 harness）下分别回放，得到二值验证结果。",
+            "第 3 步：各自取平均得到通过率并相减：0.511 − 0.184 = 0.327，即 32.7 个百分点。"
+          ],
+          "analogy": "像同一个学生的两套订正方案：让他在同一份卷子上分别按老师建议的改法和原来那样重做一遍，比的不是感觉，而是两套做法各自的正确率之差。",
+          "pitfalls": [
+            "把 51.1% 与 18.4% 的差说成「提升到 32.7%」——它是 32.7 个百分点，不是比例增幅",
+            "只报修正通过率而不给重试基线，无法排除任务本身容易通过的混淆",
+            "把 N 记成 50,228：那是诊断对总数，3,062 才是匹配重放对数"
+          ],
+          "code": "n = 3062\npass_corr, pass_retry = 0.511, 0.184   # 摘要给出的通过率\ngain_pp = (pass_corr - pass_retry) * 100\nprint(f'+{gain_pp:.1f} pp over {n} matched pairs')  # +32.7 pp",
+          "sources": [
+            {
+              "title": "Agent Error Dataset: Scaling 50,000 Error-Diagnosis Pairs for Failure Analysis and Error-Aware Post-Training",
+              "url": "https://arxiv.org/abs/2609.40111"
+            }
+          ]
+        },
+        {
+          "id": "f-aed-step-agreement",
+          "name": "精确步骤一致率（Exact-Step Agreement）",
+          "category": "posttraining",
+          "latex": "\\mathrm{Agree}=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}[\\hat{s}_i=s_i^{\\text{teacher}}],\\quad N=943",
+          "symbols": [
+            ["N", "holdout 案例数，摘要给出 943"],
+            ["\\hat{s}_i", "模型预测的需要修改的步骤"],
+            ["s_i^teacher", "内部教师标签指定的步骤"],
+            ["Agree", "两者完全一致的比例"]
+          ],
+          "derivation": [
+            "第 1 步：把每条诊断任务定义为「指出该修改哪一步」，从而可以逐条与教师标签比对。",
+            "第 2 步：在 943 条 holdout 上统计预测步骤与教师步骤完全相同的比例。",
+            "第 3 步：摘要报告该指标经三个随机种子平均后由 47.2% 升到 63.6%，而最强的 prompt 参考为 54.7%。"
+          ],
+          "analogy": "像老师批改时圈出的错误行号：不看你的解释文采，只看你圈的步骤和标准答案的行号是否完全对上。",
+          "pitfalls": [
+            "把 63.6% 与 54.7% 当同条件对比：前者是微调结果，后者是 prompt 参考上限",
+            "把一致率当成修正成功率——它只衡量与教师标签是否一致，不代表环境验证通过",
+            "该指标是三个种子的平均，摘要未给方差，引用时不能说成稳定提升"
+          ],
+          "code": "def exact_step_agreement(pred_steps, teacher_steps):\n    hit = sum(p == t for p, t in zip(pred_steps, teacher_steps))\n    return hit / len(teacher_steps)   # 摘要: 47.2% -> 63.6%，N=943",
+          "sources": [
+            {
+              "title": "Agent Error Dataset",
+              "url": "https://huggingface.co/papers/2609.40111"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "AED 包含 50,228 条错误-诊断对，来自 9,961 个源任务。",
+          "数据覆盖 33 个环境、19 个 harness 家族、23 个策略模型。",
+          "AET 是五阶段流水线，保留源轨迹与执行元数据以支持跨设定失败分析与再诊断。",
+          "在 3,062 对匹配重放中，首轮修正把验证器通过率从 18.4% 提到 51.1%，增益 32.7 个百分点。",
+          "用冻结的诊断集做全诊断微调，在 943 条 holdout 上把 Qwen3-8B 的精确步骤一致率从 47.2% 提到 63.6%（三种子平均），最强 prompt 参考为 54.7%，且一致率在四个递增训练集规模上都改善。",
+          "单种子对比中，action-only 修复训练在 WebShop-lite 上比 success-only 高 6.67 个百分点。"
+        ],
+        "uncertain": [
+          "「首轮修正」是否意味着每个样本只采样一次修正、采样数量上界是多少，摘要未明确。",
+          "验证器（verifier）的具体实现与通过判据摘要未给。",
+          "6.67 个百分点的 actor 对比是单种子结果，方差与显著性未知。",
+          "两个公式均为按摘要数值重建的度量定义，非原文公式形式，需核对。",
+          "「内部教师标签」由哪个模型、用什么方式生成，摘要未说明。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "把智能体失败轨迹里的「哪一步错了、该改成什么」做成 5 万条数据。"
+          },
+          {
+            "level": "入门",
+            "text": "一条失败的 agent 轨迹里，除了最终奖励，还有观测、动作和环境反馈。AED 把失败整理成 5 万条错误-诊断对，流程是：收集自然失败、生成诊断与修正、对照记录证据核查，可重放的还用同一 checkpoint 的原动作做对照。"
+          },
+          {
+            "level": "进阶",
+            "text": "关键设计有两处：一是保留源轨迹与执行元数据，让诊断可事后重新生成与复核；二是把诊断与 actor 恢复拆成两个训练视图，分别对应「说出改哪一步」与「做对动作」。评测分两层：3,062 对可重放匹配重放中，首轮修正把验证器通过率从 18.4% 提到 51.1%；不可重放的用精确步骤一致率，Qwen3-8B 从 47.2% 升到 63.6%，超过 prompt 参考的 54.7%。"
+          },
+          {
+            "level": "专家",
+            "text": "与偏好优化相比，AED 的监督信号不是「哪个回答更好」，而是环境里可核查的「哪一步该改」，更接近步骤级而非结果级监督；与只回放成功轨迹相比，它把失败也变成训练资产，并显式构造反事实（修正 vs 原动作重试）。适用边界在于诊断质量依赖证据核查与可重放性：环境不可复现或缺少验证器时只能退回一致率这类弱指标；跨 33 个环境合并训练是否带来负迁移，摘要没有给出答案。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么最终 reward 为 0 的轨迹还值得留？",
+            "a": "失败轨迹含观测、动作与环境反馈，能定位到具体该改哪一步；只留成功轨迹会丢掉「如何纠错」这类最贵的信息。"
+          },
+          {
+            "q": "为什么必须做匹配重放，而不是直接比较修正前后的通过率？",
+            "a": "任务难度与随机性会造成混淆；在同一 checkpoint、同一执行设置下对照原动作重试，才能把增益归因于修正本身。"
+          },
+          {
+            "q": "为什么要把诊断与 actor 恢复分成两个训练视图？",
+            "a": "「指出错误步骤」与「在状态中执行修复」是两种能力，混在一个目标里容易学成说得对却做不对。"
+          }
+        ],
+        "mechanism": "必须这样设计的理由是：失败轨迹的价值藏在中间步骤，而中间步骤没有现成标签。AED 用「诊断-核查」代替人工标注——先让模型提出诊断与修正，再用环境记录的证据与可重放对照去检验，标签因此来自可验证的因果比较而非主观判断。保留源轨迹与元数据让这套核查可以离线反复进行，省掉重复 rollout 的高昂成本，同时支持跨环境、跨 harness 的失败模式统计。",
+        "boundary": "环境不可重放或没有验证器时，只能依赖与教师标签的一致率，证据强度下降；诊断由模型自己生成，若教师标签或核查判据有偏，会把这些偏差固化进训练数据；跨 33 个环境的混合是否互相干扰，摘要未给答案；单种子结果也不足以支撑 actor 训练配方的结论。",
+        "analogyBoundary": "「错题本」类比失效在于：学生错题的标准答案唯一且已知，而 agent 的失败常有多种合理修法，环境反馈还带随机性；另外错题本的整理者是人，这里的诊断由模型生成，必须再经过证据核查。",
+        "misconceptions": [
+          "以为 51.1% 是最终任务成功率——它是验证器通过率，统计口径是 3,062 对匹配重放。",
+          "把 63.6% 与 54.7% 当同条件对比；后者是 prompt 参考的弱基线。",
+          "以为失败数据越多就越涨点；没有诊断与核查，原始失败轨迹无法直接监督。"
+        ],
+        "ownAnalysis": "把 AED 与过程奖励模型（PRM）、自我纠错（self-refine）放在一起看：三者都在做步骤级监督，差别在标签来源——PRM 靠人工或模型打分，self-refine 靠模型自评，AED 靠「修正 vs 原动作重试」的环境对照，属于反事实式标注，证据更硬但只能覆盖可重放任务。可疑处：摘要只报了通过率与一致率，没有给下游任务的最终成功率提升；actor 训练对比只是单种子、单环境（WebShop-lite），外部效度有限。（推断）",
+        "officialNotes": [
+          {
+            "position": "摘要称在 3,062 对匹配重放中首轮修正把验证器通过率从 18.4% 提到 51.1%；全诊断微调把 Qwen3-8B 的精确步骤一致率从 47.2% 提到 63.6%（三种子平均，943 条 holdout），最强 prompt 参考为 54.7%。",
+            "source": "https://arxiv.org/abs/2609.40111"
+          }
+        ],
+        "interviewAnswer": "失败轨迹比最终奖励信息量大：观测、动作、环境反馈都在，只要找到该改哪一步就能变成训练信号。它有 50,228 条错误-诊断对，来自 9,961 个任务；五阶段 AET 先收自然失败、再核查诊断与修正，可重放时做匹配对照，最后拆出诊断与 actor 两个训练视图。结果上首轮修正把重放通过率从 18.4% 提到 51.1%，全诊断微调让 Qwen3-8B 的步骤一致率从 47.2% 提到 63.6%。",
+        "studyPath": {
+          "prerequisites": [
+            "LLM agent 的 rollout 与工具调用",
+            "SFT / 偏好数据构造",
+            "评测与 verifier 设计基础"
+          ],
+          "nextSteps": [
+            "读原文五阶段细节与证据核查判据",
+            "在可重放的小环境里复现一次修正 vs 重试对照",
+            "对比 PRM / self-refine 等步骤级监督方案的标签成本"
+          ]
+        }
+      }
+    },
+    {
+      "id": "df3dd0de59a5f225",
+      "tldr": "LSD 把已解出的题目路由到在线蒸馏、未解出的仍走 RL，把长度膨胀税从 19.0% 降到 -3.7%。",
+      "keyPoints": [
+        "定义长度膨胀税 LST：已解题上响应变长却没有相应准确率增益",
+        "LSD 对已解 prompt 用在线蒸馏，未解 prompt 保留原 RL 目标",
+        "教师是在线策略的指数移动平均，不需要外部模型",
+        "单轮 LST 从 19.0% 降到 -3.7%，多轮降到 13.7%",
+        "在多个变体上性能与 RL 相当或更好，同时抑制简单题上的长度增长"
+      ],
+      "why": "RL 后训练常把「变长」误当「变强」；按难度路由、在不掉点的前提下压长度，是可验证奖励 RL 与推理效率方向很实用的技能。",
+      "difficulty": "hard",
+      "tags": [
+        "rl",
+        "distillation",
+        "posttraining",
+        "reasoning",
+        "length-control"
+      ],
+      "entities": [
+        "Length Self-Distillation",
+        "LSD",
+        "length-scaling tax",
+        "exponential moving average"
+      ],
+      "diagram": {
+        "kind": "curve",
+        "title": "RL 与 LSD 的长度膨胀税对比",
+        "caption": "同一指标下 LSD 把单轮长度税压到负值，多轮只减半——长程任务的长度来源不止生成风格。",
+        "spec": {
+          "type": "curve",
+          "nodes": [
+            {
+              "label": "RL 单轮 LST",
+              "value": 19.0,
+              "detail": "纯 RL 下已解题目的相对长度增幅"
+            },
+            {
+              "label": "LSD 单轮 LST",
+              "value": -3.7,
+              "detail": "已解题走在线蒸馏后不再膨胀，负值表示反而变短"
+            },
+            {
+              "label": "RL 多轮 LST",
+              "value": 31.4,
+              "detail": "多轮 agentic 任务上长度税更严重"
+            },
+            {
+              "label": "LSD 多轮 LST",
+              "value": 13.7,
+              "detail": "多轮只降到 13.7%，仍有结构性变长"
+            }
+          ]
+        },
+        "alt": "对比图：RL 的单轮与多轮长度膨胀税分别为 19.0% 和 31.4%，改用 LSD 后分别降到 -3.7% 和 13.7%。"
+      },
+      "concepts": [
+        {
+          "name": "长度膨胀税（Length-Scaling Tax, LST）",
+          "readable": "指 RL 后训练中，已经能答对的题目上响应长度明显增加，却换不来相应的准确率提升——多出来的 token 是纯开销。",
+          "analogy": "像考试时已经会做的题却越写越长：不是不会，而是习惯性把草稿全抄上去，白白吃掉阅卷时间。",
+          "analogyBreaksDown": "考试里写长只浪费纸和时间，代价线性；而 LLM 的长度会连锁影响解码延迟、显存与多轮交互的上下文预算，代价近似超线性，且啰嗦的答案偶尔仍能小幅提升准确率，两者并非完全解耦。",
+          "mechanism": "把 LST 定义成可测量的差分指标（已解题上的长度增幅是否伴随准确率增幅），才能把「变长是好是坏」从印象变成可优化的目标；摘要用相对百分比报告它，说明它被当成一个可以下降的量化税。",
+          "visual": "横轴是训练步数，左纵轴响应长度、右纵轴准确率；RL 的长度曲线持续上升而简单题准确率走平，两者之间的阴影面积就是 LST；LSD 的长度曲线在简单题上被压平。",
+          "prerequisites": [
+            "策略梯度 RL 基础（如 PPO / GRPO）",
+            "on-policy distillation 的概念",
+            "指数移动平均（EMA）的用法"
+          ],
+          "selfTest": [
+            "LST 的分母是什么？为什么定义要限定在已解出的题目上？",
+            "LST 为负值意味着什么？",
+            "LST 与「响应变长」是同一个说法吗？差在哪里？"
+          ],
+          "formula": "\\text{LST}=\\frac{\\bar\\ell_{\\text{RL}}^{\\text{solved}}-\\bar\\ell_{\\text{base}}^{\\text{solved}}}{\\bar\\ell_{\\text{base}}^{\\text{solved}}}"
+        },
+        {
+          "name": "在线自蒸馏路由（On-Policy Self-Distillation Routing）",
+          "readable": "按「这道题当前策略是否已经做对」分流：做对的走蒸馏、跟自己的 EMA 版本学；没做对的照旧走 RL 探索。教师就是自己，不需要外部大模型。",
+          "analogy": "像自适应复习：已经做熟的题只对答案、快速收敛到标准解法，不再反复试错；不会的题才允许长时间琢磨。",
+          "analogyBreaksDown": "复习时「会不会」是确定的，而这里判定「已解出」依赖采样，同一题换一次采样可能被判成未解；EMA 教师也并非标准答案，它只是更平滑的旧自己，可能把旧分布里的错误一起固化。",
+          "mechanism": "关键设计是用 on-policy 样本配 EMA 教师，使蒸馏分布与当前策略同源，避免离线蒸馏的分布漂移；同时用 solved / unsolved 的硬路由保住难题的探索梯度，因此能一边压长度一边不掉点。",
+          "visual": "画一个分流阀：prompt 进来后按是否已解出分成两路，左路标 on-policy distillation（teacher = EMA(θ)），右路标原 RL 目标，两路再汇合回同一份策略参数。",
+          "prerequisites": [
+            "KL 散度与知识蒸馏损失",
+            "on-policy 与 off-policy 的区别",
+            "可验证奖励的 RL 流程"
+          ],
+          "selfTest": [
+            "为什么教师用自身 EMA，而不是更强的外部模型？",
+            "off-policy 蒸馏在这里会带来什么额外问题？",
+            "「已解出」的判定过松或过紧，分别会发生什么？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-lst-definition",
+          "name": "长度膨胀税（Length-Scaling Tax）",
+          "category": "posttraining",
+          "latex": "\\text{LST}=\\frac{\\mathbb{E}_{q\\in\\mathcal{S}}[\\ell_{\\text{RL}}(q)]-\\mathbb{E}_{q\\in\\mathcal{S}}[\\ell_{\\text{base}}(q)]}{\\mathbb{E}_{q\\in\\mathcal{S}}[\\ell_{\\text{base}}(q)]}\\times 100\\%",
+          "symbols": [
+            ["S", "已经能被答对的题目集合（already-solved queries）"],
+            ["ℓ_RL(q)", "RL 后训练之后对题目 q 的响应长度"],
+            ["ℓ_base(q)", "对照基线对同一题目的响应长度"],
+            ["LST", "已解题上的相对长度增幅，摘要用百分比报告"]
+          ],
+          "derivation": [
+            "第 1 步：把关注范围限制在已经解出的题目上——这些题上长度增加不带来准确率收益。",
+            "第 2 步：取这些题目的平均响应长度，计算 RL 后相对基线的相对增幅，即得长度税。",
+            "第 3 步：作为税它可以是负的：摘要里 LSD 的单轮 LST 为 −3.7%，即已解题反而变短了。（定义按摘要文字重建，需核对原文公式）"
+          ],
+          "analogy": "像给装修算超支：先把「本来就会做、没多赚」的部分单独拎出来算额外花的钱，才知道哪些成本纯属浪费。",
+          "pitfalls": [
+            "把 LST 说成所有题目的长度增长——定义只针对已解出的题目",
+            "忽略它可以是负值：负 LST 表示已解题变短，不是算错",
+            "把 LST 与准确率混为一谈：它的分母是长度，不是题目数"
+          ],
+          "code": "def length_scaling_tax(len_rl, len_base, solved_mask):\n    rl = len_rl[solved_mask].mean()\n    base = len_base[solved_mask].mean()\n    return (rl - base) / base * 100.0   # 摘要: RL 19.0%，LSD -3.7%",
+          "sources": [
+            {
+              "title": "Mitigating the Length-Scaling Tax with Online Distillation",
+              "url": "https://arxiv.org/abs/2609.38854"
+            }
+          ]
+        },
+        {
+          "id": "f-lsd-objective",
+          "name": "长度自蒸馏目标（Length Self-Distillation Objective）",
+          "category": "posttraining",
+          "latex": "\\mathcal{L}=\\mathbb{1}[q\\notin\\mathcal{S}]\\,\\mathcal{L}_{\\text{RL}}(\\theta)+\\mathbb{1}[q\\in\\mathcal{S}]\\,\\mathrm{KL}\\!\\big(\\pi_{\\bar\\theta}\\,\\|\\,\\pi_\\theta\\big),\\quad \\bar\\theta\\leftarrow\\alpha\\bar\\theta+(1-\\alpha)\\theta",
+          "symbols": [
+            ["S", "已被当前策略解出的 prompt 集合"],
+            ["π_θ", "正在训练的在线策略"],
+            ["π_θ̄", "教师策略，即 θ 的指数移动平均"],
+            ["α", "EMA 的衰减系数"],
+            ["L_RL", "原文的 RL 目标，只在未解出的 prompt 上保留"],
+            ["KL", "已解出 prompt 上使用的蒸馏散度项"]
+          ],
+          "derivation": [
+            "第 1 步：观察到 RL 在已解题上主要带来长度增长，于是按 prompt 是否已解出做分流。",
+            "第 2 步：未解出的 prompt 继续用原 RL 目标，保证探索与困难题上的学习信号不被削弱。",
+            "第 3 步：已解出的 prompt 换成对 EMA 教师的在线蒸馏，把策略拉回更紧凑的旧分布，从而抑制长度膨胀。",
+            "第 4 步：教师不引入外部模型，只维护 θ 的 EMA，额外成本是一份参数副本加一次前向。（按摘要重建，非原文公式）"
+          ],
+          "analogy": "像跑步训练分两档：已达标的人跟着自己上周的稳定配速跑，别越跑越夸张；还没达标的人才允许全力冲刺试新姿势。",
+          "pitfalls": [
+            "把蒸馏写成对离线大模型蒸馏——摘要明确教师是在线策略的 EMA，不需要外部模型",
+            "用 off-policy 数据做蒸馏会引入分布漂移，失去 on-policy 的意义",
+            "认为它改写了 RL 目标：未解出的 prompt 上目标完全没变"
+          ],
+          "code": "import torch, torch.nn.functional as F\n# solved: bool 张量, 指示该 prompt 是否已被解出\nema_logits = ema_model(x).detach()          # 教师 = 在线策略的 EMA\nkl = F.kl_div(F.log_softmax(policy(x), -1), F.softmax(ema_logits, -1),\n              reduction='batchmean')\nloss = torch.where(solved, kl, rl_loss).mean()",
+          "sources": [
+            {
+              "title": "Mitigating the Length-Scaling Tax with Online Distillation",
+              "url": "https://huggingface.co/papers/2609.38854"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "LST 被定义为已解出查询上的多余响应长度，且没有相应的准确率提升。",
+          "LSD 把已解出的 prompt 路由到在线蒸馏，未解出的 prompt 保留原 RL 目标。",
+          "LSD 的教师是在线策略的指数移动平均，不需要外部模型。",
+          "LSD 在多个变体上性能与 RL 相当或更好，同时显著抑制简单题上的响应长度增长。",
+          "LSD 把单轮推理的 LST 从 19.0% 降到 -3.7%，把多轮 agentic 任务的 LST 从 31.4% 降到 13.7%。"
+        ],
+        "uncertain": [
+          "两个公式都是按摘要文字重建的度量与目标形式，原文的具体符号与正则项（是否含熵项或 KL 系数）需核对。",
+          "LST 的基线是训练前模型还是 SFT 模型，摘要未明确。",
+          "多轮 agentic 任务的具体环境，以及「长度」按 token 数还是轮数计，摘要未给。",
+          "「comparable or better」没有给出具体基准名称与数值，需查原文表格。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "已经会做的题别再越答越长：这部分跟着自己的旧版本学，不会的题照旧探索。"
+          },
+          {
+            "level": "入门",
+            "text": "RL 后训练常让模型在难题上想得更久，看起来是推理变强；但在本来就会的题上模型也变得啰嗦却没有更准，这部分额外长度就叫长度膨胀税。LSD 按题目是否已解出分流：已解出的做在线蒸馏，学自己指数移动平均的版本；未解出的保留原来的 RL 目标。"
+          },
+          {
+            "level": "进阶",
+            "text": "关键设计是路由加自蒸馏：已解出的 prompt 用 on-policy 样本对齐 EMA 教师，分布同源、无离线漂移，把长度拉回紧凑区间；未解出的 prompt 继续吃 RL 梯度，难题探索不被牺牲。教师是自身 EMA，无需外部大模型，额外成本仅一份参数副本。结果单轮 LST 从 19.0% 降到 -3.7%，多轮 agentic 从 31.4% 降到 13.7%，整体性能与 RL 相当或更好。"
+          },
+          {
+            "level": "专家",
+            "text": "与长度惩罚（长度正则、length penalty reward）相比，LSD 不给奖励加项，因此不改变 RL 的优势估计与探索动力学，压长度靠分布对齐而非惩罚权重调参；与离线蒸馏相比，on-policy 样本避免了训练与推理分布错配。适用边界：分档依赖「已解出」的判定，采样噪声会让边界抖动；多轮 agentic 上 LST 只降到 13.7%，说明长程任务的长度膨胀还有蒸馏之外的结构性来源（推断）；摘要未给基准数值，「相当或更好」需要按表核对。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "直接在 reward 里加长度惩罚项不行吗？",
+            "a": "惩罚项会改变优势估计、与准确率奖励争夺权重，调不好就掉点；LSD 不动 RL 目标，只在已解题上做分布对齐，更容易保住性能。"
+          },
+          {
+            "q": "为什么教师要用在线策略的 EMA，而不是外部更强的模型？",
+            "a": "EMA 教师与当前策略同源，蒸馏分布漂移小，也不必额外推理一个外部大模型；外部强模型会把长度与风格一起搬过来。"
+          },
+          {
+            "q": "为什么多轮 agentic 的 LST 只降到 13.7%？",
+            "a": "多轮长度由工具调用次数、失败重试等结构性行为决定，蒸馏只影响单步生成风格，因此残留说明还有别的长度来源。"
+          }
+        ],
+        "mechanism": "必须这样设计的理由是：RL 的目标只有准确率，长度是它的副产物，用「加惩罚」压长度等于在目标里塞一个与准确率冲突的项，需要精细调权重。LSD 改成按难度分流：简单题上把策略拉回更紧凑的旧分布，难题上保留完整 RL 梯度。EMA 教师让「旧分布」平滑可得且与当前策略同源，避开离线蒸馏的分布错配，也无需外部模型，因此它几乎是 RL 流程上的一个低成本插件。",
+        "boundary": "「已解出」的判定本身带采样噪声，边界抖动会让部分难题被过早蒸馏；当任务本身要求长推理链（如长程数学证明）时，压长度可能直接损害准确率；多轮 agentic 上的残留 LST 说明它无法消除结构性变长，摘要也未给出基准名与数值。",
+        "analogyBoundary": "「分档跑步训练」类比失效在于：跑者清楚自己是否达标，而模型「已解出」只能靠有限次采样估计，错判会把该探索的题按已掌握处理；此外 EMA 教师是旧自己而不是完美配速员，它会把旧分布里的偏差一起教回来。",
+        "misconceptions": [
+          "以为变长就等于推理变强；LST 说的正是已解题的长度增长没有对应准确率收益。",
+          "把 LSD 当成离线蒸馏或需要外部教师模型——教师是在线策略的 EMA。",
+          "以为 LSD 改写了 RL 的目标函数；它只在已解出的 prompt 上替换目标。"
+        ],
+        "ownAnalysis": "LSD 与两类做法对照：一是给长度加惩罚或做长度归一化奖励，二是对成功轨迹做 SFT 或拒绝采样压缩。前者的风险是污染优势估计，后者 off-policy 且只看成功样本，容易丢探索。LSD 处在两者之间——on-policy，但只作用在已解出的 prompt 上，保留 RL 在难题上的原始动力学。可疑处：摘要没给基线与基准名称，也没说明「已解出」是按单次采样还是 pass@k 判定；多轮只降到 13.7%，长程行为仍受限。（推断）",
+        "officialNotes": [
+          {
+            "position": "摘要称 LSD 在多个变体上性能与 RL 相当或更好，同时把单轮 LST 从 19.0% 降到 -3.7%、多轮 agentic 从 31.4% 降到 13.7%。",
+            "source": "https://arxiv.org/abs/2609.38854"
+          }
+        ],
+        "interviewAnswer": "我讲 LSD。现象是 RL 后训练长度会涨：难题上像变强，已会做的题只是变啰嗦，这叫 length-scaling tax。解法是按 prompt 是否已解出分流：已解出的走在线蒸馏，教师是策略自身的 EMA，无需外部模型；未解出的保留原 RL 目标。好处是不动奖励结构。结果不比 RL 差，单轮 LST 19.0%→-3.7%，多轮 agentic 31.4%→13.7%。",
+        "studyPath": {
+          "prerequisites": [
+            "策略梯度 RL（PPO / GRPO 级别的理解）",
+            "KL 散度与知识蒸馏",
+            "EMA 与 on-policy 采样的区别"
+          ],
+          "nextSteps": [
+            "读原文实验表，核对「相当或更好」对应的基准与模型规模",
+            "在小型可验证任务上实现 solved / unsolved 路由的玩具实验",
+            "对比长度惩罚 reward shaping 在同一任务上的表现"
+          ]
+        }
+      }
+    }
+  ]
+}

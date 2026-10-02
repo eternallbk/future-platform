@@ -1,0 +1,106 @@
+{
+ "batchId": "queue-02",
+ "mode": "full",
+ "items": [
+  {
+   "id": "287c98149d1c6c8c",
+   "title": "It Takes Workflows to Evolve Better Workflows",
+   "category": "agent",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2610.01026",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2610.01026",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2610.01026",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-10-01T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 71.4,
+   "summary": "Tackling complex real-world tasks can exceed the capabilities of a single large language model (LLM), motivating the use of multi-agent workflows that coordinate specialized agents to work together on these tasks. Recent methods train LLMs to construct better workflows from execution outcomes, but they optimize only the workflow generator, while the other agents that build or execute each workflow remain fixed even though every outcome depends on all of them. However, extending training beyond the generator is challenging: the agents are coupled, and a workflow's outcome is a single sparse score that cannot tell which agent causes a failure. We propose FloWright, which leverages the workflow as a harness to optimize workflows. By introducing a hierarchical, structure-aware reward paradigm, FloWright enables one role to self-evolve and two or more roles to co-evolve, with no additional models, labels, or executions. Considering the limitation that workflows are commonly trained and evaluated on data that a single agent can already handle, we further propose DataWright, an adaptive data hardening approach that converts existing datasets into workflow-level tasks with increased difficulty. Across document, slide, chart, code, math, and finance tasks, small open models trained with FloWright achieve improved performance by up to +7.41%, with co-evolving (+5.03%) more roles gaining more than optimizing one of them alone (+2.83%). Our project page: https://xhguo7.github.io/FloWright/.",
+   "depthScore": 60.59
+  },
+  {
+   "id": "97fae90c627e5adb",
+   "title": "ageerle/ruoyi-ai - Enterprise-grade AI agent framework with multi-provider LLM management, secure knowledge bases and high-precision RAG, visual workflow orchestration, and multi-agent coordination.",
+   "category": "agent",
+   "channel": "github",
+   "url": "https://github.com/ageerle/ruoyi-ai",
+   "sources": [
+    {
+     "url": "https://github.com/ageerle/ruoyi-ai",
+     "name": "github"
+    }
+   ],
+   "tags": [
+    "agent",
+    "ai",
+    "knowledge",
+    "mcp",
+    "rag",
+    "Java"
+   ],
+   "publishedAt": "2026-09-29T18:54:32+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 85.2,
+   "summary": "Enterprise-grade AI agent framework with multi-provider LLM management, secure knowledge bases and high-precision RAG, visual workflow orchestration, and multi-agent coordination.",
+   "depthScore": 60.41
+  },
+  {
+   "id": "6eeb8b8a088c51e2",
+   "title": "Learning from Research: Toward Lifelong Agent Harness Evolution",
+   "category": "agent",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.40169v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.40169v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.AI"
+   ],
+   "publishedAt": "2026-09-30T05:00:38+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 69.9,
+   "summary": "Language agents are expected to solve increasingly complex tasks, creating a growing need for continual improvement. One promising approach is to evolve the agent harness, the software that governs tool use, memory management, and task execution, while keeping the underlying language model fixed. Recent methods automate this process by using a meta coding agent to modify the harness based on execution feedback. However, relying on that agent's existing knowledge and observed failures can restrict exploration and make adaptation reactive. Inspired by how human experts learn from the research literature for new solutions, we introduce ScholarEvolve, a framework that automatically draws on state-of-the-art research to guide harness evolution. ScholarEvolve organizes the harness evolution directions into functional modules and uses topic modeling to identify distinct improvement strategies for each module. It implements these strategies and evaluates their combinations to improve task performance. Moreover, the framework is designed to incorporate new publications over time, allowing research advances to drive proactive lifelong evolution. Experiments demonstrate improvements on AppWorld and Tau2-Bench. ScholarEvolve raises Qwen3.5-27B task goal completion from 49.6% to 63.6% on AppWorld Challenge, and raises GPT-5.4-mini pass@1 from 72.7% to 81.9% on Tau2-Bench Telecom.",
+   "depthScore": 60.02
+  },
+  {
+   "id": "34943744e1ea5edd",
+   "title": "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+   "category": "coding",
+   "channel": "nowcoder",
+   "url": "https://nowcoder.com/discuss/932638301494738944",
+   "sources": [
+    {
+     "url": "https://nowcoder.com/discuss/932638301494738944",
+     "name": "nowcoder"
+    }
+   ],
+   "tags": [
+    "牛客",
+    "面经"
+   ],
+   "publishedAt": "2026-10-01T22:47:26+08:00",
+   "lang": "zh",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 65.1,
+   "summary": "发面经攒人品前20min自我介绍+问项目，面试官不搞agent方面的东西所以主要是我在讲，主要追问是市面上同类型产品是怎么做的，以及为什么要做这样一个深度研究agent而不是直接用目前各个大模型给的深度学习功能15min算法：二叉树的最大路径和，dfs做法后20min八股+场景：1.说一下HTTP的_牛客网_牛客在手,offer不愁",
+   "depthScore": 47.63
+  }
+ ]
+}

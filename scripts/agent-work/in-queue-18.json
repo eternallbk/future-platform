@@ -1,0 +1,81 @@
+{
+ "batchId": "queue-18",
+ "mode": "full",
+ "items": [
+  {
+   "id": "10c6cb7bbc88ceef",
+   "title": "ATLAS: Aligned Transport of Latent Structure for Reliable World Model Planning",
+   "category": "worldmodel",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.36333",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.36333",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.36333",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-29T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 60.7,
+   "summary": "Latent world models rely on representation geometry for planning, yet regularizing the latent marginal alone does not determine the state-to-state relationships used for action selection. We show that this can cause planning-relevant novelty structure to be weakened as representations are transformed into the final latent used by the planner. We introduce Aligned Transport of Latent Structure (ATLAS), a training objective that explicitly preserves relational geometry while calibrating the global latent distribution. ATLAS transfers normalized pairwise structure from an informative encoder representation to the planning latent and uses Wasserstein embedding matching (WEMReg) to calibrate its marginal through one-dimensional Wasserstein-2 transport. Our analysis shows that relational preservation and marginal calibration impose non-redundant constraints, and connects finite-candidate planning stability to relational distortion, latent-scale mismatch, and prediction error. Instantiated in LeWM, ATLAS improves mean goal-reaching success across PushT, TwoRoom, and OGBench-Cube on both lower- and higher-novelty evaluation subsets, with the largest gain on higher-novelty TwoRoom episodes. Representation and rollout diagnostics further show stronger novelty-related structure in the planning latent, improved marginal calibration, and lower multi-step prediction error. Together, these results highlight preservation of planning-relevant latent geometry as an important ingredient for reliable world-model planning. Code is available at https://anonymous.4open.science/r/atlas-world-model-72C4/.",
+   "depthScore": 67.31
+  },
+  {
+   "id": "96f03ee12d160d44",
+   "title": "World Observer: Joint Actor-Observer Generation for Persistent World Modeling",
+   "category": "worldmodel",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2610.02162",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2610.02162",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2610.02162",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-10-01T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 59.9,
+   "summary": "How can a world model continuously observe regions beyond the actor's current view? Video world models simulate how an environment evolves from an agent's actions, yet remain actor-centric. Once an object leaves the actor's view, they lose direct evidence of its evolution, often failing to preserve its state and dynamics upon re-entry. To address this, we introduce World Observer, which decouples observing from acting by jointly generating a perspective actor for the agent-centric view with one or more panoramic observers that watch selected world regions. This allows objects that leave the actor's view to remain visually evolving in an observer, so their updated states are reflected when they re-enter. We ground the actor and observers by warping from a shared panoramic source for explicit geometric correspondence, and introduce an Observer Sink of high-resolution perspective references to restore fine appearance upon re-entry. Since the observers are decoupled from the actor, they can be placed freely across the scene, extended to multiple locations for broader coverage, and driven by control signals to steer out-of-view evolution. To evaluate out-of-view evolution, we further introduce world-space metrics and a benchmark spanning real and synthetic scenes. World Observer substantially improves out-of-view dynamics while remaining competitive in visual fidelity, camera control, and 3D adherence.",
+   "depthScore": 66.95
+  },
+  {
+   "id": "8edb720efe00228f",
+   "title": "4Director: Controlling Video World Models with Rigid 3D Geometry",
+   "category": "worldmodel",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2610.02160",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2610.02160",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2610.02160",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-10-01T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 57.8,
+   "summary": "Precise control over camera and object motion is essential for professional video production. Existing methods control objects only coarsely, through image-plane cues that are ambiguous in depth and rotation or through 3D tracks and blobs that lack complete geometry and lose consistency across viewpoint changes. We introduce 4Director, a video world model conditioned on an explicit 4D scene representation: each object is reconstructed once from the input image as a canonical mesh and moved by one prescribed rigid transformation per frame. This representation provides an intuitive 3D control interface and prevents unobserved geometry from being regenerated independently in every frame. We render the controlled scene as a depth video and introduce a Motion Adapter that transforms this geometric scaffold into video while synthesizing view-consistent appearance, illumination, and non-rigid dynamics. For training, we construct RealCOD-Rigid, a new dataset of 20,774 clips annotated with rigid 3D scenes by our automatic pipeline. We further introduce Identity-Gated IoU (IG-IoU), which jointly evaluates adherence to prescribed object motion and preservation of object identity. Experiments demonstrate that 4Director consistently outperforms prior methods in visual quality and in camera and object control.",
+   "depthScore": 66.01
+  }
+ ]
+}

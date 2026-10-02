@@ -1,0 +1,111 @@
+{
+ "batchId": "queue-07",
+ "mode": "full",
+ "items": [
+  {
+   "id": "d22e907ed53bb208",
+   "title": "Hierarchical Continuous Diffusion Language Models",
+   "category": "generative",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2610.02193",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2610.02193",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2610.02193",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-10-01T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 69.4,
+   "summary": "Discrete diffusion language models offer a compelling alternative to autoregressive generation for tasks demanding bidirectional reasoning and global constraint satisfaction. Yet they share a structural bottleneck: when decoding in parallel, each token is sampled independently from its marginal, severing the statistical dependencies among the tokens decoded together. Continuous diffusion language models avoid this by denoising a shared continuous state, but their denoiser sees only that state, so nothing ties it to a valid token configuration until it is finally decoded. To address this, we propose Hierarchical Continuous Diffusion Language Models (HC-DLM), which couple discrete token generation with a continuous latent trajectory in a single, principled denoising process, whose training objective is derived from a variational bound on the token likelihood. In contrast to recent methods that attach continuous context to a self-contained discrete chain, HC-DLM makes the latent the only persistent generative state: tokens are read out from it at every step and feed back as a scaffold for the next latent update. On structured reasoning (Sudoku), mathematical planning (Countdown) and language modeling (LM1B), HC-DLM improves over discrete and continuous diffusion baselines at matched model size, in puzzle accuracy on Sudoku and Countdown and in generative perplexity on LM1B. Project page: https://hc-dlm.github.io/.",
+   "depthScore": 66.96
+  },
+  {
+   "id": "99fb8b7ff588817d",
+   "title": "longxiang-ai/awesome-video-diffusions - A curated and auto-updated collection of video diffusion / video generation papers from arXiv, covering text-to-video, image-to-video, controllable generation, world models, video editing, and 16+ research categories.",
+   "category": "generative",
+   "channel": "github",
+   "url": "https://github.com/longxiang-ai/awesome-video-diffusions",
+   "sources": [
+    {
+     "url": "https://github.com/longxiang-ai/awesome-video-diffusions",
+     "name": "github"
+    }
+   ],
+   "tags": [
+    "arxiv",
+    "arxiv-papers",
+    "awesome",
+    "awesome-list",
+    "controllable-generation",
+    "diffusion-models",
+    "image-to-video",
+    "research-paper",
+    "Python"
+   ],
+   "publishedAt": "2026-09-30T16:29:24+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 78.4,
+   "summary": "A curated and auto-updated collection of video diffusion / video generation papers from arXiv, covering text-to-video, image-to-video, controllable generation, world models, video editing, and 16+ research categories.",
+   "depthScore": 65.44
+  },
+  {
+   "id": "ec14cdfd4cf3fff4",
+   "title": "Embedding Prediction Helps Image Generation",
+   "category": "generative",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.02203v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.02203v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV",
+    "cs.CV",
+    "cs.LG"
+   ],
+   "publishedAt": "2026-10-02T01:59:49+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 65.4,
+   "summary": "In diffusion transformers, a class label or a text prompt is embedded once, and the same condition is reused at every denoising step. We ask whether predicted embeddings can serve as this condition instead. Next-Embedding Predictive Autoregression (NEPA) trains a Transformer to predict the next continuous embedding in a sequence. In generation, the clean image follows the noisy image, so its embeddings are the next embeddings after the condition and the noisy image. We train a NEPA model to predict them all at once with Multi-Embedding Prediction, and in Embedding Conditioned Generation, a DiT generator is conditioned on these predictions, recomputed at every denoising step, so the conditioning signal adapts to the current noisy state. Experiments on class-conditional ImageNet $256\\times256$ study the condition of the generator, the design of Multi-Embedding Prediction, and the scaling of both models. The NEPA model adds a second network to every sampling step; with it, and combined with REPA, our final model, NEPA-DiT-XL, reaches an FID of 1.32 using about a third of the training compute of REPA.",
+   "depthScore": 65.26
+  },
+  {
+   "id": "d127fd2340692ed8",
+   "title": "Continual Concept Erasure in Diffusion Models by Suppressing Cross-Edit Interference",
+   "category": "generative",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.01989v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.01989v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV",
+    "cs.CV"
+   ],
+   "publishedAt": "2026-10-02T00:27:29+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 65.3,
+   "summary": "Concept erasure removes copyright-protected, privacy-sensitive, or otherwise undesirable concepts from pretrained text-to-image diffusion models to support content governance and compliance. As erasure requests arrive over time, models must remove new targets without undoing prior erasures. Existing methods do not constrain interference across edits: residual perturbations outside the retain set interact and accumulate, degrading unrelated generations and sometimes collapsing previously erased targets into noise. We propose CEASE (Continual Erasure via Adaptive Subspace Editing), a training-free method that imposes two subspace constraints on a closed-form solver. CEASE adds the token representation of the shared replacement to the solver's invariance matrix and, when interference is detected, projects the current update onto the orthogonal complement of dominant output directions extracted from cumulative past updates. A closed-form decomposition attributes the accumulated interference to repeated activation of the shared replacement and overlap between successive update directions, showing that the two constraints suppress these respective sources. Across continual erasure of celebrities, artistic styles, and instances, CEASE achieves the most consistent erase-preserve trade-off, while existing methods either degrade general generation or insufficiently erase targets.",
+   "depthScore": 65.22
+  }
+ ]
+}

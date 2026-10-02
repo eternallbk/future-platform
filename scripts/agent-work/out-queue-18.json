@@ -1,0 +1,574 @@
+{
+  "batchId": "queue-18",
+  "entries": [
+    {
+      "id": "10c6cb7bbc88ceef",
+      "tldr": "ATLAS 在训练中既保住编码器到规划潜变量的关系几何、又校准其边缘分布，提升潜世界模型目标达成率。",
+      "keyPoints": [
+        "只约束潜变量的边缘分布，决定不了用于选动作的状态间关系。",
+        "表示被变换成规划潜变量时，与规划相关的新颖性结构会被削弱。",
+        "ATLAS 把编码器的归一化成对结构迁移到规划潜变量上。",
+        "WEMReg 用一维 Wasserstein-2 传输校准规划潜变量的边缘分布。",
+        "在 LeWM 上实例化后三个任务的目标达成率提升，TwoRoom 高新颖性增益最大。"
+      ],
+      "why": "潜空间几何直接决定基于世界模型的规划是否可靠，是具身与世界模型岗位的核心设计点。",
+      "difficulty": "medium",
+      "tags": ["worldmodel", "planning", "representation-learning", "latent-space", "optimal-transport"],
+      "entities": ["ATLAS", "WEMReg", "LeWM", "PushT", "TwoRoom", "OGBench-Cube"],
+      "diagram": {
+        "kind": "flow",
+        "title": "关系对齐加边缘校准",
+        "caption": "记住这张图：边缘分布只管「长什么样」，关系几何才管「谁离谁近」，规划用的是后者。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='ATLAS 的关系迁移与边缘校准流程图'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>编码器表示</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>状态间关系最清晰</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>归一化成对结构迁移</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>保住关系几何</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>WEMReg 边缘校准</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>一维 W2 传输</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>规划潜变量</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>新颖性结构不被削弱</text></svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {"label": "编码器表示", "detail": "信息更丰富、状态间关系清晰"},
+            {"label": "归一化成对结构迁移", "detail": "把「谁离谁近」搬到规划潜变量"},
+            {"label": "WEMReg 边缘校准", "detail": "一维 Wasserstein-2 传输对齐分布"},
+            {"label": "规划潜变量", "detail": "新颖性结构得以保留，供规划器选动作"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "以编码器表示为关系教师"},
+            {"from": 1, "to": 2, "label": "关系与边缘约束非冗余"},
+            {"from": 2, "to": 3, "label": "两项约束同时施加"}
+          ]
+        },
+        "alt": "四层流程：编码器表示经归一化成对结构迁移、WEMReg 边缘校准，得到保住新颖性结构的规划潜变量。"
+      },
+      "concepts": [
+        {
+          "name": "规划相关的关系几何 Planning-Relevant Relational Geometry",
+          "readable": "规划器不是看单个潜变量的取值，而是比较候选轨迹在潜空间里的相对位置。所谓关系几何，就是「哪些状态彼此接近、哪些彼此远离」这张成对结构表。摘要指出，只约束潜变量整体的边缘分布并不能决定这张表，而表示在变成规划潜变量时，这张表会被削弱。",
+          "analogy": "把团体照的站位表誊到一张新画布上：如果你只让新画布的像素亮度分布和原图一致（边缘校准），并不保证「谁站在谁旁边」还是原样。一旦站位被打乱，你要在照片里找某个人的队友就找不到了——规划器要找的正是这种「队友关系」。",
+          "analogyBreaksDown": "照片里的关系是离散、可逐条核对的，誊完就固定；潜空间里的相似度是连续值且随训练不断漂移，没有「誊完即定稿」的终点。类比也没体现两种约束会互相牵制：对齐关系可能牺牲重建保真度或分布匹配质量。",
+          "mechanism": "做法是把编码器表示上的成对相似度归一化后当作监督信号，迁移到规划潜变量上，要求变换前后「谁离谁近」保持一致。它解决的是变换（投影、压缩、正则化）会优先抹平差异较小的新颖状态，使规划器区分不出近邻候选动作的问题。",
+          "visual": "画一张 n×n 的关系矩阵热力图，横纵轴都是同一批状态，格子颜色表示归一化相似度。左边是编码器表示的关系矩阵，右边是规划潜变量的，中间一条箭头表示迁移；再单独画第三张「差值热力图」，颜色越深表示该状态对的关系被扭曲得越厉害。最后把高新颖性状态所在的行列框出来，示意这些行列在无约束时最先被抹平。",
+          "prerequisites": ["潜变量世界模型与候选采样/MPC 式规划的基本流程", "表示学习中的成对关系蒸馏或对比学习", "相似度矩阵与 Frobenius 范数"],
+          "selfTest": [
+            "为什么只把规划潜变量的边缘分布正则到目标分布，不足以保证规划可靠？",
+            "ATLAS 迁移的是哪一类结构？它从哪里来、到哪里去？",
+            "若去掉关系对齐项只留 WEMReg，摘要的分析暗示会出现什么失败模式？"
+          ],
+          "formula": "\\mathcal{L}_{\\text{rel}} = \\frac{1}{n^{2}}\\sum_{i,j}\\left(\\tilde{S}(z^{\\text{enc}})_{ij} - \\tilde{S}(z^{\\text{plan}})_{ij}\\right)^{2}"
+        },
+        {
+          "name": "边缘校准的一维最优传输 WEMReg",
+          "readable": "规划潜变量的整体分布要落在合理范围里，否则尺度失配会让预测误差变大。WEMReg 用一维 Wasserstein-2 传输来校准这个边缘分布：在高维潜变量上取一个方向投影到一维，把两批样本各自排序后逐位配对求平方差，就得到一个可微、便宜且对支撑不重叠仍有效的分布匹配损失。",
+          "analogy": "把两个班的身高分布对齐：不逐个点名配对，而是让两边都按身高排好队，第一位对第一位、第二位对第二位地相减。一维情形下这样算出来的正是 Wasserstein-2 距离，能同时把分布的位置和形状拉开或压扁到一致。",
+          "analogyBreaksDown": "身高是一维标量，排序天然有序；潜变量是高维向量，必须先投影到一维才能用「排序逐位相减」的闭式解，而投影方向的选择会决定匹配误差，与投影方向正交的那些分布差异会被丢掉。类比也没体现 mini-batch 估计带来的方差。",
+          "mechanism": "关键选择是用一维 Wasserstein-2 传输而不是 KL 这类散度：一维经验分布的 W2 有「排序后逐位相减」的闭式解，可微、可 mini-batch 估计；而 KL 在两组分布支撑几乎不重叠时会退化成常数、梯度消失。摘要正是用它来校准规划潜变量的边缘，并与关系对齐项配合，构成非冗余的两类约束。",
+          "visual": "画一条数轴，轴上画两簇竖线：一簇是规划潜变量的投影值，一簇是参考分布的投影值，两簇用不同颜色。把两簇各自排序后用虚线一一连起来，虚线长度之和（平方后）就是损失。再在数轴上方画一条箭头表示「分布被平移/缩放拉齐」的方向。",
+          "prerequisites": ["最优传输与 Wasserstein 距离的基本定义", "KL 散度在支撑不重叠时的退化行为", "排序操作的可微性与 straight-through 梯度估计"],
+          "selfTest": [
+            "为什么选一维 Wasserstein-2 传输而不是 KL 散度来校准边缘分布？",
+            "一维情形下经验分布的 W2 距离为什么可以用排序后的逐位相减来算？",
+            "边缘项与关系对齐项约束的是同一批自由度吗？为什么？"
+          ],
+          "formula": "\\mathcal{L}_{\\text{WEM}} = \\frac{1}{n}\\sum_{i=1}^{n}\\left(\\tilde{z}^{\\text{plan}}_{(i)} - \\tilde{z}^{\\text{ref}}_{(i)}\\right)^{2},\\quad \\tilde{z} = u^{\\top} z,\\ \\|u\\|=1"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-relational-structure-transfer",
+          "name": "成对关系结构迁移损失 (Pairwise Relational Structure Transfer)",
+          "category": "worldmodel",
+          "latex": "\\mathcal{L}_{\\text{rel}} = \\frac{1}{n^{2}}\\sum_{i,j}\\left(\\tilde{S}(z^{\\text{enc}})_{ij} - \\tilde{S}(z^{\\text{plan}})_{ij}\\right)^{2},\\quad \\tilde{S}(z)_{ij} = \\frac{\\langle z_i,\\, z_j \\rangle}{\\|z_i\\|\\,\\|z_j\\|}",
+          "symbols": [
+            ["z^{\\text{enc}}", "信息更丰富的编码器表示，作为关系教师"],
+            ["z^{\\text{plan}}", "规划器真正使用的规划潜变量，作为学生"],
+            ["\\tilde{S}(z)_{ij}", "同一批样本内归一化（余弦）成对相似度矩阵的元素"],
+            ["n", "一个 mini-batch 内参与配对的状态数"],
+            ["\\mathcal{L}_{\\text{rel}}", "关系几何被扭曲的惩罚项"]
+          ],
+          "derivation": [
+            "第 1 步：先承认规划依赖的是相对几何——规划器比较的是候选状态在潜空间里的远近，因此需要约束的不是单个潜变量而是成对结构。",
+            "第 2 步：把每个表示除以自身范数得到方向，再两两点积，得到归一化成对相似度矩阵 S(z)，它对整体缩放不敏感，只刻画「谁离谁近」。",
+            "第 3 步：要求规划潜变量的相似度矩阵逼近编码器表示的相似度矩阵，用 Frobenius 意义下的平方误差（即逐对相减再平方）作为损失，梯度会同时拉动所有被扭曲的状态对。",
+            "第 4 步：与边缘校准项一起联合优化。摘要强调两者约束非冗余：这一项管相对关系，另一项管整体分布尺度，缺一个就会在对应维度上留下缺口。"
+          ],
+          "analogy": "像把一支球队的「谁和谁配合默契」关系表交给新教练：不是逐一复制球员的能力值，而是要求新阵容里球员之间的距离结构尽量和原来一致，这样战术跑位才不会全乱。",
+          "pitfalls": [
+            "面试易错：把关系对齐说成对比学习。对比学习通常只约束少数正负样本对，这里约束的是批内所有状态对的完整成对结构。",
+            "忘记归一化。不归一化时损失会主要被潜变量尺度支配，等于把关系约束退化成尺度约束。",
+            "以为两项约束可以二选一。摘要明确说关系保持与边缘校准是非冗余的，只留一项会在另一维度上留下缺口。"
+          ],
+          "code": "import torch\nimport torch.nn.functional as F\n\n\ndef rel_loss(z_enc, z_plan):\n    a = F.normalize(z_enc, dim=-1)\n    b = F.normalize(z_plan, dim=-1)\n    s_enc = a @ a.transpose(-1, -2)    # 批内归一化成对结构\n    s_plan = b @ b.transpose(-1, -2)\n    return ((s_enc - s_plan) ** 2).mean()",
+          "sources": [
+            {"title": "ATLAS: Aligned Transport of Latent Structure for Reliable World Model Planning", "url": "https://arxiv.org/abs/2609.36333"}
+          ]
+        },
+        {
+          "id": "f-wasserstein-embedding-matching",
+          "name": "Wasserstein 嵌入匹配正则 (Wasserstein Embedding Matching, WEMReg)",
+          "category": "worldmodel",
+          "latex": "\\mathcal{L}_{\\text{WEM}} = \\frac{1}{n}\\sum_{i=1}^{n}\\left(\\tilde{z}^{\\text{plan}}_{(i)} - \\tilde{z}^{\\text{ref}}_{(i)}\\right)^{2},\\quad \\tilde{z} = u^{\\top} z,\\ \\|u\\|=1",
+          "symbols": [
+            ["z^{\\text{plan}}", "规划潜变量的样本集合"],
+            ["z^{\\text{ref}}", "边缘校准的目标/参考分布样本"],
+            ["u", "把高维潜变量投影到一维的方向向量，单位长度"],
+            ["\\tilde{z}_{(i)}", "投影后按大小排序的第 i 个值，(i) 表示顺序统计量"],
+            ["n", "参与匹配的样本数"]
+          ],
+          "derivation": [
+            "第 1 步：动机是潜变量尺度失配会放大预测误差，因此需要把规划潜变量的边缘分布拉向目标分布；但高维分布匹配代价高。",
+            "第 2 步：把高维样本投影到一维方向 u 上，问题化为一维经验分布之间的传输，一维 Wasserstein-2 距离等于两组顺序统计量的欧氏距离平方。",
+            "第 3 步：于是损失写成排序后逐位平方差求平均，排序使得配对与传输计划一致，梯度可回传到 z 上（必要时用 straight-through 或软排序）。",
+            "第 4 步：与关系对齐项联合，一项管分布尺度、一项管相对几何，构成摘要所说的非冗余约束。"
+          ],
+          "analogy": "整理两张书单：不逐本配对，而是把两边的书按厚度排序后一一对齐，厚度差平方求和。排序这一步就自动给出了最优的配对方案，不用解复杂的匹配问题。",
+          "pitfalls": [
+            "面试易错：一维闭式解只在「排序后逐位配对」时成立，直接不排序逐样本相减得到的是别的量，不是 W2。",
+            "忽略投影方向。只用一个随机方向的 W2 只是高维分布匹配的一个切片近似，方向选择会影响结果，多方向平均更稳。",
+            "以为 W2 可以完全替代 KL；两者对支撑不重叠与分布形状的敏感度不同，何时用哪种要看你是否在意尺度与形状。"
+          ],
+          "code": "import torch\n\n\ndef wem_reg(z_plan, z_ref):\n    # 一维投影后排序逐位配对，等价于 1D Wasserstein-2 的经验估计\n    u = torch.randn(z_plan.size(-1), 1, device=z_plan.device)\n    u = u / u.norm()\n    a, _ = (z_plan @ u).squeeze(-1).sort(dim=-1)\n    b, _ = (z_ref @ u).squeeze(-1).sort(dim=-1)\n    return ((a - b) ** 2).mean()",
+          "sources": [
+            {"title": "ATLAS: Aligned Transport of Latent Structure for Reliable World Model Planning", "url": "https://huggingface.co/papers/2609.36333"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要指出，仅正则化潜变量边缘分布并不能决定用于动作选择的状态间关系。",
+          "摘要称这种不足会让与规划相关的新颖性结构在表示被变换成规划潜变量时被削弱。",
+          "摘要称 ATLAS 是一个显式保住关系几何、同时校准全局潜分布的训练目标。",
+          "摘要称 ATLAS 把归一化成对结构从信息更丰富的编码器表示迁移到规划潜变量。",
+          "摘要称 WEMReg 通过一维 Wasserstein-2 传输校准规划潜变量的边缘分布。",
+          "摘要的分析称关系保持与边缘校准提供非冗余约束，并把有限候选规划的稳定性与关系畸变、潜变量尺度失配、预测误差联系起来。",
+          "摘要称该目标在 LeWM 上实例化，在 PushT、TwoRoom、OGBench-Cube 的低新颖性与高新颖性评测子集上都提升平均目标达成率，TwoRoom 高新颖性片段增益最大。",
+          "摘要称诊断显示规划潜变量中的新颖性相关结构更强、边缘校准更好、多步预测误差更低。"
+        ],
+        "uncertain": [
+          "各基准与子集上的具体成功率数值摘要未给出，只有「提升」这一相对结论。",
+          "「信息更丰富的编码器表示」如何选取、关系迁移是否用余弦归一化摘要未给出，公式按通用形式重建，需核对原文。",
+          "WEMReg 的一维投影方式（随机方向、切片还是固定方向）与两项损失权重摘要未说明。",
+          "LeWM 的网络结构、候选规划数量以及稳定性分析的具体定理形式摘要未给出。",
+          "摘要正文提到的代码链接不在本条目已有 URL 列表中，因此未引用，需人工核对。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "别只把潜变量的分布对齐，还要保住状态与状态之间的关系，规划才可靠。"},
+          {"level": "入门", "text": "潜世界模型靠潜空间的几何来规划：它先把观测编码成表示，再变换成规划器真正使用的潜变量。以往做法只约束最终潜变量的整体分布（边缘分布），可这管不住「状态与状态之间怎么关联」。摘要指出，表示在变成规划潜变量的过程中，与规划相关的新颖性结构会被削弱。"},
+          {"level": "进阶", "text": "ATLAS 加了两项互补约束。第一项把信息更丰富的编码器表示上的归一化成对结构（谁和谁像）迁移到规划潜变量，直接管住状态间关系；第二项 WEMReg 用一维 Wasserstein-2 传输把规划潜变量的边缘分布校准到目标分布。作者的分析说明这两项约束并不冗余，并把有限候选规划的稳定性与关系畸变、潜变量尺度失配和预测误差联系起来。"},
+          {"level": "专家", "text": "在 LeWM 上实例化后，ATLAS 在 PushT、TwoRoom、OGBench-Cube 的低新颖性与高新颖性子集上都提升了平均目标达成率，TwoRoom 高新颖性片段增益最大；诊断显示规划潜变量里的新颖性结构更强、边缘校准更好、多步预测误差更低。与只做 KL/VQ 式边缘正则、或只加对比/重建辅助损失的方案相比，它的不同点是把关系几何当作一等约束、用最优传输而不是散度匹配分布；代价是需要一个值得信任的编码器表示当关系教师，若该表示本身丢了规划相关信息，迁移就失去意义。"}
+        ],
+        "socratic": [
+          {
+            "q": "既然问题出在潜空间，为什么不直接把边缘分布正则的权重调大？",
+            "a": "边缘分布只描述单个潜变量取值的整体分布，不决定任意两个状态之间的关系。摘要明确说仅正则化边缘无法确定用于动作选择的状态间关系，所以加大权重补不上关系畸变这个缺口。"
+          },
+          {
+            "q": "用对比学习或重建损失代替关系迁移行不行？",
+            "a": "（推断）对比学习通常只约束少数正负对，重建损失关心的是能否还原观测而不是状态间几何。摘要强调关系保持与边缘校准是非冗余约束，说明只做一类约束会在另一维度留下缺口。"
+          },
+          {
+            "q": "为什么一维最优传输就够校准边缘分布了？",
+            "a": "摘要说边缘校准是通过一维 Wasserstein-2 传输完成的；一维情形下 W2 有排序后逐位相减的闭式解，可微且便宜。（推断）投影到一维会丢掉部分分布信息，但如果目标只是尺度与形状校准，这个近似在成本上很划算。"
+          }
+        ],
+        "mechanism": "必须这样设计的原因在于：规划器选动作时比较的是候选轨迹在潜空间里的相对位置，起作用的是相对几何而不是单个潜变量的边缘分布。只校准边缘，等于只保证「潜变量看起来像目标分布」，却允许状态间关系在变换过程中被压平，把新颖状态之间的差异抹掉，规划器就分不清该往哪走。ATLAS 把约束拆成关系与边缘两项，是因为它们约束不同自由度：前者保住判别性结构，后者防止尺度与分布漂移；摘要的分析还说明规划稳定性同时受关系畸变、尺度失配与预测误差影响，因此两项都不可省。",
+        "boundary": "方法依赖一个「信息更丰富的编码器表示」作为关系教师；若该表示本身没有编码规划相关的状态差异，迁移就等于把噪声当监督。当任务几乎不需要区分新颖状态（状态关系本来就简单）时，关系约束的收益会变小——摘要中增益随新颖性上升正是这一点的信号。摘要未报告失败情形、损失权重敏感性与额外计算开销。",
+        "analogyBoundary": "照片站位类比里关系是离散且稳定的，人可以逐条核对并誊写；潜空间里的成对关系是连续相似度且随训练漂移，不存在「誊完即定稿」的终点。类比也没体现两种约束会互相牵制：对齐关系可能牺牲重建保真度或分布匹配质量。",
+        "misconceptions": [
+          "以为只要把潜变量分布对齐（KL、VQ、标准化）就够了，其实边缘分布不决定状态间关系，而规划用的正是关系。",
+          "把 ATLAS 说成一种新的规划算法；它只是训练目标，规划器与候选采样方式并没有变。",
+          "以为关系对齐与边缘校准是重复约束、可以二选一；摘要明确说两者非冗余。"
+        ],
+        "ownAnalysis": "（推断）这篇的问题意识与「表示退化让世界模型规划失败」一脉相承，但把诊断从「分布」挪到了「关系」，并用最优传输给出可微的边缘项，属于把表示学习里的成对关系蒸馏搬进世界模型。可疑处：摘要只给「平均成功率提升」的相对结论，没有绝对数值、没有增益随新颖性变化的完整曲线，也没报告两项损失的权重与额外开销；另外 TwoRoom 高新颖性片段增益最大这一点（推断）也可能部分来自该子集样本少、方差偏大。",
+        "officialNotes": [
+          {"position": "摘要称仅正则化潜变量边缘无法确定用于动作选择的状态间关系，并把这视为规划相关新颖性结构被削弱的原因。", "source": "https://arxiv.org/abs/2609.36333"},
+          {"position": "摘要称关系保持与边缘校准构成非冗余约束，并把有限候选规划的稳定性与关系畸变、潜变量尺度失配和预测误差联系起来。", "source": "https://huggingface.co/papers/2609.36333"},
+          {"position": "摘要称目标在 LeWM 上实例化，并在 PushT、TwoRoom、OGBench-Cube 上改善了目标达成率，TwoRoom 高新颖性片段增益最大。", "source": "https://arxiv.org/abs/2609.36333"}
+        ],
+        "interviewAnswer": "我关注 ATLAS，因为它指出潜世界模型的一个被忽视的失效点：我们习惯只正则化潜变量的边缘分布，但规划器真正依赖的是状态之间的相对几何，而表示在变换成规划潜变量时，这种与新颖性相关的关系结构会被削弱。ATLAS 的做法是同时加两项约束，一项把编码器表示上归一化的成对结构迁移到规划潜变量，另一项用一维 Wasserstein-2 传输校准边缘分布；作者还论证了两者非冗余，并把规划稳定性与关系畸变、尺度失配、预测误差联系起来。在 LeWM 上，它在三个任务的高低新颖性子集上都提升，TwoRoom 高新颖性增益最大。我觉得最值得学的是把「关系几何」当成一等约束这个视角。",
+        "studyPath": {
+          "prerequisites": ["潜变量世界模型与基于模型规划的基本流程", "表示学习中的成对关系蒸馏/对比学习", "最优传输与 Wasserstein 距离的基本定义"],
+          "nextSteps": ["读原文核对两项损失的具体形式、权重与投影方式", "对比只做 KL/VQ 边缘正则的世界模型基线，复现新颖性子集上的差异", "把关系对齐思路迁移到多模态或 3D 场景的潜空间规划实验"]
+        }
+      }
+    },
+    {
+      "id": "96f03ee12d160d44",
+      "tldr": "World Observer 解耦观察与行动，额外生成全景观察者，物体离场后仍持续演化，回归时状态不丢。",
+      "keyPoints": [
+        "以演员为中心的视频世界模型，物体离开视野后就失去其演化证据。",
+        "物体重新进入画面时，状态与动力学往往无法保持一致。",
+        "World Observer 把观察与行动解耦，联合生成演员视角与全景观察者。",
+        "演员与观察者由同一全景源扭曲得到，几何对应显式且可自由布点。",
+        "Observer Sink 用高分辨率透视参考恢复细节，另提出世界空间指标与基准。"
+      ],
+      "why": "视野外一致性与长时程记忆是视频世界模型能否用于真实交互的分水岭，属生成式与具身岗位高频考点。",
+      "difficulty": "hard",
+      "tags": ["worldmodel", "video-generation", "3d-consistency", "long-horizon", "benchmark"],
+      "entities": ["World Observer", "Observer Sink"],
+      "diagram": {
+        "kind": "architecture",
+        "title": "演员与观察者双分支",
+        "caption": "记住这张图：观察不再绑在演员身上，场外区域有了独立的证据来源，物体回来时接得上。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='World Observer 的共享全景源与演员、观察者双分支架构图'><rect x='56' y='10' width='368' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='32' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>共享全景源</text><text x='408' y='32' font-size='13' text-anchor='end' fill='currentColor'>扭曲即显式几何对应</text><line x1='124' y1='44' x2='124' y2='56' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='124,64 120,56 128,56' fill='var(--line-1)'/><line x1='356' y1='44' x2='356' y2='56' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='356,64 352,56 360,56' fill='var(--line-1)'/><rect x='24' y='64' width='200' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='124' y='81' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>演员视角</text><text x='124' y='97' font-size='13' text-anchor='middle' fill='currentColor'>以智能体为中心</text><rect x='256' y='64' width='200' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='356' y='81' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>全景观察者</text><text x='356' y='97' font-size='13' text-anchor='middle' fill='currentColor'>可多布点、可控制</text><line x1='124' y1='102' x2='232' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><line x1='356' y1='102' x2='248' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 234,115 246,115' fill='var(--line-1)'/><rect x='48' y='124' width='384' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='141' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>离场物体持续演化</text><text x='408' y='141' font-size='13' text-anchor='end' fill='currentColor'>回归时状态已更新</text><line x1='240' y1='162' x2='240' y2='178' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,186 236,178 244,178' fill='var(--line-1)'/><rect x='48' y='186' width='384' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='210' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>Observer Sink</text><text x='408' y='210' font-size='13' text-anchor='end' fill='currentColor'>高分辨率参考恢复细节</text></svg>",
+        "spec": {
+          "type": "architecture",
+          "nodes": [
+            {"label": "共享全景源", "detail": "扭曲得到显式几何对应"},
+            {"label": "演员视角", "detail": "以智能体为中心的透视视角"},
+            {"label": "全景观察者", "detail": "可自由布点、可多设、可控制"},
+            {"label": "离场物体持续演化", "detail": "重入时状态已更新"},
+            {"label": "Observer Sink", "detail": "高分辨率透视参考恢复精细外观"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "扭曲出演员视角"},
+            {"from": 0, "to": 2, "label": "扭曲出观察者视角"},
+            {"from": 1, "to": 3, "label": "演员视角失去视野外证据"},
+            {"from": 2, "to": 3, "label": "观察者持续提供证据"},
+            {"from": 3, "to": 4, "label": "重入时补齐细节"}
+          ]
+        },
+        "alt": "架构图：共享全景源分别扭曲出演员视角与全景观察者，观察者让离场物体持续演化，重入时由 Observer Sink 的高分辨率参考恢复细节。"
+      },
+      "concepts": [
+        {
+          "name": "视野外持久性 Out-of-View Persistence",
+          "readable": "以演员为中心的视频世界模型，其生成分布只以演员视角的历史为条件。物体一旦离开画面，关于它的观测就从条件里消失，模型没有任何约束要求它保持离开时的状态，于是物体重新入画时只能凭先验重新想象一个物体，状态和运动往往接不上。视野外持久性要解决的就是这段「看不见的时期」。",
+          "analogy": "玩捉迷藏时你被蒙着眼：队友在你视线外做的事你只能事后猜，睁眼看到的东西可能和你的记忆对不上。问题不在于你眼睛不好，而在于那段时间里你根本没有证据。",
+          "analogyBreaksDown": "现实里你可以事后问队友、看录像把信息补齐；世界模型没有外部真值可用，只能靠模型自己生成的观察者画面来维持状态，因此误差会随时间累积而没有纠错源。类比也没体现观察者本身也是被生成出来的、会漂移。",
+          "mechanism": "做法是给「看不见的区域」补一条持续的条件通道：生成一个或多个观察者视角专门盯住选定区域，让离场物体在观察者画面里继续演化，重入时把更新后的状态接回演员视角。它解决的是「条件里没有该物体 ⇒ 模型没有理由保持它」这个结构性缺陷。",
+          "visual": "画一条时间横轴，纵轴上方是演员视角画面、下方是某观察者画面。在物体离场的那段时间里，上方画一个空白框并标注「无证据」，下方持续画出该物体的演化序列；物体重入时从下方拉一条箭头回到上方，标出「状态注入」。对比组则在上方画一个问号框，示意重入时只能重新想象。",
+          "prerequisites": ["视频世界模型/自回归视频生成的基本形式", "相机投影与透视、全景表示的基础", "长时程一致性指标与视频评测常识"],
+          "selfTest": [
+            "以演员为中心的世界模型为什么在物体离场后会丢掉它的状态？",
+            "观察者与演员解耦带来哪两个由摘要明确给出的好处？",
+            "Observer Sink 解决的是哪一类误差？它保存的是什么？"
+          ],
+          "formula": "p_{\\theta}\\!\\left(x_t \\mid x_{<t},\\, a^{\\text{actor}}_{<t},\\, u^{\\text{obs}}_{<t}\\right)"
+        },
+        {
+          "name": "观察者与演员的解耦 Decoupled Observer-Actor Generation",
+          "readable": "不再让一个生成器同时负责「我怎么动」和「世界怎么变」，而是把两者的视角分开：一个是跟随智能体的透视演员视角，另一个（或多个）是固定在场景里的全景观察者，专门看选定区域。两者都从同一个全景源扭曲得到，因此几何对应是显式、可验证的，而不是各自生成后碰运气对齐。",
+          "analogy": "纪录片拍摄：主摄影机跟着主角走，同时在场边架几台固定机位盯住主角身后的区域。主角走出主画面时，场边机位还在记录，等他绕回来，剪辑师有素材接得上；没有场边机位，就只能靠猜。",
+          "analogyBreaksDown": "真实拍摄里场边机位拍下的就是真实像素，信息完整无需推断；这里的观察者是生成出来的，它的演化同样是模型预测，可能自己漂移或产生幻觉，还可能通过共享条件回流到演员视角，形成耦合退化。类比也没体现观察者越多算力与显存开销越大。",
+          "mechanism": "关键设计有两处：一是用同一全景源扭曲出演员与观察者，把「多视角一致」变成构造上成立而非学出来的性质；二是把观察者设计成可自由布点、可扩展为多个位置、还能被控制信号驱动的模块，从而把视野外演化从「被动预测」变成「可干预」。摘要还提到用 Observer Sink 存高分辨率透视参考来恢复重入时的精细外观。",
+          "visual": "画一个俯视场景图：中心是智能体与它的视锥（演员视角），场景边缘放 2 到 3 个观察者光锥覆盖不同区域；用一个共同的全景圆环往外辐射连线到每个光锥表示同源。再把某个物体画成沿轨迹走出演员视锥、落入观察者光锥，最后回到演员视锥，用颜色深浅表示它由谁提供证据。",
+          "prerequisites": ["多视角/多相机生成与条件注入机制", "全景到透视的投影与扭曲采样", "注意力或外部记忆式参考注入"],
+          "selfTest": [
+            "为什么要从同一个全景源扭曲出演员与观察者，而不是各自独立生成？",
+            "评测视野外演化为什么需要新的世界空间指标，常规视频指标缺了什么？",
+            "把观察者数量增加到覆盖全场景，代价与风险是什么？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-panorama-perspective-warp",
+          "name": "全景到透视的几何扭曲 (Panorama to Perspective Warping)",
+          "category": "worldmodel",
+          "latex": "I^{\\text{persp}}(u,v) = E\\!\\left(\\theta, \\phi\\right),\\quad \\mathbf{d} = R\\,K^{-1}[u,v,1]^{\\top},\\ \\theta = \\operatorname{atan2}(d_x, d_z),\\ \\phi = \\arccos\\!\\left(d_y / \\|\\mathbf{d}\\|\\right)",
+          "symbols": [
+            ["E(\\theta,\\phi)", "共享全景源（等距柱状表示）在方位角 θ、极角 φ 处的取值"],
+            ["K", "透视相机的内参矩阵"],
+            ["R", "从相机坐标系到世界（全景）坐标系的旋转"],
+            ["[u,v,1]^{\\top}", "透视图像上的齐次像素坐标"],
+            ["\\mathbf{d}", "该像素对应的世界坐标系方向向量"]
+          ],
+          "derivation": [
+            "第 1 步：给定透视相机的一个像素，先用内参逆变换把它变成相机坐标系下的方向：K^{-1}[u,v,1]^T。",
+            "第 2 步：再用相机旋转 R 把方向旋到世界坐标系，得到统一的世界方向 d，这一步保证了演员与观察者共享同一几何参考。",
+            "第 3 步：把方向转成球面角 (θ, φ)，即方位角与极角，也就得到全景图上的采样坐标。",
+            "第 4 步：用该坐标在全景源上做双线性采样，就得到任意视角的透视画面；不同视角只是 R 不同，因此对应关系是构造上显式的。"
+          ],
+          "analogy": "像站在一个贴满地图的球形房间里往外看：你想看哪个方向，只要转动脑袋（换 R），墙上那块地图自然就出现在眼前；两个人都从这个房间取景，画面之间必然对得上。",
+          "pitfalls": [
+            "面试易错：把扭曲当成内容生成。扭曲只做几何重采样，它保证的是对应关系，不会补出全景源里没有的信息。",
+            "忽略极角附近的畸变：等距柱状全景在极点附近采样密度极不均匀，靠近天顶/天底的方向容易出现拉伸与模糊。",
+            "忘记内外参顺序：先内参逆变换再外参旋转，顺序颠倒得到的方向完全错误。"
+          ],
+          "code": "import torch\n\n\ndef persp_rays(H, W, R, K):\n    # 返回每个像素对应的全景球面角 (theta, phi)，用于在全景源上采样\n    ys, xs = torch.meshgrid(torch.arange(H), torch.arange(W), indexing='ij')\n    pix = torch.stack([xs, ys, torch.ones_like(xs)], -1).float()\n    d = (pix @ torch.inverse(K).T) @ R.T          # 相机像素 -> 世界方向\n    theta = torch.atan2(d[..., 0], d[..., 2])\n    phi = torch.acos(d[..., 1] / d.norm(dim=-1).clamp_min(1e-6))\n    return theta, phi",
+          "sources": [
+            {"title": "World Observer: Joint Actor-Observer Generation for Persistent World Modeling", "url": "https://arxiv.org/abs/2610.02162"}
+          ]
+        },
+        {
+          "id": "f-observer-conditioned-world-model-nll",
+          "name": "观察者条件下的世界模型负对数似然 (Observer-Conditioned NLL)",
+          "category": "worldmodel",
+          "latex": "\\mathcal{L}_{\\text{world}} = -\\sum_{t=1}^{T}\\log p_{\\theta}\\!\\left(x_t \\mid x_{<t},\\, a^{\\text{actor}}_{<t},\\, u^{\\text{obs}}_{<t}\\right)",
+          "symbols": [
+            ["x_t", "第 t 帧的画面（演员视角与观察者视角的联合目标）"],
+            ["a^{\\text{actor}}_{<t}", "演员视角之前的动作/控制序列"],
+            ["u^{\\text{obs}}_{<t}", "观察者视角历史，作为视野外区域的持续条件"],
+            ["p_{\\theta}", "带参数 θ 的视频世界模型生成分布"],
+            ["T", "训练片段的帧数"]
+          ],
+          "derivation": [
+            "第 1 步：把视频世界模型写成自回归条件生成，目标是最大化观测帧在历史条件下的似然，等价于最小化负对数似然。",
+            "第 2 步：传统以演员为中心的模型条件里只有演员视角历史与动作，物体离开视野后该物体的信息从 x_{<t} 中消失，似然对该物体的状态不再有任何约束。",
+            "第 3 步：加入观察者条件 u^{obs} 后，即使物体不在演员画面里，它仍在观察者视角中出现，似然继续为它的状态提供梯度，这就是「持续演化」在目标函数层面的体现。",
+            "第 4 步：由于演员与观察者由同一全景源扭曲得到，两个视角的预测还能共享几何锚点，减少多分支各自漂移的风险。"
+          ],
+          "analogy": "考试时只允许看自己桌上的笔记（演员视角），笔记外的东西就只能瞎猜；如果旁边还开着几台摄像机一直记录全场（观察者条件），那些你当时没看到的东西在答题时仍有依据。",
+          "pitfalls": [
+            "面试易错：以为加了观察者就等于加了真值监督。观察者画面本身也是模型预测，只是多了一条持续的条件通道。",
+            "把观察者条件写成只在重入时注入；关键恰恰是离场期间它一直在提供梯度，否则持久性无从谈起。",
+            "忽略多分支的耦合：观察者分支的错误会通过共享条件回流，训练时需要对两者做一致性约束或加权。"
+          ],
+          "code": "import torch\nimport torch.nn.functional as F\n\n\ndef frame_nll(pred_logits, target_ids):\n    # pred_logits: [B, D]，target_ids: [B]；条件已含 a_actor 与 u_obs\n    return -F.log_softmax(pred_logits, dim=-1).gather(-1, target_ids.unsqueeze(-1)).mean()\n\nloss = sum(frame_nll(p, t) for p, t in zip(preds, targets))  # 逐帧求和",
+          "sources": [
+            {"title": "World Observer: Joint Actor-Observer Generation for Persistent World Modeling", "url": "https://huggingface.co/papers/2610.02162"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要称以演员为中心的视频世界模型在物体离开演员视野后就失去其演化的直接证据。",
+          "摘要称这类模型在物体重新进入视野时常常无法保持其状态与动力学。",
+          "摘要称 World Observer 通过联合生成一个演员视角与一个或多个全景观察者，把观察与行动解耦。",
+          "摘要称离开演员视野的物体会在观察者中继续在视觉上演化，重入时更新后的状态得以体现。",
+          "摘要称演员与观察者通过从共享全景源扭曲来锚定，以获得显式几何对应。",
+          "摘要称引入 Observer Sink，用高分辨率透视参考在重入时恢复精细外观。",
+          "摘要称观察者解耦后可自由布点、可扩展为多个位置覆盖更大范围，并可由控制信号驱动以引导视野外演化。",
+          "摘要称提出世界空间指标与覆盖真实和合成场景的基准来评测视野外演化。",
+          "摘要称 World Observer 显著改善视野外动力学，同时在视觉保真度、相机控制与 3D 遵循度上保持竞争力。"
+        ],
+        "uncertain": [
+          "观察者数量、分辨率、训练数据规模与任何数值结果摘要均未给出。",
+          "「世界空间指标」的定义以及基准的具体场景与规模摘要未说明。",
+          "从全景源扭曲到透视视角的具体投影公式摘要未给出，上述公式按标准等距柱状投影重建，需核对原文。",
+          "Observer Sink 的存储形式与检索/注入机制摘要未说明。",
+          "「保持竞争力」的定量含义（与哪些基线比、差距多少）摘要未给出。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "给世界模型多配几台「场外机位」，物体走出主角视野也一直被记录。"},
+          {"level": "入门", "text": "视频世界模型通常以演员视角为中心：它根据智能体的动作预测画面怎么变。但物体一旦离开画面，关于它的观测就从条件里消失了，模型没有理由保持它原来的状态，等它再进画面时常常「变了个样」。World Observer 的思路是不再只从一个视角观察，而是同时生成演员视角和若干全景观察者，让离场物体在观察者画面里继续演化。"},
+          {"level": "进阶", "text": "方法上做了三件事。第一，把观察与行动解耦：演员视角仍以智能体为中心，另外生成一个或多个盯住选定区域的全景观察者。第二，用同一个全景源扭曲出演员与观察者，让多视角的几何对应是构造上成立的，而不是靠模型学出来；同时用 Observer Sink 保存高分辨率透视参考，物体重入时把精细外观补回来。第三，因为观察者与演员解耦，它们可以自由布点、扩展到多个位置、还能被控制信号驱动去引导视野外的演化。"},
+          {"level": "专家", "text": "与只加记忆模块或循环状态的做法相比，World Observer 把「记住离场物体」换成了「一直看着它」：信息不需要被压缩进隐状态再解码，而是通过一条持续的条件通道留在生成过程里，因此不承受记忆瓶颈带来的模糊。代价是观察者的演化同样是模型预测，误差会随时间累积并通过共享条件回流到演员视角，所以同源扭曲与几何锚定既是优势也是必要的稳定器。摘要还提出世界空间指标与一个跨真实/合成场景的基准来专门度量视野外演化，并报告显著改善视野外动力学、其余指标保持竞争力；但摘要没有给出任何数值与消融。"}
+        ],
+        "socratic": [
+          {
+            "q": "为什么不加观察者，只把隐状态或记忆做大一点？",
+            "a": "因为问题出在条件结构上：物体离场后，它的信息完全从生成条件里消失，隐状态再大也没有约束要求它保持该物体。摘要正是把这个缺口描述为失去演化的直接证据。"
+          },
+          {
+            "q": "为什么演员和观察者必须从同一个全景源扭曲出来？",
+            "a": "这样几何对应是构造上显式成立的，两个分支看到的场景天然一致；如果各自独立生成，就只能寄希望于模型自己学会跨视角一致，而这正是既有方法在视角变化时丢掉一致性的失败点。"
+          },
+          {
+            "q": "为什么还要提出新的世界空间指标和基准？",
+            "a": "常规视频指标主要看画面质量，而物体离开画面后的状态是否被保持、重入时是否接得上，单看像素质量测不出来。摘要因此用世界空间的度量加上跨真实与合成场景的基准来专门考核视野外演化。"
+          }
+        ],
+        "mechanism": "必须这样设计的原因在于观测似然的结构：以演员为中心的模型，其生成分布只以演员视角历史与动作为条件，物体离场后它的状态就从条件里消失，模型没有任何约束要求它保持离开时的样子，于是重新入画时只能凭先验重新想象一个物体。把观察者作为独立、可自由布点的条件通道加进来，等于给这些区域补上持续的证据来源；而用同一全景源扭曲出两者，是为了让几何对应显式可验证，避免多个生成分支互相漂移。",
+        "boundary": "当场景中没有稳定的全景源、或物体长时间离开所有观察者覆盖的区域时，持久性保证不成立。观察者数量增加会线性抬高生成与训练开销，摘要未给出覆盖率与成本的权衡数据。若任务只要求短片段视觉真实（单镜头、物体不会重入画），额外观察者的收益有限；摘要也没有报告观察者互相矛盾时的处理方式。",
+        "analogyBoundary": "纪录片类比里场边机位拍下的是真实记录且始终可用；这里的观察者本身也是生成模型，画面会随步数漂移，误差还可能通过共享条件回流到演员视角形成耦合退化。类比也没体现全景到透视的扭曲误差与算力开销。",
+        "misconceptions": [
+          "以为 World Observer 只是多加了一个相机视角；关键是把观察从行动里解耦，使视野外区域仍有独立的生成条件。",
+          "以为观察者看到的内容是可靠证据；观察者画面同样是模型生成的，会漂移，需要几何同源与参考来锚定。",
+          "以为评估只要用常规视频指标；摘要专门提出世界空间指标来度量视野外演化。"
+        ],
+        "ownAnalysis": "（推断）这条路线把「持久化物体状态」从记忆问题改造成了多视角条件生成问题：与其让模型记住，不如让它一直看得见。它与 3D 场景表示类工作互补，也与 4Director 那种用显式几何约束生成的工作同源，区别在于 World Observer 用额外视角提供持续证据，4Director 用一次重建的规范网格提供几何约束。可疑处：摘要只给「显著改善视野外动力学、其余指标保持竞争力」的定性结论，没有数值、没有观察者数量与覆盖率的消融，也没报告基准规模与真实/合成场景的构成比例。",
+        "officialNotes": [
+          {"position": "摘要把问题定义为：以演员为中心的视频世界模型在物体离开视野后失去其演化的直接证据，重入时难以保持状态与动力学。", "source": "https://arxiv.org/abs/2610.02162"},
+          {"position": "摘要称方法通过从共享全景源扭曲来锚定演员与观察者，并用 Observer Sink 的高分辨率透视参考在物体重入时恢复精细外观。", "source": "https://huggingface.co/papers/2610.02162"},
+          {"position": "摘要称作者提出世界空间指标与覆盖真实和合成场景的基准来评测视野外演化。", "source": "https://arxiv.org/abs/2610.02162"}
+        ],
+        "interviewAnswer": "我关注 World Observer，因为它点出了视频世界模型的一个结构缺陷：模型以演员视角为条件，物体一旦离场，关于它的信息就从条件里消失了，等它再入画只能靠先验重新想象。他们的解法是把观察和行动解耦，同时生成一个演员视角和若干全景观察者，用同一个全景源扭曲来保证几何对应，再用 Observer Sink 保存高分辨率透视参考，重入时把细节补回来；观察者还能自由布点、多设几个、被控制信号驱动。评估上提出了世界空间指标和一个跨真实与合成场景的基准。我觉得这套思路的价值在于把记忆问题转化成了持续观测问题。",
+        "studyPath": {
+          "prerequisites": ["视频世界模型与自回归视频生成基础", "相机投影、全景表示与扭曲采样", "长时程一致性与视频生成评测常识"],
+          "nextSteps": ["读原文核对观察者数量、扭曲方式与 Observer Sink 的实现细节", "对比带记忆/循环状态的长时程视频世界模型基线", "用世界空间指标分析重入时刻的状态一致性与误差累积"]
+        }
+      }
+    },
+    {
+      "id": "8edb720efe00228f",
+      "tldr": "4Director 用「规范网格＋逐帧刚体变换」作 4D 条件，把深度视频脚手架生成为可控视频。",
+      "keyPoints": [
+        "现有方法用图像平面线索控物，在深度与旋转上存在歧义。",
+        "3D 轨迹与 blob 缺完整几何，视角一变一致性就丢。",
+        "4Director 以 4D 场景为条件：物体一次重建为规范网格，逐帧一个刚体变换。",
+        "受控场景渲成深度视频作几何脚手架，Motion Adapter 合成外观、光照与非刚体动力学。",
+        "发布 RealCOD-Rigid（20,774 段刚体 3D 标注）与 IG-IoU 联合指标。"
+      ],
+      "why": "可控视频生成是内容生产与世界模型控制的交汇点，显式 4D 条件与「运动＋身份」联合指标都能直接迁移。",
+      "difficulty": "medium",
+      "tags": ["worldmodel", "video-generation", "3d-geometry", "controllable-generation", "dataset"],
+      "entities": ["4Director", "Motion Adapter", "RealCOD-Rigid", "Identity-Gated IoU", "IG-IoU"],
+      "diagram": {
+        "kind": "flow",
+        "title": "从规范网格到可控视频",
+        "caption": "记住这张图：几何只算一次、运动由刚体变换给定，生成网络只负责外观、光照与非刚体部分。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='4Director 从规范网格到可控视频的流程图'><rect x='56' y='12' width='368' height='32' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='33' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>输入图像</text><text x='408' y='33' font-size='13' text-anchor='end' fill='currentColor'>单帧静态画面</text><line x1='240' y1='44' x2='240' y2='50' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,58 236,50 244,50' fill='var(--line-1)'/><rect x='56' y='58' width='368' height='32' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='79' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>规范网格重建</text><text x='408' y='79' font-size='13' text-anchor='end' fill='currentColor'>每个物体只重建一次</text><line x1='240' y1='90' x2='240' y2='96' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,104 236,96 244,96' fill='var(--line-1)'/><rect x='56' y='104' width='368' height='32' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='125' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>逐帧刚体变换</text><text x='408' y='125' font-size='13' text-anchor='end' fill='currentColor'>显式 4D 控制接口</text><line x1='240' y1='136' x2='240' y2='142' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,150 236,142 244,142' fill='var(--line-1)'/><rect x='56' y='150' width='368' height='32' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='171' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>深度视频脚手架</text><text x='408' y='171' font-size='13' text-anchor='end' fill='currentColor'>几何不再逐帧乱长</text><line x1='240' y1='182' x2='240' y2='188' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,196 236,188 244,188' fill='var(--line-1)'/><rect x='56' y='196' width='368' height='32' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='217' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>Motion Adapter</text><text x='408' y='217' font-size='13' text-anchor='end' fill='currentColor'>外观 光照 非刚体动力学</text></svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {"label": "输入图像", "detail": "单帧静态画面"},
+            {"label": "规范网格重建", "detail": "每个物体只重建一次"},
+            {"label": "逐帧刚体变换", "detail": "显式 4D 控制接口"},
+            {"label": "深度视频脚手架", "detail": "未观测几何不逐帧重生"},
+            {"label": "Motion Adapter", "detail": "合成视角一致外观、光照与非刚体动力学"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "单图重建几何"},
+            {"from": 1, "to": 2, "label": "每帧给一个刚体变换"},
+            {"from": 2, "to": 3, "label": "渲染成深度视频"},
+            {"from": 3, "to": 4, "label": "几何脚手架转视频"}
+          ]
+        },
+        "alt": "五层流程：输入图像重建出规范网格，逐帧施加刚体变换后渲染成深度视频脚手架，再由 Motion Adapter 生成可控视频。"
+      },
+      "concepts": [
+        {
+          "name": "规范网格加逐帧刚体变换 Canonical Mesh with Per-Frame Rigid Transform",
+          "readable": "不再每帧重新生成物体的形状，而是先从输入图里把每个物体一次性重建为一份「标准姿态」的网格（规范网格），之后每一帧只给这个网格一个刚体变换（旋转加平移）来摆放它。这样物体只被定义一次，逐帧变化的只是它的位置与朝向，几何本身不会每帧被重新采样。",
+          "analogy": "像提线木偶戏：木偶（规范网格）只做一次，之后每一帧你只是把它转个角度、挪个位置（刚体变换）。只要线在你手里，木偶不会突然变成另一个形状，也不会忽然换一张脸。",
+          "analogyBreaksDown": "木偶戏里木偶像真的是刚体、线由人手精确控制；视频生成里的「木偶」是从单张图重建出来的网格，本身就带误差，光照、阴影与材质还会被生成网络重画，颜色与纹理可能变样。类比也没体现非刚体形变（衣摆、头发）必须由生成网络自由合成、并不受刚体控制。",
+          "mechanism": "关键设计选择是「几何一次、运动每帧」的分离：几何只重建一次，因而跨帧自洽、身份不会漂移；运动由用户给定的刚体变换决定，因而可控且可解释。摘要强调它还防止了未观测几何在每一帧被独立重新生成——这正是普通视频生成在视角变化时几何乱长的根源。",
+          "visual": "画两行对照：上行是「逐帧重生几何」，每帧画一个略有差异的物体轮廓，形状边缘抖动、颜色在变；下行是「规范网格」，左端画一个固定网格，右侧每一帧只是同一个网格被旋转/平移后的结果，网格线保持刚性。两行右端各画一个视角切换标记，上行出现几何错位，下行保持对齐。",
+          "prerequisites": ["刚体变换与 SE(3)/相机投影基础", "单图或单目三维重建的基本概念", "视频扩散/视频生成模型的条件注入方式"],
+          "selfTest": [
+            "为什么每个物体只重建一次规范网格、再逐帧施加刚体变换，而不是逐帧重新生成几何？",
+            "刚体假设在什么场景下会明显失效？",
+            "把受控场景渲染成深度视频，对生成网络起到了什么作用？"
+          ],
+          "formula": "x_t = R_t\\,x^{\\text{canon}} + t_t,\\quad R_t \\in SO(3),\\ t_t \\in \\mathbb{R}^{3}"
+        },
+        {
+          "name": "几何脚手架到视频 Motion Adapter over Depth Scaffold",
+          "readable": "深度视频只有形状和远近，没有颜色、光照和软性形变。Motion Adapter 负责把这个几何脚手架「渲染成真实视频」：在遵守脚手架给定的几何与运动的前提下，补出视角一致的外观、光照以及非刚体动力学（比如衣摆飘动、头发晃动）。因此它承接的任务是「在约束下合成」，而不是「自由想象世界怎么动」。",
+          "analogy": "像动画的分层制作：先做一段低模的 blockout（几何脚手架）把每个物体的走位与镜头运动定死，再由渲染与特效部门补材质、打光、加布料与毛发解算。blockout 越明确，后面的画面就越不会跑偏。",
+          "analogyBreaksDown": "传统管线里几何与渲染都是确定性的、可逐帧核对；这里的 Adapter 是生成模型，输出带随机性，可能为了画面好看而轻微违反脚手架，也可能在遮挡处凭空补出不存在的东西。类比也没体现它必须同时兼顾「贴合几何」与「看起来真实」两个可能互相拉扯的目标。",
+          "mechanism": "关键设计是把深度视频当作密集的、逐像素的几何条件，而不是稀疏的轨迹或关键词，使生成网络每一步都能读到 3D 结构；同时把可控量（相机与物体刚体运动）与不可控量（外观、光照、非刚体形变）显式分工，避免网络在几何与外观之间做没有约束的自由选择。摘要称这带来了跨视角一致的外观与光照。",
+          "visual": "画三栏：左栏是深度视频脚手架（灰度、只体现形状与远近），中栏是 Motion Adapter（画成一条把左栏与右栏连起来的窄条，上方标「几何条件注入」），右栏是最终视频（彩色、有阴影与飘动的衣摆）。再在右栏标出两处：一处用箭头指回左栏表示几何被遵守，一处画波浪线表示非刚体形变由网络自由合成。",
+          "prerequisites": ["深度图/点云作为生成条件的常见用法", "视频生成模型的条件注入与适配器微调", "可控生成中的几何一致性评估"],
+          "selfTest": [
+            "Motion Adapter 的输入是几何脚手架，它还需要补出哪些内容？",
+            "IG-IoU 与普通 IoU 的区别在哪一处门控上？",
+            "如果只用图像平面线索控制物体，深度与旋转上会出现什么问题？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-rigid-transform-per-frame",
+          "name": "逐帧刚体变换 (Per-Frame Rigid Transform in SE(3))",
+          "category": "worldmodel",
+          "latex": "x_t = R_t\\,x^{\\text{canon}} + t_t,\\quad R_t \\in SO(3),\\ t_t \\in \\mathbb{R}^{3}",
+          "symbols": [
+            ["x^{\\text{canon}}", "从输入图像一次性重建出的规范网格顶点坐标"],
+            ["R_t", "第 t 帧的旋转矩阵，属于三维旋转群 SO(3)"],
+            ["t_t", "第 t 帧的平移向量"],
+            ["x_t", "第 t 帧该物体在世界坐标系下的顶点位置"]
+          ],
+          "derivation": [
+            "第 1 步：先把每个物体从输入图像里重建为一份规范网格，几何在这个时刻被定死，之后不再变化。",
+            "第 2 步：用户为每一帧指定一个刚体变换 (R_t, t_t)，六自由度直接对应「怎么转、怎么挪」，这就是直观的 3D 控制接口。",
+            "第 3 步：把变换作用到规范网格上得到该帧的顶点位置，再用相机内外参投影渲染，就得到受控场景的深度视频。",
+            "第 4 步：因为所有帧共享同一份 x_canon，未被观测到的背面几何在各帧之间是同一个副本，不会每帧被独立重新生成，视角变化时也就不会出现几何漂移。"
+          ],
+          "analogy": "像用同一块积木拍照：积木只做一块，你每次只是把它转个角度、挪个位置再拍；不管拍多少帧，它都是同一块积木，不会忽然长出新的棱角。",
+          "pitfalls": [
+            "面试易错：把刚体变换说成能表达所有物体运动。布料、液体、可弯折物体的形变不是刚体，摘要把这部分交给 Motion Adapter 合成。",
+            "混淆坐标系：R 与 t 必须定义在同一个参考系里（世界到相机还是物体到世界），弄错会让渲染出的深度视频整体错位。",
+            "以为规范网格提供了完整几何监督；它只提供一致性约束，重建误差仍会原样传递给所有帧。"
+          ],
+          "code": "import torch\n\n\ndef se3_apply(points, R, t):\n    # points: [N,3] 规范网格顶点; R: [3,3] 旋转; t: [3] 平移\n    return points @ R.T + t\n\n\nverts_t = se3_apply(canon_verts, R_t, t_t)          # 每帧一个刚体变换\ncam = torch.cat([R_t, t_t[:, None]], dim=1)          # [3,4] 外参\ndepth = render_depth(verts_t, K, cam)                # 渲染成深度视频",
+          "sources": [
+            {"title": "4Director: Controlling Video World Models with Rigid 3D Geometry", "url": "https://arxiv.org/abs/2610.02160"}
+          ]
+        },
+        {
+          "id": "f-identity-gated-iou",
+          "name": "身份门控 IoU (Identity-Gated IoU, IG-IoU)",
+          "category": "worldmodel",
+          "latex": "\\mathrm{IG\\text{-}IoU} = \\frac{1}{N}\\sum_{i=1}^{N}\\mathrm{IoU}\\!\\left(M^{\\text{pred}}_i,\\, M^{\\text{gt}}_i\\right)\\cdot \\mathbb{1}\\!\\left[\\mathrm{sim}\\!\\left(e^{\\text{pred}}_i,\\, e^{\\text{gt}}_i\\right) \\ge \\tau\\right]",
+          "symbols": [
+            ["M^{\\text{pred}}_i / M^{\\text{gt}}_i", "第 i 个物体在预测视频与参考视频中的掩码"],
+            ["e^{\\text{pred}}_i / e^{\\text{gt}}_i", "两边的物体身份特征（用于判断是不是同一个物体）"],
+            ["\\tau", "身份相似度门控阈值，低于它则该样本不计分"],
+            ["N", "参与评估的物体实例数"],
+            ["\\mathbb{1}[\\cdot]", "指示函数，条件成立取 1，否则取 0"]
+          ],
+          "derivation": [
+            "第 1 步：可控生成的评估有两个目标——物体是否按规定的运动走、物体是否还是原来那个物体，普通掩码 IoU 只覆盖前者。",
+            "第 2 步：先按普通方式算每个物体预测掩码与目标掩码的 IoU，衡量运动遵循度。",
+            "第 3 步：再算预测物体与目标物体的身份相似度，用一个阈值 τ 做门控；身份不匹配时该样本贡献 0 分。",
+            "第 4 步：对所有实例取平均，得到同时反映运动正确性与身份保持度的单一指标。"
+          ],
+          "analogy": "像考核替身演员：不能只看走位是否踩在标记点上（IoU），还得确认站在标记点上的确实是本人而不是换了个替身；一旦发现换人，这一条就直接判零分。",
+          "pitfalls": [
+            "面试易错：把 IG-IoU 当成普通分割指标。它的身份门控专门惩罚「运动对了但物体被换掉」这种情况。",
+            "门控写成软权重还是硬门控会影响梯度与分数含义，两者不能混用同一套阈值。",
+            "只报 IG-IoU 不报普通 IoU，会掩盖身份门控到底扣掉了多少分，二者应一起报告。"
+          ],
+          "code": "import torch\n\n\ndef ig_iou(pred_masks, gt_masks, pred_ids, gt_ids):\n    inter = (pred_masks & gt_masks).sum(dim=(1, 2)).float()\n    union = (pred_masks | gt_masks).sum(dim=(1, 2)).float()\n    iou = inter / union.clamp_min(1)\n    gate = (pred_ids == gt_ids).float()      # 身份门控：认错物体不计分\n    return (iou * gate).mean()",
+          "sources": [
+            {"title": "4Director: Controlling Video World Models with Rigid 3D Geometry", "url": "https://huggingface.co/papers/2610.02160"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要称对相机与物体运动的精确控制对专业视频制作至关重要。",
+          "摘要称既有方法只用图像平面线索（深度与旋转上有歧义）或 3D 轨迹与 blob（几何不完整、跨视角变化丢失一致性）来粗糙控制物体。",
+          "摘要称 4Director 以显式 4D 场景表示为条件：每个物体从输入图像一次性重建为规范网格，并每帧由一个给定刚体变换移动。",
+          "摘要称该表示提供直观的 3D 控制接口，并防止未观测几何在每一帧被独立重新生成。",
+          "摘要称把受控场景渲染为深度视频，并用 Motion Adapter 把几何脚手架转成视频，同时合成视角一致的外观、光照与非刚体动力学。",
+          "摘要称构建了 RealCOD-Rigid，一个含 20,774 段由自动流水线标注刚体 3D 场景的数据集。",
+          "摘要称提出 Identity-Gated IoU（IG-IoU），联合评估对规定物体运动的遵循与物体身份的保持。",
+          "摘要称实验显示 4Director 在视觉质量以及相机与物体控制上一致优于先前方法。"
+        ],
+        "uncertain": [
+          "具体指标数值、对比基线与评测集划分摘要未给出，只有「一致优于」的定性表述。",
+          "规范网格的具体重建方法（单目重建、类别先验等）摘要未说明。",
+          "Motion Adapter 的网络结构、条件注入方式与训练目标摘要未给出；上述公式按通用形式重建，需核对原文。",
+          "IG-IoU 中身份相似度的具体定义与门控阈值 τ 摘要未说明。",
+          "RealCOD-Rigid 的自动标注流水线细节与标注准确率摘要未给出。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "物体只建一次模，之后每帧给它一个转动加平移，视频就可控了。"},
+          {"level": "入门", "text": "专业视频制作需要精确控制相机和物体的运动。已有方法要么在图像平面上画线索来控物，而像素位移在深度和旋转上有歧义；要么用 3D 轨迹或一团 blob，几何不完整、换个视角就不一致。4Director 换成显式的 4D 场景：每个物体从输入图里一次性重建为规范网格，之后每一帧只用一个给定的刚体变换来搬动它。"},
+          {"level": "进阶", "text": "有了 4D 场景后，作者把它渲染成深度视频当作几何脚手架，再用 Motion Adapter 把脚手架转成真实视频，同时补出视角一致的外观、光照与非刚体动力学。这样做的关键收益是：未被观测到的几何不会在每一帧被独立重新生成，因此不会逐帧漂移。训练侧新建了 RealCOD-Rigid，20,774 段由自动流水线标注刚体 3D 场景的片段；评测侧提出 IG-IoU，把「运动是否按规定走」和「物体身份是否保持」合到一个指标里。"},
+          {"level": "专家", "text": "与图像平面线索（深度与旋转歧义）和点轨迹、blob（几何不完整、跨视角不一致）相比，4Director 把控制信号放在显式几何上，用「一次重建」换跨帧一致性；代价是假设物体刚性、需要重建与渲染管线，非刚体形变只能交给 Motion Adapter 合成而不受显式控制。它和 World Observer 指向同一趋势：给视频世界模型外挂显式几何先验；区别是 World Observer 用额外视角提供持续证据，4Director 用一份规范网格加刚体轨迹提供约束。摘要称其在视觉质量与相机、物体控制上一致优于先前方法，但未给任何数值。"}
+        ],
+        "socratic": [
+          {
+            "q": "为什么不直接在图像平面上画轨迹或滑动窗口来控制物体？",
+            "a": "摘要指出图像平面线索在深度与旋转上是歧义的：同一段像素位移可以对应远近不同的真实运动，模型分不清物体是在绕转还是平移，也就谈不上精确控制。"
+          },
+          {
+            "q": "为什么每个物体只重建一次几何，而不是每帧重新生成？",
+            "a": "逐帧重新生成会让未被观测到的几何每帧独立采样，产生抖动与身份漂移。固定一份规范网格、只用刚体变换搬运，等于给几何加了强先验，把不确定性从几何挪到外观合成上。"
+          },
+          {
+            "q": "为什么已有的 IoU 类指标不够，要提出 IG-IoU？",
+            "a": "普通 IoU 只看掩码重叠，物体运动对但身份被换掉时仍可能拿高分。IG-IoU 在重叠之外加了身份门控，联合衡量「运动是否按规定走」与「物体是否还是同一个」，这才是可控生成真正关心的两件事。"
+          }
+        ],
+        "mechanism": "必须这样设计的原因是控制信号的维度要对得上被控量：相机与物体运动本质是三维刚体自由度，用二维像素级线索去指定它，必然留下深度与旋转的不确定性；用点轨迹或 blob 又只给出局部几何，视角一变就失去一致性。把物体一次性重建为规范网格、再用逐帧刚体变换搬运，等于把「几何」与「运动」分离：几何只算一次因而跨帧一致，运动由用户给定因而可控，剩下的外观、光照与非刚体形变交给生成网络。深度视频这一步则把三维结构翻译成生成模型能直接吃的密集条件。",
+        "boundary": "刚体假设是硬边界：布料、液体、可弯折物体无法用单一刚体变换描述，摘要把这部分交给 Motion Adapter 合成，但没有说明非刚体部分是否仍受控。方法还依赖从单图重建规范网格，重建失败或遮挡严重时几何先验本身就错；渲染深度视频也带来分辨率与精度瓶颈。评估集中在作者自建数据与自提指标上，跨域泛化未在摘要中说明。",
+        "analogyBoundary": "木偶戏类比里木偶是真正的刚体、线由人手精确控制；视频生成中的「木偶」是重建出来的网格，本身带误差，而且光照、阴影与材质都会被重画，颜色与纹理可能变样。类比也没体现非刚体形变（衣摆、头发）必须由生成网络自由合成、并不受刚体控制。",
+        "misconceptions": [
+          "以为 4Director 只是加了个深度图条件；关键是每个物体有一份固定的规范网格，几何不逐帧重生。",
+          "以为刚体变换能表示所有物体运动；非刚体动力学由 Motion Adapter 合成，不受显式控制。",
+          "把 IG-IoU 当成普通分割指标；它的身份门控专门惩罚「运动对了但物体被换掉」。"
+        ],
+        "ownAnalysis": "（推断）4Director 与 World Observer 是同一趋势的两条腿：给视频世界模型接上显式几何。它更像可控生成而不是学习动力学——动力学里最有意思的非刚体部分被显式推给了生成网络。可疑处：摘要只给「一致优于先前方法」的定性结论，没有数值；RealCOD-Rigid 由自动流水线标注，（推断）标注噪声与刚性假设的吻合度需要核实；IG-IoU 的身份判定方式与阈值摘要未说明，可能有调参空间。",
+        "officialNotes": [
+          {"position": "摘要称 4Director 以显式 4D 场景表示为条件：每个物体从输入图像重建一次为规范网格，每帧由一个给定刚体变换移动。", "source": "https://arxiv.org/abs/2610.02160"},
+          {"position": "摘要称构建了 RealCOD-Rigid，含 20,774 段由自动流水线标注刚体 3D 场景的片段。", "source": "https://huggingface.co/papers/2610.02160"},
+          {"position": "摘要称提出 Identity-Gated IoU（IG-IoU），联合评估对规定物体运动的遵循与物体身份的保持。", "source": "https://arxiv.org/abs/2610.02160"}
+        ],
+        "interviewAnswer": "我关注 4Director，因为它把视频世界模型的可控性问题改成了几何问题。已有方法要么在图像平面上给线索，深度和旋转上有歧义；要么用 3D 轨迹或 blob，几何不完整、换视角就不一致。它的做法是给每个物体从输入图重建一份规范网格，之后每帧只给一个刚体变换，这样几何只算一次、不会被逐帧重新想象；再渲染成深度视频当脚手架，用 Motion Adapter 补外观、光照和非刚体动力学。训练上还造了 RealCOD-Rigid，评测上提出 IG-IoU，把运动遵循和身份保持合在一起考核。我觉得最有价值的是「几何一次、运动每帧」这个分离，以及为可控生成设计联合指标。",
+        "studyPath": {
+          "prerequisites": ["刚体变换与相机投影基础", "视频生成模型的条件注入与适配器微调", "可控视频生成的评测常识"],
+          "nextSteps": ["读原文核对网格重建、Motion Adapter 与 IG-IoU 的具体实现", "在 RealCOD-Rigid 上复现基线与 4Director 的对比", "对比 World Observer 等用显式几何约束视频世界模型的工作"]
+        }
+      }
+    }
+  ]
+}

@@ -418,15 +418,21 @@ const GREEK = {
 
 const MATH_SYMBOLS = {
   cdot: '·', times: '×', div: '÷', pm: '±', mp: '∓', ast: '∗', star: '⋆',
+  // NOTE: `geq` used to map to '≠', which silently rendered "≥" as "not equal" in
+  // every formula that used \geq. Caught by scripts/tex-audit.mjs while adding the
+  // missing symbols, so the whole table is spelled out here.
   le: '≤', leq: '≤', ge: '≥', geq: '≥', neq: '≠', ne: '≠', equiv: '≡',
-  approx: '≈', propto: '∝', sim: '∼', simeq: '≃',
+  approx: '≈', propto: '∝', sim: '∼', simeq: '≃', ll: '≪', gg: '≫',
   to: '→', rightarrow: '→', leftarrow: '←', Rightarrow: '⇒', implies: '⟹',
-  Longrightarrow: '⟹', longrightarrow: '⟶', mapsto: '↦', gets: '←',
+  Longrightarrow: '⟹', longrightarrow: '⟶', Longleftrightarrow: '⟺',
+  leftrightarrow: '↔', mapsto: '↦', gets: '←',
   in: '∈', notin: '∉', subset: '⊂', subseteq: '⊆', cup: '∪', cap: '∩',
   emptyset: '∅', forall: '∀', exists: '∃', nabla: '∇', partial: '∂',
   infty: '∞', ell: 'ℓ', hbar: 'ℏ', ldots: '…', cdots: '⋯', dots: '…',
   perp: '⊥', parallel: '∥', angle: '∠', triangle: '△', prime: '′',
-  top: '⊤', bot: '⊥', oplus: '⊕', otimes: '⊗', circ: '∘',
+  top: '⊤', bot: '⊥', oplus: '⊕', otimes: '⊗', circ: '∘', odot: '⊙',
+  // Logic operators. \land and \wedge both mean AND, \lor and \vee both OR.
+  land: '∧', wedge: '∧', lor: '∨', vee: '∨', neg: '¬', lnot: '¬',
   setminus: '\\', backslash: '\\', lVert: '‖', rVert: '‖', Vert: '‖',
   lceil: '⌈', rceil: '⌉', lfloor: '⌊', rfloor: '⌋',
   langle: '⟨', rangle: '⟩', mid: '|', colon: ':', '%': '%', '#': '#',
@@ -434,10 +440,25 @@ const MATH_SYMBOLS = {
   ',': '\u2009', ';': '\u2005', ' ': '\u00a0', quad: '\u2003', qquad: '\u2003\u2003',
 };
 
+/* Commands that carry no visual content of their own.
+ * `\!` is a NEGATIVE thin space and appears in ~20 stored formulas; before this it
+ * leaked to the reader as a literal "\!" because the renderer had no entry for it. */
+const TEX_NOOP = new Set(['!', 'hspace', 'hfill', 'vspace', 'phantom', 'limits',
+  'nolimits', 'displaystyle', 'textstyle', 'scriptstyle', 'allowbreak', 'mathstrut']);
+
+/* \underbrace{X}_{Y} and \overbrace{X}^{Y}: keep the content, label the brace. */
+const TEX_UNDER = { underbrace: 'tex-under', overbrace: 'tex-over',
+  underline: 'tex-under', overline: 'tex-over' };
+
 const BIG_OPS = { sum: '∑', prod: '∏', int: '∫', oint: '∮', bigcup: '⋃', bigcap: '⋂' };
 const FUNCS = { log: 'log', ln: 'ln', exp: 'exp', sin: 'sin', cos: 'cos', tan: 'tan',
   max: 'max', min: 'min', arg: 'arg', sup: 'sup', inf: 'inf', lim: 'lim',
-  det: 'det', dim: 'dim', softmax: 'softmax', mean: 'mean', std: 'std', var: 'Var' };
+  det: 'det', dim: 'dim', softmax: 'softmax', mean: 'mean', std: 'std', var: 'Var',
+  // Inverse trig, hyperbolics and modular arithmetic show up in the loss and
+  // similarity formulas this workbench stores.
+  tanh: 'tanh', sinh: 'sinh', cosh: 'cosh', arccos: 'arccos', arcsin: 'arcsin',
+  arctan: 'arctan', bmod: 'mod', pmod: 'mod', mod: 'mod', sign: 'sign',
+  diag: 'diag', tr: 'tr', rank: 'rank', relu: 'ReLU', gelu: 'GELU' };
 // Accents render as a CSS-decorated span around the argument, which is honest
 // about what it is and needs no font support.
 // NOTE: named TEX_ACCENTS, not ACCENTS - `ACCENTS` is already the accent-colour
@@ -554,8 +575,41 @@ export function tex(src) {
           out.push(`<span${cls}>${renderGroup(arg)}</span>`);
           continue;
         }
+        if (name === 'not') {
+          // \not negates the following relation: \not= -> ≠, \not\in -> ∉.
+          // Render the combining long solidus overlay over the next symbol's cell,
+          // which is honest about the meaning even when no exact glyph exists.
+          out.push('<span class="tex-not">\u0338</span>');
+          continue;
+        }
+        if (TEX_UNDER[name]) {
+          // \underbrace{X}_{label} / \overbrace{X}^{label}: render X with a labelled
+          // brace beneath/above it. The script that follows is consumed here so it is
+          // not emitted twice.
+          const [arg, i2] = texArg(t, i);
+          i = i2;
+          let label = '';
+          let j = i;
+          while (j < t.length && t[j] === ' ') j += 1;
+          if (t[j] === '_' || t[j] === '^') {
+            const [lab, i3] = texArg(t, j + 1);
+            label = renderGroup(lab);
+            i = i3;
+          }
+          const over = TEX_UNDER[name] === 'tex-over';
+          out.push(`<span class="${TEX_UNDER[name]}">${over ? '' : renderGroup(arg)}`
+            + `<span class="tex-brace-label">${label}</span>`
+            + `${over ? renderGroup(arg) : ''}</span>`);
+          continue;
+        }
         if (name === 'left' || name === 'right' || SIZE_HINTS.has(name)) {
           continue;                                  // size hints are visual noise here
+        }
+        if (TEX_NOOP.has(name)) {
+          // Spacing/styling hints with no glyph of their own. `\!` in particular is a
+          // negative thin space used in ~20 of the stored formulas; dropping it is
+          // correct, showing "\!" to the reader is not.
+          continue;
         }
         if (TEX_ACCENTS[name]) {
           const [arg, i2] = texArg(t, i);
@@ -1121,6 +1175,14 @@ export const Store = {
         it.concepts = Array.isArray(e.concepts) ? e.concepts : [];
         it.selfCheck = e.selfCheck || null;
         it.diagram = e.diagram || null;
+        // The teaching layer (progressive depth / Socratic questions / mechanism /
+        // boundary / misconceptions / interview phrasing) is a separate enrichment
+        // block. It is copied EXPLICITLY because this merge is an allow-list: a new
+        // field added by the agent is invisible in the UI until it is named here.
+        // That exact omission happened once - the data was on disk and in the drawer
+        // payload, but nothing rendered, because `it.teaching` was never assigned.
+        it.teaching = (e.teaching && typeof e.teaching === 'object') ? e.teaching : null;
+        it.hasTeaching = Boolean(it.teaching);
         // A card counts as "fully parsed" only when it has BOTH a written
         // explanation and a visual. The reader's complaint was that some cards
         // had analysis and some had nothing but a summary/link, so the UI needs

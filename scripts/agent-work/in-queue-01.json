@@ -1,0 +1,119 @@
+{
+ "batchId": "queue-01",
+ "mode": "full",
+ "items": [
+  {
+   "id": "221b6496ea4cd2f6",
+   "title": "EviRover: Reinforcing Agentic Perception Beyond a Glance",
+   "category": "agent",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.40230",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.40230",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40230",
+     "name": "canonical"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40230v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV",
+    "cs.AI"
+   ],
+   "publishedAt": "2026-09-29T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 62.7,
+   "summary": "Visual perception is conventionally formulated as a one-shot prediction from a single glance at the image, under the assumption that the image content and the model's parametric knowledge suffice to resolve the query. This assumption often fails in real-world scenarios that hinge on fine-grained visual details or require knowledge-intensive and up-to-date information. We term such cases \\textit{perception under insufficient evidence} and formulate perception as an agentic process that can obtain information beyond a single glance. To address the absence of data for this setting, we design two dedicated data generation pipelines, yielding EviRover-SFT-5K and EviRover-RL-12K for training. We further construct EviLens, a human-verified benchmark comprising 688 instances across five perception categories. Building on these data, we present EviRover, to our knowledge the first perception agent explicitly trained to resolve perceptual queries through interaction, using supervised fine-tuning followed by agentic reinforcement learning. Experiments show that the 4B EviRover outperforms its backbone by 30 points on average on EviLens, reaching performance comparable to advanced proprietary models. The gains transfer beyond EviLens to WebEyes, conventional perception benchmarks, and general multimodal benchmarks, including a 15-point improvement on BrowseComp-VL. All code, models, and data are released.",
+   "depthScore": 64.02
+  },
+  {
+   "id": "3ea906c6a7cd33f8",
+   "title": "MILO: Automated Harness Discovery via Orchestrated Multi-Agent Evolution",
+   "category": "agent",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.38349",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.38349",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.38349",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-29T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 77.3,
+   "summary": "Modern agentic systems combine an AI model with a harness that controls execution and environmental interactions. Harness design strongly affects long-horizon performance, yet its combinatorial search space demands substantial human effort that must be repeated as models change. Existing automated methods explore this space narrowly, optimizing only components such as prompts or skills or becoming trapped by fixed, exploitative search strategies. We introduce MILO (Meta-evolutionary Island Orchestration), a framework that co-evolves agent harnesses and the strategy used to discover them. MILO combines: (i) hierarchical lineage memory over island-based trees, using rejected mutations as negative evidence; (ii) per-island mutator agents that rewrite complete harnesses using global search history and parent-specific feedback; and (iii) an orchestrator that adapts search through lineage grafting and speciation, mutator reassignment and curriculum revision. Across Terminal-Bench 2.1, PaperBench, and DeepSWE, MILO-discovered harnesses outperform eight state-of-the-art harnesses and six search methods using frontier (Opus 4.8) and open-weight (gpt-oss-120b) models. With Opus 4.8, MILO improves resolution over its initial harness by +12.0%, +28.3%, and +10.3%, respectively, compared with best prior-search gains of +4.5%, +18.3%, and 0%. On Terminal-Bench 2.1, it achieves 86.1 pm 2.0%, exceeding the official leaderboard's top entry (83.8 pm 2.3%) while using 26\\% fewer tokens than its initial harness. On EinsteinArena open problems, MILO improves best-known upper bounds for Erdős minimum-overlap (0.3808586 to 0.3808568) and the first and third autocorrelation inequalities (1.50274365 to 1.50274360; 1.45081 to 1.44889).",
+   "depthScore": 62.82
+  },
+  {
+   "id": "67322b1664692cd2",
+   "title": "Mingbird: A Local-First Agent Harness Enabling Small Open Models to Complete Real Tasks",
+   "category": "agent",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.02001v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.02001v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.AI",
+    "cs.AI",
+    "cs.CL"
+   ],
+   "publishedAt": "2026-10-02T00:32:07+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 59.3,
+   "summary": "Small open-weight models (2-9B) run on ordinary laptops, but under cloud-scale agent harnesses they rarely complete real tasks: tool prefill overflows the context, self-correction diverges, tool demonstrations loop, and tasks are silently abandoned. We present evidence, from a controlled single-machine comparison and one third-party benchmark, that a substantial share of these failures is attributable to the harness rather than the model. We introduce Mingbird, a local-first agent harness for Windows and Ollama whose ten mechanisms compensate point-by-point for small-model failure forms, three of them representative: a byte-level net-zero prefill budget, a finish gate that re-reads the task before accepting completion, and signature-level loop detection. On LRAB, a controlled comparison holding machine, models, budgets, and scoring fixed (4 harnesses $\\times$ 4 open models (2B-35B) $\\times$ 18 real tasks, deterministic artifact scoring), Mingbird reaches 0.886 overall against 0.631 (goose), 0.479 (opencode), and 0.405 (agent-mini), with all 288 cells published; on $τ^2$-bench (278 tasks, three arms, one protocol) it totals 0.856 against 0.791 and 0.737; and a frontier-model probe on the same 18 tasks spans 0.997 to 0.478 across harnesses, with well-formed scaffolds staying within 0.072 of each other. A leave-one-mechanism-out ablation is reported as directional only: same-night replications of the same arm move its mean by up to 0.069, the size of every nominal single-trial delta, and the one batch-matched comparison (full mechanism stack versus text re-read alone) gives the executable completion guards a paired +0.10 across three replications. The evidence carries stated limits: a self-built benchmark, a single machine, and single-trial scoring.",
+   "depthScore": 62.74
+  },
+  {
+   "id": "cbfe6087f9c43604",
+   "title": "deepset-ai/haystack - Open-source AI orchestration framework for building context-engineered, production-ready LLM applications. Design modular pipelines and agent workflows with explicit control over retrieval, routing, memory, and generation. Built for scalable agents, RAG, multimodal applications, semantic search, and conversational systems.",
+   "category": "agent",
+   "channel": "github",
+   "url": "https://github.com/deepset-ai/haystack",
+   "sources": [
+    {
+     "url": "https://github.com/deepset-ai/haystack",
+     "name": "github"
+    }
+   ],
+   "tags": [
+    "agent-framework",
+    "agentic-ai",
+    "agentic-rag",
+    "agents",
+    "ai",
+    "ai-agents",
+    "context-engineering",
+    "framework",
+    "Python"
+   ],
+   "publishedAt": "2026-09-30T22:51:51+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 81.8,
+   "summary": "Open-source AI orchestration framework for building context-engineered, production-ready LLM applications. Design modular pipelines and agent workflows with explicit control over retrieval, routing, memory, and generation. Built for scalable agents, RAG, multimodal applications, semantic search, and conversational systems.",
+   "depthScore": 61.56
+  }
+ ]
+}

@@ -1,0 +1,624 @@
+{
+ "batchId": "queue-12",
+ "entries": [
+  {
+   "id": "2cb831a4994e7d2c",
+   "tldr": "Symmetrix-XL 不改 MACE 权重，用流式边执行与特化代码把推理提速 3.1–5.0 倍。",
+   "keyPoints": [
+    "不动权重、不重训、不蒸馏：只加速已有 MACE 检查点的推理。",
+    "流式边执行避免整图物化展开后的边中间量。",
+    "检查点特化代码生成 + 分块执行，复用有界显存工作区。",
+    "A100 上提速 3.1–5.0 倍，单卡容量 2.4 万→1124 万原子。",
+    "64 张 A800 弱扩展到 7.03 亿原子，效率 93.8%。"
+   ],
+   "why": "推理执行是被忽视的扩展轴：权重与精度不变，工程优化就能把可算体系放大两个数量级，科学 ML 与系统优化岗都该会讲。",
+   "difficulty": "hard",
+   "tags": ["inference", "equivariant-models", "mace", "scientific-ml", "systems"],
+   "entities": ["Symmetrix-XL", "MACE", "MACE-OMAT-0", "LAMMPS", "ML-IAP", "cuEquivariance", "Matbench Discovery", "A100", "RTX 5090", "A800"],
+   "diagram": {
+    "kind": "flow",
+    "title": "推理执行三层流水",
+    "caption": "不改权重，只换执行方式：流式边、特化代码、有界工作区三者叠加。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Symmetrix-XL 三层执行流水：流式边执行、检查点特化代码生成、有界工作区分块执行'>\n<rect x='40' y='14' width='400' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/>\n<text x='56' y='38' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>预训练 MACE 检查点</text>\n<text x='424' y='38' font-size='13' text-anchor='end' fill='currentColor'>权重不动</text>\n<line x1='240' y1='52' x2='240' y2='60' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,68 236,60 244,60' fill='var(--line-1)'/>\n<rect x='40' y='68' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='56' y='92' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>流式边执行</text>\n<text x='424' y='92' font-size='13' text-anchor='end' fill='currentColor'>不物化整图边</text>\n<line x1='240' y1='106' x2='240' y2='114' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,122 236,114 244,114' fill='var(--line-1)'/>\n<rect x='40' y='122' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='56' y='146' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>检查点特化代码生成</text>\n<text x='424' y='146' font-size='13' text-anchor='end' fill='currentColor'>配置变常量</text>\n<line x1='240' y1='160' x2='240' y2='168' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,176 236,168 244,168' fill='var(--line-1)'/>\n<rect x='40' y='176' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='56' y='200' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>有界工作区分块执行</text>\n<text x='424' y='200' font-size='13' text-anchor='end' fill='currentColor'>显存上界恒定</text>\n</svg>",
+    "alt": "三层竖排流程图：预训练 MACE 检查点权重不动，依次经过流式边执行、检查点特化代码生成、有界工作区分块执行。"
+   },
+   "concepts": [
+    {
+     "name": "Streamed-Edge Execution（流式边执行）",
+     "readable": "等变势模型会把每条近邻边展开成很多分量，整图一次算完就会撑爆显存。流式边执行让边分批流过计算并立即消费，任何时刻只驻留一小块边中间量，于是在不改权重的前提下把可算体系放大。",
+     "analogy": "像食堂打饭：不是把全年级的饭菜一次摆满整张桌子（摆不下），而是按窗口分批出餐，拿到餐盘就吃掉，桌面始终只放一批。",
+     "analogyBreaksDown": "打饭是顺序消费、各份互不依赖；等变消息传递要把每条边的贡献归约回原子，分批后必须保证归约结果与整图完全一致，还要处理自环与截断近邻表，这层「结果必须严格等价」的要求类比给不出。",
+     "mechanism": "关键设计是沿边的维度切分，而不是切分原子或图：原子与近邻索引常驻显存，只有边的展开中间量流式生成并即时消费，显存上界由块大小决定、与体系规模解耦，因此既不需要重训也不需要蒸馏。",
+     "visual": "画两条曲线，横轴原子数取对数、纵轴峰值显存。灰线是整图物化（近似线性上升，很快撞到 80GB 上限），蓝线是流式边执行（近乎水平的锯齿台阶）；在两线交点处标注容量边界从 24,565 原子移到 1124 万原子。",
+     "prerequisites": ["等变图神经网络与消息传递机制", "球谐函数/张量积展开的基本概念", "GPU 显存与访存瓶颈的常识"],
+     "selfTest": ["为什么按边切分比按原子切分更能压住峰值显存？", "流式执行后，边对原子的归约要保证什么性质才不改变物理结果？", "如果体系只有几百个原子，这套改动还值得吗，为什么？"],
+     "formula": ""
+    },
+    {
+     "name": "Model-Specialized Code Generation（检查点特化代码生成）",
+     "readable": "推理引擎在运行时读取检查点的配置（层数、通道数、截断半径、角动量上限），据此生成并编译只对这个检查点成立的算子，去掉通用 kernel 里的分支与动态形状开销。",
+     "analogy": "像给一把特定锁配钥匙：通用钥匙串每次要挨个试十几把，配好的专用钥匙一次到位，锁没变，开门却快多了。",
+     "analogyBreaksDown": "配钥匙是一次性收益且锁不变；这里检查点配置一变代码就得重新编译，收益还强依赖编译器与后端，遇到形状高度动态、或算子被访存而非分支支配时，特化可能几乎不涨。",
+     "mechanism": "关键选择是把模型配置当作编译期常量：通道数、角动量上限写死进循环边界，让编译器做循环展开与向量化并消掉运行时分支，从而在权重完全不变的前提下降低每个模拟步的开销。",
+     "visual": "画一个二维矩阵：行是算子（邻居聚合、张量积、激活），列是「通用 kernel / 特化 kernel」，每格填单步耗时；特化列整体颜色更浅，顶部标注「同一份权重」。",
+     "prerequisites": ["CUDA/kernel 编译与循环优化基础", "等变模型的前向计算图", "静态形状与动态形状的取舍"],
+     "selfTest": ["把哪些量变成编译期常量收益最大，为什么？", "什么时候特化代码生成会几乎没有收益？", "特化会不会影响数值结果？为什么？"],
+     "formula": ""
+    },
+    {
+     "name": "Bounded Workspace Tiling（有界工作区分块执行）",
+     "readable": "把一次模拟步的计算切成若干 tile，让设备端只用一块固定大小的显存工作区循环复用；显存占用不再随体系规模增长，代价是同一块工作区被反复读写，跨 tile 的邻居贡献需要额外归约。",
+     "analogy": "像用固定大小的案板切菜：菜再多也只在这块板上分批处理，案板不随菜量变大，但每批都要重新铺开再收拢。",
+     "analogyBreaksDown": "案板只影响效率、不影响成品；这里的 tile 边界会把边切断，跨块邻居贡献必须额外通信或归约，切分不当就出现重复计算与负载不均，弱扩展效率也就不再是那个 93.8% 的水平。",
+     "mechanism": "关键设计是把显存上限设成可调常量（tile 大小），用它换取可算体系规模；配合流式边执行后，单卡可容纳原子数取决于工作区而非总原子数，多卡弱扩展时也只需交换边界原子信息。",
+     "visual": "画一条长条代表整个体系，被竖线切成等宽 tile，只有当前 tile 涂成实心表示占用工作区，其余留空；下方一条水平线标注「显存上界恒定」，右侧画箭头表示 tile 数与总原子数同步增长。",
+     "prerequisites": ["GPU 内存层次与数据复用", "空间/域分解并行", "弱扩展与并行效率的定义"],
+     "selfTest": ["tile 大小调大调小分别牺牲什么、换来什么？", "为什么有界工作区能让单卡容量与体系规模解耦？", "跨 tile 边界漏算一条边会造成什么后果？"],
+     "formula": "M_{\\text{ws}} \\approx c_{\\text{tile}} + N_{\\text{tile}} \\cdot b_{\\text{edge}}"
+    }
+   ],
+   "formulas": [
+    {
+     "id": "f-symmetrix-edge-memory",
+     "name": "展开边中间量的显存规模（Expanded Edge Intermediate Memory）",
+     "category": "engineering",
+     "latex": "M_{\\text{edge}} \\approx N_{\\text{atom}} \\cdot k_{\\text{nbr}} \\cdot C_{\\text{edge}} \\cdot b",
+     "symbols": [
+      ["N_atom", "体系原子数"],
+      ["k_nbr", "每个原子在截断半径内的近邻数"],
+      ["C_edge", "每条边展开后的分量数（通道 × 角动量分量）"],
+      ["b", "单个分量的字节数"],
+      ["M_edge", "整图物化展开边中间量所需的显存"]
+     ],
+     "derivation": [
+      "第 1 步：等变势的消息传递以「边」为单位，每个原子与截断半径内的近邻构成边，边数约为 N_atom · k_nbr 量级；摘要明确指出瓶颈来自 expanded edge intermediates。",
+      "第 2 步：每条边不能只存一个标量，而要展开成 C_edge 个分量（通道与角动量/球谐分量），于是单步中间量规模约为 N_atom · k_nbr · C_edge。",
+      "第 3 步：乘以每分量字节数 b 得到整图物化显存 M_edge，它与原子数近似线性——这正是单卡容量边界只有 24,565 原子的直接原因。",
+      "第 4 步：流式边执行不改变这条式子的任何因子，只是把边分批流过后立即消费，使实际驻留显存由块大小而非 N_atom 决定。"
+     ],
+     "analogy": "像估算体育馆要摆多少把椅子：人数 × 每人邻座数 × 每个座位要放的靠垫数。一次摆满整个场就摆不下，分批摆只需要一小块场地。",
+     "pitfalls": [
+      "把显存瓶颈归给权重或激活：摘要强调的是展开后的边中间量，权重本身很小。",
+      "以为 k_nbr 是常数：截断半径、体系密度与边界都会改变它，稀疏与稠密体系差很多。",
+      "这是按摘要重建的通用形式，面试里不要报出精确系数或把它说成论文原文公式。"
+     ],
+     "code": "N, k, C, b = 200_000, 40, 128, 4   # 原子数 / 近邻数 / 每条边分量 / 字节\nM_edge = N * k * C * b               # 整图物化展开边所需字节\nprint(M_edge / 2**30, 'GiB')         # 线性于 N，单卡很快撞上限\nworkspace = 4096 * C * b             # 流式/分块后只驻留一个块，与 N 无关\nprint(workspace / 2**20, 'MiB')\n",
+     "sources": [
+      {"title": "Train for Accuracy, Execute at Scale: Architecture-Preserving Inference for Equivariant Atomistic Foundation Models", "url": "https://arxiv.org/abs/2610.01036v1"}
+     ]
+    },
+    {
+     "id": "f-symmetrix-weak-scaling",
+     "name": "弱扩展效率（Weak-Scaling Efficiency）",
+     "category": "engineering",
+     "latex": "E_{\\text{weak}}(P) = \\frac{t_1}{t_P} \\times 100\\%",
+     "symbols": [
+      ["P", "GPU 数量"],
+      ["t_1", "单 GPU 上处理单位规模体系的一步耗时"],
+      ["t_P", "P 个 GPU 上处理 P 倍规模体系的一步耗时"],
+      ["E_weak", "弱扩展效率，理想值为 100%"]
+     ],
+     "derivation": [
+      "第 1 步：弱扩展的定义是每卡工作量固定、问题规模随卡数线性增长，因此每卡的时间应保持不变。",
+      "第 2 步：理想情况下 t_P = t_1，所以用 t_1 / t_P 衡量「每卡速度」被保持的程度。",
+      "第 3 步：摘要报告 64 张 A800 弱扩展到 7.03 亿原子、效率 93.8%，即 t_64 / t_1 ≈ 1 / 0.938，多出的约 6.2% 来自边界原子通信与负载不均（推断）。",
+      "第 4 步：与强扩展对比：强扩展固定问题规模，用加速比 S(P) = t_1 / t_P 描述，两者分母口径不同。"
+     ],
+     "analogy": "像搬砖：人翻倍、砖也翻倍，如果每人搬砖速度几乎不变，队伍效率就是 100%；掉下去的部分是交接和传话的开销。",
+     "pitfalls": [
+      "把弱扩展与强扩展混为一谈：前者规模随卡数增长，后者规模固定，公式含义不同。",
+      "报效率必须同时给问题规模与卡数，只说 93.8% 没有信息量。",
+      "分子分母的时间口径必须一致（是否含通信、单步还是整段轨迹），否则算出来的效率不可比。"
+     ],
+     "code": "def weak_efficiency(t1, tP):\n    return t1 / tP\n\nprint(weak_efficiency(1.0, 1.0 / 0.938))   # ≈0.938，对应摘要的 93.8%\n# 强扩展用 S(P) = t1 / tP，但分母是固定问题规模下的耗时\n",
+     "sources": [
+      {"title": "Train for Accuracy, Execute at Scale: Architecture-Preserving Inference for Equivariant Atomistic Foundation Models", "url": "https://arxiv.org/abs/2610.01036v1"}
+     ]
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "Symmetrix-XL 在不重训、不蒸馏、不修改学习到的权重的前提下加速预训练 MACE 检查点。",
+     "它结合流式边执行、检查点特化代码生成与分块执行三项手段。",
+     "完整 LAMMPS 步基准上，相对 ML-IAP + cuEquivariance 在 A100 与 RTX 5090 上提速 3.1–5.0 倍。",
+     "A100 80GB 单卡上 MACE-OMAT-0 的容量边界从 24,565 原子提升到 1124 万原子。",
+     "同一后端在 64 张 A800 上弱扩展到 7.03 亿原子，效率 93.8%。",
+     "能量、力、应力、分子动力学稳定性与 Matbench Discovery 评测在测量容差内复现参考 MACE 行为。"
+    ],
+    "uncertain": [
+     "M_edge 公式为按摘要重建的通用形式，具体分量定义与系数需核对原文。",
+     "弱扩展效率的时间口径（是否含通信、单步还是多步）摘要未说明。",
+     "「measured tolerances」的具体数值摘要未给出，需核对原文表格。",
+     "3.1–5.0 倍区间分别对应哪些体系规模与硬件组合，摘要未逐项列出。"
+    ]
+   },
+   "teaching": {
+    "progressive": [
+     {"level": "一句话", "text": "不改权重、不重训，只优化推理执行，就把单卡可模拟的原子数放大两个数量级。"},
+     {"level": "入门", "text": "等变原子势靠近邻边做消息传递，每条边要展开成很多分量，整图一次算完显存就爆。Symmetrix-XL 把边分批流式算、按检查点生成专用算子、用固定工作区循环复用；A100 单卡容量从 2.4 万原子涨到 1124 万原子。"},
+     {"level": "进阶", "text": "它守住架构与权重不变的红线：不重训、不蒸馏、不改权重。三条手段互补——流式边执行把边的展开中间量按块消费，使显存上界与体系规模解耦；特化代码生成把通道数与角动量上限当编译期常量，消掉运行时分支；分块执行复用有界工作区。三者叠加后完整 LAMMPS 步相对 ML-IAP + cuEquivariance 提速 3.1–5.0 倍，并在容差内复现参考 MACE 的能量、力与应力行为。"},
+     {"level": "专家", "text": "把它与模型重设计、压缩、分布式扩展并列来看：前两者改变模型，后者多花硬件，本文改的是执行层，是正交的 scaling 轴，即摘要说的精度-成本前沿由架构与执行共同决定。代价是特化代码绑定检查点配置、换模型要重编译，tile 边界带来跨块归约，评测也只覆盖 MACE + LAMMPS 这一条链路。适用边界很清楚：受益最大的是单步开销被边展开与访存支配的大体系；体系很小或瓶颈在近邻表构建时，3–5 倍不应被当成普适数字。64 张 A800 弱扩展到 7.03 亿原子、93.8% 效率说明它能跨节点，但强扩展性摘要没给。"}
+    ],
+    "socratic": [
+     {"q": "不做流式边执行，只是把每次模拟的 batch 调小，能解决显存问题吗？", "a": "不能。瓶颈是单张图整图物化的展开边中间量，batch 里只有一条大体系时调小 batch 无效，必须按边切分并正确归约。"},
+     {"q": "既然实测提速 3.1–5.0 倍，为什么不干脆重训一个更小的模型？", "a": "重训会改变精度、泛化与训练成本，还要重跑数据；本文的卖点正是不动权重就让已有检查点可用，两条路互补而非替代。"},
+     {"q": "为什么验证里要包含分子动力学稳定性，而不只看单步误差？", "a": "单步内的小偏差会在长轨迹上累积；稳定性检查的是执行层改动有没有破坏物理一致性，比单步误差更严格。"}
+    ],
+    "mechanism": "等变势的计算量集中在边：近邻数 × 每条边的展开分量 × 每分量访存。通用实现会先把整图的展开边中间量物化，显存与体系规模近似线性，于是单卡容量被死死卡住。三条设计分别针对物化、通用性开销与工作区复用：按边流式消费把显存上界变成与体系无关的常量；把模型配置编译成常量以消除分支与动态形状开销；固定工作区分块让内存复用率最大化。它们都不触碰权重，所以精度按构造保持，只是执行成本下降。",
+    "boundary": "只在等变/近邻图类势模型上验证（MACE + LAMMPS），换架构或换模拟器需要重做代码生成与归约；检查点配置一变就要重编译；体系很小、或瓶颈在近邻表构建而非边展开时收益明显缩水；单卡 1124 万原子是 A100 80GB + MACE-OMAT-0 这一配置下的测得值，换模型换卡都会变。",
+    "analogyBoundary": "把推理优化类比成「换更快的厨房流水线」只对一半：流水线改造不该影响菜品，而这里的 tile 边界、归约顺序都可能引入数值偏差，只是实测落在容差内，并不代表原理上严格无损；另外厨房随时能改菜单，特化代码却不能。",
+    "misconceptions": [
+     "「提速 3.1–5.0 倍等于精度白拿」：加速是在测得容差内复现参考行为，不是数学上严格等价。",
+     "「不改权重就不用管数值」：分块归约与代码生成仍可能改变浮点求和顺序。",
+     "「1124 万原子是通用容量」：那是特定 GPU 与特定检查点配置下的边界，7.03 亿是 64 卡弱扩展结果。"
+    ],
+    "ownAnalysis": "（推断）它的重点是把推理执行抬成与架构并列的 scaling 轴——摘要里「精度-成本前沿同时取决于架构与执行」就是主张本身。可疑处有三：一，3.1–5.0 倍是相对 ML-IAP + cuEquivariance 的完整 LAMMPS 步，基线质量影响倍数；二，容量从 24,565 涨到 1124 万原子约 458 倍，说明省的主要是显存；三，摘要未给 measured tolerances 的具体数值，长轨迹误差累积需核对原文。",
+    "officialNotes": [
+     {"position": "摘要把结论定位为：后训练执行是与模型重设计、压缩、分布式扩展互补的扩展轴，且精度-成本前沿由架构与执行共同决定。", "source": "arXiv 摘要（https://arxiv.org/abs/2610.01036v1）"}
+    ],
+    "interviewAnswer": "我关注执行层扩展轴。Symmetrix-XL 在不动 MACE 权重的前提下加速推理：流式边执行不再物化整图展开边，特化代码生成把配置当编译期常量，分块执行复用有界工作区。结果完整 LAMMPS 步在 A100 与 RTX 5090 提速 3.1–5.0 倍，单卡 A100 容量边界从 24,565 原子升到 1124 万原子，64 张 A800 弱扩展到 7.03 亿原子、效率 93.8%。",
+    "studyPath": {
+     "prerequisites": ["等变图神经网络与消息传递", "GPU 显存层次与访存瓶颈", "分子动力学模拟与 LAMMPS 基本流程", "并行扩展（弱/强扩展）定义"],
+     "nextSteps": ["读 MACE 系列论文理解边展开的来源", "对比 DMD 之外的压缩/量化推理优化路线", "动手测一条边的展开分量对显存的实际贡献"]
+    }
+   }
+  },
+  {
+   "id": "d5797a577a0b337d",
+   "tldr": "LineupRL 用「冻结 LLM 从干扰项中指认被描述的序列」当奖励，3B 模型超过被蒸馏的 72B。",
+   "keyPoints": [
+    "时序描述是信号与语言之间的桥梁，SFT 上限被教师 caption 封住。",
+    "现成 RL 奖励为别的模态与任务设计，迁移到时序开放生成很差。",
+    "奖励=辨识：验证器只读 caption 与候选序列原始数值，不看图。",
+    "指认比写题、打分轻得多，通用 LLM 无需微调即可当奖励模型。",
+    "两个描述基准与预测、重建任务上全面超过 SFT 与 RL 基线。"
+   ],
+   "why": "「把判别任务当奖励」是可迁移的 RLVR 套路，也解释了 SFT 天花板，适合多模态与后训练岗面试论述。",
+   "difficulty": "medium",
+   "tags": ["rlvr", "time-series", "captioning", "reward-model", "vlm"],
+   "entities": ["LineupRL", "RLVR", "SFT", "VLM", "LLM"],
+   "diagram": {
+    "kind": "flow",
+    "title": "辨识式奖励回路",
+    "caption": "caption 与候选序列的原始数值一起送进冻结 LLM，指认正确才给奖励。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='LineupRL 辨识式奖励回路：captioner 生成描述，冻结 LLM 从候选序列中指认被描述的那条'>\n<rect x='40' y='14' width='400' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/>\n<text x='56' y='38' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>3B VLM 生成 caption</text>\n<text x='424' y='38' font-size='13' text-anchor='end' fill='currentColor'>待评估</text>\n<line x1='240' y1='52' x2='240' y2='60' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,68 236,60 244,60' fill='var(--line-1)'/>\n<rect x='40' y='68' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='56' y='92' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>候选时序：1 条正确 + K 条干扰</text>\n<text x='424' y='92' font-size='13' text-anchor='end' fill='currentColor'>只给数值</text>\n<line x1='240' y1='106' x2='240' y2='114' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,122 236,114 244,114' fill='var(--line-1)'/>\n<rect x='40' y='122' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='56' y='146' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>冻结 LLM 指认是哪一条</text>\n<text x='424' y='146' font-size='13' text-anchor='end' fill='currentColor'>不做评分</text>\n<line x1='240' y1='160' x2='240' y2='168' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,176 236,168 244,168' fill='var(--line-1)'/>\n<rect x='40' y='176' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='56' y='200' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>指认正确则回传奖励</text>\n<text x='424' y='200' font-size='13' text-anchor='end' fill='currentColor'>更新策略</text>\n</svg>",
+    "alt": "四层竖排流程图：3B VLM 生成 caption，与 1 条正确序列加若干干扰项一起交给冻结 LLM，后者指认被描述的那条，命中则回传奖励更新策略。"
+   },
+   "concepts": [
+    {
+     "name": "Caption-to-Series Identification（描述—序列辨识奖励）",
+     "readable": "不再让裁判「评」caption 写得好不好，而是把生成的 caption 与若干条候选时序（含正确那条）一起交给冻结 LLM，让它只根据数值挑出被描述的那条；挑对就给奖励。",
+     "analogy": "像玩「你说我猜」：描述者说完，听者要从一排相似的曲子里指出是哪一首。听者只负责指认，不需要会作曲，所以谁都能当裁判。",
+     "analogyBreaksDown": "游戏里听者与描述者共享常识；这里的验证器只拿原始数值、没有图，长度或量纲等表面线索可能让它「蒙对」，使奖励与描述质量脱钩；干扰项构造方式还直接决定难度，随机干扰会让辨识过于容易。",
+     "mechanism": "把奖励从生成式评判改成判别式匹配：写问题或评 caption 要求验证器具备领域生成能力，而多选一指认只需要比较能力，于是通用 LLM 不必微调就能提供唯一、可验证的信号，也更难被策略钻空子。",
+     "visual": "画横向流程：左边一个 caption 文本框，中间一列 4 条折线（1 条正确 + 3 条干扰，全用灰线），右边一个冻结 LLM 方块，箭头从 caption 与每条线汇聚进去，输出一个被高亮圈中的候选；错选时奖励为 0。",
+     "prerequisites": ["RLVR/GRPO 类策略优化流程", "时序描述任务与常见评测", "判别式目标与对比学习的基本直觉"],
+     "selfTest": ["为什么指认比打分更适合当奖励源？", "干扰项太难或太易分别会怎样破坏奖励？", "验证器为什么不看图表只看数值？"],
+     "formula": "r = \\mathbb{1}[\\hat{k} = k^{\\star}]"
+    },
+    {
+     "name": "Teacher-Bounded SFT（SFT 的教师上限）",
+     "readable": "SFT 让学生逐字拟合一个更大模型生成的 caption，学生最好也只能与那些 caption 一样好，教师的错误与遗漏被原样继承，加数据量也补不回来。",
+     "analogy": "像照字帖描红：描得再准也超不过字帖本身；想写得更好，需要有人告诉你「这一笔为什么好」，而不是再描一万遍。",
+     "analogyBreaksDown": "描红是纯模仿、没有反馈；SFT 之后的 RL 阶段确实能从奖励里拿到教师数据之外的信息，但奖励设计得差（比如仍用同一个 LLM 当裁判）时上限依旧被裁判能力封住，所以「超不过教师」是 SFT 阶段的性质，不是整条流水线的定理。",
+     "mechanism": "关键差别在优化目标：SFT 最小化与教师 token 的交叉熵，梯度只反映教师分布；RLVR 最大化可验证奖励的期望，只要奖励能区分「描述得更准」的样本，策略就能走到教师数据里没有的行为，这正是 3B 学生能超过 72B 教师的来源。",
+     "visual": "画一条横轴表示 caption 质量，标出三个点：72B 教师 caption 的上限线、紧贴上限线下方一点的 SFT 学生、越过上限线的 LineupRL 3B 学生；用虚线画出上限并强调「越线」由 RL 带来。",
+     "prerequisites": ["交叉熵/最大似然微调", "KL 正则化策略优化", "分布匹配与奖励最大化的区别"],
+     "selfTest": ["为什么增大 SFT 数据量无法突破教师上限？", "RL 阶段靠什么获得教师数据里没有的信息？", "什么情况下 RL 仍然无法超过教师？"],
+     "formula": "\\min_\\theta \\mathbb{E}_{(x,y)\\sim \\mathcal{D}_{\\text{teacher}}}\\left[ -\\log \\pi_\\theta(y\\mid x) \\right]"
+    }
+   ],
+   "formulas": [
+    {
+     "id": "f-lineuprl-rlvr-objective",
+     "name": "KL 正则化的可验证奖励目标（KL-Regularized RLVR Objective）",
+     "category": "rl",
+     "latex": "\\max_{\\pi_\\theta}\\; \\mathbb{E}_{x\\sim\\mathcal{D},\\, y\\sim\\pi_\\theta(\\cdot\\mid x)}\\big[ r(c_y, x) \\big] - \\beta\\, D_{\\mathrm{KL}}\\big(\\pi_\\theta \\,\\|\\, \\pi_{\\text{ref}} \\big)",
+     "symbols": [
+      ["π_θ", "正在训练的 captioner（VLM）策略"],
+      ["x", "输入时序数据"],
+      ["c_y", "策略采样得到的 caption"],
+      ["r", "caption-to-series 辨识奖励"],
+      ["β", "KL 约束强度"],
+      ["π_ref", "SFT 初始化得到的参考策略"]
+     ],
+     "derivation": [
+      "第 1 步：SFT 只拟合教师 caption，无法超过教师；要越过上限就得直接优化一个能判断「描述是否准确」的奖励。",
+      "第 2 步：把奖励取成辨识正确与否，得到目标的第一项——期望辨识奖励，这一项可由策略采样估计。",
+      "第 3 步：纯奖励最大化会让策略跑到奖励模型的盲区（语言退化、模板套话），因此减去到 SFT 参考策略的 KL，把策略约束在合理文本分布附近。",
+      "第 4 步：这是按摘要重建的通用 RLVR 写法，具体实现（如 GRPO/PPO 与优势估计）摘要未说明。"
+     ],
+     "analogy": "像训练辩手：奖励是裁判听懂了并指认正确，KL 项是不许为了赢而改说另一种语言——既鼓励说得更准，又不让表达跑偏。",
+     "pitfalls": [
+      "把 KL 项当成可选项：没有它策略容易退化成对验证器的模板化套话。",
+      "β 太大则策略几乎不动、等于没做 RL；太小则偏离参考策略，训练不稳定。",
+      "公式是重建的通用形式，别在面试里声称这就是论文使用的算法与超参。"
+     ],
+     "code": "import torch\n\n# 二值辨识奖励 + KL 正则（通用写法示意）\ndef id_reward(pick, target):\n    return 1.0 if pick == target else 0.0\n\nr = id_reward(pick=2, target=2)\nloss = -(r * logp_action) + beta * (logp_action - logp_ref)\n",
+     "sources": [
+      {"title": "LineupRL: Verifiable Reinforcement Learning for Time Series Captioning via Caption-to-Series Identification", "url": "https://arxiv.org/abs/2610.01800v1"}
+     ]
+    },
+    {
+     "id": "f-lineuprl-id-chance",
+     "name": "辨识奖励与随机基线（Identification Reward and Chance Level）",
+     "category": "rl",
+     "latex": "r = \\mathbb{1}[\\hat{k} = k^{\\star}], \\qquad P_{\\text{guess}} = \\frac{1}{K+1}",
+     "symbols": [
+      ["\\hat{k}", "验证器指认的候选序号"],
+      ["k^\\star", "真正被描述的那条序列的序号"],
+      ["K", "干扰项个数"],
+      ["P_guess", "无信息情况下随机指认命中的概率"]
+     ],
+     "derivation": [
+      "第 1 步：奖励取二值形式，指认正确为 1、否则为 0，因此奖励的期望就是辨识准确率。",
+      "第 2 步：若候选共 K+1 条且验证器没有任何有效信息，则均匀随机指认的命中率为 1/(K+1)。",
+      "第 3 步：训练中奖励显著高于 1/(K+1) 才说明验证器真的在用 caption 内容而不是表面线索（推断）。",
+      "第 4 步：摘要未给出 K 的取值与实测命中率，因此这里的 K 只是通用记号，需要核对原文。"
+     ],
+     "analogy": "像闭卷多选：4 个选项什么都不懂也有 25% 命中率，只有明显高于这个数，才说明真的读懂了题。",
+     "pitfalls": [
+      "只看奖励上升就认为学到东西：必须与 1/(K+1) 的随机基线比较。",
+      "K 太小会让奖励饱和、梯度消失；K 太大又可能让任务噪声化。",
+      "干扰项若与正确序列在长度、量纲上明显不同，命中率高不代表描述准确。"
+     ],
+     "code": "K = 3                        # 干扰项个数\ndef chance(K):\n    return 1.0 / (K + 1)     # 随机指认的命中率\nprint(chance(3), chance(7))  # 0.25 / 0.125\n",
+     "sources": [
+      {"title": "LineupRL: Verifiable Reinforcement Learning for Time Series Captioning via Caption-to-Series Identification", "url": "https://arxiv.org/abs/2610.01800v1"}
+     ]
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "LineupRL 是带可验证奖励的 RL 流水线，奖励为 caption-to-series identification。",
+     "奖励模型是冻结 LLM，读取生成的 caption 与候选时序的原始数值，从不看图表。",
+     "在两个描述基准、以及预测与重建任务（预测器只看到 caption）上，LineupRL 在每个指标上都超过 SFT 与 RL 基线。",
+     "其 3B VLM 以 1/24 的参数量超过了 SFT 基线所蒸馏的 72B VLM。",
+     "案例研究显示 LineupRL 抵抗 reward hacking，其 caption 既追踪趋势也给出关键点的数值。",
+     "论文指出匹配比让验证器写问题或评判 caption 轻得多，因此现成 LLM 即可提供奖励。"
+    ],
+    "uncertain": [
+     "候选序列的干扰项个数 K 与实测命中率摘要未给，1/(K+1) 只是通用推导。",
+     "RL 目标式是重建的通用 KL 正则形式，需核对原文使用的具体算法。",
+     "「两个 benchmark」的名称与具体指标摘要未给。",
+     "案例研究如何量化对 reward hacking 的抵抗，摘要未说明。"
+    ]
+   },
+   "teaching": {
+    "progressive": [
+     {"level": "一句话", "text": "让冻结的大模型玩「你说我猜」，猜对就给写描述的小模型发奖励。"},
+     {"level": "入门", "text": "时序描述用大模型 caption 做 SFT，上限即那些 caption；要么用 RL，但现成奖励迁移差。LineupRL 把奖励换成辨识：给出 caption 与几条候选时序（仅给数值），让冻结 LLM 指出被描述的那条，猜对给奖励。"},
+     {"level": "进阶", "text": "关键设计是把奖励从生成式评判降级为判别式指认：写问题、评 caption 都要求裁判懂领域并会生成，而多选一只要比较，所以现成 LLM 就能给出唯一、可验证的信号，也更难被策略钻空子。3B VLM 在两个描述基准以及预测与重建（预测器只看到 caption）上全面超过 SFT 与 RL 基线，并以 1/24 参数超过 SFT 蒸馏的 72B VLM；案例研究显示它抗 reward hacking。"},
+     {"level": "专家", "text": "放进 RLVR 谱系看：奖励的可验证性是核心资源，而验证成本取决于任务形态——写题与打分是生成式判断，指认是判别式匹配，后者天然更便宜也更稳。这也解释了 3B 学生为何能超过 72B 教师：SFT 复刻教师分布，RL 最大化一个只关心「描述是否足以唯一确定序列」的奖励，允许走出教师数据。边界同样清晰：干扰项构造决定任务难度，若正确序列与干扰项在长度、量纲上就可区分，验证器靠捷径也能答对，奖励就与描述质量脱钩；摘要没给 K 与命中率，所以这份奖励到底多难无法从摘要判断。"}
+    ],
+    "socratic": [
+     {"q": "为什么不直接让 LLM 给 caption 打 1–5 分当奖励？", "a": "打分是生成式判断，要求裁判懂领域、尺度还难校准，分数也容易被套话骗；指认只要比较能力，答案唯一可验证，更省更稳。"},
+     {"q": "如果干扰序列是从别的数据集随机抽的，会有什么问题？", "a": "任务会太容易，验证器靠长度、量纲等表面差异就能答对，奖励与描述准确性脱钩，策略学到的是无关捷径。"},
+     {"q": "SFT 用 72B 教师的 caption 蒸馏，为什么 3B 学生能反超？", "a": "SFT 拟合教师分布，上限被教师 caption 封住；RL 直接最大化可验证奖励，能走到教师数据之外，参数量不再是唯一变量。"}
+    ],
+    "mechanism": "必须这样设计的原因在验证成本：RLVR 需要便宜、唯一、难以伪造的奖励，而时序描述没有现成可验证指标，caption 是开放文本、无法与数值直接比对。把奖励改写成「从候选中指认」，等价于把开放生成问题变成多选判别问题：正确答案由数据本身给出，裁判只需比较能力，因此可以冻结一个通用 LLM 使用；又因为它只看原始数值不看图，策略无法靠视觉捷径或格式套话骗分。",
+    "boundary": "适用前提是能构造足够难的干扰项，且验证器真能读懂数值序列；若正确序列与干扰项在长度、量纲等表面属性上可区分，奖励会退化成捷径检测。摘要只覆盖两个描述基准与预测、重建两类下游任务，换到多步因果推理或极长序列任务上是否成立无证据；另外「超过 72B 教师」指被蒸馏的那个 72B 基线，不等于超过所有 72B 模型。",
+    "analogyBoundary": "「你说我猜」的类比漏掉了干扰项是人工构造的这一点：游戏里选项由出题人定，难易可控且与能力无关；这里干扰项抽样方式直接决定奖励的信息量——从随机序列里指认几乎不需要理解，从同分布的相似序列里指认才是真本事。类比也暗示听者可以不懂硬猜，但验证器仍须具备读数值序列的基本能力。",
+    "misconceptions": [
+     "「裁判是 LLM 就还是 LLM-as-judge」：这里裁判只做多选一辨识，不做生成式评分。",
+     "「超过 72B 教师说明 3B 更强」：只是在这项任务与这套评测上超过被蒸馏的那个特定 72B。",
+     "「辨识奖励不可能被 hack」：干扰项太弱时仍可靠表面线索蒙对，摘要只用案例研究说明有抵抗性。"
+    ],
+    "ownAnalysis": "（推断）这篇的价值在于把「奖励要可验证」具体化为「奖励要便宜」：可验证性好讲，但指认式奖励把验证成本压到冻结 LLM 的单次前向，它用 3B 打 72B 的基础。可疑处：一，摘要只说匹配比写题或评判轻得多，未给成本或延迟数字，1/24 参数对比可能混入 SFT 数据差异；二，抗 reward hacking 只有案例研究支撑，未量化；三，验证器冻结意味着奖励上限仍被它的序列理解能力封住，只是比 SFT 的教师上限更易突破（推断）。",
+    "officialNotes": [
+     {"position": "摘要把现成 RL 奖励迁移差归因为「为其他模态与其他任务设计」，并把 caption-to-series identification 定为可由 off-the-shelf LLM 提供的轻量奖励。", "source": "arXiv 摘要（https://arxiv.org/abs/2610.01800v1）"}
+    ],
+    "interviewAnswer": "我关注奖励的可验证性。LineupRL 把时序描述奖励换成辨识：冻结 LLM 读 caption 与候选序列数值，指出被描述的那条。这把开放生成变成多选判别，裁判不必会写 caption，通用 LLM 即可用，难被套话骗。3B VLM 在两个基准与预测、重建任务上全面超过 SFT 与 RL 基线，并以 1/24 参数超过 SFT 蒸馏的 72B 教师。关键是干扰项要够难，否则奖励会退化成捷径检测。",
+    "studyPath": {
+     "prerequisites": ["RLVR/GRPO 类策略优化流程", "SFT 与交叉熵微调", "时序描述任务与评测指标", "判别式目标的直觉"],
+     "nextSteps": ["对比 GRPO 与 LLM-as-judge 的奖励设计差异", "实现一个最小的 caption-to-series 辨识奖励", "研究干扰项构造如何影响奖励信息量"]
+    }
+   }
+  },
+  {
+   "id": "ffef356681d5686d",
+   "tldr": "把 AHD 里候选被评测的数据流同时当搜索状态与训练信号，系统比较几种上下文相关信号映射。",
+   "keyPoints": [
+    "LLM 驱动的 AHD 迭代提出并改进启发式，配对设计理由与可执行代码。",
+    "任务评测器评估程序，执行结果与性能分数共同引导搜索。",
+    "多数系统冻结生成器，EvoTune 与 CALM 从被评测候选更新它。",
+    "评测流同时喂养搜索与 RLVR，形成搜索耦合回路。",
+    "有效性与性能不能唯一决定有用的模型更新，必须绑定上下文。"
+   ],
+   "why": "搜索与在线更新的算力账、以及「更新是否真比多搜更值」的对照设计，是 agent/RL 岗的高频追问点。",
+   "difficulty": "hard",
+   "tags": ["rlvr", "online-rl", "heuristic-design", "llm-agents", "post-training"],
+   "entities": ["EvoTune", "CALM", "AHD", "RLVR", "LLM"],
+   "diagram": {
+    "kind": "flow",
+    "title": "搜索与训练共享回路",
+    "caption": "同一批候选先被评测，再按生成上下文构造更新信号，回灌搜索。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='AHD 在线后训练流程：候选启发式经评测器评分后，按上下文构造更新信号并在线更新生成器'>\n<rect x='40' y='14' width='400' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/>\n<text x='56' y='38' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>候选启发式：理由 + 代码</text>\n<text x='424' y='38' font-size='13' text-anchor='end' fill='currentColor'>LLM 生成</text>\n<line x1='240' y1='52' x2='240' y2='60' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,68 236,60 244,60' fill='var(--line-1)'/>\n<rect x='40' y='68' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='56' y='92' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>任务评测器：有效性 + 性能</text>\n<text x='424' y='92' font-size='13' text-anchor='end' fill='currentColor'>共享 rollout</text>\n<line x1='240' y1='106' x2='240' y2='114' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,122 236,114 244,114' fill='var(--line-1)'/>\n<rect x='40' y='122' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='56' y='146' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>上下文相关信号构造</text>\n<text x='424' y='146' font-size='13' text-anchor='end' fill='currentColor'>prompt + 搜索状态</text>\n<line x1='240' y1='160' x2='240' y2='168' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,176 236,168 244,168' fill='var(--line-1)'/>\n<rect x='40' y='176' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='56' y='200' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>在线更新生成器并回灌搜索</text>\n<text x='424' y='200' font-size='13' text-anchor='end' fill='currentColor'>匹配预算比较</text>\n</svg>",
+    "alt": "四层竖排流程图：候选启发式含理由与代码，经任务评测器给出有效性与性能分，再按 prompt 与搜索状态构造上下文相关信号，最后在线更新生成器并回灌搜索。"
+   },
+   "concepts": [
+    {
+     "name": "Search-Coupled Loop（搜索—训练耦合回路）",
+     "readable": "同一批被评测的候选程序，既用来更新搜索状态（下一步往哪搜），又被当成强化学习样本去更新生成器本身；两条用途共享数据，于是「数据怎么变成信号」就成了设计变量。",
+     "analogy": "像一个球队既用比赛录像复盘战术（搜索），又用同一批录像训练球员（更新）；录像相同，但看哪一段、怎么解读，直接决定你是变强还是只记住了对手。",
+     "analogyBreaksDown": "球队里教练与球员是两拨人，改动不会互相污染；这里生成器与被搜索对象是同一个模型，更新会反过来改变下一批候选的分布，形成非平稳采样分布，离线复盘没有这种闭环反馈，成本账也不能简单相加。",
+     "mechanism": "关键设计是把有效性与性能跟「产生该候选的 prompt 及搜索状态」绑定，构造上下文相关信号：同样的性能分在搜索早期与后期、在不同 prompt 下应给不同权重，否则模型学到的是「当时搜索恰好偏爱什么」，而不是「什么样的启发式更好」。",
+     "visual": "画一个环：候选生成 → 评测器 → 分叉成两路，一路回搜索状态、一路进信号构造 → 更新生成器 → 回到候选生成；在分叉处标注「上下文：prompt + 搜索状态」，强调两路共享同一份 rollout。",
+     "prerequisites": ["RLVR/策略梯度基础", "LLM 驱动的进化式搜索（AHD）流程", "off-policy 与分布漂移的基本概念"],
+     "selfTest": ["为什么同一个性能分在不同搜索阶段含义不同？", "如果只把评测结果喂给搜索、不更新模型，会失去什么？", "共享 rollout 在实验设计里解决了什么混淆？"],
+     "formula": ""
+    },
+    {
+     "name": "Context-Dependent Signal Construction（上下文相关信号构造）",
+     "readable": "把「程序是否有用」「任务性能多少」再加上「它是在什么 prompt、什么搜索阶段被生成」一起映射成更新信号；映射方式不同，同一批 rollout 会训练出很不一样的模型。",
+     "analogy": "像给学生的作业打分：只看对错会漏掉进步，只看分数会惩罚题目本身太难的孩子；必须知道题目难度与考试阶段，分数才有意义。",
+     "analogyBreaksDown": "打分者知道题目难度且标准固定；这里「难度」本身随模型更新而漂移，同一个 prompt 在训练前后含义不同，所以固定权重校正远不如课程学习式动态调整自然，也无法靠一次离线标注解决。",
+     "mechanism": "设计选择是把信号拆成至少三路：有效性（能否运行）、性能（在有效样本里的表现）、上下文权重（来自 prompt 与搜索状态），再规定它们如何组合，从而把「有效但无用」「高分但靠搜索状态」的样本区分开，避免有效性与性能互相混淆。",
+     "visual": "画三维散点：x 轴有效性（0/1），y 轴性能分，z 轴上下文权重；只把高 z 区域的有效高分点画成实心并连成信号强度柱，示意同样分数因上下文不同而贡献不同。",
+     "prerequisites": ["奖励塑形与 credit assignment", "混淆变量的统计直觉", "AHD 的评测器与执行沙盒"],
+     "selfTest": ["为什么无效程序不能简单地按 0 分处理？", "上下文权重在什么情况下应当调大？", "三种映射（有效性、性能、上下文）分别纠正了什么偏差？"],
+     "formula": "s_i = \\mathbb{1}[\\text{valid}_i] \\cdot g(\\text{perf}_i) \\cdot w(c_i)"
+    }
+   ],
+   "formulas": [
+    {
+     "id": "f-ahd-context-signal",
+     "name": "上下文相关更新信号（Context-Dependent Update Signal）",
+     "category": "posttraining",
+     "latex": "s_i = \\mathbb{1}[\\text{valid}_i] \\cdot g\\big(\\text{perf}_i\\big) \\cdot w\\big(c_i\\big)",
+     "symbols": [
+      ["valid_i", "第 i 个候选程序能否正常执行"],
+      ["perf_i", "评测器给出的任务性能分"],
+      ["c_i", "产生该候选的上下文：prompt + 当轮搜索状态"],
+      ["g(·)", "把性能分映射成信号强度的函数"],
+      ["w(c_i)", "上下文权重函数"],
+      ["s_i", "最终用于在线更新的更新信号"]
+     ],
+     "derivation": [
+      "第 1 步：摘要指出有效性与性能不能唯一决定有用的模型更新，所以信号必须显式依赖上下文 c_i，而不能简单取 s_i = perf_i。",
+      "第 2 步：先做有效性门控，用 1[valid] 把「跑不通」与「能跑但分低」区分开，否则模型会学到「少写代码」这种退化解。",
+      "第 3 步：在有效样本内比较性能才有意义（对应摘要里的 performance among valid proposals 与 contextual comparisons），这给出 g(perf)。",
+      "第 4 步：再乘上下文权重 w(c_i) 修正 prompt 与演化中搜索状态带来的偏差；不同的 (g, w) 选择就是论文要比较的不同信号映射。"
+     ],
+     "analogy": "像球队的数据分析师：先看球员有没有上场（有效性），再看得分（性能），最后按对手强度和比赛阶段给这份数据加权，否则季前赛的高分会被当成季后赛表现。",
+     "pitfalls": [
+      "把有效性混进性能奖励：无效程序拿 0 分与有效但性能 0 分无法区分，梯度会教模型别写代码。",
+      "忽略搜索状态：同一性能在搜索早期与后期含义不同，直接回归等于奖励当时的搜索偏好。",
+      "公式是通用重建形式，g 与 w 的具体选择摘要未给，别当成论文原文。"
+     ],
+     "code": "def update_signal(valid, perf, ctx_weight):\n    if not valid:\n        return 0.0          # 有效性门控：跑不通就不进梯度\n    return perf * ctx_weight\n\nsignals = [update_signal(v, p, 1.0 / (1 + step))\n           for v, p, step in rollouts]\n",
+     "sources": [
+      {"title": "From Search to Signal: Online Post-Training in Automatic Heuristic Design", "url": "https://arxiv.org/abs/2609.39383v1"}
+     ]
+    },
+    {
+     "id": "f-ahd-matched-cost",
+     "name": "资源匹配下的在线更新增益（Gain under Matched Cost）",
+     "category": "posttraining",
+     "latex": "\\Delta_{\\text{update}} = \\mathbb{E}\\big[\\text{perf} \\mid \\text{update}(B)\\big] - \\mathbb{E}\\big[\\text{perf} \\mid \\text{extra search}(B)\\big]",
+     "symbols": [
+      ["B", "预先声明的成本预算（摘要的 pre-specified cost accounting）"],
+      ["update(B)", "把预算用于在线更新生成器的方案"],
+      ["extra search(B)", "冻结生成器、把同预算用于更多搜索的对照"],
+      ["Δ_update", "在线更新的净增益"]
+     ],
+     "derivation": [
+      "第 1 步：摘要明确要做 resource-matched 比较：在线更新若不比「多搜一些」更好，那它就只是多花了算力。",
+      "第 2 步：对照组固定生成器，把相同预算投入更多候选或更长搜索，得到第二项。",
+      "第 3 步：两者之差 Δ_update 才是在线 post-training 的真实价值，摘要报告实验覆盖有效性、valid 提议的性能、以及上下文比较下能改进的 valid 提议产出率三个维度。",
+      "第 4 步：预算口径（token 数、评测次数还是 GPU 时间）若不预先声明，任一方都能被人为做赢，所以摘要强调 pre-specified。"
+     ],
+     "analogy": "像判断请教练值不值：不能只看请教练后成绩涨了，还要看把这笔钱花在多打几场热身赛上会不会涨得一样多，差值才是教练的净贡献。",
+     "pitfalls": [
+      "只比较最终指标而不匹配预算：在线更新几乎必然赢，因为它通常花了更多算力。",
+      "把搜索状态累积带来的提升误认成权重更新的提升，必须用 frozen-search 对照。",
+      "成本口径事后挑选（换一种计数方式）会直接改变结论，所以必须预先声明。"
+     ],
+     "code": "def gain(perf_update, perf_extra_search):\n    # 同为预算 B 下的净增益：>0 才说明在线更新不只是多花算力\n    return perf_update - perf_extra_search\n\nprint(gain(0.62, 0.58))\n",
+     "sources": [
+      {"title": "From Search to Signal: Online Post-Training in Automatic Heuristic Design", "url": "https://arxiv.org/abs/2609.39383v1"}
+     ]
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "AHD 用 LLM 迭代提出并改进启发式，配对设计理由与可执行代码。",
+     "任务专用评测器评估程序，执行结果与性能分数引导搜索。",
+     "许多 AHD 系统保持生成器冻结，而 EvoTune 与 CALM 从被评测候选更新生成器。",
+     "当评测结果驱动 RLVR 时形成搜索耦合回路：同一候选流既更新搜索状态，又为生成未来候选的模型提供训练信号。",
+     "论文把 AHD 中小开源权重 LLM 的在线后训练表述为上下文相关信号构造，并给出若干从有效性、性能与生成上下文到更新信号的映射。",
+     "实验用共享评测 rollout 与匹配的更新预算，跨 AHD 任务与模型族比较这些映射，并包含 checkpoint、冻结搜索与 live-system 三类评估。"
+    ],
+    "uncertain": [
+     "输入摘要末尾被截断（以 Together, 结束），论文的具体结论与数值需回原文核对。",
+     "s_i 公式是通用重建形式，摘要未给具体映射函数 g 与 w。",
+     "被比较的在线后训练基线方法清单摘要未列全。",
+     "pre-specified cost accounting 的成本单位（token、评测次数或 GPU 时间）摘要未说明。"
+    ]
+   },
+   "teaching": {
+    "progressive": [
+     {"level": "一句话", "text": "同一批被评测的候选程序，既决定下一步搜什么，也用来训练生成器本身。"},
+     {"level": "入门", "text": "自动启发式设计（AHD）让 LLM 提出并改进算法，配上理由与可执行代码，由评测器打分引导搜索。有的系统进一步用评测结果做强化学习来更新生成器，于是同一批候选既改变搜索状态、又变成训练样本。论文把这种在线后训练表述为「上下文相关信号构造」。"},
+     {"level": "进阶", "text": "它抓住的痛点是：有效性与性能分数并不能唯一决定什么更新对模型有用。同一个性能分，在搜索早期与后期、在不同 prompt 下含义完全不同；直接当奖励，模型学到的是「当时搜索恰好偏爱什么」，而不是「什么样的启发式更好」。论文把信号写成有效性门控、性能映射与上下文权重的组合，用共享 rollout 与匹配更新预算做受控对比，再看 valid 比例、valid 提议性能与能改进的 valid 提议产出率。"},
+     {"level": "专家", "text": "更值得注意的是评估设计：除常规指标外还做了 checkpoint 评估、冻结搜索评估与 live-system 评估，用来判断提升来自更新后的权重行为，还是只来自累积的搜索状态；再加预先声明成本口径的资源匹配比较，回答「在线更新是否比把同样算力花在更多搜索上更值」。这三件事构成 AHD 中在线 RL 的方法论骨架，也暴露边界：评测器与执行沙盒的质量决定信号质量，搜索状态本身在漂移，因此「上下文相关」既是卖点也是不可避免的复杂化。注意我读到的摘要在此处被截断（结尾是 Together,），具体结论与数值需回原文核对。"}
+    ],
+    "socratic": [
+     {"q": "为什么不直接用「程序是否能跑通」当奖励？", "a": "有效性只能区分能跑与跑不通，几乎所有有效程序都拿满分，模型学不到哪种写法更好，梯度信号几乎为零。"},
+     {"q": "为什么不直接把评测器的性能分数当奖励？", "a": "性能分只在有效样本内可比，且依赖生成它的 prompt 与当前搜索状态；直接回归会把搜索状态的影响算进模型能力，奖励当时的搜索偏好。"},
+     {"q": "怎么证明提升来自权重更新，而不是搜索本身累积的收益？", "a": "冻结搜索只看 checkpoint 行为，并在同等成本下与「冻结生成器、多搜一些」对照；只有净增益为正才说明更新本身有价值。"}
+    ],
+    "mechanism": "为什么必须做上下文相关信号构造：AHD 里生成器与被搜索对象是同一个模型，评测结果既改变搜索分布，又是训练数据来源，形成非平稳采样分布。此时同一个性能分在不同 prompt 与不同搜索阶段的信息量不同，若按固定映射转成奖励，模型会拟合搜索状态的漂移而非启发式的真实质量。因此更新信号必须显式带上下文权重，并通过共享 rollout 与匹配预算把「模型变好」与「搜索走运」分离，否则任何提升都不可归因。",
+    "boundary": "结论只在 AHD 这类「代码可执行、评测器可自动打分」的任务上成立：评测器有噪声或可被钻空子时，上下文加权只会放大偏差。方法还依赖能保存与回放生成上下文（prompt、搜索状态），在上下文不可追踪的多阶段流水线里难以复现。摘要被截断，因此具体任务集、模型族与定量结论都不应凭摘要断言。",
+    "analogyBoundary": "「录像既复盘又训练球员」的类比在闭环上失效：球队里被训练的是球员、被搜索的是战术，两者分离；AHD 里被更新的模型就是产生候选的模型，更新会立刻改变下一代候选的分布，成本账与归因都必须按这个同一性重算。类比还让人误以为两路用途互不干扰，实际上训练信号会污染搜索分布。",
+    "misconceptions": [
+     "「评测结果越多，在线更新一定越好」：有效性/性能不能唯一决定有用的更新，映射错了会伤模型。",
+     "「性能分就是奖励」：性能只在有效样本内可比，且与生成它的搜索状态耦合。",
+     "「指标涨了就说明在线更新有用」：必须与同成本的更多搜索对照，否则收益可能只来自搜索状态累积。"
+    ],
+    "ownAnalysis": "（推断）这篇的定位不是提出新算法，而是给 AHD 的在线 RL 立一套对照实验与成本口径：把「更新 vs 多搜」的算力账摆上台面，这类工作对工程团队比榜单更重要。可疑处有两点：一是「上下文相关信号」的自由度极大，映射函数空间近乎无限，摘要没说清比较了哪些族、是否做了多重比较校正；二是三类评估听着完备，但摘要被截断，看不到实际是否出现「离线指标涨了而 live system 没涨」这类关键失败案例。若真出现，结论会比现在谨慎得多（推断）。",
+    "officialNotes": [
+     {"position": "摘要把 AHD 中小开源权重 LLM 的在线后训练表述为 context-dependent signal construction，并指出有效性与性能不能唯一决定有用的模型更新。", "source": "arXiv 摘要（https://arxiv.org/abs/2609.39383v1）"}
+    ],
+    "interviewAnswer": "我先区分两条回路：搜索状态更新与生成器参数更新用的是同一批被评测候选，所以数据怎么转成信号是设计变量。它把信号建成有效性、性能与生成上下文的组合，因为性能分只在有效样本内可比，且强依赖产生它的 prompt 与当时搜索状态，直接用会把搜索漂移学进权重。它做了 checkpoint、冻结搜索与 live-system 验证，并与同成本的「冻结生成器多搜」对照。我读的摘要被截断了，增益数字不敢下结论。",
+    "studyPath": {
+     "prerequisites": ["RLVR 与策略梯度基础", "LLM 驱动的进化式搜索流程", "off-policy 与分布漂移", "奖励塑形与 credit assignment"],
+     "nextSteps": ["读 EvoTune 与 CALM 理解冻结/更新生成器的差异", "复现一个最小 AHD 循环并记录生成上下文", "设计一次匹配预算的「更新 vs 多搜」对照实验"]
+    }
+   }
+  },
+  {
+   "id": "6c50b68786c40dfc",
+   "tldr": "DMAD 用两个判别头从 logit 差直接得到 log 密度比，免去辅助扩散模型，一步生成 FID 1.04。",
+   "keyPoints": [
+    "DMD 必须额外维护一个拟合学生分布的辅助扩散模型，费显存与算力。",
+    "DMAD 把分布匹配重写成分类，直接学习所需的 log 密度比。",
+    "共享骨干上两个判别头，用 logit 上的线性损失训练学生。",
+    "论文证明判别器最优时这些损失恢复 DMD 的分布匹配梯度。",
+    "gap-based 重加权按噪声层级调节教师监督强度。"
+   ],
+   "why": "用判别器替掉第二个网络是扩散与视频蒸馏的主流省算力思路，面试常问「为什么不用辅助模型」。",
+   "difficulty": "hard",
+   "tags": ["diffusion", "distillation", "few-step", "generative", "adversarial"],
+   "entities": ["DMAD", "DMD", "DMD2", "rCM", "SDXL", "Wan2.1-T2V-14B", "MiniMax-H3-33B", "ImageNet-64x64", "VBench", "COCO-10K", "FID"],
+   "diagram": {
+    "kind": "architecture",
+    "title": "双头判别器取密度比",
+    "caption": "共享骨干加两个判别头，logit 差直接给出 log 密度比，无需辅助扩散模型。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='DMAD 架构：共享判别器骨干分出真实数据头与学生样本头，logit 差给出 log 密度比并用线性损失更新学生'>\n<rect x='130' y='12' width='220' height='36' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/>\n<text x='146' y='35' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>共享判别器骨干</text>\n<line x1='240' y1='48' x2='240' y2='58' stroke='var(--line-1)' stroke-width='1.6'/>\n<line x1='130' y1='58' x2='350' y2='58' stroke='var(--line-1)' stroke-width='1.6'/>\n<line x1='130' y1='58' x2='130' y2='68' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='130,74 126,68 134,68' fill='var(--line-1)'/>\n<line x1='350' y1='58' x2='350' y2='68' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='350,74 346,68 354,68' fill='var(--line-1)'/>\n<rect x='40' y='74' width='180' height='36' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='56' y='98' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>真实数据头</text>\n<text x='204' y='98' font-size='13' text-anchor='end' fill='currentColor'>real+teacher</text>\n<rect x='260' y='74' width='180' height='36' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='276' y='98' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>学生样本头</text>\n<text x='424' y='98' font-size='13' text-anchor='end' fill='currentColor'>student</text>\n<line x1='130' y1='110' x2='130' y2='132' stroke='var(--line-1)' stroke-width='1.6'/>\n<line x1='350' y1='110' x2='350' y2='132' stroke='var(--line-1)' stroke-width='1.6'/>\n<line x1='130' y1='132' x2='350' y2='132' stroke='var(--line-1)' stroke-width='1.6'/>\n<line x1='240' y1='132' x2='240' y2='142' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,148 236,142 244,142' fill='var(--line-1)'/>\n<rect x='110' y='148' width='260' height='36' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/>\n<text x='126' y='171' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>logit 差 = log 密度比</text>\n<line x1='240' y1='184' x2='240' y2='194' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,200 236,194 244,194' fill='var(--line-1)'/>\n<rect x='110' y='200' width='260' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='126' y='222' font-size='13' text-anchor='start' fill='currentColor'>线性损失更新学生（免辅助模型）</text>\n</svg>",
+    "alt": "架构图：共享判别器骨干分出真实数据头与学生样本头，两个 logit 相减得到 log 密度比，再经线性损失更新学生。"
+   },
+   "concepts": [
+    {
+     "name": "Distribution Matching Distillation（分布匹配蒸馏）",
+     "readable": "想让少步学生一步出图，就得让学生的分布对齐教师与真实数据分布；DMD 用「教师分数 − 学生分数」的差当学生梯度，但这个学生分数需要一个跟着学生一起更新的辅助扩散模型来估计。",
+     "analogy": "像让两个乐队合奏到同一节拍：DMD 的做法是另请一位指挥（辅助模型）实时听学生的节拍再给出差值，而这位指挥本身还要不停重新校准，占用人力。",
+     "analogyBreaksDown": "乐队里指挥是外部权威，不会改变节拍本身；这里的辅助模型只是对学生分布的近似，学生一变它就得跟着拟合，近似误差会直接进梯度并带来不稳定，所以「去掉指挥」不是省人，而是换机制。",
+     "mechanism": "关键设计是不显式估计两个分数，而是把真实/教师样本与学生样本当二分类问题：判别器 logit 差在最优时正比于 log 密度比，而 log 密度比的梯度就是分数差，于是用分类损失即可拿到 DMD 的分布匹配梯度，无需第二个扩散网络。",
+     "visual": "画左右对照：左边 DMD——学生网络加一个虚线框的辅助扩散模型，框上标「随学生更新」；右边 DMAD——共享骨干上挂两个头（真实数据头/学生头），用括号标出 logit 差 → log 密度比。虚线框的消失强调少了一个网络。",
+     "prerequisites": ["扩散模型的 score matching 与采样器", "GAN/判别器与 f-divergence 的关系", "log 密度比与 logit 差的恒等关系"],
+     "selfTest": ["为什么 DMD 需要第二个扩散模型，它估计的是什么？", "logit 差在什么条件下才等于 log 密度比？", "去掉辅助模型后，训练动力学的性质发生了什么变化？"],
+     "formula": "r(x) = \\log\\frac{p_{\\text{data}}(x)}{p_\\theta(x)} = g_{\\text{data}}(x) - g_\\theta(x)"
+    },
+    {
+     "name": "Gap-Based Reweighting（按 logit 差重加权）",
+     "readable": "不同噪声层级上「真实数据头」对真实样本与教师样本的打分差不同，说明该层级教师监督的可信度不同；DMAD 用这个经验 gap 自动调节各噪声层级上教师监督的权重。",
+     "analogy": "像给不同科目决定听谁讲解：某科目上「标准答案」与「参考书」的分歧特别大，说明参考书在这科不太可靠，就少听它的。",
+     "analogyBreaksDown": "选老师是静态选择；这里 gap 随训练变化，还受判别器拟合程度影响——gap 大也可能是判别器在该噪声层级欠拟合，直接把它当可信度会放大早期噪声。",
+     "mechanism": "设计选择是复用一个已有量（真实数据头在 real 与 teacher 样本上的经验 logit 差）当权重，而不是再训一个不确定性网络：噪声层级越靠后教师信号越弱，重加权就降低该层级的教师监督，避免用不可靠的教师目标污染学生。",
+     "visual": "横轴是噪声层级（从纯噪声到干净），纵轴画 logit gap 与权重两条曲线；gap 大的区间权重曲线同步下降，用阴影标出「教师监督被削弱」的噪声段。",
+     "prerequisites": ["扩散噪声调度", "判别器 logit 的校准问题", "加权损失的梯度含义"],
+     "selfTest": ["gap 大为什么可以被当成教师监督不可靠的信号？", "这种重加权与再训一个不确定性网络相比省了什么？", "gap 大也可能由什么原因造成，会不会误判？"],
+     "formula": "w(\\sigma) = h\\big(\\Delta(\\sigma)\\big),\\quad \\Delta(\\sigma) = \\mathbb{E}[g_{\\text{data}}(x_{\\text{real}},\\sigma)] - \\mathbb{E}[g_{\\text{data}}(x_{\\text{teacher}},\\sigma)]"
+    }
+   ],
+   "formulas": [
+    {
+     "id": "f-dmad-log-density-ratio",
+     "name": "判别器 logit 差即 log 密度比（Log-Density Ratio from Discriminator Logits）",
+     "category": "generative",
+     "latex": "r(x)=\\log\\frac{p_{\\text{data}}(x)}{p_{\\theta}(x)} = g_{\\text{data}}(x) - g_{\\theta}(x)",
+     "symbols": [
+      ["x", "样本（图像、视频或音频帧）"],
+      ["p_data", "真实数据分布（含教师样本）"],
+      ["p_θ", "学生生成分布"],
+      ["g_data", "真实数据判别头的 logit"],
+      ["g_θ", "学生判别头的 logit"],
+      ["r(x)", "log 密度比，其对 x 的梯度正是分数差"]
+     ],
+     "derivation": [
+      "第 1 步：二分类最优判别概率可写成 D(x) = p_data / (p_data + p_θ)，取 logit 就得到 log p_data − log p_θ，这是摘要引用的经典恒等式。",
+      "第 2 步：因此不必显式拟合两个 score，只要把判别器训到最优，logit 差就给出 log 密度比 r(x)；DMAD 用共享骨干上的两个头分别给出 g_data 与 g_θ。",
+      "第 3 步：对 x 求梯度得 ∇r(x) = ∇log p_data − ∇log p_θ，即「教师分数 − 学生分数」，也就是 DMD 的分布匹配梯度。",
+      "第 4 步：于是 logit 上的线性损失在判别器最优时恢复 DMD 的梯度，同时省掉了随学生漂移的辅助扩散模型。"
+     ],
+     "analogy": "要比较两片湖的水位差，不必各自装一套水位计再相减；在两湖之间装一根连通管，读一次液面差就同时得到方向和幅度。",
+     "pitfalls": [
+      "把 logit 差当成精确的 log 密度比：只在判别器最优时成立，训练不足或过强都会有偏。",
+      "忽略归一化常数：log 密度里的常数与 x 无关，不进入梯度，但会影响损失数值与监控。",
+      "两个头若不共享骨干或分类目标不对称，相减就失去密度比的解释。"
+     ],
+     "code": "import torch\n\n# 两个判别头共享骨干，logit 差即 log 密度比的估计\nlogit_data = head_data(feat)        # 真实 / 教师样本头\nlogit_student = head_student(feat)  # 学生样本头\nratio = logit_data - logit_student  # r(x) 的估计\nloss = -ratio.mean()                # 线性损失，判别器最优时等价 DMD 梯度\n",
+     "sources": [
+      {"title": "DMAD: Distribution Matching as Adversarial Distillation for Fast Visual Generation", "url": "https://arxiv.org/abs/2610.02188v1"}
+     ]
+    },
+    {
+     "id": "f-dmad-gap-reweighting",
+     "name": "基于经验 logit 差的噪声层级重加权（Gap-Based Reweighting）",
+     "category": "generative",
+     "latex": "w(\\sigma) = h\\big(\\Delta(\\sigma)\\big),\\qquad \\Delta(\\sigma)=\\mathbb{E}\\big[g_{\\text{data}}(x_{\\text{real}},\\sigma)\\big]-\\mathbb{E}\\big[g_{\\text{data}}(x_{\\text{teacher}},\\sigma)\\big]",
+     "symbols": [
+      ["σ", "扩散噪声层级"],
+      ["g_data", "真实数据头在噪声层级 σ 上的 logit"],
+      ["Δ(σ)", "该层级上 real 与 teacher 样本之间的经验 logit gap"],
+      ["h(·)", "把 gap 映射成教师监督权重的函数（具体形式摘要未给）"],
+      ["w(σ)", "该噪声层级上教师监督的权重"]
+     ],
+     "derivation": [
+      "第 1 步：不同噪声层级上「真实数据头」区分真实样本与教师样本的难度不同，这个难度可以用两者的经验 logit 差 Δ(σ) 度量（摘要的描述）。",
+      "第 2 步：gap 大意味着在该层级教师样本与真实数据差别明显、教师监督更可疑，因此应当降低这一层级的教师监督权重。",
+      "第 3 步：把 gap 经映射函数 h 转成权重 w(σ)，据此把教师监督分配到各噪声层级——这就是 paper 的 gap-based reweighting。",
+      "第 4 步：h 的具体形式与噪声层级划分摘要没有给出，这里是通用重建形式，需核对原文。"
+     ],
+     "analogy": "像做饭时按食材新鲜度调整用量：某批配料明显和标准味道不符，就少放一点，免得整锅串味。",
+     "pitfalls": [
+      "把 gap 直接当「教师不可靠」的证据：判别器在该层级欠拟合时 gap 也会大，直接当权重会放大早期噪声。",
+      "权重与噪声调度耦合：改了 σ 的划分方式，重加权曲线也变，比较实验必须固定同一套调度。",
+      "公式与 h 是重建形式，面试中不要说成论文原文给出的具体函数。"
+     ],
+     "code": "def reweight(gap_sigma):\n    # 具体映射 h 摘要未给，这里用最朴素的单调映射示意\n    return max(0.0, gap_sigma)\n\nw = {sigma: reweight(g) for sigma, g in empirical_gap.items()}\nprint(w)\n",
+     "sources": [
+      {"title": "DMAD: Distribution Matching as Adversarial Distillation for Fast Visual Generation", "url": "https://arxiv.org/abs/2610.02188v1"}
+     ]
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "DMD 从分别估计的目标分数与学生分数之差训练少步学生，因此必须保留一个拟合学生演化分布的辅助扩散模型，带来额外显存与计算成本。",
+     "DMAD 把分布匹配重写成分类，直接学习所需的 log 密度比。",
+     "共享骨干上的两个判别头区分真实/教师样本与学生的样本，logit 上的线性损失用于训练学生，无需辅助分数拟合。",
+     "论文证明在判别器最优时这些损失恢复 DMD 底层的分布匹配梯度，依据是判别器 logit 与 log 密度比的经典恒等式。",
+     "gap-based 重加权用真实数据头在真实与教师样本间的经验 logit 差，按噪声层级调节教师监督。",
+     "数值结果：一步 ImageNet-64x64 FID 1.04；四步 SDXL 在 COCO-10K FID 14.47；四步 Wan2.1-T2V-14B 的 VBench 总分 85.15；四步学生在 MiniMax-H3-33B 上对人类偏好胜率为 79.1%（对 DMD2）与 84.6%（对 rCM），不含平局。"
+    ],
+    "uncertain": [
+     "r(x) = g_data − g_θ 是经典恒等式的通用写法，摘要未给符号定义与推导细节。",
+     "gap-based 重加权中 h(·) 的具体形式与噪声层级划分摘要未给。",
+     "「compared few-step methods and multi-step teachers」的比较集合与评测协议摘要未列全。",
+     "人类偏好评估的样本量与平局比例摘要未说明，79.1%/84.6% 对平局处理方式敏感。"
+    ]
+   },
+   "teaching": {
+    "progressive": [
+     {"level": "一句话", "text": "用一个判别器替掉第二个扩散模型，直接拿到蒸馏需要的密度比。"},
+     {"level": "入门", "text": "把扩散模型蒸馏成少步学生，DMD 靠「教师分数减学生分数」当梯度，但估学生分数要一个跟着它重新拟合的辅助模型，很贵。DMAD 换成分类：共享骨干上两个判别头，一个认真实与教师样本、一个认学生的，logit 相减就是 log 密度比。"},
+     {"level": "进阶", "text": "关键论证：判别器最优时 logit 差等于 log 密度比，它对输入的梯度就是「教师分数 − 学生分数」，即 DMD 的分布匹配梯度；于是用分类损失就能隐式拿到同一梯度，不必维护第二个网络。gap-based 重加权用真实数据头在真实与教师样本间的 logit 差调节各层教师监督。数值：一步 ImageNet-64 FID 1.04、四步 Wan2.1-T2V-14B VBench 85.15。"},
+     {"level": "专家", "text": "DMAD 属于把两网络蒸馏改写成判别形式：DMD 的辅助分数模型随学生漂移、误差进梯度且不稳；它换成共享骨干双头判别器，用 logit-log 密度比恒等式保持梯度语义，代价是判别器强弱决定梯度质量：不足则比值有偏，过强则梯度消失。优势是在比较集合内最优：一步 ImageNet-64 FID 1.04、四步 Wan2.1-T2V-14B VBench 85.15，以及 MiniMax-H3-33B 上 79.1%/84.6% 人工偏好胜率。边界：成绩依赖教师质量与判别器调参，摘要未给成本与稳定性对比。"}
+    ],
+    "socratic": [
+     {"q": "既然 DMD 已经有分布匹配梯度，为什么还要去掉辅助模型？", "a": "辅助模型必须跟着学生分布不断重新拟合，拟合误差直接进梯度，还常驻显存与算力；去掉它等于把第二大网络的开销与一套不稳定源一起拿掉。"},
+     {"q": "判别器没训好会发生什么？", "a": "logit 差只在判别器最优时才精确等于 log 密度比；训练不足时比值有偏，学生被推向错误方向，表现为训练抖动或指标退化。"},
+     {"q": "为什么两个判别头要共享骨干？", "a": "共享骨干让两者特征空间对齐，logit 差才是有意义的比值估计；两套独立网络特征不对齐，相减失去密度比解释，也白丢省算力的意义。"}
+    ],
+    "mechanism": "必须这样设计的原因在于 DMD 的第二网络与它要估计的量是冗余的：真正需要的只是真实/教师分布与学生分布的对数密度比，而任何最优二分类器都能给出这个量，不必把两个分数分别估出来。于是把预算全投给一个双头判别器：共享骨干给出对齐特征，两个头给出 logit，差就是密度比，密度比的空间梯度就是分数差，学生的线性损失因此仍优化分布匹配目标，同时省下辅助扩散模型的显存、算力与它随学生漂移带来的不稳定。",
+    "boundary": "成立依赖判别器接近最优：太弱则 logit 差有偏，太强则学生梯度消失，实际取决于对抗训练调参。恒等式建立在同一输入、两头目标对称的设定上，目标或增强不对称则相减不干净。摘要的优势只是在其比较集合内最优，且只给 FID、VBench 与人工偏好三类指标，没有成本与超参敏感度的定量比较，所以「更划算」应按这些指标理解。",
+    "analogyBoundary": "「用连通管读液面差」假设两湖连通后立刻平衡、差值静态；这里判别器本身就是被训练的对象，它给出的比值随训练变化，学生反过来又改变被比较的分布，差值是动态的。类比还掩盖了「判别器必须达到最优才准」这个致命前提，把有偏估计说成了直接读数。",
+    "misconceptions": [
+     "「logit 差永远等于 log 密度比」：只在判别器最优时成立，训练中的比值是有偏估计。",
+     "「DMAD 只是把 DMD 的 loss 换了写法」：去掉的是随学生漂移的辅助分数模型，训练动力学从回归式变成对抗式。",
+     "「一步 FID 1.04 意味着所有任务都能一步」：1.04 是 ImageNet-64x64 一步的结果，SDXL 与视频用的是四步。"
+    ],
+    "ownAnalysis": "（推断）它的真正贡献是把「分数差」与「密度比」的等价关系当工程杠杆：恒等式是教科书内容，用它让共享骨干双头判别器替掉辅助扩散模型很实用，与 GAN 式蒸馏回潮同趋势。可疑处：一，摘要强调判别器最优时才恢复 DMD 梯度，却没给判别器训练细节，稳定性无从判断；二，最优性只在横向比较中体现，比较集合与协议未列全文；三，MiniMax-H3-33B 的人工偏好 79.1%/84.6% 不含平局，平局比例未知，这类数字对平局处理敏感（推断）。",
+    "officialNotes": [
+     {"position": "摘要声称在判别器最优点这些 logit 上的线性损失恢复 DMD 底层的分布匹配梯度，并把 DMAD 定位为免除辅助分数拟合的改写。", "source": "arXiv 摘要（https://arxiv.org/abs/2610.02188v1）"}
+    ],
+    "interviewAnswer": "DMD 的痛点是需辅助扩散模型实时拟合学生分布估学生分数，显存计算翻倍还不稳。DMAD 发现真正需要的只是真实分布与学生的密度比，而任何最优二分类器都能给出它：共享骨干上两个判别头，分别认真实/教师样本与学生的样本，logit 相减就是密度比，它对 x 的梯度正是 DMD 用的分数差，所以判别器最优时用 logit 线性损失即恢复分布匹配梯度。结果 ImageNet-64 一步 FID 1.04。",
+    "studyPath": {
+     "prerequisites": ["扩散模型与 score matching", "DMD/渐进蒸馏的基本框架", "判别器与 log 密度比的恒等关系", "对抗训练的稳定性常识"],
+     "nextSteps": ["读 DMD 与 DMD2 理解辅助分数模型的作用", "对比 GAN 式蒸馏与回归式蒸馏的训练动力学", "复现两判别头的 logit 差并观察其随训练的变化"]
+    }
+   }
+  }
+ ]
+}

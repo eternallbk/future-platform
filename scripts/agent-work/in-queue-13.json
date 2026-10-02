@@ -1,0 +1,127 @@
+{
+ "batchId": "queue-13",
+ "mode": "full",
+ "items": [
+  {
+   "id": "7d2f1016a053206d",
+   "title": "Game-Guided Skill Discovery through Self-Play for Playable Agent Control",
+   "category": "posttraining",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.40137",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.40137",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40137",
+     "name": "canonical"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40137v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG",
+    "cs.AI",
+    "cs.RO"
+   ],
+   "publishedAt": "2026-09-29T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 55.2,
+   "summary": "We present Game-Guided Skill Discovery (GGSD), a framework that uses self-play in games to discover motor skills that are directly playable by humans. Playable skills provide a compact abstraction for controlling embodied agents through a small set of learned behaviors rather than low-level actions. To be effective, these skills should be semantically distinct, interpretable, and expressive; properties that existing unsupervised skill-discovery methods often fail to achieve simultaneously. GGSD achieves these desiderata by grounding skill discovery in competitive gameplay. A hierarchical agent competes against its past selves, with a high-level policy selecting from a small discrete skill set and a skill-conditioned low-level policy learning the corresponding behaviors. After training, a human can replace the high-level policy and directly control the agent through the same discrete skills. Despite the small number of high-level actions, skill transitions give rise to emergent combo behaviors, expanding expressivity beyond individual primitives. Across Ant, Franka-arm, and Unitree G1 environments, we show that GGSD produces human-playable skills that humans can compose to solve unseen tasks, such as Maze and CubePush, without additional training. An interactive demo is available at https://ggsd-demo.github.io.",
+   "depthScore": 72.84
+  },
+  {
+   "id": "28f899c9d5f4731d",
+   "title": "modelscope/ms-swift - Use PEFT or Full-parameter to CPT/SFT/DPO/GRPO 600+ LLMs (Qwen3.8, DeepSeek-V4, GLM-5.1, InternLM3, Llama4, ...) and 300+ MLLMs (Qwen3-VL, Qwen3-Omni, InternVL3.5, Ovis2.5, GLM5.3, Gemma4, Llava, Phi4, ...) (AAAI 2025).",
+   "category": "posttraining",
+   "channel": "github",
+   "url": "https://github.com/modelscope/ms-swift",
+   "sources": [
+    {
+     "url": "https://github.com/modelscope/ms-swift",
+     "name": "github"
+    }
+   ],
+   "tags": [
+    "deepseek",
+    "embedding",
+    "glm",
+    "grpo",
+    "internvl",
+    "kimi",
+    "liger",
+    "llama",
+    "Python"
+   ],
+   "publishedAt": "2026-09-30T18:45:38+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 81.3,
+   "summary": "Use PEFT or Full-parameter to CPT/SFT/DPO/GRPO 600+ LLMs (Qwen3.8, DeepSeek-V4, GLM-5.1, InternLM3, Llama4, ...) and 300+ MLLMs (Qwen3-VL, Qwen3-Omni, InternVL3.5, Ovis2.5, GLM5.3, Gemma4, Llava, Phi4, ...) (AAAI 2025).",
+   "depthScore": 70.97
+  },
+  {
+   "id": "7ca2e20b3b95038a",
+   "title": "Agent Error Dataset: Scaling 50,000 Error--Diagnosis Pairs for Failure Analysis and Error-Aware Post-Training",
+   "category": "posttraining",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.40111",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.40111",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40111",
+     "name": "canonical"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40111v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.AI",
+    "cs.CL"
+   ],
+   "publishedAt": "2026-09-29T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 63.5,
+   "summary": "An unsuccessful LLM agent rollout contains more information than its final reward: the observations available to the agent, the actions it chose, and the environment's responses. Reusing this experience for learning requires identifying a decision to revise and testing a concrete alternative. We introduce the Agent Error Dataset (AED), comprising 50,228 error-diagnosis pairs from 9,961 source tasks across 33 environments, 19 harness families, and 23 policy models in text-based agent systems. We retain source traces and execution metadata to support cross-setting failure analysis and re-diagnosis without repeating the original rollout. Our five-stage Agentic Error-to-Training (AET) pipeline collects natural failures, generates diagnoses and proposed corrections, and checks them against recorded evidence. Where replay is supported, we compare corrections with original-action retries from the same checkpoint under matched execution settings. We then construct separate training views for diagnosis and actor recovery. Across 3,062 matched replay pairs, first-proposal corrections raise verifier pass rates from 18.4% to 51.1%, a gain of 32.7 percentage points. Using a separately frozen diagnosis release, full-diagnosis fine-tuning on 1,656 source tasks raises Qwen3-8B's exact-step agreement with internal teacher labels from 47.2% to 63.6%, averaged over three seeds on a 943-case holdout. The strongest prompted reference in this comparison scores 54.7%, and mean agreement improves at each of four increasing training-set sizes. In a single-seed comparison of actor-training recipes, action-only repair training scores 6.67 percentage points higher on WebShop-lite than success-only training.",
+   "depthScore": 68.58
+  },
+  {
+   "id": "df3dd0de59a5f225",
+   "title": "Mitigating the Length-Scaling Tax with Online Distillation",
+   "category": "posttraining",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.38854",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.38854",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.38854",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-30T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 62.7,
+   "summary": "Length scaling during reinforcement-learning (RL) post-training is often viewed as a sign of improved reasoning ability, especially on difficult problems, but may also make responses to already-solved problems unnecessarily verbose. We quantify this side effect as the length-scaling tax (LST): excess response length on already-solved queries without a commensurate accuracy gain. To mitigate LST, we propose Length Self-Distillation (LSD), which routes solved prompts to on-policy distillation and retains the original RL objective for unsolved prompts. LSD uses an exponential moving average of the online policy as its teacher, requiring no external model. We find that LSD achieves comparable or better performance than RL across multiple variants, while substantially curbing response-length growth on easy queries. LSD reduces LST from 19.0% to -3.7% on single-turn reasoning and from 31.4% to 13.7% on multi-turn agentic tasks, demonstrating that LSD effectively preserves concise response patterns on easy queries while supporting efficient exploration on difficult queries during RL post-training.",
+   "depthScore": 68.22
+  }
+ ]
+}

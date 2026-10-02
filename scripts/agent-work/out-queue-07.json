@@ -1,0 +1,555 @@
+{
+ "batchId": "queue-07",
+ "entries": [
+  {
+   "id": "d22e907ed53bb208",
+   "tldr": "HC-DLM 让连续隐状态成为唯一持久生成状态，token 每步读出并回喂，训练目标来自 token 似然的变分界。",
+   "keyPoints": [
+    "离散扩散并行解码时各 token 独立采样，切断了同批 token 的统计依赖",
+    "连续扩散共享隐状态，但去噪器只看状态，解码前不保证落回合法 token",
+    "HC-DLM 把离散 token 与连续隐轨迹耦合进同一次去噪过程",
+    "隐状态是唯一持久生成状态，每步读出 token 再回喂作下一步脚手架",
+    "在 Sudoku、Countdown、LM1B 上同规模优于离散与连续扩散基线"
+   ],
+   "why": "扩散语言模型是自回归之外的主线，涉及并行解码、变分界与推理任务，面试常追问它的结构性缺陷。",
+   "difficulty": "hard",
+   "tags": ["diffusion", "language-model", "latent-variable", "generative", "reasoning"],
+   "entities": ["HC-DLM", "Sudoku", "Countdown", "LM1B"],
+   "diagram": {
+    "kind": "flow",
+    "title": "HC-DLM 去噪闭环",
+    "caption": "记住一点：连续隐状态是唯一持久状态，token 只是每步读出又回喂的脚手架。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='HC-DLM 去噪闭环：隐状态更新、token 读出、回喂、变分界训练'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>连续隐状态 z_t</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>唯一持久生成状态</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>每步读出离散 token</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>从 z_t 解码</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>token 回喂作脚手架</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>指导下一步 z</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>变分界训练目标</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>token 似然下界</text>\n</svg>",
+    "alt": "竖排流程：连续隐状态 z_t 经每步读出离散 token，token 回喂作脚手架，闭环由 token 似然的变分界训练。"
+   },
+   "concepts": [
+    {
+     "name": "并行解码的边际独立 (Marginal Independence in Parallel Decoding)",
+     "readable": "离散扩散每步同时决定多个位置，每个位置都从自己的边缘分布独立采样，同一步里被一起解码的 token 之间原本的统计相关性因此被丢掉，模型没法表达「这几个词必须同时成立」。",
+     "analogy": "像乐队合奏时每位乐手只按自己的谱子走、完全不听别人：单独听都对，合起来就不成调，因为彼此之间的配合关系没人负责。",
+     "analogyBreaksDown": "乐手其实还能互相听见，而独立采样在数学上彻底切断了同批变量的依赖；但并行采样并不等于每个 token 完全没有条件信息，它仍以已固定的历史为条件，所以「完全无关」这个说法过强。",
+     "mechanism": "关键设计选择是「共享状态」：不让同批位置各自从边际采样，而是让它们都由同一个隐状态导出，于是联合依赖被保留下来，全局约束（如数独的每行每列唯一）才有机会在一次解码中成立。",
+     "visual": "横轴是解码步，纵轴是序列位置；每个格子是一个 token 的采样点。独立采样画成互不相连的散点，共享隐状态画成同一竖列上串在一根线上的珠子，线代表依赖。",
+     "prerequisites": ["扩散模型的加噪与去噪过程", "概率图模型中的边缘分布与联合分布", "Transformer 解码基础"],
+     "selfTest": [
+      "为什么并行解码会削弱 token 间的依赖？",
+      "共享隐状态如何恢复这种依赖？",
+      "在数独这类任务上，依赖被切断会表现为哪种失败？"
+     ],
+     "formula": "p(x_{1:k})\\approx\\prod_{i=1}^{k}p(x_i)\\quad\\text{（独立采样的近似假设）}"
+    },
+    {
+     "name": "隐状态作为唯一持久生成状态 (Latent as the Only Persistent Generative State)",
+     "readable": "生成的「主干」不是已经写出的文字，而是一个每步都在更新的连续向量。文字每一步都从它读出来，读出的结果又被送回它去修正下一步，文字本身不是主状态，只是中间产物。",
+     "analogy": "像口译员在心里维持一个不断被修正的「意思」，每说一句都回头调整心里的意思，而不是先把译文全部写死在纸上再照念。",
+     "analogyBreaksDown": "口译员心里还有独立于句子的真实语义，而这里的隐状态本身就是模型构造出来的噪声轨迹，没有外部真值锚定；类比也掩盖了训练时隐轨迹由近似后验给出、推理时只能靠自身递归这一差异。",
+     "mechanism": "把持久状态交给连续隐变量后，去噪器不必在连续空间里独自负责合法性，因为每步都有 token 读出把状态拉向合法配置，同时 token 又通过回喂把离散约束持续注入隐状态，避免「去噪结束才知道 token 是什么」的脱节。",
+     "visual": "画一个闭环：中间是不断变形的连续云团（隐状态），云团向下伸出一支箭头变成离散文字，文字再有一条箭头绕回云团。闭环粗细代表每步耦合强度。",
+     "prerequisites": ["变分自编码器与 ELBO 的直觉", "离散扩散（掩码扩散）机制", "连续隐空间去噪的思想"],
+     "selfTest": [
+      "为什么说 token 不是 HC-DLM 的持久生成状态？",
+      "每步读出 token 相比只在最后解码一次，解决了什么问题？",
+      "回喂机制可能带来什么风险？"
+     ],
+     "formula": "x_t\\sim p_\\theta(x\\mid z_t),\\qquad z_{t-1}=f_\\theta\\big(z_t,\\mathrm{Emb}(x_t)\\big)"
+    }
+   ],
+   "formulas": [
+    {
+     "id": "f-hc-dlm-variational-bound",
+     "name": "token 似然的变分下界 (Variational Bound on Token Likelihood)",
+     "category": "generative",
+     "latex": "\\log p_\\theta(x)\\;\\ge\\;\\mathbb{E}_{q_\\phi(z_{1:T}\\mid x)}\\Big[\\log p_\\theta(x\\mid z_{1:T})-\\log\\frac{q_\\phi(z_{1:T}\\mid x)}{p_\\theta(z_{1:T})}\\Big]",
+     "symbols": [
+      ["x", "离散 token 序列，即被建模的文本"],
+      ["z_{1:T}", "连续隐状态轨迹，共 T 步去噪"],
+      ["q_\\phi", "近似后验，训练时用来构造隐轨迹"],
+      ["p_\\theta", "生成模型，含每步 token 读出与隐状态更新"]
+     ],
+     "derivation": [
+      "第 1 步：token 似然要对连续隐轨迹做边缘化，\\log p_\\theta(x)=\\log\\int p_\\theta(x,z)\\,dz，对连续 z 直接求积分不可行。",
+      "第 2 步：引入可学习的近似后验 q_\\phi(z_{1:T}\\mid x) 做重要性加权，用 Jensen 不等式把对数的期望变成期望的对数，得到可优化的下界。",
+      "第 3 步：把联合分布按去噪链拆开，读出项 \\log p_\\theta(x\\mid z_{1:T}) 与隐状态转移项 p_\\theta(z_{t-1}\\mid z_t) 逐步可算，于是每步都能拿到梯度。"
+     ],
+     "analogy": "像凭记忆复述一句长句：你心里维持一个不断修正的「大概意思」（隐状态），每写一个词就对照原句调整意思。变分下界就是衡量「照这个意思复述出来有多像原句」的保守评分。",
+     "pitfalls": [
+      "把变分下界当成精确对数似然报告，忽略它只是下界",
+      "以为隐状态只在最后解码一次，与「每步读出并回喂」的设计混淆",
+      "混淆 q_\\phi（近似后验）与 p_\\theta（生成模型）的角色"
+     ],
+     "code": "import torch, torch.nn.functional as F\n# z: [B,T,d] 隐轨迹, x: [B,L] token, logits: [B,T,L]\nT = logits.size(1)\nrec = F.cross_entropy(logits.reshape(-1, logits.size(-1)), x.repeat(T, 1).reshape(-1))\nkl = (q_logprob(z, x) - p_logprob(z)).mean()\nloss = rec + kl  # 变分下界的负值（越大越好）",
+     "sources": [
+      {"title": "Hierarchical Continuous Diffusion Language Models", "url": "https://huggingface.co/papers/2610.02193"}
+     ]
+    },
+    {
+     "id": "f-hc-dlm-readout-feedback",
+     "name": "读出-回喂闭环 (Readout and Feedback Loop)",
+     "category": "generative",
+     "latex": "x_t\\sim p_\\theta(x\\mid z_t),\\qquad z_{t-1}=f_\\theta\\big(z_t,\\mathrm{Emb}(x_t)\\big)",
+     "symbols": [
+      ["z_t", "第 t 步的连续隐状态"],
+      ["x_t", "从 z_t 读出的离散 token（中间脚手架）"],
+      ["\\mathrm{Emb}", "token 嵌入，把读出的 token 变回可回喂的向量"],
+      ["f_\\theta", "隐状态更新网络"]
+     ],
+     "derivation": [
+      "第 1 步：定义读出，token 不是最后才解码，而是每一步都从当前隐状态读出。",
+      "第 2 步：把读出的 token 嵌入回隐状态更新，形成闭环，让离散约束持续作用于连续轨迹。",
+      "第 3 步：闭环使离散 token 生成与连续隐轨迹被耦合进同一次去噪过程，这正是与「外挂连续上下文」方法的区别。"
+     ],
+     "analogy": "像画家每画一笔就退后看一眼画面再决定下一笔，而不是先在草稿纸上把每一笔位置定死然后照抄。",
+     "pitfalls": [
+      "把每步读出的 token 当成最终输出（它只是中间脚手架）",
+      "忽略回喂误差会跨步累积，误认为闭环必然更稳"
+     ],
+     "code": "z = z_T\nfor t in range(T, 0, -1):\n    logits = readout(z)\n    x = sample(logits)\n    z = update(z, emb(x))  # 读出的 token 回喂，指导下一步隐状态",
+     "sources": [
+      {"title": "Hierarchical Continuous Diffusion Language Models", "url": "https://huggingface.co/papers/2610.02193"}
+     ]
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "摘要指出离散扩散并行解码时每个 token 从自身边际独立采样，切断了同批被解码 token 之间的统计依赖",
+     "摘要指出连续扩散通过对共享连续状态去噪来规避该问题，但去噪器只看该状态，直到最终解码才与合法 token 配置挂钩",
+     "HC-DLM 把离散 token 生成与连续隐轨迹耦合进同一次去噪过程",
+     "训练目标由 token 似然的变分界推导而来",
+     "与把连续上下文附加到自足离散链上的做法不同，HC-DLM 让隐变量成为唯一持久生成状态",
+     "token 在每一步被读出，并作为下一步隐状态更新的脚手架回喂",
+     "在 Sudoku、Countdown、LM1B 上，同模型规模下相对离散与连续扩散基线分别在谜题准确率与生成困惑度上更好"
+    ],
+    "uncertain": [
+     "公式为按摘要重建的通用形式，需核对原文",
+     "摘要未给出隐状态维度、去噪步数、模型规模与具体指标数值",
+     "变分界的确切推导细节（近似后验形式、是否含额外辅助损失）需查原文",
+     "「层次化（Hierarchical）」在方法中的具体层级结构摘要未说明"
+    ]
+   },
+   "teaching": {
+    "progressive": [
+     {"level": "一句话", "text": "让连续隐状态当大脑，离散词每步从它嘴里说出来，再喂回去修正大脑。"},
+     {"level": "入门", "text": "语言模型通常逐词生成。扩散语言模型想并行解码，但若每个位置独立采样，同批词之间的依赖就断了；连续扩散共享一个隐状态，却只看状态、不保证最后落回合法词。HC-DLM 把这两条路接起来。"},
+     {"level": "进阶", "text": "HC-DLM 把连续隐轨迹当作唯一持久生成状态：每一步都从隐状态读出离散 token，再把 token 嵌入回喂去更新隐状态，离散 token 与连续轨迹因此被耦合进同一次去噪过程。训练目标不是启发式拼凑，而是从 token 似然的变分下界推出的，这正是它与「连续上下文外挂在独立离散链上」做法的区别。"},
+     {"level": "专家", "text": "相对纯离散扩散，HC-DLM 不再假设同批 token 边际独立，而用共享隐状态保留联合依赖；相对纯连续扩散，隐状态每步必须承担读出责任，避免去噪结束才解码造成的状态与合法 token 脱节。代价是每步多一次读出与回喂，推理开销与误差累积风险上升。「层次化」暗示隐状态有分层结构，但摘要未展开。摘要报告在 Sudoku、Countdown、LM1B 上以相同模型规模优于离散与连续扩散基线。"}
+    ],
+    "socratic": [
+     {"q": "为什么不让每个位置独立地从自己的边缘分布采样？", "a": "那样同一步解码的 token 之间统计依赖被切断，模型无法表达「这些词必须同时成立」这类全局约束，结构化推理任务会明显变差。"},
+     {"q": "直接把连续上下文接到一个自足离散链上有什么问题？", "a": "连续状态只是外挂辅助信息，离散链仍是主要生成状态，解码末期容易与连续状态脱节，无法保证两者一致。"},
+     {"q": "为什么训练目标要用变分界而不是简单回归？", "a": "隐状态不可观测，token 似然要对连续隐轨迹求边缘，直接优化不可行；变分下界给出可逐步优化的替代目标。"}
+    ],
+    "mechanism": "关键在于角色分配：隐状态是唯一持久生成状态，token 是每步读出并回喂的脚手架。这样并行解码共享同一份联合状态，不会退回边际独立；同时离散约束持续作用于隐状态，避免连续去噪结束后才解码带来的不一致。用变分界训练，则是为了让不可观测隐轨迹上的 token 似然变得可优化。",
+    "boundary": "摘要只在 Sudoku、Countdown、LM1B 三个任务、相同模型规模下比较，未报告长文本生成、多模态条件或大模型扩展结果。每步读出加回喂意味着采样步数越多开销越大，回喂误差也可能累积，因此对超长序列与低延迟场景未必划算。",
+    "analogyBoundary": "「心里先有意思再逐字说出」的类比暗示隐状态总比 token 更正确，但实际隐状态本身可能就是被噪声主导的；类比也掩盖了训练时隐轨迹由近似后验构造、推理时只能靠模型自身递归这一根本差异。",
+    "misconceptions": [
+     "把 HC-DLM 理解成离散扩散外面再加一个连续特征，忽略隐状态是唯一持久生成状态",
+     "以为它在所有任务上超过自回归模型，摘要只与扩散基线比较",
+     "以为 token 只在最后解码一次，实际每步都读出并回喂"
+    ],
+    "ownAnalysis": "（推断）这条路线与 latent diffusion 图像生成、以及掩码/连续扩散语言模型的争论同源：真正的问题不是「离散还是连续」，而是生成状态是否被共享、约束是否持续作用。摘要给出的变分界动机与「token 每步读出」的设计自洽。可疑处是缺少推理步数与训练算力的对照，因此无法判断增益有多少来自额外计算。（推断）若把读出头做成轻量近似，或许能找到成本与质量的折中点。",
+    "officialNotes": [
+     {"position": "作者主张 HC-DLM 把离散 token 生成与连续隐轨迹耦合进单次去噪过程，隐变量是唯一持久生成状态，token 每步读出并回喂，训练目标由 token 似然的变分界推导。", "source": "https://huggingface.co/papers/2610.02193"}
+    ],
+    "interviewAnswer": "HC-DLM 针对扩散语言模型的老问题：离散扩散并行解码时每个 token 独立采样，同批 token 的依赖就断了；连续扩散有共享状态，但去噪器只看连续状态，最后解码前不保证落回合法 token。它的做法是让连续隐状态成为唯一持久生成状态，每步读出 token 再回喂更新隐状态，训练用 token 似然的变分下界，并在 Sudoku、Countdown、LM1B 上以同规模超过这两类基线。",
+    "studyPath": {
+     "prerequisites": ["扩散模型的加噪/去噪与重参数化", "变分推断与 ELBO", "Transformer 语言模型基础"],
+     "nextSteps": ["读掩码离散扩散与连续扩散语言模型原文做对比", "在 Sudoku 上做最小复现，比较独立采样与共享隐状态", "研究如何用更少的推理步数降低每步读出的开销"]
+    }
+   }
+  },
+  {
+   "id": "99fb8b7ff588817d",
+   "tldr": "一个自动更新的视频扩散/视频生成论文合集，按 16+ 主题分类收录 arXiv 工作。",
+   "keyPoints": [
+    "从 arXiv 持续收录视频扩散与视频生成论文",
+    "覆盖文生视频、图生视频、可控生成、世界模型、视频编辑等",
+    "共 16+ 个研究分类，由脚本自动更新而非人工逐条维护",
+    "本质是分类索引，不含新的实验结论或指标数值"
+   ],
+   "why": "视频生成与世界模型是 2026 求职热区，这类自动合集适合快速建立方向地图并跟踪新论文。",
+   "difficulty": "easy",
+   "tags": ["awesome-list", "video-generation", "diffusion", "survey"],
+   "entities": ["arXiv", "longxiang-ai/awesome-video-diffusions", "text-to-video", "image-to-video", "world models"],
+   "diagram": {
+    "kind": "flow",
+    "title": "自动合集的数据流",
+    "caption": "记住一点：它的价值在分类体系与自动更新，不在结论或评测。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='自动更新的视频扩散论文合集流程：arXiv 抓取、主题分类、生成列表、供人检索'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>arXiv 新论文</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>自动抓取</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>主题分类 16+ 类</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>含可控生成与世界模型</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>生成 awesome 列表</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>脚本刷新</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>研究者按类检索</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>跟踪前沿</text>\n</svg>",
+    "alt": "流程：arXiv 新论文被抓取，归入 16+ 主题分类，生成自动刷新的 awesome 列表，供研究者按类检索。"
+   },
+   "concepts": [
+    {
+     "name": "自动更新的论文索引 (Auto-updated Survey Index)",
+     "readable": "它不是一篇论文，而是一个由脚本定期刷新的清单：把 arXiv 上的视频生成工作按人工设定的主题分类归位，让你不必每天手动检索就能看到一个子方向的全貌。",
+     "analogy": "像小区门口那块自动刷新的公告栏：物业按「维修、活动、缴费」等栏目把新通知钉上去，你路过就能按栏目找；但公告栏本身不判断哪条通知更重要。",
+     "analogyBreaksDown": "公告栏的栏目通常互不重叠且有物业审核，而这里的论文标签可以同时属于多个类别，收录标准也未必公开，更没有任何质量或同行评审过滤。",
+     "mechanism": "关键设计是把检索与分类分离：检索交给脚本对 arXiv 持续执行，分类由固定的 16+ 主题模板承担。固定模板保证了长期一致性，也意味着无法自适应地发现新子方向或按影响力排序。",
+     "visual": "画一棵三层的树：根是 arXiv 视频生成，第二层是 16+ 类别方框，第三层是论文叶子；叶子可以同时挂在两个方框下，方框大小代表该类别当前收录量。",
+     "prerequisites": ["arXiv 检索基本操作", "扩散模型与视频生成的基础术语"],
+     "selfTest": [
+      "这个仓库提供的是索引还是方法？",
+      "它覆盖哪些主题类别，更新方式是什么？",
+      "为什么不能把它当成文献综述来引用？"
+     ],
+     "formula": ""
+    }
+   ],
+   "formulas": [],
+   "selfCheck": {
+    "claims": [
+     "该仓库是视频扩散/视频生成论文的合集（collection）",
+     "论文来源为 arXiv",
+     "覆盖 text-to-video、image-to-video、可控生成、世界模型、视频编辑等 16+ 研究类别",
+     "合集为自动更新（auto-updated）",
+     "仓库标注为 Python 项目且代码可用"
+    ],
+    "uncertain": [
+     "收录论文总数、更新频率与分类判定方式需查仓库 README 核实",
+     "是否含评测排行榜、代码链接或按年份的时间线，摘要未说明",
+     "「16+ 研究分类」的具体类别清单摘要未完整给出"
+    ]
+   },
+   "teaching": {
+    "progressive": [
+     {"level": "一句话", "text": "一个自动更新的视频生成论文清单，按主题分好类方便查。"},
+     {"level": "入门", "text": "仓库从 arXiv 收录视频扩散与视频生成相关论文，自动整理成分类清单，覆盖文生视频、图生视频、可控生成、世界模型、视频编辑等 16+ 类别，省去每天手动刷 arXiv 的功夫。"},
+     {"level": "进阶", "text": "它是索引而不是方法：价值在分类体系与自动更新机制。使用时要自己判断收录标准与时效，因为它不提供实验对比、不排序影响力，也不筛选代码质量，类别之间还可能重叠。"},
+     {"level": "专家", "text": "对求职者的正确用法是把它当领域地图：先按 16+ 类别定位自己方向的位置，再挑代表论文精读、复现。它的边界是只覆盖 arXiv 预印本、无同行评审过滤、分类模板固定，因此不能替代系统文献综述，也不能用来横向比较方法指标。"}
+    ],
+    "socratic": [
+     {"q": "已经有了 arXiv 搜索，为什么还需要这种合集？", "a": "搜索要求你先想出关键词，而分类清单把同一方向的工作聚在一起，便于看出一个子方向的全貌与演化脉络。"},
+     {"q": "为什么说它不能当作综述使用？", "a": "它只做收录与分类，没有对方法、指标做统一对比，也没有评审环节，收录标准未必透明，缺少质量过滤。"}
+    ],
+    "mechanism": "机制上是把 arXiv 的检索结果映射到人工设定的 16+ 主题分类，再由脚本定期刷新列表。这样做的价值是持续覆盖与极低维护成本；代价是分类粒度固定、无法按质量或影响力排序，也不解决一篇文章跨多类别的问题。",
+    "boundary": "只覆盖 arXiv 预印本，未经同行评审；分类重叠、可能漏收非 arXiv 工作；需要横向指标对比、复现清单或时间线统计时都不够用，必须自己二次筛选。",
+    "analogyBoundary": "「自动刷新的公告栏」类比会让人以为栏目互斥、每条都经过审核；实际上论文标签可重叠、收录标准未必公开，也不保证论文质量或可复现性。",
+    "misconceptions": [
+     "以为 awesome list 本身是研究成果或含实验结论",
+     "以为「被收录」等于经过质量或同行评审筛选",
+     "把它当成完整文献综述直接引用"
+    ],
+    "ownAnalysis": "（推断）这类自动合集在求职准备中的真实价值是方向覆盖度检查表：对照 16+ 类别看自己简历缺哪块，再定向补读。但它不提供引用数、会议归属或影响力排序，需要配合这些信号自己二次筛选；另外「自动更新」也意味着列表可能包含尚未验证的预印本，引用前要回到原文核对。",
+    "officialNotes": [],
+    "interviewAnswer": "这是 longxiang-ai 维护的视频扩散与视频生成论文合集，从 arXiv 自动更新，分成文生视频、图生视频、可控生成、世界模型、视频编辑等 16+ 类别。我的用法是当领域地图：先用分类确认自己覆盖了哪些子方向，再挑代表论文精读和复现。它本身不含实验对比，也不做质量过滤，所以不能替代综述，引用结论要回到原论文。",
+    "studyPath": {
+     "prerequisites": ["扩散模型与视频生成的基本概念", "arXiv 检索与论文速读方法"],
+     "nextSteps": ["按分类挑 3 篇代表论文精读并写方法笔记", "持续跟踪可控生成与世界模型两条线", "用引用数与代码可用性给收录论文做二次排序"]
+    }
+   }
+  },
+  {
+   "id": "ec14cdfd4cf3fff4",
+   "tldr": "NEPA 用每步重算的预测嵌入替代固定条件，ImageNet 256 上 FID 1.32，算力约 REPA 三分之一。",
+   "keyPoints": [
+    "扩散 Transformer 通常把类别或文本嵌入一次并在所有去噪步复用",
+    "NEPA 训练 Transformer 预测序列中的下一个连续嵌入",
+    "干净图像嵌入紧随条件与噪声图像之后，可一次预测多个",
+    "用预测嵌入当 DiT 条件，并在每个去噪步重算",
+    "NEPA-DiT-XL 结合 REPA 达 FID 1.32，算力约为三分之一"
+   ],
+   "why": "表征对齐与自适应条件是扩散生成与训练效率的活跃方向，涉及生成、表征学习与算力权衡。",
+   "difficulty": "hard",
+   "tags": ["diffusion", "image-generation", "representation-learning", "embedding", "dit"],
+   "entities": ["NEPA", "DiT", "REPA", "ImageNet", "NEPA-DiT-XL", "Multi-Embedding Prediction"],
+   "diagram": {
+    "kind": "architecture",
+    "title": "NEPA 与 DiT 的条件流",
+    "caption": "记住一点：条件不是编码一次，而是每步被重新预测出来并重算。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='NEPA 条件流：标签或文本条件、NEPA 预测下一嵌入、每步重算条件、DiT 采样出图'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>条件 c：类别或文本</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>加入噪声图像后成上文</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>NEPA 预测下一嵌入</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>一次预测多个</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>每个去噪步重算条件</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>随噪声状态自适应</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>DiT 采样出图</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>FID 1.32</text>\n</svg>",
+    "alt": "架构流程：类别或文本条件与噪声图像构成上文，NEPA 一次预测多个干净图像嵌入，每个去噪步重算该条件，DiT 据此采样出图。"
+   },
+   "concepts": [
+    {
+     "name": "嵌入条件下的生成 (Embedding Conditioned Generation)",
+     "readable": "扩散模型的条件通常只编码一次。这里改成由另一个网络预测出「干净图像应该长什么样」的嵌入，再把它当条件喂给生成器，并且每个去噪步都重新预测一次，让条件跟着当前噪声状态变化。",
+     "analogy": "像装修时不是开工前定死一张效果图，而是每完成一道工序就重新拍一张现场照片给设计师看，设计师据此更新下一道工序的要求。",
+     "analogyBreaksDown": "装修里现场照片是真实观测，而这里的预测嵌入来自另一个模型的猜测，可能偏；且条件重算不能与真实干净图对齐，训练时对齐的是嵌入目标，推理时只靠预测递归。",
+     "mechanism": "关键设计是让条件与状态同步演化：固定嵌入无法表达「当前这一步需要多少条件信息」，每步重算则使条件随噪声水平自适应，起到类似动态提示的作用，同时把表征预测能力注入去噪循环。",
+     "visual": "横轴是去噪步，纵轴是条件嵌入空间的两个主方向；固定条件画成一个始终不动的点，重算条件画成一条随步数游走的轨迹，轨迹越靠向「干净图像嵌入」区域代表条件越准。",
+     "prerequisites": ["DiT 与交叉注意力/自适应归一化的条件注入", "扩散或流匹配的采样过程", "图像嵌入模型与表征对齐思想"],
+     "selfTest": [
+      "固定条件与每步重算条件在机制上差在哪？",
+      "为什么重算条件可以随噪声状态自适应？",
+      "每步多跑一个预测网络的代价是什么？"
+     ],
+     "formula": "c_t=\\mathrm{NEPA}\\!\\big(\\mathrm{ctx}(y,\\,x_t)\\big),\\qquad v_\\theta=v_\\theta(x_t,t,c_t)"
+    },
+    {
+     "name": "下一嵌入预测自回归 (Next-Embedding Predictive Autoregression)",
+     "readable": "把序列元素从离散 token 换成连续嵌入，训练一个 Transformer 去预测「下一个嵌入」。因为干净图像的嵌入在序列里正好排在条件与噪声图像之后，模型可以一次把多个后续嵌入全部预测出来。",
+     "analogy": "像看前情提要猜剧情：前面给了背景和当前剧照，你一次性说出接下来几个关键画面，而不是逐帧慢慢猜。",
+     "analogyBreaksDown": "猜剧情没有标准答案，而这里的目标嵌入由真实干净图像给出，是确定的回归目标；另外一次预测多个之所以可行，靠的是目标并行可得，并非所有自回归问题都具备这个结构。",
+     "mechanism": "设计要点有两条：把预测目标从像素换成嵌入，避免在高频细节上浪费容量；把「下一个」扩展为「下一批」，利用嵌入目标并行可得的性质一次性预测，避免逐 token 串联带来的误差累积。",
+     "visual": "画一条从左到右的序列带：前两格是条件嵌入与噪声图像嵌入（已知），后面几格是干净图像嵌入（待预测）；用一个括号把后几格圈起来标「一次预测」。",
+     "prerequisites": ["自监督表征学习与嵌入空间", "Transformer 的因果/前缀注意力机制"],
+     "selfTest": [
+      "为什么干净的图像嵌入被称为「下一个嵌入」？",
+      "一次预测多个嵌入相比逐个预测有什么好处？",
+      "为什么预测嵌入而不是直接预测像素？"
+     ],
+     "formula": "\\mathcal{L}_{\\mathrm{NEPA}}=\\sum_{i=1}^{K}\\big\\|\\hat{e}_i-f_\\phi(\\mathrm{ctx})_i\\big\\|_2^2,\\quad \\hat{e}_i=E(x_1)_i"
+    }
+   ],
+   "formulas": [
+    {
+     "id": "f-nepa-flow-matching",
+     "name": "嵌入条件下的流匹配损失 (Embedding-conditioned Flow Matching Loss)",
+     "category": "generative",
+     "latex": "\\mathcal{L}_{\\mathrm{FM}}=\\mathbb{E}_{t,\\,x_0,\\,x_1}\\big\\|v_\\theta(x_t,t,c_t)-(x_1-x_0)\\big\\|_2^2",
+     "symbols": [
+      ["x_0", "噪声图像，轨迹起点"],
+      ["x_1", "干净图像，轨迹终点"],
+      ["x_t", "时刻 t 的插值状态"],
+      ["c_t", "NEPA 在当前去噪步预测出的嵌入条件"],
+      ["v_\\theta", "DiT 预测的速度场"]
+     ],
+     "derivation": [
+      "第 1 步：在噪声与干净图像之间取直线插值 x_t=(1-t)x_0+t x_1，此时目标速度是常数 x_1-x_0。",
+      "第 2 步：让网络在条件 c_t 下回归该速度，得到均方误差形式的目标函数。",
+      "第 3 步：采样时用网络速度做常微分方程积分，从 x_0 推到 x_1，其中 c_t 由 NEPA 在每个去噪步重算。"
+     ],
+     "analogy": "像开车导航：条件不是出发前写死的地址纸条，而是每到一个路口重新问一次导航，路线能随路况修正，到达终点更稳。",
+     "pitfalls": [
+      "把条件 c 当常量缓存，丢掉「每个去噪步重算」这一关键设计",
+      "混淆 x_0 与 x_1 的顺序，导致速度方向取反"
+     ],
+     "code": "t = torch.rand(B, 1, 1, 1)\nx_t = (1 - t) * x0 + t * x1\nv = model(x_t, t.squeeze(), cond)   # cond 由 NEPA 每步重算\nloss = F.mse_loss(v, x1 - x0)",
+     "sources": [
+      {"title": "Embedding Prediction Helps Image Generation", "url": "https://arxiv.org/abs/2610.02203v1"}
+     ]
+    },
+    {
+     "id": "f-nepa-multi-embedding",
+     "name": "多嵌入预测损失 (Multi-Embedding Prediction Loss)",
+     "category": "generative",
+     "latex": "\\mathcal{L}_{\\mathrm{NEPA}}=\\sum_{i=1}^{K}\\big\\|\\hat{e}_i-f_\\phi(\\mathrm{ctx})_i\\big\\|_2^2,\\quad \\hat{e}_i=E(x_1)_i",
+     "symbols": [
+      ["K", "一次预测的嵌入个数"],
+      ["E", "提供目标嵌入的图像嵌入模型"],
+      ["f_\\phi", "NEPA Transformer"],
+      ["\\mathrm{ctx}", "条件嵌入与噪声图像嵌入构成的上下文"],
+      ["\\hat{e}_i", "第 i 个目标嵌入，取自干净图像"]
+     ],
+     "derivation": [
+      "第 1 步：把序列定义成「条件嵌入、噪声图像嵌入、干净图像嵌入」，于是干净图像的嵌入正好是条件与噪声图像之后的下一个嵌入。",
+      "第 2 步：让 Transformer 一次输出 K 个预测嵌入，而不是自回归地逐个采样。",
+      "第 3 步：以干净图像的嵌入为回归目标训练，得到可用来条件化生成器的嵌入预测。"
+     ],
+     "analogy": "像开卷考试押要点：看到题目和草稿，一次性把答案要点全列出来，而不是写完一个字再想下一个字。",
+     "pitfalls": [
+      "以为预测目标是像素而不是嵌入",
+      "漏掉「一次预测多个、而非逐 token 自回归」这个结构设计"
+     ],
+     "code": "ctx = torch.cat([cond_emb, noisy_emb], dim=1)\npred = nepa(ctx)                    # [B, K, d]\ntarget = embed(clean_img)           # [B, K, d]\nloss = F.mse_loss(pred, target.detach())",
+     "sources": [
+      {"title": "Embedding Prediction Helps Image Generation", "url": "https://arxiv.org/abs/2610.02203v1"}
+     ]
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "在扩散 Transformer 中，类别标签或文本提示只被嵌入一次，并在每个去噪步复用同一个条件",
+     "NEPA 训练一个 Transformer 预测序列中的下一个连续嵌入",
+     "在生成场景中干净图像跟在噪声图像之后，因此它的嵌入是条件与噪声图像之后的下一个嵌入",
+     "用 Multi-Embedding Prediction 一次预测全部这些嵌入",
+     "Embedding Conditioned Generation 让 DiT 生成器以这些预测为条件，并在每个去噪步重新计算，使条件信号适应当前噪声状态",
+     "实验为类别条件 ImageNet 256×256，研究了生成器条件、Multi-Embedding Prediction 设计以及两个模型的扩展性",
+     "NEPA 模型为每个采样步增加第二个网络",
+     "结合 REPA 的最终模型 NEPA-DiT-XL 达到 FID 1.32，训练算力约为 REPA 的三分之一"
+    ],
+    "uncertain": [
+     "公式为按摘要重建的通用形式，需核对原文",
+     "NEPA 网络规模、使用的嵌入模型与一次预测的嵌入个数 K 摘要未给出",
+     "FID 1.32 对应的采样步数、引导系数与评测协议未说明",
+     "「训练算力约为 REPA 的三分之一」的度量口径（GPU 小时还是 FLOPs）摘要未说明"
+    ]
+   },
+   "teaching": {
+    "progressive": [
+     {"level": "一句话", "text": "把固定标签条件换成每步现算的预测嵌入，出图更好也更省训练算力。"},
+     {"level": "入门", "text": "扩散 Transformer 通常把类别或文本编码一次，之后每个去噪步都用同一份条件。NEPA 改成让另一个 Transformer 预测下一段连续嵌入，并用这些预测当条件，而且每个去噪步都重算一次。"},
+     {"level": "进阶", "text": "干净图像的嵌入在序列上紧跟在条件与噪声图像之后，所以 NEPA 用 Multi-Embedding Prediction 一次预测多个嵌入，再通过 Embedding Conditioned Generation 把它们喂给 DiT。条件因此随当前噪声状态自适应，而不是整个去噪过程一成不变。"},
+     {"level": "专家", "text": "代价是每个采样步多跑一个网络，所以效率优势体现在训练而非采样：结合 REPA 的 NEPA-DiT-XL 在类别条件 ImageNet 256×256 上达到 FID 1.32，训练算力约为 REPA 的三分之一。它属于表征对齐/自监督预测这一支，而不是换采样器或蒸馏，因此原则上可与既有加速手段叠加，但会增加每步延迟。"}
+    ],
+    "socratic": [
+     {"q": "为什么固定条件会成为瓶颈？", "a": "同一个条件在整条去噪轨迹上复用，无法随当前噪声水平调整提示强度，条件与状态之间可能出现不匹配。"},
+     {"q": "为什么可以一次预测多个嵌入，而不是自回归逐个预测？", "a": "目标嵌入都来自同一张干净图像、彼此并行可得，一次预测多个既省时又避免逐步误差累积。"},
+     {"q": "每步多一个网络，为什么还能省训练算力？", "a": "省的是达到相同或更好 FID 所需的训练总算力，约三分之一；采样阶段反而更慢，延迟更高。"}
+    ],
+    "mechanism": "必须这样设计的原因在于条件要与状态对齐：固定嵌入无法表达「当前这一步需要多少条件信息」。让 NEPA 预测干净图像嵌入并在每步重算，等于用表征预测给 DiT 提供一个随状态变化的中间目标；一次预测多个则利用了目标嵌入并行可得的结构，避免自回归串联，从而在训练效率上取得优势。",
+    "boundary": "实验限于类别条件 ImageNet 256×256，未报告文生图、更高分辨率或其他条件模态。额外网络使每步采样更慢，低延迟推理不划算。摘要中的 FID 1.32 与三分之一训练算力都是与 REPA 结合的最终模型结果，不能单独归因于某一个组件。",
+    "analogyBoundary": "「每到一个路口重新问导航」的类比暗示重算总是更好；实际上重算引入额外网络与预测误差，若预测嵌入偏离真实图像嵌入，条件反而会误导去噪。类比也掩盖了训练时嵌入目标一次性可得、推理时只能递归预测这一差别。",
+    "misconceptions": [
+     "以为 NEPA 只是把条件嵌入训练得更准、只在训练期起作用，忽略它在采样时每步重算",
+     "以为 FID 1.32 单靠 NEPA 取得，忽略它是与 REPA 结合的 NEPA-DiT-XL 的结果",
+     "以为每步加网络会加快采样，实际加快的是训练效率、采样更慢"
+    ],
+    "ownAnalysis": "（推断）这条思路与 REPA 的表征对齐一脉相承：都承认扩散模型的瓶颈在表征而不只是采样器。用「预测下一个嵌入」当条件，本质是把自监督预测目标搬进去噪循环做动态提示。值得追问的是增益来源：究竟来自预测嵌入携带的信息，还是来自第二个网络带来的额外容量。（推断）若换成更轻的预测头或缓存部分预测，可能出现更优的成本-质量曲线。",
+    "officialNotes": [
+     {"position": "作者主张预测嵌入可充当去噪条件，并提出 NEPA、Multi-Embedding Prediction 与 Embedding Conditioned Generation；NEPA-DiT-XL 结合 REPA 在类别条件 ImageNet 256×256 上达到 FID 1.32，训练算力约为 REPA 的三分之一。", "source": "https://arxiv.org/abs/2610.02203v1"}
+    ],
+    "interviewAnswer": "NEPA 让条件本身被预测出来：训练 Transformer 预测序列中的下一个连续嵌入，干净图像嵌入正好跟在条件与噪声图像之后，可一次预测多个；DiT 用这些预测当条件并在每个去噪步重算，条件随噪声状态自适应。代价是每步多一个网络，但训练效率高：结合 REPA 的 NEPA-DiT-XL 在 ImageNet 256 上 FID 1.32，算力约为 REPA 的三分之一。",
+    "studyPath": {
+     "prerequisites": ["扩散/流匹配与 DiT 架构", "表征对齐方法（如 REPA）与嵌入空间", "FID 等生成质量指标"],
+     "nextSteps": ["对比 REPA、自条件与 CFG 等条件注入方式", "在文本条件生成上验证预测嵌入是否同样有效", "分析每步额外网络的延迟-质量权衡"]
+    }
+   }
+  },
+  {
+   "id": "d127fd2340692ed8",
+   "tldr": "CEASE 是免训练的概念擦除方法，用替换 token 不变性与正交补投影两条子空间约束抑制跨次编辑干扰。",
+   "keyPoints": [
+    "概念擦除需随时间删除新目标且不破坏先前擦除与无关生成",
+    "已有方法不约束编辑间干扰，保留集外的残余扰动会相互累积",
+    "CEASE 免训练，只在闭式求解器上加两条子空间约束",
+    "把共享替换的 token 表示加入求解器的不变性矩阵",
+    "检测到干扰时把更新投影到历史主导输出方向的正交补"
+   ],
+   "why": "内容合规与安全是生成式落地的硬需求，持续擦除涉及闭式编辑、子空间方法与持续学习，面试常被追问。",
+   "difficulty": "hard",
+   "tags": ["diffusion", "concept-erasure", "continual-learning", "subspace", "safety"],
+   "entities": ["CEASE", "Continual Erasure via Adaptive Subspace Editing"],
+   "diagram": {
+    "kind": "flow",
+    "title": "CEASE 持续擦除流程",
+    "caption": "记住一点：干扰是沿方向累积的，所以约束也做在子空间上。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='CEASE 流程：新擦除请求、闭式求解器加不变性约束、检测跨编辑干扰、投影到正交补保住旧擦除'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>新擦除请求</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>要删除的概念 token</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>闭式求解器更新</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>替换 token 进不变性矩阵</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>检测跨编辑干扰</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>历史累积更新方向</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>投影到正交补</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>保住先前擦除</text>\n</svg>",
+    "alt": "流程：新擦除请求进入带替换 token 不变性约束的闭式求解器，检测跨编辑干扰后把更新投影到历史主导方向的正交补，保住先前擦除。"
+   },
+   "concepts": [
+    {
+     "name": "跨编辑干扰 (Cross-Edit Interference)",
+     "readable": "每次做概念擦除都会在「不该动」的区域留下一点副作用。当擦除请求接连到来，这些副作用方向一致时就会叠加，最后把无关图像生成能力拉坏，甚至让先前擦掉的概念崩成噪声。",
+     "analogy": "像同一块橡皮反复擦同一张纸：每擦一次都留下一点纸屑和擦痕，擦的次数多了，本来只想擦掉的字擦掉了，旁边的字和纸也一起花了。",
+     "analogyBreaksDown": "纸上的擦痕是各向同性的随机磨损，而这里的关键是残余扰动有明确方向、会沿共同方向系统性累积，因此可以用子空间方法压制，而不只是「擦多了自然坏」。",
+     "mechanism": "要解决干扰，先要看它从哪来。闭式分解把它归因于两个来源：共享替换 token 被反复激活，以及相邻两次更新的方向彼此重叠。知道来源是方向性的，约束才能有针对性地做在子空间上而不是做笼统的逐参数正则。",
+     "visual": "画一个二维权重平面：每次擦除的更新画成一支箭头，多支箭头方向接近时首尾相叠、越走越远；箭头色深代表时间先后。",
+     "prerequisites": ["扩散模型的文本条件与交叉注意力层", "闭式权重编辑的基本形式", "向量的投影与正交补"],
+     "selfTest": [
+      "跨编辑干扰为什么会在多次擦除后更严重？",
+      "闭式分解把干扰归因于哪两个来源？",
+      "为什么对保留集外扰动做逐参数正则是次优的？"
+     ],
+     "formula": "\\Delta_{\\mathrm{cum}}=\\sum_{i=1}^{n}\\Delta W_i+\\underbrace{\\sum_{i<j}\\mathrm{overlap}(\\Delta W_i,\\Delta W_j)}_{\\text{累积干扰}}"
+    },
+    {
+     "name": "子空间正交投影约束 (Subspace Orthogonal Projection Constraint)",
+     "readable": "把历史所有更新的共同主方向算出来，做新一次编辑时先把更新里与这些方向重合的部分减掉，只保留它们无法表达的新方向，从而不与旧编辑打架。",
+     "analogy": "在同一张纸上多人接力画直线，后画的人先把和已有线重合的部分刮掉，只留下真正的新角度，这样线条不会越来越粗、越来越偏。",
+     "analogyBreaksDown": "刮掉重合部分会让这一笔变短，可能削掉本次编辑本身的效力；而正交补的维度也是有限资源，编辑次数很多时可用的新方向会被挤占，类比没有体现这种容量耗尽。",
+     "mechanism": "关键设计是「仅在检测到干扰时才投影」。若对每次更新都无条件投影，会白白削弱正常编辑；只有确认残余扰动正在沿历史主方向累积时才切除该分量，才能在擦除效果与保留能力之间取得更一致的取舍。",
+     "visual": "画一个以历史主方向 U_dom 为 x 轴的坐标系，新更新向量画成箭头；虚线表示它在 x 轴上的投影分量被删除，剩下的竖直分量就是保留下来的更新。",
+     "prerequisites": ["SVD 与主方向提取", "正交投影矩阵的形式", "闭式编辑中的键-值统计量"],
+     "selfTest": [
+      "投影到什么空间、投影掉的是什么分量？",
+      "为什么只在检测到干扰时才投影？",
+      "编辑次数增多后，正交投影可能遇到什么限制？"
+     ],
+     "formula": "\\Delta W\\leftarrow\\Delta W-U_{\\mathrm{dom}}\\,U_{\\mathrm{dom}}^{\\top}\\,\\Delta W"
+    }
+   ],
+   "formulas": [
+    {
+     "id": "f-cease-invariance-solver",
+     "name": "带不变性矩阵的闭式擦除解 (Closed-form Erasure with Invariance Matrix)",
+     "category": "generative",
+     "latex": "\\Delta W=\\big(K_{\\mathrm{inv}}+\\lambda I\\big)^{-1}K_{\\mathrm{erase}}",
+     "symbols": [
+      ["K_{\\mathrm{erase}}", "待擦除概念的键-值统计量"],
+      ["K_{\\mathrm{inv}}", "不变性矩阵，额外加入共享替换 token 的表示"],
+      ["\\lambda", "阻尼/正则系数"],
+      ["\\Delta W", "闭式求解得到的权重更新"]
+     ],
+     "derivation": [
+      "第 1 步：把概念擦除写成闭式最小二乘编辑，解为含键协方差（不变性矩阵）的线性系统。",
+      "第 2 步：把共享替换 token 的表示加入不变性矩阵，让每次编辑都以同一替换为锚点，减少彼此冲突。",
+      "第 3 步：闭式分解显示累积干扰中有一项来自共享替换被反复激活，正是这一约束要压制的来源。"
+     ],
+     "analogy": "像多人共用一块黑板反复擦写：先统一规定「擦完必须留出同一色号的底色」，大家按同一底线操作，就不会各擦各的把整块板擦花。",
+     "pitfalls": [
+      "只把不变性矩阵当成数值稳定项，忽略它承载共享替换 token 的约束",
+      "以为 CEASE 需要重新训练扩散模型，它其实是免训练的"
+     ],
+     "code": "K_inv = K_inv + lam * torch.eye(K_inv.size(0), device=K_inv.device)\nK_inv = K_inv + repl_tok @ repl_tok.T   # 共享替换 token 表示\ndW = torch.linalg.solve(K_inv, K_erase)",
+     "sources": [
+      {"title": "Continual Concept Erasure in Diffusion Models by Suppressing Cross-Edit Interference", "url": "https://arxiv.org/abs/2610.01989v1"}
+     ]
+    },
+    {
+     "id": "f-cease-orthogonal-projection",
+     "name": "正交补投影去干扰 (Interference Removal by Orthogonal Complement Projection)",
+     "category": "generative",
+     "latex": "\\Delta W\\leftarrow\\Delta W-U_{\\mathrm{dom}}\\,U_{\\mathrm{dom}}^{\\top}\\,\\Delta W",
+     "symbols": [
+      ["\\Delta W", "当前一次编辑的权重更新方向"],
+      ["U_{\\mathrm{dom}}", "从历史累积更新中提取的主导输出方向（列正交基）"],
+      ["U_{\\mathrm{dom}}^{\\top}\\Delta W", "更新在主导方向上的分量"],
+      ["结果", "落在主导输出方向正交补内的更新"]
+     ],
+     "derivation": [
+      "第 1 步：连续编辑的历史更新方向彼此重叠时，干扰会沿共同方向累积。",
+      "第 2 步：从历史累积更新中提取主导输出方向 U_dom。",
+      "第 3 步：当检测到干扰时把当前更新投影到 U_dom 的正交补，去掉与旧编辑冲突的分量；闭式分解说明该约束正对应相邻更新方向重叠这一干扰来源。"
+     ],
+     "analogy": "像在同一条窄路上接力叠脚印：先把自己与已有脚印重合的部分抹掉，只留下不踩别人脚的新步子，路才不会被越踩越宽。",
+     "pitfalls": [
+      "对每次编辑都无条件投影，而不是仅在检测到干扰时投影",
+      "以为正交补能完全消除干扰，摘要只说闭式分解归因并抑制这两个来源"
+     ],
+     "code": "U, S, _ = torch.linalg.svd(cum_update, full_matrices=False)\nU_dom = U[:, :k]                       # 历史主导输出方向\nif interference_detected:\n    dW = dW - U_dom @ (U_dom.T @ dW)   # 投影到正交补",
+     "sources": [
+      {"title": "Continual Concept Erasure in Diffusion Models by Suppressing Cross-Edit Interference", "url": "https://arxiv.org/abs/2610.01989v1"}
+     ]
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "概念擦除的目的是从预训练文生图扩散模型中移除受版权保护、隐私敏感或其他不希望出现的内容，以支持内容治理与合规",
+     "擦除请求随时间陆续到来，模型必须在移除新目标的同时不撤销先前擦除",
+     "现有方法不约束编辑之间的干扰，保留集之外的残余扰动会相互作用并累积，损害无关生成，有时还会让先前擦除的目标崩成噪声",
+     "CEASE 是免训练方法，在闭式求解器上施加两条子空间约束",
+     "CEASE 把共享替换的 token 表示加入求解器的不变性矩阵",
+     "检测到干扰时，CEASE 把当前更新投影到从累积历史更新中提取的主导输出方向的正交补上",
+     "闭式分解把累积干扰归因于共享替换被反复激活，以及相邻更新方向之间的重叠，并说明这两条约束分别抑制这两个来源",
+     "在名人、艺术风格与实例的持续擦除上，CEASE 取得最一致的擦除-保留权衡，而现有方法要么损害一般生成，要么擦除不充分"
+    ],
+    "uncertain": [
+     "公式为按摘要重建的通用形式，需核对原文",
+     "摘要未给出具体数值指标、基线名称与评测协议",
+     "干扰检测的具体判据与阈值摘要未说明",
+     "「闭式分解」的推导细节（如何定义 overlap 与不变性矩阵）需查原文"
+    ]
+   },
+   "teaching": {
+    "progressive": [
+     {"level": "一句话", "text": "连续擦除概念时，用两条子空间约束防止新编辑把旧编辑搞坏。"},
+     {"level": "入门", "text": "概念擦除是从文生图模型里删掉某些概念。擦除请求会随时间不断到来，模型要在删新目标的同时不破坏之前删过的以及无关的生成能力。已有方法没有约束编辑之间的相互干扰。"},
+     {"level": "进阶", "text": "CEASE 免训练，在闭式求解器上加两条子空间约束：一是把共享替换 token 的表示加入不变性矩阵；二是检测到干扰时把当前更新投影到历史主导输出方向的正交补。闭式分解把累积干扰归因于共享替换被反复激活与相邻更新方向重叠，两条约束正好各自压制一个来源。"},
+     {"level": "专家", "text": "它把持续擦除看成一个不断叠加的线性编辑问题：干扰不是随机噪声，而是沿共同方向累积的系统性偏移，所以约束也应当是子空间级的。与传统持续学习里的参数正则或样本回放不同，它不训练、不存样本，直接改求解器的约束结构。代价是依赖闭式编辑的可分解性，且编辑次数极多时正交补可用维度会收缩，效果上限取决于干扰检测判据。"}
+    ],
+    "socratic": [
+     {"q": "为什么逐次擦除会互相干扰？", "a": "每次编辑在保留集之外都留下残余扰动，这些扰动的方向若彼此重叠就会累积，最终破坏无关生成，甚至让已擦除概念崩成噪声。"},
+     {"q": "为什么约束要放在子空间上，而不是逐参数正则？", "a": "闭式分解显示干扰沿共享替换的反复激活与更新的共同方向累积，子空间约束正好压制这两个来源，比笼统正则更对症。"},
+     {"q": "免训练在这里意味着什么？", "a": "不重新训练扩散模型，只在已有权重上用闭式求解器做定向编辑，部署成本低，但仍需维护累积更新方向与检测状态。"}
+    ],
+    "mechanism": "设计动机来自对干扰来源的归因：共享替换被反复激活、相邻更新方向重叠，这两点都是方向性的子空间问题。因此第一条约束把替换 token 表示写进不变性矩阵，让每次编辑以同一锚点对齐；第二条在检测到干扰时把更新投影到历史主导输出方向的正交补，直接切除冲突分量。只做在需要的地方，才不会削弱正常编辑。",
+    "boundary": "评测覆盖名人、艺术风格与实例的持续擦除，未涉及更复杂的组合概念或跨模态条件。方法依赖闭式求解器的可分解性与历史更新统计；编辑次数极多时正交补可用维度会被挤占，可能限制后续擦除能力。干扰检测的判据也直接决定效果上限。",
+    "analogyBoundary": "「共用橡皮擦前先规定统一留白底色」的类比暗示擦除可逆且干净；实际上擦除必然牵动保留集，正交投影只能压低冲突分量，不能保证旧目标完全不漂移，也无法让被擦概念彻底不可恢复。",
+    "misconceptions": [
+     "以为概念擦除一次做完即可，忽略请求随时间陆续到来的持续场景",
+     "以为免训练就等于零成本，忽略仍需维护历史更新与检测状态",
+     "以为正交投影能彻底消除干扰，摘要只说是归因并抑制这两个来源"
+    ],
+    "ownAnalysis": "（推断）把持续擦除形式化为子空间累积问题，接近持续学习中的任务方向正交化做法（如梯度投影或正交 LoRA 一类思路），只是这里没有训练、直接在闭式编辑解上做约束。可疑处在于干扰检测的门槛：太敏感会把有效更新一起削掉，太迟钝则干扰已经累积。摘要未给出检测判据与数值指标，无法判断鲁棒性，也看不到编辑次数增加后的退化曲线。",
+    "officialNotes": [
+     {"position": "作者主张现有方法不约束跨编辑干扰，CEASE 作为免训练方法在闭式求解器上施加两条子空间约束，并通过闭式分解把累积干扰归因于共享替换的反复激活与相邻更新方向重叠；在名人、艺术风格与实例的持续擦除上取得最一致的擦除-保留权衡。", "source": "https://arxiv.org/abs/2610.01989v1"}
+    ],
+    "interviewAnswer": "概念擦除是从预训练文生图模型里删掉受版权、隐私或合规限制的概念。现实中请求持续到来，要在删新目标的同时不破坏先前擦除和无关生成。已有方法不约束编辑间干扰，保留集外的残余扰动会沿共同方向累积，甚至把已擦除概念崩成噪声。CEASE 免训练，在闭式求解器上加两条子空间约束：把共享替换 token 表示加入不变性矩阵，以及检测到干扰时把更新投影到历史主导输出方向的正交补。",
+    "studyPath": {
+     "prerequisites": ["扩散模型的文本条件与交叉注意力", "闭式权重编辑的基本形式", "子空间投影与 SVD"],
+     "nextSteps": ["对比概念擦除方法与持续学习中的正交化/投影方法", "研究干扰检测判据与编辑次数上限的实证结果", "在安全评测或检索任务上量化保留集退化程度"]
+    }
+   }
+  }
+ ]
+}

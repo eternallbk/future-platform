@@ -1,0 +1,597 @@
+{
+  "batchId": "queue-01",
+  "entries": [
+    {
+      "id": "221b6496ea4cd2f6",
+      "tldr": "EviRover：4B 感知智能体用 SFT+RL 学会主动取证，EviLens 上平均涨 30 分，比肩闭源强模型。",
+      "keyPoints": [
+        "传统视觉感知是一次性预测，默认单张图加参数知识足够答题。",
+        "摘要指出该假设在细粒度细节或知识密集、需最新信息的场景失效，称为「证据不足下的感知」。",
+        "作者造了两条数据流水线，得到 EviRover-SFT-5K 与 EviRover-RL-12K。",
+        "EviLens：688 条人工核验样本，覆盖五个感知类别。",
+        "4B EviRover 在 EviLens 上平均超同骨干 30 分，并迁移到 WebEyes、常规感知基准与通用多模态基准。"
+      ],
+      "why": "感知正从「看一眼」转向「主动取证」，多模态与 Agent 岗位都需要这种把工具调用接进感知的策略设计能力。",
+      "difficulty": "medium",
+      "tags": ["agent", "multimodal", "perception", "reinforcement-learning", "benchmark"],
+      "entities": ["EviRover", "EviLens", "EviRover-SFT-5K", "EviRover-RL-12K", "WebEyes", "BrowseComp-VL"],
+      "diagram": {
+        "kind": "flow",
+        "title": "单次感知与主动取证的鸿沟",
+        "caption": "记住这张图：把「看一眼就答」换成「不够就取证」的闭环，是 EviRover 全部增益的来源。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='从单次感知到主动取证的流程图'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>图像与问题</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>一次前向就要给答案</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>证据不足</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>细节太细或知识过时</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>主动取证</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>放大查看或检索外部信息</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>SFT 再 RL</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>EviLens 上平均涨 30 分</text>\n</svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {"label": "图像与问题", "detail": "单张图加参数知识"},
+            {"label": "证据不足", "detail": "细粒度细节或需最新知识"},
+            {"label": "主动取证", "detail": "交互获取外部信息"},
+            {"label": "SFT 再 RL", "detail": "EviLens 平均涨 30 分"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "一次性预测假设失效"},
+            {"from": 1, "to": 2, "label": "把感知写成智能体过程"},
+            {"from": 2, "to": 3, "label": "先监督微调再做智能体强化学习"}
+          ]
+        },
+        "alt": "四层流程：图像与问题、证据不足、主动取证、SFT 再 RL，展示感知从一次性预测变成可交互过程。"
+      },
+      "concepts": [
+        {
+          "name": "证据不足下的感知 Perception under Insufficient Evidence",
+          "readable": "传统感知只把图像编码一次就输出答案，隐含假设是「图里的信息和模型脑子里的知识已经够回答这个问题」。摘要指出这个假设经常不成立：问题可能要求极细的视觉细节，或者依赖模型训练时还没有、且必须最新的外部知识，这时再怎么看同一张图也答不出。",
+          "analogy": "保安只站在门口扫一眼停车场，就被要求报出某辆车的车牌。车牌反光、字体又小，他必须走过去、蹲下、甚至打电话问登记处。不是他眼神不好，而是「只看一眼」这个工作方式本身就不够。",
+          "analogyBreaksDown": "类比里保安走到车边一定能看到车牌，信息客观存在于物理世界。而模型交互后拿到的新信息可能仍然相互矛盾或根本检索不到，取证动作不保证收益，还可能引入噪声、拖长轨迹并累积错误。",
+          "mechanism": "关键设计是把感知重写成带交互动作的序列决策：模型先判断当前证据是否足以作答，不足则输出取证动作（如放大细看、检索外部信息），拿到新证据后重新判断，直到证据充分再给终局答案。它解决了单次前向无法弥补「图里没有、参数里也没有」的信息缺口。",
+          "visual": "横轴画交互轮次 0 到 k，纵轴画答对的证据量或置信度。单次感知是一条从轮次 0 出发就立刻落地的水平线；主动取证是一条逐轮爬升的折线，每轮后面画一个小箭头标注该轮取证动作。两条线之间的垂直落差就是摘要里报告的 30 分增益，用浅色块填充。",
+          "prerequisites": ["多模态模型的基本结构（视觉编码器加语言模型）", "Agent 的序列决策与工具调用概念", "有监督微调和强化学习的基本流程"],
+          "selfTest": [
+            "摘要里「证据不足下的感知」具体指哪两类场景？",
+            "EviRover 为什么先做有监督微调再做智能体强化学习，而不是直接强化学习？",
+            "为什么单靠扩大模型参数或增加图像分辨率不能完全解决这个问题？"
+          ],
+          "formula": "a^{*}=\\arg\\max_{a\\in\\mathcal{A}}\\ \\mathbb{E}\\left[\\mathds{1}[\\text{answer correct}]\\mid \\text{evidence}(x,a)\\right]"
+        },
+        {
+          "name": "交互式感知 Agent Interactive Perception Agent",
+          "readable": "把「看一下」升级成「看、判断、再取证」的闭环：模型每轮先自评证据够不够，不够就输出一个工具动作去拿更多信息，够了才输出答案。EviRover 号称是第一个被显式训练来解决这类交互式感知查询的感知智能体。",
+          "analogy": "像医生看片子：先看整体 X 光，觉得某处可疑就要求加拍一个侧位，看完侧位仍不确定再安排抽血。好的医生不是一次就下结论，而是知道「我还缺什么才能确定」。",
+          "analogyBreaksDown": "医生知道每种检查的诊断价值与代价，而智能体的取证动作价值要靠强化学习的稀疏奖励反推，早期很可能学到「多看几眼但不解决」或「该看却直接答」的退化策略，需要额外的奖励设计约束。",
+          "mechanism": "两个关键选择：一是用两条专门的数据生成流水线造出交互式感知的行为数据（EviRover-SFT-5K），让模型先学会「什么时候该取证、怎么取证」的格式与节奏；二是用 EviRover-RL-12K 做智能体强化学习，在结果奖励下优化取证策略本身，而不是只模仿人类示范轨迹。",
+          "visual": "画一个回环状态机：节点依次是「读图与问题」「自评证据是否充分」「发出取证动作」「把新证据拼回上下文」「输出答案」。从「自评」节点画一条自环标「不足」回到取证动作，从「自评」画一条直边标「充分」指向输出答案，用颜色深浅表示该节点在轨迹里出现的频次。",
+          "prerequisites": ["上下文管理与工具结果回填的工程细节", "策略梯度类强化学习的基本直觉", "基准评测与消融实验的读法"],
+          "selfTest": [
+            "EviRover-SFT-5K 和 EviRover-RL-12K 在训练里各扮演什么角色？",
+            "如果去掉强化学习阶段只保留监督微调，摘要暗示会有什么损失？",
+            "为什么说 EviRover 的增益「迁移到了 EviLens 之外」，这说明什么？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-interaction-policy-gradient",
+          "name": "交互式感知的策略梯度目标 (Policy Gradient for Interactive Perception)",
+          "category": "agent",
+          "latex": "\\nabla_{\\theta} J(\\theta) = \\mathbb{E}_{\\tau \\sim \\pi_{\\theta}} \\left[ \\sum_{t=0}^{T} \\nabla_{\\theta} \\log \\pi_{\\theta}(a_t \\mid s_t) \\cdot \\left( R(\\tau) - b(s_t) \\right) \\right]",
+          "symbols": [
+            ["\\theta", "感知智能体（4B 骨干加策略头）的可训练参数"],
+            ["\\tau", "一条交互式感知轨迹：读图、取证动作、证据回填、最终答案"],
+            ["a_t", "第 t 步动作，可能是取证工具调用，也可能是终局答案"],
+            ["s_t", "第 t 步的上下文状态：图像、问题、已获得的证据"],
+            ["R(\\tau)", "轨迹回报，主项是答案是否正确，可含额外的交互成本惩罚"],
+            ["b(s_t)", "基线或优势估计，用来降低蒙特卡洛回报的方差"]
+          ],
+          "derivation": [
+            "第 1 步：把交互式感知写成序列决策问题，目标是最大化期望回报 J(θ)=E[Σ_t r_t]，回报只关心最终答案是否正确等结果指标。",
+            "第 2 步：对期望用对数导数技巧展开，得到 ∇J=E[Σ_t ∇logπ(a_t|s_t)·R(τ)]，从而不需要对环境（图像与检索工具）求导。",
+            "第 3 步：蒙特卡洛回报方差大，减去只依赖状态的基线 b(s_t) 得到优势，保持无偏并显著降低梯度噪声。",
+            "第 4 步：加上熵或 KL 约束项防止策略在稀疏奖励下过早坍缩成「永远直接作答」或「无脑一直取证」两种退化行为。"
+          ],
+          "analogy": "像训练导购：顾客需求不清时该不该继续追问，追问几轮合适。只看最终成单与否来打分方差极大，所以要先看「相对于该场景的平均表现」这次追问是否真的有用，再决定强化还是弱化这个动作。",
+          "pitfalls": [
+            "面试易错：把交互式感知说成「多轮推理」。多轮推理不加外部证据，信息量并没有增加；关键是动作必须从图像之外取回新证据。",
+            "把交互步数当成越多越好。无收益的取证会拖长轨迹、放大误差累积，并让上下文爆掉。",
+            "忽略基线项。稀疏结果奖励下的朴素策略梯度方差极大，训练会不稳定甚至完全学不动。"
+          ],
+          "code": "import torch\nimport torch.nn.functional as F\n\n\ndef pg_loss(logprobs, actions, rewards, baseline):\n    \"\"\"logprobs: [B,T] 每步 log pi(a_t|s_t); rewards: [B] 轨迹回报。\"\"\"\n    adv = (rewards - baseline).detach()\n    chosen = logprobs.gather(-1, actions.unsqueeze(-1)).squeeze(-1)  # [B,T]\n    return -(chosen.sum(dim=1) * adv).mean()\n\n\n# 回报只来自最终答案是否正确，外加对多余交互步的惩罚\nbaseline = rewards.mean()\nloss = pg_loss(logprobs, actions, rewards, baseline)",
+          "sources": [
+            {"title": "EviRover: Reinforcing Agentic Perception Beyond a Glance", "url": "https://arxiv.org/abs/2609.40230"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要称传统视觉感知被形式化为对单张图的一次性预测。",
+          "摘要提出「证据不足下的感知」这一情形，并把它表述为可获得单次注视之外信息的智能体过程。",
+          "摘要称设计了两条专门的数据生成流水线，产出 EviRover-SFT-5K 与 EviRover-RL-12K。",
+          "摘要称构建了 EviLens，包含五个感知类别共 688 条人工核验实例。",
+          "摘要称 4B EviRover 在 EviLens 上平均超出其骨干 30 分，达到与先进闭源模型相当的水平。",
+          "摘要称增益迁移到 WebEyes、常规感知基准与通用多模态基准，其中 BrowseComp-VL 提升 15 分。",
+          "摘要称全部代码、模型与数据均已发布。"
+        ],
+        "uncertain": [
+          "强化学习的具体算法、奖励函数构成与训练步数，摘要未给出，公式按通用策略梯度形式重建，需核对原文。",
+          "SFT-5K 与 RL-12K 中样本的构造方式与规模口径（是否含轨迹级样本）摘要未说明。",
+          "「超过骨干 30 分」的具体骨干模型与参数量、五个感知类别的名称摘要未列出。",
+          "WebEyes 与「常规感知基准」的具体提升数值摘要未给出。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "让模型别只看一眼就答题，而是学会主动去找更多证据。"},
+          {"level": "入门", "text": "以往的多模态感知把图片编码一次就输出答案。但如果问题要看清极小细节，或者需要模型训练时不可能知道的最新信息，单张图无论怎么看都不够。EviRover 把感知改造成一个可以交互的过程：模型先自评证据是否充分，不足就执行取证动作，拿到新证据再判断，最后给出答案。"},
+          {"level": "进阶", "text": "EviRover 分两段训练。第一段用专门的数据流水线造出 EviRover-SFT-5K，通过监督微调让 4B 骨干学会取证动作的格式与时机；第二段用 EviRover-RL-12K 做智能体强化学习，在结果奖励下优化策略本身，避免只是模仿示范轨迹。评测侧新建了 EviLens，688 条人工核验样本覆盖五类感知任务，用来专门考核「证据不足」场景。"},
+          {"level": "专家", "text": "和只加检索的 RAG、或只在文本侧做多轮推理的方案不同，EviRover 把「取证」当作感知的一部分并用强化学习端到端优化，因此动作空间同时覆盖视觉侧（放大细看）与知识侧（外部检索）。摘要报告 4B 模型在 EviLens 上平均涨 30 分并比肩闭源强模型，且增益迁移到 WebEyes、常规感知基准和通用多模态基准（BrowseComp-VL +15），说明学到的是可复用的取证策略而非对单一基准的过拟合。适用边界在于：环境必须提供能取回新证据的动作，且任务允许延迟作答。"}
+        ],
+        "socratic": [
+          {
+            "q": "如果不把感知改造成可交互过程，只把模型换成更大的或把图像分辨率调高，会怎样？",
+            "a": "对细粒度细节可能有效，但对「图里根本没有、参数里也没有」的信息仍然无解。摘要正是把这类场景定义为证据不足下的感知，说明瓶颈不在容量而在信息获取通道。"
+          },
+          {
+            "q": "为什么光有监督微调不够，还要再加一段智能体强化学习？",
+            "a": "监督微调只能模仿示范轨迹里的取证行为，遇到示范没覆盖的状态就无从选择。强化学习用结果奖励直接优化「该不该取证、取证几次」，能超出示范分布，但代价是奖励稀疏、训练更不稳。"
+          },
+          {
+            "q": "为什么作者要新建 EviLens 基准，而不是直接在已有感知基准上评测？",
+            "a": "常规感知基准大多假设答案能从单张图得出，无法区分「一次前向就够」和「必须取证」两类能力。EviLens 用 688 条人工核验样本专门覆盖证据不足的场景，才测得出 30 分的差距。"
+          }
+        ],
+        "mechanism": "必须这样设计的原因在于信息论层面：当答案所依赖的信息既不在这张图里、也不在参数知识里，任何只增加计算量或参数量的单次前向都无法补上这个缺口。唯一出路是引入能从环境取回新证据的动作，并把「何时取、取什么、取几次」变成可学习的决策，因此需要交互式轨迹数据做冷启动、再用结果奖励优化策略。",
+        "boundary": "当任务环境不提供任何能取回新证据的工具，或取回的信息本身错误、与图像矛盾时，该方法退化成昂贵的多轮空转。若任务要求极低延迟、必须一次前向出结果（如实时流式 caption），带取证的闭环也不适用。",
+        "analogyBoundary": "保安类比里，证据客观存在于物理世界且取回即确定。模型取回的证据可能噪声大、来源冲突且需要再判断，取证动作本身不保证收益，反而可能把错误信息带进上下文并放大；类比也没有体现训练信号只能来自稀疏的结果奖励。",
+        "misconceptions": [
+          "把「证据不足下的感知」误解成图像质量差或分辨率低，其实还包括需要知识密集且最新信息的场景。",
+          "以为多轮推理就等于主动感知；不引入外部证据的多轮只是重复思考，信息量没有增加。",
+          "以为拿到 30 分提升说明 4B 模型本身更强了，其实提升来自取证策略，骨干没变。"
+        ],
+        "ownAnalysis": "（推断）这篇的结构很像把 ReAct 式工具调用搬到视觉感知上，但关键差别在训练信号：它先造交互式数据做监督冷启动，再用结果奖励做强化学习，避开了纯提示工程的不稳定。可疑处在于摘要只给了平均分与单个基准的提升，没有报告取证步数、工具调用成本与延迟，无法判断增益是否来自「多花算力」；另（推断）EviLens 只有 688 条，五个类别下每类样本量偏小，基准分数可能对划分敏感。",
+        "officialNotes": [
+          {"position": "作者自述 EviRover 是其所知第一个被显式训练通过交互解决感知查询的感知智能体（依摘要「to our knowledge the first」）。", "source": "https://arxiv.org/abs/2609.40230"},
+          {"position": "全部代码、模型与数据已发布（摘要 All code, models, and data are released）。", "source": "https://huggingface.co/papers/2609.40230"}
+        ],
+        "interviewAnswer": "我关注 EviRover，因为它把感知从一次性预测改成了主动取证。过去我们说多模态模型看图答题，默认图里的信息加参数知识够用；但细粒度细节和需要最新知识的场景里这个假设会崩。他们的做法是把感知写成智能体过程，先自评证据是否充分，不足就调工具取证，再做判断，训练上先用自造数据做监督冷启动，然后用智能体强化学习优化取证策略。4B 模型在自建的 EviLens 上平均涨 30 分，和闭源模型接近，还迁移到 BrowseComp-VL。我觉得最值得学的是数据构造与奖励设计这两步。",
+        "studyPath": {
+          "prerequisites": ["多模态模型与视觉编码器基础", "Agent 工具调用与上下文管理", "策略梯度与强化学习基础"],
+          "nextSteps": ["读原文与已发布的 EviRover-SFT-5K / EviRover-RL-12K 数据构造细节", "对比 ReAct、Search-R1 一类工具调用训练范式", "在 EviLens 或其他需取证的多模态基准上复现基线"]
+        }
+      }
+    },
+    {
+      "id": "3ea906c6a7cd33f8",
+      "tldr": "MILO 让 agent harness 与搜索策略共同进化，在 Terminal-Bench 2.1 达 86.1%，超官方榜首。",
+      "keyPoints": [
+        "harness 决定长程表现，但其组合搜索空间大且随模型换代要重做。",
+        "现有自动化方法只优化提示或技能等单个组件，且搜索策略固定、过度利用。",
+        "MILO 以岛屿树上的层级谱系记忆保存演化历史，并把被拒变异当负证据。",
+        "每个岛屿配备变异智能体，依据全局搜索历史与父代专属反馈重写完整 harness。",
+        "编排器通过谱系嫁接与物种分化、变异体重分配与课程修订自适应调整搜索。"
+      ],
+      "why": "Agent 性能越来越取决于 harness 而非模型，会做「自动搜 harness」正是 Agent 工程与评测岗的稀缺能力。",
+      "difficulty": "hard",
+      "tags": ["agent", "evolutionary-search", "multi-agent", "harness", "benchmark"],
+      "entities": ["MILO", "Terminal-Bench 2.1", "PaperBench", "DeepSWE", "Opus 4.8", "gpt-oss-120b", "EinsteinArena"],
+      "diagram": {
+        "kind": "architecture",
+        "title": "MILO 的双层共进化架构",
+        "caption": "记住这张图：上层进化 harness，下层进化「怎么搜」，被拒变异也会作为负证据回流。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='MILO 双层共进化架构图'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>编排器</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>嫁接与分化并改课程</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>变异智能体</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>按岛屿重写完整 harness</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>岛屿树谱系记忆</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>被拒变异存为负证据</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>评测回传得分</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>三个基准上选择下一代</text>\n</svg>",
+        "spec": {
+          "type": "architecture",
+          "nodes": [
+            {"label": "编排器", "detail": "谱系嫁接与物种分化、变异体重分配、课程修订"},
+            {"label": "变异智能体", "detail": "每个岛屿一个，依据全局历史与父代反馈重写 harness"},
+            {"label": "岛屿树谱系记忆", "detail": "层级记录演化路径，被拒变异作为负证据"},
+            {"label": "评测回传", "detail": "Terminal-Bench 2.1 / PaperBench / DeepSWE 得分"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "分配与再分配变异任务"},
+            {"from": 1, "to": 2, "label": "写入后代与反馈"},
+            {"from": 2, "to": 0, "label": "全局搜索历史"},
+            {"from": 3, "to": 0, "label": "决定保留或舍弃"}
+          ]
+        },
+        "alt": "四层架构：编排器、变异智能体、岛屿树谱系记忆、评测回传得分，构成 harness 与搜索策略的双层共进化闭环。"
+      },
+      "concepts": [
+        {
+          "name": "Harness 自动发现 Automated Harness Discovery",
+          "readable": "harness 指模型外面那层控制执行的脚手架：怎么拆解任务、怎么调工具、什么时候重试、上下文怎么组织。同一个模型换个 harness，长程任务分数能差很多。所谓自动发现，就是把 harness 当成可搜索的对象，让程序自己迭代出更好的版本，而不是人一遍遍手调。",
+          "analogy": "同一个赛车手，给他一辆调校好的车能上领奖台，给他一辆刹车偏软的民用车就掉出前十。MILO 做的事相当于自动化的车队工程师：不断改悬挂、齿比和胎压，并且把「上次那个调校为什么被否掉」也记下来。",
+          "analogyBreaksDown": "赛车的调校空间有物理约束，试错便宜且可重复；harness 的搜索空间是开放文本，一次评测要跑真实任务且成本高、噪声大，同一份 harness 重跑分数也会波动，所以不能像调车那样快速穷举。",
+          "mechanism": "关键设计是让「被搜索对象」和「搜索策略」一起进化。变异智能体负责重写完整 harness（而非只改提示词），编排器负责调整谁去变异哪个岛屿、用什么课程；岛屿结构保证多样性，谱系记忆把失败的变异保留成负证据，避免重复踩坑。",
+          "visual": "画一张岛屿分布图：横轴是若干岛屿（代表不同的 harness 设计风格），纵轴是任务通过率。每个岛屿上画一棵树表示谱系分支，实心节点是存活的 harness，空心节点是被拒的变异并连一条灰色虚线指向它的失败原因标签。岛屿之间用粗箭头表示谱系嫁接与物种分化。",
+          "prerequisites": ["Agent 循环与工具调用的工程细节", "进化算法与岛屿模型的基本概念", "长程评测基准的读法（通过率、token 成本、方差）"],
+          "selfTest": [
+            "为什么摘要说 harness 搜索空间是「组合式」的，这对自动化方法意味着什么？",
+            "MILO 的谱系记忆为什么要保留「被拒的变异」，而不是直接丢弃？",
+            "编排器的谱系嫁接与物种分化分别解决搜索中的什么问题？"
+          ],
+          "formula": "P(\\text{island}_i \\mid \\mathcal{H}) = \\frac{\\exp\\!\\big(s_i / \\tau\\big)}{\\sum_{j} \\exp\\!\\big(s_j / \\tau\\big)}"
+        },
+        {
+          "name": "层级谱系记忆 Hierarchical Lineage Memory",
+          "readable": "把每次 harness 变异当成树的节点存下来，节点上记录它从哪个父代改出来、改了什么、在哪些任务上变好或变差。失败的分支不删掉，而是标成负证据；后续变异智能体既知道自己父代的具体毛病，也能看到全局搜索史的走向，从而不做已被证明无效的改动。",
+          "analogy": "像家族修谱加上病历本：后辈不只继承家产，还继承「祖父那代因为某件事栽过跟头」的记录。修谱的人不会重犯同一代人已经证明行不通的老路。",
+          "analogyBreaksDown": "家谱的因果是确定的，而 harness 变异失败可能只是因为评测噪声或随机种子；把噪声导致的失败当成负证据，会误封掉本来是好的设计方向。摘要自己也说明变异体的单次分差可能被同夜重跑波动淹没。",
+          "mechanism": "选择层级而不是扁平记忆，是因为 harness 的改动具有继承性：一个父代上的局部修改在另一个父代上可能完全无效。父代专属反馈加上全局搜索历史两条信息通道，让变异智能体既知道「这一支的毛病」，又知道「整个搜索已经探索过哪些区域」，从而在高维开放空间里少走重复路。",
+          "visual": "画一棵自左向右生长的树：横轴是演化代数，纵轴是不同岛屿。每个节点是一个 harness 版本，节点旁边用小标签写它的分数变化，被淘汰的节点画成灰色并连一条虚线到「失败模式」注释。同一代里最优的节点用更粗的边框标出，一眼能看出搜索在向哪一支收敛。",
+          "prerequisites": ["树结构与祖先路径查询的基本操作", "进化算法的选择与变异算子", "把自然语言产物当成搜索对象的思路"],
+          "selfTest": [
+            "扁平地保存所有历史版本与用岛屿树保存，差别在哪？",
+            "父代专属反馈和全局搜索历史分别给变异智能体提供了什么信息？",
+            "如果把被拒变异直接删掉，MILO 最可能退化成什么样的搜索行为？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-island-selection-temperature",
+          "name": "岛屿选择的温度采样 (Temperature Sampling over Islands)",
+          "category": "agent",
+          "latex": "P(\\text{island}_i \\mid \\mathcal{H}) = \\frac{\\exp(s_i / \\tau)}{\\sum_{j=1}^{K} \\exp(s_j / \\tau)}, \\qquad \\tau > 0",
+          "symbols": [
+            ["K", "岛屿数量，每个岛屿维护一条独立的 harness 演化支线"],
+            ["s_i", "岛屿 i 的当前得分估计（如任务通过率或加权回报）"],
+            ["\\mathcal{H}", "全局搜索历史，包含层级谱系记忆与变异反馈"],
+            ["\\tau", "温度系数，控制探索与利用的倾斜程度"],
+            ["P(\\text{island}_i \\mid \\mathcal{H})", "编排器把下一次变异任务分配给岛屿 i 的概率"]
+          ],
+          "derivation": [
+            "第 1 步：motivation——固定且过度利用的搜索策略会早早收敛到局部最优，所以需要让「把算力投给哪个岛屿」本身也随搜索进展变化。",
+            "第 2 步：用一个温度化的 softmax 把各岛屿得分转成分配概率，τ 越小越集中在当前最好的岛屿，τ 越大越平均。",
+            "第 3 步：编排器再叠加谱系嫁接（把一支的优良片段移到另一支）与物种分化（在新的设计方向上开新岛屿），等价于动态调整 s_i 与岛屿集合本身。",
+            "第 4 步：随着搜索推进逐步调低 τ，实现先广撒网、后集中优化的退火式行为，与摘要所述「编排器自适应调整搜索」对应。"
+          ],
+          "analogy": "像分班辅导：一开始把老师分散到多个班试探各自风格，等某班明显出成绩就把师资往那倾斜，但仍保留少量资源给其他班，避免所有人都赌在同一种教法上。",
+          "pitfalls": [
+            "面试易错：把岛屿模型说成「并行跑多个随机种子」。岛屿之间要靠谱系嫁接和物种分化真正交换信息，否则只是重复实验。",
+            "温度设得过低会退化成贪心选择，多样性消失，正是摘要批评现有方法「固定、过度利用」的老问题。",
+            "得分 s_i 若来自单次评测，噪声会被 softmax 放大，选出「运气好的岛屿」，需要重跑或多任务平均压低方差。"
+          ],
+          "code": "import torch\n\n\ndef sample_island(scores, tau=1.0):\n    \"\"\"scores: [K] 各岛屿当前得分; 返回下一次要变异的岛屿下标。\"\"\"\n    scores = torch.as_tensor(scores, dtype=torch.float32)\n    probs = torch.softmax(scores / tau, dim=0)\n    return int(torch.multinomial(probs, num_samples=1).item())\n\n\n# 退火：搜索早期温度高保多样性，后期降低以集中算力\nisland = sample_island([0.41, 0.63, 0.55], tau=0.7)",
+          "sources": [
+            {"title": "MILO: Automated Harness Discovery via Orchestrated Multi-Agent Evolution", "url": "https://arxiv.org/abs/2609.38349"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要称现代 agentic 系统由 AI 模型加控制执行与环境交互的 harness 组成。",
+          "摘要称 harness 设计强烈影响长程表现，其组合搜索空间需要大量人力且会随模型换代而重复投入。",
+          "摘要称现有自动化方法搜索范围窄（只优化提示或技能等组件）或受固定、过度利用的搜索策略所困。",
+          "摘要称 MILO 结合层级谱系记忆、逐岛屿变异智能体与自适应编排器三种机制。",
+          "摘要称在 Terminal-Bench 2.1、PaperBench、DeepSWE 上，MILO 发现的 harness 超过八个先进 harness 与六种搜索方法。",
+          "摘要称使用 Opus 4.8 时相对初始 harness 分别提升 12.0%、28.3%、10.3%，而此前最佳搜索方法的增益为 4.5%、18.3%、0%。",
+          "摘要称在 Terminal-Bench 2.1 上达到 86.1±2.0%，超过官方榜首的 83.8±2.3%，且比初始 harness 少用 26% token。",
+          "摘要称在 EinsteinArena 开放问题上改进了 Erdős 最小重叠与第一、第三自相关不等式的最好已知上界。"
+        ],
+        "uncertain": [
+          "「八个先进 harness 与六种搜索方法」的具体名称、版本与评测配置摘要未列出。",
+          "表格中的 Opus 4.8、gpt-oss-120b 名称疑为占位或代称，需人工核对真实模型标识。",
+          "Erdős 最小重叠等上界改进的数值精度与验证方式，摘要未说明是否经第三方复核。",
+          "公式为按摘要描述的岛屿式演化搜索重建的通用形式，需核对原文中的实际分配与选择规则。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "让机器自己迭代 agent 的外壳，还顺便学会更聪明的找法。"},
+          {"level": "入门", "text": "同一个模型，外面那层控制执行与工具交互的 harness 不同，长程任务成绩差很多。但 harness 的组合空间极大，人调一次，模型一换代就得重调。MILO 把这件事自动化：让多个变异智能体各自重写完整 harness，再用编排器决定把算力投给哪个方向。"},
+          {"level": "进阶", "text": "MILO 有三个部件。层级谱系记忆把演化历史存在岛屿树上，连被拒的变异也留作负证据；每个岛屿配一个变异智能体，依据全局搜索历史和父代专属反馈重写整个 harness，而不是只改提示词；编排器通过谱系嫁接与物种分化、变异体重分配和课程修订，让「怎么搜」本身也一起进化，避免固定策略带来的过度利用。"},
+          {"level": "专家", "text": "与只优化提示或技能库的自动化方法相比，MILO 的搜索单位是整个 harness，搜索策略本身也是被优化的对象，这使它在模型换代后不必从零重来。摘要报告在 Terminal-Bench 2.1、PaperBench、DeepSWE 上超过八个先进 harness 与六种搜索方法，用 Opus 4.8 时相对初始 harness 提升 12.0/28.3/10.3 个百分点，而此前最佳搜索方法只有 4.5/18.3/0；Terminal-Bench 2.1 上达 86.1±2.0% 并比初始 harness 少用 26% token。适用边界是评测成本与噪声：harness 的好坏只能通过真实任务测量，搜索轮数与单次评测方差会直接决定结论可信度。"}
+        ],
+        "socratic": [
+          {
+            "q": "如果只优化提示词而不重写整个 harness，会怎样？",
+            "a": "提示词只是 harness 的一个组件。工具定义、重试策略、上下文裁剪、终止条件这些同样影响长程表现的部分改不动，搜索空间被人为截断，所以摘要说这类方法「探索得窄」。"
+          },
+          {
+            "q": "为什么非要把被拒绝的变异留下来？",
+            "a": "在开放文本搜索空间里，失败模式是最便宜的负样本。记下某种改法在哪个父代上变差，后续变异就能避开同一坑，省下的评测预算可以投到真正新的方向上。"
+          },
+          {
+            "q": "搜索策略固定、只做利用，具体坏在哪？",
+            "a": "早期偶然得分高的方向会把后续算力全部吸走，多样性塌缩，之后即使存在更好的设计也再没机会被采样到。这正是摘要批评现有方法「受固定、过度利用的搜索策略所困」的含义。"
+          }
+        ],
+        "mechanism": "必须让搜索策略跟着进化，是因为 harness 的适应度景观随模型换代而移动：今天有效的改法换个模型可能失效，固定策略无法预知该往哪探索。把搜索单位从「提示词片段」放大到「完整 harness」则是为了让改动可以跨组件重组，避免局部最优。谱系记忆提供不可伪造的历史约束，编排器提供探索方向的宏观调度，两者缺一都会退化成随机重写或纯贪心。",
+        "boundary": "当评测代价极高、单次评测方差接近方法间差异时，MILO 的搜索信号会被噪声主导，选出的可能是运气好的 harness。若目标任务极短、harness 影响本就很小，投入大量评测预算做自动发现并不划算。需要模型接口支持长程 agent 循环与可复现的沙箱，否则无法稳定评测。",
+        "analogyBoundary": "赛车队类比里调校空间受物理定律约束、试错便宜且可重复。harness 搜索是开放文本空间，评测要花真实算力且结果有随机性，同一份 harness 重跑分数也会漂移，所以不能指望靠密集试错穷举，必须靠记忆与调度省预算。",
+        "misconceptions": [
+          "把 MILO 理解成「自动提示词优化」。它的搜索单位是完整 harness，提示词只是其中一项。",
+          "以为多岛屿就等于多开几个并行任务；没有谱系嫁接与分化就只是重复实验。",
+          "看到分数提升就认定方法普适，忽略摘要里评测成本、单机或单次评测带来的方差问题。"
+        ],
+        "ownAnalysis": "（推断）MILO 更像是把质量-多样性搜索（如 MAP-Elites、岛屿模型）与 LLM 变异算子结合，并用编排器做元层调度，这与 AlphaEvolve 一类自动发现程序的思路同源。可疑处是评测可比性：摘要既报 Terminal-Bench 2.1 的 86.1±2.0% 又强调比初始 harness 少 26% token，但没有说明两者是否在不同 token 预算下评测；若预算不同，跨方法的分数对比会失真。另（推断）EinsteinArena 上对最好已知上界的改进幅度在第 6 位小数量级，需确认是否为显著改进而非数值容差内变动。",
+        "officialNotes": [
+          {"position": "作者自述在三个基准上 MILO 发现的 harness 超过八个先进 harness 与六种搜索方法（依摘要）。", "source": "https://arxiv.org/abs/2609.38349"},
+          {"position": "作者报告 Terminal-Bench 2.1 达 86.1±2.0%，超过官方榜首的 83.8±2.3%（依摘要）。", "source": "https://arxiv.org/abs/2609.38349"}
+        ],
+        "interviewAnswer": "MILO 解决的是 agent 工程里的一个真实痛点：harness 决定长程表现，但组合空间大、模型一换代还要重调。它的做法是把 harness 和搜索策略一起进化：用岛屿树上的层级谱系记忆保存历史，把被拒变异当负证据；每个岛屿一个变异智能体，重写完整 harness 而不只是提示词；编排器用谱系嫁接、物种分化和课程修订调度搜索。结果在 Terminal-Bench 2.1 上到 86.1%，超过官方榜首，还比初始 harness 省 26% token。我会关注它的评测预算与方差控制。",
+        "studyPath": {
+          "prerequisites": ["Agent 循环、工具调用与上下文管理", "进化算法与岛屿模型、质量-多样性搜索", "长程 agent 基准的评测方法"],
+          "nextSteps": ["读原文中岛屿树、变异算子与编排器调度的具体实现", "复现其在 Terminal-Bench 2.1 上的评测配置与 token 预算", "对比 AlphaEvolve、ADAS 一类自动发现方法"]
+        }
+      }
+    },
+    {
+      "id": "67322b1664692cd2",
+      "tldr": "Mingbird：本地优先 harness 用十个机制补小模型短板，LRAB 拿 0.886 远超同类。",
+      "keyPoints": [
+        "2-9B 小模型能在笔记本上跑，但在云端规模 harness 下常完不成真实任务。",
+        "摘要列举四类失败：工具预填撑爆上下文、自我纠错跑偏、工具示范打转、任务被静默放弃。",
+        "Mingbird 面向 Windows 与 Ollama，用十个机制逐条对应小模型失败形态。",
+        "三个代表机制：字节级净零预填预算、接收前重读任务的完成闸门、签名级循环检测。",
+        "LRAB 上 0.886，对比 0.631/0.479/0.405，288 格全部公开。"
+      ],
+      "why": "它把「失败到底怪模型还是怪 harness」变成可测量的对照实验，是 agent 工程与评测岗的核心方法论。",
+      "difficulty": "medium",
+      "tags": ["agent", "harness", "local-llm", "evaluation", "engineering"],
+      "entities": ["Mingbird", "Ollama", "LRAB", "tau2-bench", "goose", "opencode", "agent-mini"],
+      "diagram": {
+        "kind": "flow",
+        "title": "把失败从模型转回 harness",
+        "caption": "记住这张图：先证明大部分失败源于 harness，再逐条机制去补小模型的每种失败形态。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Mingbird 从失败归因到机制补齐的流程图'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>小模型失败</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>预填爆上下文与打转</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>单机对照实验</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>固定机器模型与评分</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>归因给 harness</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>换个壳分数就变</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>十个机制逐条补齐</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>LRAB 上 0.886 对 0.631</text>\n</svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {"label": "小模型失败", "detail": "预填溢出、纠错发散、示范循环、静默放弃"},
+            {"label": "单机对照", "detail": "固定机器、模型、预算与评分"},
+            {"label": "归因给 harness", "detail": "换 harness 分数大幅变化"},
+            {"label": "机制补齐", "detail": "十个机制对应失败形态"},
+            {"label": "LRAB 结果", "detail": "0.886 对 0.631/0.479/0.405"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "受控复现"},
+            {"from": 1, "to": 2, "label": "仅改变 harness"},
+            {"from": 2, "to": 3, "label": "按失败形态设计"},
+            {"from": 3, "to": 4, "label": "确定性产物评分"}
+          ]
+        },
+        "alt": "五层流程：小模型失败形态、单机对照实验、归因给 harness、十个机制补齐、LRAB 基准结果对比。"
+      },
+      "concepts": [
+        {
+          "name": "完成闸门 Finish Gate",
+          "readable": "小模型经常在任务没做完时就输出终止信号，然后被 harness 当成「完成」而静默放弃。完成闸门要求模型在宣告完成前把原始任务重读一遍，逐项确认要求是否真的满足，不满足就继续做，而不是接受第一次出现的停止信号。",
+          "analogy": "像后厨出餐前的核对：菜做好了不代表单子完成了，出餐员必须把点单重读一遍，确认没有漏掉「不加香菜」「饮料另装」这种附加要求，才允许端出去。",
+          "analogyBreaksDown": "后厨的核对项是确定且可枚举的，而自然语言任务的要求边界模糊，重读任务本身仍要靠模型判断。若任务含主观或未明说的验收标准，闸门只能减少静默放弃，不能保证判定正确，也可能把「其实已完成」的任务判回去继续做。",
+          "mechanism": "关键设计是把「是否完成」从模型的一次性直觉输出，改成一次显式的重新核对步骤，并把核对结果作为能否退出的门控条件。它针对的是「任务被静默放弃」这一失败形态：不改变模型能力，只堵住提前退出的漏洞。摘要提到与纯文本重读对照时，可执行的完成守卫带来三个重复下 +0.10 的配对提升。",
+          "visual": "画一张两分支的判定图：模型输出「我认为完成」后进入闸门节点，闸门把原始任务逐条列成勾选清单，全部勾上才走向「结束并交付」，任一未勾则回到「继续执行」并标注缺哪一项。用颜色深浅表示被判回去的频次。",
+          "prerequisites": ["agent 循环的终止条件设计", "任务验收标准与可执行检查的区别", "评测中如何构造确定性评分"],
+          "selfTest": [
+            "完成闸门针对的是四类失败形态里的哪一类？",
+            "为什么摘要强调「可执行的完成守卫」比纯文本重读更可信？",
+            "完成闸门在什么情况下会带来负收益？"
+          ],
+          "formula": "\\text{accept} = \\mathbb{1}\\!\\left[\\bigwedge_{c \\in \\mathcal{C}} \\text{check}_c(\\text{task}, \\text{trace}) = 1\\right]"
+        },
+        {
+          "name": "字节级净零预填预算 Byte-level Net-zero Prefill Budget",
+          "readable": "每一轮发给小模型的提示都被压缩到固定字节预算内：新加入多少内容，就裁掉多少旧内容，总量净零增长。这样多轮工具调用不会把 2-9B 模型的上下文窗口或显存撑爆，从而避免「工具预填溢出导致任务中断」这一失败形态。",
+          "analogy": "像用一块固定大小的白板开会：新写一条就得擦掉一条。空间永远够用，但你必须决定哪条旧信息最不值得留。",
+          "analogyBreaksDown": "白板擦掉就没了，而字节级裁剪更危险：它按字节截断，可能把关键的工具返回值或任务约束从中间切断，也可能保留大量无用样板。固定预算并不等于信息保真，模型仍可能因为丢了关键证据而失败。",
+          "mechanism": "关键设计选择是用硬性字节配额替代「能塞多少塞多少」，把内存压力转成裁剪策略问题。它解决的是小模型在云端规模 harness 下的溢出失败：大模型容忍长上下文，小模型的窗口和显存则直接决定任务能否跑完。摘要把净零预填列为三个代表机制之一，说明它与上下文管理强相关。",
+          "visual": "画一条固定的水平容量线代表字节预算，下面用堆叠条形图表示每轮提示的构成：系统提示、任务、历史工具调用、最新工具结果。每轮新进入的块用斜纹标出，被裁掉的块用空心框标出，一眼看出总量始终压在线下。",
+          "prerequisites": ["Transformer 上下文窗口与 KV 缓存开销", "Ollama 等本地推理服务的工程约束", "工具调用消息格式"],
+          "selfTest": [
+            "净零预填解决的是四类失败形态里的哪一类？",
+            "固定字节预算相比按需增长，引入了什么新的风险？",
+            "为什么这个问题在大模型上不明显，在小模型上却是主要失败源？"
+          ],
+          "formula": "B_{t} = B_{t-1} + \\Delta^{+}_{t} - \\Delta^{-}_{t} = B_{\\max}"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-net-zero-prefill",
+          "name": "净零预填预算 (Net-zero Prefill Budget)",
+          "category": "engineering",
+          "latex": "B_{t} = \\min\\!\\left(B_{t-1} + \\Delta^{+}_{t},\\; B_{\\max}\\right), \\qquad \\Delta^{-}_{t} = B_{t-1} + \\Delta^{+}_{t} - B_{t}",
+          "symbols": [
+            ["B_t", "第 t 轮的提示总字节数，恒被压到不超过 B_max"],
+            ["B_{\\max}", "硬性字节预算，由小模型的上下文窗口与显存决定"],
+            ["\\Delta^{+}_{t}", "第 t 轮新加入的内容，主要是新的工具调用结果"],
+            ["\\Delta^{-}_{t}", "为保持净零而裁掉的旧内容字节数"],
+            ["t", "agent 循环的轮次索引"]
+          ],
+          "derivation": [
+            "第 1 步：motivation——小模型上下文窗口小，而 agent 每轮都会追加工具返回，内容单调增长，最终溢出并导致任务中断。",
+            "第 2 步：设一个硬上限 B_max，让提示长度在每轮注入新内容后都被重新压回该上限，即净增长为零。",
+            "第 3 步：由长度守恒反解需要裁掉的字节数 Δ⁻_t，把「该丢什么」变成一个显式的裁剪策略问题。",
+            "第 4 步：裁剪策略要优先保留任务约束与最新工具结果（推断，摘要未给出具体优先级），并对工具返回值做结构化截断而非任意字节截断，以降低丢关键证据的概率。"
+          ],
+          "analogy": "像固定大小的行李箱：每往里放一件衣服就必须拿出一件。箱子永远不会合不上，但装箱的人要为「丢哪件」负责，丢错了到目的地就要挨冻。",
+          "pitfalls": [
+            "面试易错：把净零预填说成压缩上下文或摘要记忆。净零是字节预算的守恒约束，未必带语义压缩。",
+            "按字节随意截断会切断结构化工具输出，产生语法不完整的上下文，反而制造新的失败。",
+            "预算设得过小会让模型丢失任务约束，表现为反复重做同一件事；预算不是越小越省越好。"
+          ],
+          "code": "def net_zero_prefill(parts, new_part, budget):\n    \"\"\"parts: 按优先级升序排列的旧片段(最先被裁); budget: 字节上限。\"\"\"\n    kept, used = [], 0\n    for seg in reversed(parts):  # 从最该保留的开始装箱\n        b = len(seg.encode('utf-8'))\n        if used + b > budget:\n            break\n        kept.append(seg)\n        used += b\n    kept.reverse()\n    room = budget - used\n    nb = len(new_part.encode('utf-8'))\n    if nb > room:  # 新工具结果也要按结构截断，不切坏 JSON\n        new_part = new_part.encode('utf-8')[:room].decode('utf-8', 'ignore')\n    return kept + [new_part]",
+          "sources": [
+            {"title": "Mingbird: A Local-First Agent Harness Enabling Small Open Models to Complete Real Tasks", "url": "https://arxiv.org/abs/2610.02001v1"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要称 2-9B 的小型开放权重模型能在普通笔记本上运行，但在云端规模 agent harness 下很少完成真实任务。",
+          "摘要列举四类失败：工具预填溢出上下文、自我纠错发散、工具示范循环、任务被静默放弃。",
+          "摘要称来自受控单机比较与一个第三方基准的证据表明，这些失败中有相当一部分应归因于 harness 而非模型。",
+          "摘要称 Mingbird 面向 Windows 与 Ollama，用十个机制逐条对应小模型失败形态。",
+          "摘要称三个代表机制为字节级净零预填预算、接受完成前重读任务的完成闸门、签名级循环检测。",
+          "摘要称 LRAB 上 Mingbird 达 0.886，对比 goose 0.631、opencode 0.479、agent-mini 0.405，288 个格子全部公开。",
+          "摘要称 tau2-bench 上（278 任务、三臂、单一协议）Mingbird 总计 0.856，对比 0.791 与 0.737。",
+          "摘要称留一机制消融只作方向性参考：同夜重复实验使同一臂均值最多移动 0.069。",
+          "摘要称证据局限包括自建基准、单台机器与单次评分。"
+        ],
+        "uncertain": [
+          "十个机制中除三个代表外的另外七个名称与作用，摘要未列出。",
+          "LRAB 的 18 个真实任务内容、确定性产物评分的具体口径，摘要未给出。",
+          "「前沿模型探测」所用的具体模型名称，以及 0.997 到 0.478 分别属于哪个 harness，摘要未说明。",
+          "公式为按摘要「字节级净零预填预算」重建的通用形式，裁剪优先级属推断，需核对原文。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "小模型完不成任务，很多时候不是模型笨，而是外壳写坏了。"},
+          {"level": "入门", "text": "2 到 9B 的小模型已经能跑在笔记本上，但套上为云端大模型设计的 agent 外壳后，经常完不成真实任务：工具返回把上下文塞爆、自我纠错越纠越偏、重复调用同一个工具、任务没做完就悄悄结束。作者用单机对照实验说明，相当一部分失败要算在外壳头上。"},
+          {"level": "进阶", "text": "Mingbird 是面向 Windows 与 Ollama 的本地优先 harness，用十个机制逐条对应上述失败形态。三个代表：字节级净零预填预算，让每轮提示总量不增长，避免溢出；完成闸门，在宣告完成前重读原始任务，堵住静默放弃；签名级循环检测，识别重复的工具调用模式并打断。在受控的 LRAB 上，机器、模型、预算与评分都固定，只换 harness，Mingbird 得 0.886，对手是 0.631、0.479 和 0.405。"},
+          {"level": "专家", "text": "这篇的价值一半在方法、一半在诚实。方法上是把 harness 当成一等公民：同一批 2B 到 35B 的开放模型在四个 harness 下跑 18 个真实任务，用确定性产物评分，288 个格子全部公开，再用前沿模型的同任务探测说明分数在 0.997 到 0.478 之间主要随 harness 变化，构造良好的脚手架彼此差距在 0.072 内。诚实之处在于它主动声明留一消融只能作方向性参考：同夜重复使同一臂均值最多移动 0.069，恰好等于所有单次试验的名义差值；唯一批次匹配的比较是完整机制栈对纯文本重读，得到三个重复下 +0.10 的配对提升。局限是自建基准、单机与单次评分。"}
+        ],
+        "socratic": [
+          {
+            "q": "如果不做单机受控对照，直接在云端 harness 上测小模型，会得出什么错误结论？",
+            "a": "会把 harness 造成的失败记在模型账上，结论变成「小模型不行」。而受控比较固定机器、模型、预算与评分，只改 harness，才能把失败归因分开。"
+          },
+          {
+            "q": "为什么作者要主动声明留一机制消融只是方向性的？",
+            "a": "因为同一臂同夜重复实验的均值波动可达 0.069，和它报告的单次试验差值同量级。不声明的话，读者会把噪声当成机制贡献，反而损害结论可信度。"
+          },
+          {
+            "q": "把完成判定交给模型的直觉，为什么在小模型上格外危险？",
+            "a": "小模型更容易过早输出停止信号，且不像大模型能在长上下文里自我纠正。一旦 harness 直接把停止信号当作完成，任务就会被静默放弃，评测上表现为失败但没有报错。"
+          }
+        ],
+        "mechanism": "必须逐条机制对应失败形态，是因为小模型的失败模式与失败原因之间有明确的因果链：上下文窗口小导致溢出，指令跟随弱导致提前退出，模式重复倾向导致工具循环。通用型 harness 为云端大模型设计，默认这些约束不存在，于是每一条都变成实际故障。把约束写成硬性机制（字节预算、门控退出、签名去重）而不是靠提示词提醒，才能在小模型的容错空间内稳定工作。",
+        "boundary": "结论建立在自建基准 LRAB、单台机器与单次评分之上，作者自己声明了这些限制，因此 0.886 这类绝对值不宜直接外推到其他任务分布或硬件。留一消融的差值被重复实验波动淹没，单个机制的独立贡献尚不明确。对需要多机并发或大量外部 API 的场景，本地优先的设计也可能不适用。",
+        "analogyBoundary": "白板与行李箱的类比都假设「丢哪条信息」可以当场判断。真实上下文里，工具返回值的关键性往往要到后面几步才显现，裁剪时并不知道；而且字节截断可能破坏结构，比擦掉白板上的整句话更糟。类比也没体现小模型指令跟随弱带来的额外失败。",
+        "misconceptions": [
+          "把「失败归因于 harness」理解成模型无关。摘要说的是相当一部分失败来自 harness，而非全部。",
+          "以为十个机制越多越好，忽略作者说明的留一消融只具方向性、机制贡献未经可靠测量。",
+          "把 0.886 当成可泛化的绝对水平，忽略它是自建基准、单机、单次评分的结果。"
+        ],
+        "ownAnalysis": "（推断）这篇的贡献结构更接近一份严谨的 harness 工程报告：核心不在于某个新奇算法，而在于把「模型能力」与「外壳质量」用受控变量法拆开，这与 SWE-bench 时代强调 scaffold 影响的观察一致。可疑处在于对照的公平性——若其他 harness 并未针对 2-9B 小模型调优，0.886 对 0.405 的差距会同时包含「为小模型定制」和「机制更好」两个因素；摘要也承认唯一批次匹配的机制级证据只有 +0.10。另（推断）tau2-bench 上三臂只报总分而未报任务类型分解，掩盖了机制对不同任务族的效果差异。",
+        "officialNotes": [
+          {"position": "作者自述证据局限为自建基准、单台机器与单次评分（依摘要 the evidence carries stated limits）。", "source": "https://arxiv.org/abs/2610.02001v1"},
+          {"position": "作者声明留一机制消融仅作方向性参考，同夜重复可使同臂均值移动最多 0.069（依摘要）。", "source": "https://arxiv.org/abs/2610.02001v1"}
+        ],
+        "interviewAnswer": "我关注 Mingbird，因为它示范了怎么把 agent 失败做正确的归因。小模型跑在云端大模型的外壳里完不成任务，很容易被归因成模型不行。他们用单机受控比较，固定机器、模型、预算和评分，只换 harness，在 18 个真实任务上让 0.886 对 0.631、0.479、0.405，还公开全部 288 个格子，说明相当一部分失败来自外壳。它的十个机制逐条对应失败形态，比如净零预填防溢出、完成闸门防静默放弃。我更欣赏它主动声明自建基准、单机、单次评分这些小样本局限。",
+        "studyPath": {
+          "prerequisites": ["agent 循环、工具调用与上下文窗口管理", "本地推理栈（Ollama、量化模型）的工程常识", "受控实验设计与评测方差"],
+          "nextSteps": ["读原文十个机制的完整清单与留一消融细节", "在自建任务集上复现 LRAB 的确定性产物评分流程", "对比 OpenAI Swarm、goose 等 harness 的上下文策略"]
+        }
+      }
+    },
+    {
+      "id": "cbfe6087f9c43604",
+      "tldr": "Haystack：开源 LLM 应用编排框架，用模块化 pipeline 显式控制检索、路由、记忆与生成。",
+      "keyPoints": [
+        "开源 AI 编排框架，目标是构建经上下文工程、可上生产的 LLM 应用。",
+        "以模块化 pipeline 与 agent 工作流为组织方式。",
+        "对检索、路由、记忆与生成提供显式控制，而非藏在黑盒里。",
+        "面向可扩展 agent、RAG、多模态应用、语义检索与对话系统。"
+      ],
+      "why": "工业 RAG 与 Agent 岗几乎都在用编排框架，读懂它的组件与显式控制模型是上手真实项目的最短路径。",
+      "difficulty": "easy",
+      "tags": ["agent-framework", "rag", "orchestration", "python", "context-engineering"],
+      "entities": ["Haystack", "deepset-ai", "RAG", "LLM pipelines", "agents"],
+      "diagram": {
+        "kind": "architecture",
+        "title": "Haystack 的模块化编排分层",
+        "caption": "记住这张图：把 LLM 应用拆成可替换组件，用 pipeline 显式规定数据怎么流。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Haystack 模块化编排分层图'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>应用层</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>RAG 问答与语义检索</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>编排层</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>模块化 pipeline 与路由</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>组件层</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>检索与生成与记忆可替换</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>上下文工程</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>显式控制进入模型的内容</text>\n</svg>",
+        "spec": {
+          "type": "architecture",
+          "nodes": [
+            {"label": "应用层", "detail": "RAG、语义检索、对话系统与多模态应用"},
+            {"label": "编排层", "detail": "模块化 pipeline 与 agent 工作流、路由"},
+            {"label": "组件层", "detail": "检索、记忆、生成等可替换模块"},
+            {"label": "上下文工程", "detail": "显式控制送入模型的内容"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "以 pipeline 组织"},
+            {"from": 1, "to": 2, "label": "按模块装配"},
+            {"from": 2, "to": 3, "label": "决定上下文构成"},
+            {"from": 1, "to": 0, "label": "面向生产部署"}
+          ]
+        },
+        "alt": "四层架构：应用层、编排层、组件层与上下文工程，展示 Haystack 用模块化 pipeline 显式控制检索、路由、记忆与生成。"
+      },
+      "concepts": [
+        {
+          "name": "模块化 Pipeline 编排 Modular Pipeline Orchestration",
+          "readable": "Haystack 把 LLM 应用拆成一个个独立组件：取文档的、切块的、做检索的、做路由的、生成答案的。你把这些组件连成一张有向图（pipeline），数据按边从上游流到下游。要换向量库或换模型，只替换对应节点，其他部分不动。",
+          "analogy": "像用标准接口的音响套装：功放、唱机、音箱各自独立，想升级音箱只换音箱，线材和功放都不用动。套装组合式的一体机反而升级时得整台扔掉。",
+          "analogyBreaksDown": "音响的接口是行业标准且信号语义单一，而 pipeline 节点之间的数据结构更松，换一个检索组件后返回字段可能对不上，仍需要改下游的连接与适配代码；组件兼容性并不像硬件那样有强制标准。",
+          "mechanism": "关键设计是把「控制流」显式写成图，而不是藏在某段长提示词或某个不可见的 agent 循环里。这样检索、路由、记忆、生成各自可观测、可替换、可单独测试，问题定位从「模型答错了」变成「第几个节点输出了什么」，这是它声称可上生产的原因。",
+          "visual": "画一张有向无环图：左侧是查询输入，中间并排画检索节点、路由节点、记忆节点，右侧是生成节点与答案输出。每个节点画成圆角矩形并标注输入输出字段名，边用箭头连接。用不同底色区分「可替换组件」与「框架固定逻辑」，突出替换点。",
+          "prerequisites": ["Python 包管理与虚拟环境", "RAG 的基本流程（切块、嵌入、检索、生成）", "LLM API 调用的基本形态"],
+          "selfTest": [
+            "模块化 pipeline 相比把所有逻辑写在一段提示词里，主要优势是什么？",
+            "如果要更换向量数据库，按这种架构需要改动哪些部分？",
+            "为什么「显式控制」对生产环境的故障定位特别重要？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "上下文工程 Context Engineering",
+          "readable": "指在设计阶段就明确规定「什么内容、以什么顺序、以多大篇幅进入模型的上下文」，而不是随手把检索结果拼进提示词。Haystack 把检索、路由与记忆都做成可控节点，等于把上下文的组装过程变成可检查、可调优的显式步骤。",
+          "analogy": "像给编辑交稿前排版：不是把所有素材一股脑塞进版面，而是决定哪条放头条、哪条做侧栏、哪条删掉。版面的说服力取决于取舍，而不是素材总量。",
+          "analogyBreaksDown": "排版的效果可以靠读者反馈直接判断，而上下文的取舍效果要通过模型输出间接推断，且存在大量与任务无关的冗余内容照样能答对的情况，使得「少了会更好」这一直觉并不总成立。",
+          "mechanism": "关键设计是把上下文的每个来源（检索片段、记忆、工具返回）都做成带明确输入输出的节点，从而能单独计量与替换。它解决的是 RAG 系统里最难排查的一类问题：答案错了到底是检索没召回，还是召回后被无关内容淹没了。",
+          "visual": "画一条横向的容量条代表上下文窗口，分成若干彩色区块：系统指令、对话记忆、检索片段、工具返回、用户问题。旁边并排画出「显式控制」与「全塞进去」两种分配，后者把大量灰色冗余块挤进来，挤掉了关键片段。",
+          "prerequisites": ["提示工程的基本经验", "检索召回与排序的评价指标", "上下文窗口与成本的基本权衡"],
+          "selfTest": [
+            "上下文工程与提示工程的区别在哪？",
+            "为什么说「检索没召回」和「召回被淹没」需要不同的排查手段？",
+            "上下文里内容越多是否越容易答对？为什么？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "该项目自述为开源 AI 编排框架，用于构建经上下文工程、可上生产的 LLM 应用。",
+          "该项目自述支持设计模块化 pipeline 与 agent 工作流。",
+          "该项目自述对检索、路由、记忆与生成提供显式控制。",
+          "该项目自述面向可扩展 agent、RAG、多模态应用、语义检索与对话系统。"
+        ],
+        "uncertain": [
+          "仓库摘要为简短项目介绍，未给出任何实现细节、基准数值或对比结论，因此本文不含公式与定量断言。",
+          "许可证、活跃维护状态、依赖与版本要求等工程细节需核对仓库页面，摘要未提及。",
+          "摘要列出的能力（多模态、记忆、路由）在具体版本中的成熟度无法从摘要判断。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "一个把 LLM 应用拆成可替换零件、再连成流水线的开源框架。"},
+          {"level": "入门", "text": "做 LLM 应用时，检索、切块、路由、记忆、生成这些步骤常常被写成一团。Haystack 把它们拆成独立组件，再连成有向图式的 pipeline，数据从上游流到下游。好处是换向量库或换模型时只动对应节点，出问题时也能看出是哪一步的输入输出不对。"},
+          {"level": "进阶", "text": "它的定位是编排框架：既支持模块化 pipeline，也支持 agent 工作流，并强调对检索、路由、记忆与生成有显式控制，也就是所谓上下文工程。这意味着上下文的组装过程是可见的步骤，而不是塞进一大段提示词里靠模型自己找。适用场景包括可扩展 agent、RAG、多模态应用、语义检索与对话系统。"},
+          {"level": "专家", "text": "把它和端到端 agent 框架对比：后者把控制流交给模型的自主循环，写起来快但难以定位失败环节；Haystack 选择显式的图结构，牺牲一部分灵活性换取可观测性与可替换性，这让它更适合需要上生产的 RAG 与检索型系统。代价是你要自己设计好节点边界与数据契约，节点划分不当会带来大量胶水代码。判断是否采用它，关键看你的系统是「检索与路由逻辑为主」还是「开放式自主决策为主」。"}
+        ],
+        "socratic": [
+          {
+            "q": "如果不用框架，自己用函数串起检索与生成，会缺什么？",
+            "a": "短期能跑通，但缺少统一的组件接口与数据契约，换模型或换检索器要改多处代码，也缺少对每一步输入输出的观测，生产环境定位问题会变得很慢。"
+          },
+          {
+            "q": "为什么「显式控制」比让模型自主决定检索更好用？",
+            "a": "显式控制让检索、路由、记忆成为可单独测试与替换的步骤。模型自主决策灵活但在出错时难以复现和归因，且成本和延迟不可控，不适合需要稳定性的生产系统。"
+          }
+        ],
+        "mechanism": "它的设计动因是 LLM 应用的主要故障不在模型本身，而在上下文组装：该召回的没召回、召回了却被无关内容挤掉、路由走错分支。把这些环节做成显式的、有明确输入输出的节点，等于给系统装了观测点，每个环节都能单独评测和替换，从而把不可调试的端到端黑盒拆成可定位的流水线。",
+        "boundary": "当任务需要高度开放的自主决策、步骤无法预先枚举时，显式图结构会成为束缚，你得不断为模型的新行为加节点，反而不如自主 agent 循环。对只需要单次 LLM 调用的极简应用，引入框架的抽象成本高于收益。仓库摘要未给出版本与性能信息，选型前需要自行验证维护状态与生态成熟度。",
+        "analogyBoundary": "音响套装的类比假设接口有强制标准、信号语义单一。pipeline 节点之间的数据契约由框架约定而非物理强制，替换组件后字段结构可能不匹配，仍需适配代码；组件越多，胶水与版本冲突的风险也越高。",
+        "misconceptions": [
+          "把 Haystack 当成又一个 agent 自主循环框架；它的重点恰恰是把控制流显式化，而非交给模型自主决定。",
+          "以为用了框架就自动获得生产可用性；上下文策略、评测与监控仍要自己设计。",
+          "把「多模态」「记忆」等摘要列出的能力当成开箱即用的成熟功能，具体版本成熟度需自行核实。"
+        ],
+        "ownAnalysis": "（推断）Haystack 与 LangChain 属于同一类定位，差别在编排哲学：它更强调显式 pipeline 与可观测控制，LangChain 早期更偏向链式与 agent 抽象，这种取向差异决定了调试体验。可疑处在于仓库摘要极简，没有任何版本、性能或对比信息，单凭摘要无法判断其当前相对同类框架的优势；并且「显式控制」在组件数量增长后同样会带来图复杂度上升的问题，需要靠约定与工具链缓解。",
+        "officialNotes": [
+          {"position": "项目自述为用于构建上下文工程化、可上生产 LLM 应用的开源 AI 编排框架，支持模块化 pipeline 与 agent 工作流，并对检索、路由、记忆与生成提供显式控制。", "source": "https://github.com/deepset-ai/haystack"}
+        ],
+        "interviewAnswer": "Haystack 是 deepset 开源的一个 LLM 应用编排框架。它的核心设计是模块化 pipeline：把检索、路由、记忆、生成拆成独立组件，连成有向图，数据按边流动。相比把逻辑写进一大段提示词，这种方式换组件更容易，也更可观测，因为每一步的输入输出都能单独检查。它强调上下文工程，也就是显式决定什么内容进入模型上下文。适用场景是 RAG、语义检索、多模态应用和对话系统这类检索与路由逻辑为主的系统；如果是开放式自主决策，显式图结构反而会变成束缚。",
+        "studyPath": {
+          "prerequisites": ["Python 与包管理", "RAG 基本流程（切块、嵌入、检索、生成）", "提示工程与上下文窗口常识"],
+          "nextSteps": ["浏览仓库 README 与示例 pipeline，跑通一个最小 RAG", "对比 LangChain、LlamaIndex 的编排抽象差异", "补充检索评测与上下文压缩的工程实践"]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,508 @@
+{
+  "batchId": "queue-02",
+  "entries": [
+    {
+      "id": "287c98149d1c6c8c",
+      "tldr": "把工作流当 harness：用结构感知分层奖励让多个 agent 角色一起进化，小开源模型最高 +7.41%。",
+      "keyPoints": [
+        "现有多智能体工作流只训练生成器，执行与构建角色被冻结。",
+        "难点：角色耦合，一次执行只回一个稀疏总分，无法定位谁失败。",
+        "FloWright 用分层、结构感知奖励：单角色自进化、多角色协同进化。",
+        "不需要额外模型、标注或执行次数即可完成信用分配。",
+        "小开源模型在文档/幻灯片/图表/代码/数学/金融任务上最高 +7.41%。"
+      ],
+      "why": "多智能体工作流是 agent 岗主线；它给出不额外采样也能给耦合角色做信用分配的思路，面试谈多 agent 训练与奖励设计可直接引用。",
+      "difficulty": "hard",
+      "tags": ["agent", "multi-agent", "workflow", "credit-assignment", "posttraining"],
+      "entities": ["FloWright", "DataWright", "multi-agent workflows", "LLM"],
+      "diagram": {
+        "kind": "architecture",
+        "title": "FloWright 双层进化框架",
+        "caption": "关键在第四层：把单一稀疏总分沿工作流结构拆成每个角色的奖励，才谈得上多角色共同进化。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='FloWright 框架与奖励分层流程'><rect x='56' y='14' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='38' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>任务</text><text x='408' y='38' font-size='13' text-anchor='end' fill='currentColor'>复杂任务超出单模型</text><polygon points='240,60 236,52 244,52' fill='var(--line-1)'/><rect x='56' y='60' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='84' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>多角色工作流</text><text x='408' y='84' font-size='13' text-anchor='end' fill='currentColor'>生成/构建/执行角色协同</text><polygon points='240,106 236,98 244,98' fill='var(--line-1)'/><rect x='56' y='106' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='130' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>执行结果</text><text x='408' y='130' font-size='13' text-anchor='end' fill='currentColor'>单一稀疏总分，无法定位失败角色</text><polygon points='240,152 236,144 244,144' fill='var(--line-1)'/><rect x='56' y='152' width='368' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.6'/><text x='72' y='176' font-size='14' text-anchor='start' fill='var(--accent)' font-weight='bold'>结构感知分层奖励</text><text x='408' y='176' font-size='13' text-anchor='end' fill='currentColor'>按工作流结构拆分信用</text><polygon points='240,198 236,190 244,190' fill='var(--line-1)'/><rect x='56' y='198' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='222' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>进化</text><text x='408' y='222' font-size='13' text-anchor='end' fill='currentColor'>多角色共进 + 数据硬化</text></svg>",
+        "alt": "竖直流程：任务超出单模型能力，进入多角色工作流，执行只得到一个无法定位失败者的稀疏总分，再经结构感知分层奖励，最终实现多角色共同进化与数据硬化。"
+      },
+      "concepts": [
+        {
+          "name": "工作流即训练托架 (Workflow as Harness)",
+          "readable": "把整条多 agent 工作流当作可优化的载体：不只训练负责编排工作流的那个生成器，而是让构建与执行这条工作流的角色都进入训练回路，奖励来自同一次执行的产出。",
+          "analogy": "像拍电影不换演员阵容，但让导演、编剧、剪辑都根据同一条成片评价改自己的做法，而不是只有编剧一个人改稿。",
+          "analogyBreaksDown": "电影里每个人都看成片、都能复盘；这里所有角色只共享一个稀疏总分，谁贡献多少并不写在成片里，这正是 FloWright 要补上的一层。",
+          "mechanism": "关键设计是不让生成器独占训练：既然结果取决于所有角色，就把工作流结构当作托架来组织奖励，使单角色自进化与多角色协同进化共用同一份执行结果，不需要额外模型、标注或执行次数。",
+          "visual": "画一张工作流 DAG：节点是角色，边是交接；只在根节点写一个分数 S，用边粗细表示结构权重，把 S 沿边反传到各角色，粗边表示该角色分到的信用多。",
+          "prerequisites": ["多智能体工作流与编排的基本概念", "强化学习里的稀疏奖励与信用分配", "LLM 智能体训练（SFT/RL）流程"],
+          "selfTest": ["只训练工作流生成器，其余角色冻结会带来什么后果？", "为什么说工作流本身就是一份可以拿来组织奖励的结构？", "协同进化与单角色自进化在训练信号上有什么区别？"],
+          "formula": ""
+        },
+        {
+          "name": "分层结构感知奖励 (Hierarchical Structure-Aware Reward)",
+          "readable": "工作流执行只给一个稀疏总分，说不清谁错了。做法是把奖励按工作流结构分层：先拿整体分，再沿角色之间的连接关系逐层拆分，让每个角色得到与自身职责相关的信号，于是可以只进化一个角色，或让多个角色一起进化。",
+          "analogy": "一条流水线出了次品，只拿到这批货不合格一句评语；主管按工序层级把责任往下拆，冲压、焊接、喷涂各拿一份，才知道该改哪道工序。",
+          "analogyBreaksDown": "车间里每道工序都有独立质检数据；这里的拆分只能靠工作流结构与总分来推断，并不保证拆出来的就是真实因果责任。",
+          "mechanism": "关键选择是分层加结构感知：分层解决稀疏（总分到逐层细化），结构感知解决耦合（用工作流拓扑决定谁分多少）；两种用法共用同一套奖励，不需要额外采样或人工标注。",
+          "visual": "倒金字塔：顶层一个方块写总分 S；第二层把 S 拆成若干份，方块宽度表示比例；第三层再拆到具体角色，每个方块旁标出它来自哪条结构边。",
+          "prerequisites": ["强化学习中的信用分配问题", "有向无环图/拓扑结构常识", "奖励塑形（reward shaping）的基本直觉"],
+          "selfTest": ["分层奖励解决的是稀疏问题还是耦合问题，还是两个都解决？", "为什么必须要结构感知，直接按角色数平均分不行吗？", "这套奖励与真实因果归因的差距在哪里？"],
+          "formula": "R_i = \\frac{1}{Z_i}\\sum_{v\\in\\mathrm{Desc}(i)}\\phi(i,v)\\,S_v,\\qquad \\phi(i,v)=\\gamma^{d(i,v)}"
+        },
+        {
+          "name": "自适应数据硬化 (Adaptive Data Hardening, DataWright)",
+          "readable": "现在的工作流数据往往单个 agent 就能做对，训练信号没多大意义。DataWright 把已有数据集改造成工作流级任务并提高难度，让多 agent 协作真正有发挥空间。",
+          "analogy": "给校队出的训练题不能是人人都会的基础题；要把题目改造成必须多人分工才能解的综合题，训练才有区分度。",
+          "analogyBreaksDown": "出难题不等于出有效难题：如果硬化只是增加噪声而没有增加协作必要性，多角色反而更容易一起失败，难度与需要协作并不是同一件事（推断）。",
+          "mechanism": "设计动机是训练与评测数据的难度上限：把单 agent 可解的数据转成工作流级任务，使任务难度与工作流能力匹配；摘要没有给出具体改造算子。",
+          "visual": "左右两组条形图：左边是原数据集的单 agent 通过率（很高），右边是硬化后工作流任务的通过率（明显下降），中间用一个箭头表示同一批数据被改造。",
+          "prerequisites": ["数据集构造与难度分级思路", "多智能体任务分解"],
+          "selfTest": ["为什么单 agent 就能做对的数据不适合训练多角色工作流？", "数据硬化与增加数据量是同一件事吗？", "如果硬化只提高噪声而没提高协作必要性，会出现什么现象？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-hier-structure-credit",
+          "name": "分层结构感知信用分配 (Hierarchical Structure-Aware Credit Assignment)",
+          "category": "agent",
+          "latex": "R_i = \\frac{1}{Z_i}\\sum_{v\\in\\mathrm{Desc}(i)}\\phi(i,v)\\,S_v,\\qquad S_v = S\\cdot\\pi_v,\\qquad \\phi(i,v)=\\gamma^{d(i,v)}",
+          "symbols": [
+            ["R_i", "工作流中角色 i 最终得到的分层奖励"],
+            ["S", "整条工作流执行后返回的单一稀疏总分"],
+            ["S_v", "把 S 沿结构分摊到结构单元 v 上的分量"],
+            ["\\pi_v", "结构单元 v 的分摊比例"],
+            ["\\phi(i,v)", "角色 i 与结构单元 v 之间的结构亲和度"],
+            ["d(i,v)", "工作流 DAG 上 i 到 v 的拓扑距离"],
+            ["\\gamma", "距离衰减系数，越远权重越小"],
+            ["Z_i", "归一化项，等于 i 的所有结构权重之和"]
+          ],
+          "derivation": [
+            "第 1 步（动机）：一次执行只返回一个稀疏总分 S，无法指出哪个角色导致失败；于是先把 S 摊到工作流的各个结构单元上，得到 S_v = S · π_v。",
+            "第 2 步（结构先验）：角色 i 不该为与自己无关的下游节点负责，用拓扑距离定义衰减权重 φ(i,v) = γ^{d(i,v)}，离得越远影响越小。",
+            "第 3 步（归一化汇总）：R_i = Σ φ(i,v)·S_v / Z_i，得到每个角色的分层奖励；同一份 S 即可同时支撑单角色自进化与多角色协同进化。",
+            "第 4 步（边界）：这是按摘要重建的通用形式，摘要没有给出 π_v 与结构权重的具体定义，需要核对原文。"
+          ],
+          "analogy": "项目奖金只有一笔总额，没法直接发；先按各环节的结构关系把总额拆成岗位奖金包，再把包分给相关责任人，离得越远的环节拿到的越少。",
+          "pitfalls": [
+            "把分层奖励当成真实因果归因：它只是按结构摊派的塑形信号，不等于该角色真的导致了失败。",
+            "忽略归一化：不除以 Z_i 时，下游节点多的角色天然拿高分，奖励由结构规模而不是贡献决定。",
+            "γ 取得过小会让奖励只落在直接下游，多角色协同进化所需要的长程信号随之退化。"
+          ],
+          "code": "import networkx as nx\n\n\ndef structure_credit(graph, root, total_score, gamma=0.7):\n    \"\"\"按工作流 DAG 的拓扑距离，把单一稀疏总分摊给各角色。\"\"\"\n    dist = nx.single_source_shortest_path_length(graph, root)\n    phi = {v: gamma ** d for v, d in dist.items()}\n    z = sum(phi.values())\n    return {v: total_score * w / z for v, w in phi.items()}",
+          "sources": [
+            {"title": "It Takes Workflows to Evolve Better Workflows", "url": "https://arxiv.org/abs/2610.01026"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "现有多智能体工作流方法只训练工作流生成器，构建或执行工作流的其他 agent 保持固定，尽管结果取决于所有角色。",
+          "扩展训练的难点在于角色耦合，且工作流结果只是一个无法指出失败角色的稀疏分数。",
+          "FloWright 引入分层、结构感知的奖励范式，支持一个角色自进化、两个及以上角色协同进化，且不需要额外模型、标注或执行。",
+          "DataWright 把已有数据集转换成难度更高的 workflow 级任务。",
+          "在文档、幻灯片、图表、代码、数学、金融任务上，用 FloWright 训练的小开源模型提升最高 +7.41%，协同进化 +5.03% 高于只优化单个角色的 +2.83%。"
+        ],
+        "uncertain": [
+          "+7.41% / +5.03% / +2.83% 的指标定义、基线与任务平均方式摘要未说明，待核实。",
+          "分层、结构感知奖励的具体分解方式与权重形式摘要未给出，本条目公式是按摘要重建的通用形式，需核对原文。",
+          "DataWright 提高难度的具体算子摘要未说明。",
+          "摘要提到的项目主页链接未收录在本条目来源中，因此本条目不引用该链接。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "多智能体工作流原来只训练编排者，FloWright 让所有角色一起变强。"},
+          {"level": "入门", "text": "复杂任务常靠多 agent 工作流完成，但过去只训练编排工作流的那个模型，其他角色被冻结，而结果取决于所有人。FloWright 用分层、结构感知的奖励把单一执行总分拆给各角色，让一个角色自进化、多个角色协同进化，不需额外模型、标注或执行。"},
+          {"level": "进阶", "text": "难点是耦合与稀疏：角色互相影响，一次执行只回一个总分，说不清谁该负责，所以过去只能改生成器。FloWright 的取舍是不引入新模型或标注，用工作流结构决定奖励怎么分层拆解——分层解决稀疏，结构感知解决耦合，单角色自进化与多角色协同进化共用同一份执行结果。作者还指出常见工作流数据单 agent 就能做对，于是用 DataWright 把数据硬化成工作流级难题。"},
+          {"level": "专家", "text": "与两种替代方案比：给每个 agent 各训奖励模型，需要额外标注与采样，而摘要强调不需要；反事实或 Shapley 式信用分配要多次重放工作流估计边际贡献，成本随角色数上涨。FloWright 用结构先验代替重放，几乎零额外执行成本，代价是它属于结构摊派而非因果归因（推断）：角色强互补或共享工具时信用可能指错对象。适用边界是任务能表达为多角色工作流且有可复用的执行总分；结构频繁变化或职责重叠时权重本身不稳定，另外数据难度不够则协作没有提升空间。"}
+        ],
+        "socratic": [
+          {"q": "为什么不给每个 agent 各训一个奖励模型，各训各的？", "a": "因为一次执行只有一个稀疏总分，没有任何 agent 的单独标签；为每个角色造奖励要额外标注或多次重放，成本随角色数增长，而这篇主张零额外模型、标注与执行。"},
+          {"q": "既然有总分，直接按角色数量平均分给每个 agent 不行吗？", "a": "平均分忽略了工作流结构：并行分支与串行链路上角色的影响面不同，节点位置不同的角色会被系统性高估或低估，所以要用结构感知的权重重加权。"},
+          {"q": "只改奖励、不改数据（不上 DataWright）会漏掉什么？", "a": "工作流的训练与评测可能仍停留在单 agent 就能解的数据上，多角色协作没有发挥空间；奖励分得再细，也测不出协作带来的差别。"}
+        ],
+        "mechanism": "为什么必须这样设计：工作流的产出由众多角色共同决定，只训生成器会让其余角色变成固定噪声源，学到的结构在执行侧被打折；而要把训练扩到所有角色，卡点就是一个稀疏总分无法归因。FloWright 让工作流结构充当先验——结构本身编码了谁在什么位置影响结果，奖励于是能沿结构分层展开，既不引入新模型也不增加执行次数，并把奖励设计、角色进化与数据难度放进同一个闭环。",
+        "boundary": "失效场景：工作流结构不稳定或角色职责高度重叠时，结构先验不再可靠，摊派出的信用可能指向错误角色；任务若超出所有角色的能力上限，奖励再细也只是噪声；数据未硬化时多角色协作缺少发挥空间。摘要只报告六类任务上的整体提升，没有给失败案例，也没有结构变化下的消融。",
+        "analogyBoundary": "奖金类比成立在结构决定影响范围这一点上；但奖金拆分有人力规则背书，这里的结构权重是推断出来的，没有真实因果标签；奖金可以事后协商调整，信用分配必须在线完成，分错了会直接把训练带偏。",
+        "misconceptions": [
+          "以为 FloWright 训练了新的多智能体模型：它训练的是工作流里既有的角色（含生成器），不引入额外模型。",
+          "把 +7.41% 当成所有设置下的稳定增益：摘要说的是最高提升，且与协同进化 +5.03%、单角色 +2.83% 属于不同设置。",
+          "以为结构感知奖励等于因果归因：它只是按工作流结构摊派总分，并不证明某个角色真的导致了失败。"
+        ],
+        "ownAnalysis": "放到 2026 年 agent 训练主线看：同类工作里有 ScholarEvolve 用文献驱动 harness 演化，FloWright 补的是奖励怎么分这一环，两者可组合（推断）。可疑处：摘要强调无需额外执行，但结构感知奖励若要可靠，通常要多次采样估计方差，单次总分自带噪声，分层拆解会把噪声一起拆下去（推断）。另外协同进化 +5.03% 与单角色 +2.83% 差距不大，逐任务是否稳定占优摘要没给表。",
+        "officialNotes": [
+          {"position": "摘要口径：现有方法只优化工作流生成器，其他构建或执行工作流的 agent 保持固定，而结果取决于所有角色。", "source": "https://arxiv.org/abs/2610.01026"},
+          {"position": "摘要口径：FloWright 引入分层、结构感知的奖励，支持一个角色自进化与两个及以上角色协同进化，无需额外模型、标注或执行。", "source": "https://arxiv.org/abs/2610.01026"}
+        ],
+        "interviewAnswer": "我关注多智能体工作流的训练闭环。过去的做法只用执行结果去改工作流生成器，但结果由所有角色共同决定，冻结其余角色等于给训练加了固定噪声；难点是一次执行只回一个稀疏总分，说不清谁失败。这篇把工作流结构当先验：奖励分层、结构感知地沿拓扑拆给每个角色，于是既能单角色自进化，也能多角色协同进化，且不需额外模型、标注或执行。他们还用 DataWright 把单 agent 就能做的数据硬化成工作流级难题。",
+        "studyPath": {
+          "prerequisites": ["多智能体系统与工作流编排（编排/执行/工具调用）", "强化学习中的稀疏奖励与信用分配", "LLM 后训练基础：SFT、RLHF/RLVR 流程"],
+          "nextSteps": ["读原文，核对结构感知奖励的分解方式与 π_v、γ 定义", "对比反事实/Shapley 式多智能体信用分配方法", "看 DataWright 的硬化算子，思考能否迁移到自己的评测集"]
+        }
+      }
+    },
+    {
+      "id": "97fae90c627e5adb",
+      "tldr": "企业级 AI agent 框架：多厂商 LLM 管理、安全知识库与高精度 RAG、可视化编排、多 agent 协作。",
+      "keyPoints": [
+        "企业级 AI agent 框架，定位是把搭 agent 应用的常用能力一次打包。",
+        "多厂商 LLM 统一管理，模型接入可替换。",
+        "提供安全知识库与高精度 RAG。",
+        "提供可视化工作流编排与多 agent 协作。",
+        "仓库标签：agent、ai、knowledge、mcp、rag、Java。"
+      ],
+      "why": "国内 Java 栈落地 agent 的常见选型参考：模型接入、知识库、编排、多 agent 协作一套打包，适合做技术调研入口。",
+      "difficulty": "easy",
+      "tags": ["agent", "rag", "mcp", "workflow", "java"],
+      "entities": ["ruoyi-ai", "RAG", "LLM", "multi-agent coordination", "knowledge base"],
+      "diagram": {
+        "kind": "architecture",
+        "title": "ruoyi-ai 能力分层",
+        "caption": "从上到下：编排、智能体、知识、模型四层能力都压在企业级后台基座上，模型层是可替换的多厂商适配。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='ruoyi-ai 四层能力与后台基座'><rect x='56' y='14' width='368' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.6'/><text x='72' y='38' font-size='14' text-anchor='start' fill='var(--accent)' font-weight='bold'>编排层</text><text x='408' y='38' font-size='13' text-anchor='end' fill='currentColor'>可视化工作流编排</text><polygon points='240,60 236,52 244,52' fill='var(--line-1)'/><rect x='56' y='60' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='84' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>智能体层</text><text x='408' y='84' font-size='13' text-anchor='end' fill='currentColor'>多 agent 协作</text><polygon points='240,106 236,98 244,98' fill='var(--line-1)'/><rect x='56' y='106' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='130' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>知识层</text><text x='408' y='130' font-size='13' text-anchor='end' fill='currentColor'>安全知识库 + 高精度 RAG</text><polygon points='240,152 236,144 244,144' fill='var(--line-1)'/><rect x='56' y='152' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='176' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>模型层</text><text x='408' y='176' font-size='13' text-anchor='end' fill='currentColor'>多厂商 LLM 统一管理</text><polygon points='240,198 236,190 244,190' fill='var(--line-1)'/><rect x='56' y='198' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='222' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>基座</text><text x='408' y='222' font-size='13' text-anchor='end' fill='currentColor'>Java 企业级后台</text></svg>",
+        "alt": "竖直分层图：最上面是可视化工作流编排层，往下依次是多 agent 协作的智能体层、安全知识库与高精度 RAG 组成的知识层、多厂商 LLM 统一管理的模型层，最底下是 Java 企业级后台基座。"
+      },
+      "concepts": [
+        {
+          "name": "多厂商 LLM 统一管理 (Multi-Provider LLM Management)",
+          "readable": "在业务代码与各家大模型接口之间加一层适配：统一模型清单、密钥与调用方式，业务侧只按名字或能力选模型，换厂商不用改业务逻辑。",
+          "analogy": "像家里所有电器都插在同一个排插上：不管背后是哪个电厂供电，你只需要一个插头标准。",
+          "analogyBreaksDown": "排插只统一了物理接口，而各厂商模型的上下文长度、工具调用格式、价格与限流差异远大于电压差异，适配层要做的是能力归一化，而不只是换个插头。",
+          "mechanism": "关键设计是把模型接入从散落在业务代码里的 SDK 调用，收敛成一个可配置的模型注册与路由模块；多模型对比、降级与切换于是变成配置问题而不是改代码问题。",
+          "visual": "横向图：左边一排业务模块（对话/知识库/工作流），中间一条模型路由总线用 accent 描边，右边三个不同厂商的模型方块，连线上标注模型名与用途。",
+          "prerequisites": ["LLM 接口调用与鉴权（密钥、限流、重试）", "RAG 基本链路（切片、向量检索、重排、生成）"],
+          "selfTest": ["统一管理这一层解决了什么工程问题？", "换模型厂商时，为什么业务代码可以不动？", "这一层不能替你解决什么问题？"],
+          "formula": ""
+        },
+        {
+          "name": "高精度 RAG (High-Precision RAG)",
+          "readable": "先把文档切片并向量化，用问题去检索最相关的片段，通常再经重排与过滤，然后拼进提示词让模型作答，使答案落在私有知识上而不是模型记忆里。",
+          "analogy": "开卷考试：先按目录和关键词找到那几页，再照着那几页答题，而不是凭记忆瞎写。",
+          "analogyBreaksDown": "开卷考试的页码是确定的；向量检索靠相似度猜哪几页相关，切片方式、embedding 与重排都会改变命中，而且模型仍可能无视原文乱答。",
+          "mechanism": "所谓高精度通常靠检索后加一道重排或相关性过滤，并把检索结果与引用一起交给模型；框架的价值是把这条链路做成可配置组件（摘要未给具体算法与指标）。",
+          "visual": "漏斗图：最上层是文档库，向下逐级收窄为切片加向量化、召回 top-k、重排过滤、注入提示词生成，每层右侧标注剩余条目数（示意）。",
+          "prerequisites": ["向量检索与 embedding 基础", "提示词构造与上下文窗口限制"],
+          "selfTest": ["召回与重排分别解决 RAG 的什么问题？", "为什么切片粒度会影响最终回答质量？", "RAG 让模型不再产生幻觉吗？"],
+          "formula": "\\mathrm{sim}(q,d)=\\frac{\\mathbf{e}_q\\cdot \\mathbf{e}_d}{\\lVert \\mathbf{e}_q\\rVert\\,\\lVert \\mathbf{e}_d\\rVert}"
+        },
+        {
+          "name": "可视化编排驱动的多 Agent 协作 (Visual Orchestration for Multi-Agent Coordination)",
+          "readable": "在画布上把模型调用、知识库检索、工具与条件分支连成一张可执行图，一个节点可以是一个 agent；多 agent 协作就是把这张图扩成多个 agent 分工、由编排器串行或并行调度。",
+          "analogy": "像用流程图软件排一条审批流：谁在什么条件下把任务交给谁，画出来就能跑，改流程不用重写代码。",
+          "analogyBreaksDown": "审批流每一步都是确定的；LLM 节点的输出不确定，同一张图两次执行结果可能不同，画布上的边也无法表达模型自己决定跳转的开放控制流。",
+          "mechanism": "关键选择是把编排从代码搬到可视化图层，让非算法同学也能改流程；代价是复杂的动态控制流（模型自主选工具、循环重试）仍需在节点内部实现，图只表达静态骨架（推断）。",
+          "visual": "画布式图：三个 agent 节点（写作、检索、审校）用箭头串成主干，旁侧挂一个知识库检索节点，一条虚线回到写作节点表示重试，节点左上角留出拖拽配置的图标位。",
+          "prerequisites": ["DAG/流程编排的基本概念", "工具调用（tool calling）与函数调用协议"],
+          "selfTest": ["可视化编排相对写代码编排，收益与代价分别是什么？", "多 agent 协作一定要用图来表达吗？", "画布上的静态图为什么表达不了模型自主决策的控制流？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "仓库自述为『企业级 AI agent 框架』，包含多厂商 LLM 管理、安全知识库与高精度 RAG、可视化工作流编排、多 agent 协作四项能力。",
+          "仓库标签为 agent、ai、knowledge、mcp、rag、Java，说明它面向 Java 生态的 agent 平台定位。",
+          "本条目数据标注 codeAvailable=true，即代码可获取。",
+          "摘要只有一句仓库描述，没有给出架构细节、评测指标或性能数字。"
+        ],
+        "uncertain": [
+          "RAG 的『高精度』具体指什么（是否含重排模型、有无评测指标）摘要未说明，待核实。",
+          "支持哪些 LLM 厂商、是否真的支持 MCP、技术栈细节目前只有标签可依据，待核实仓库 README。",
+          "本条目未采集 star 数、许可证、部署要求与并发能力等工程信息。",
+          "本条目未给公式：摘要不足 400 字且没有任何方法细节，按规则允许 formulas 为空数组。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "企业级 agent 框架，模型接入、知识库、编排、多 agent 协作打包好。"},
+          {"level": "入门", "text": "ruoyi-ai 是开源企业级 agent 框架，把搭 agent 应用常要的四件事做完：统一管理多家大模型接入；提供安全知识库与 RAG；用可视化画布编排工作流；支持多 agent 协同。它偏工程落地与选型，摘要没有算法创新与性能指标。"},
+          {"level": "进阶", "text": "从工程角度看它的分层：底层是可替换的模型接入层（多厂商 LLM 管理），中间是知识层（安全知识库加高精度 RAG），上层是编排层与智能体层（可视化工作流编排、多 agent 协作）。这样的分层把常耦合的三件事解耦——模型选型、知识注入、流程控制各自可改。代价是这类框架的价值取决于组件是否可插拔、是否可观测（推断），而摘要只给了能力清单，没有 RAG 评测口径、支持模型列表或并发可靠性设计。"},
+          {"level": "专家", "text": "放在选型语境里比较：Python 生态常见 LangChain/LangGraph 一类编排库，国内企业 Java 栈更看重与既有后台体系、权限与私有化部署的贴合，ruoyi-ai 的定位接近后者（推断）。它的优势应来自把模型管理、知识资产与流程编排收敛到同一后台，便于密钥与知识资产集中治理；风险是框架成为新的依赖面，可插拔性与可观测性不足时反而拖慢迭代。诚实地说，摘要没有任何基准、压测或效果数字，无法判断高精度 RAG 是否优于自建方案，选型必须回到仓库文档与自测。"}
+        ],
+        "socratic": [
+          {"q": "为什么企业不直接用某个大模型的原生接口，而要在中间加一层多厂商管理？", "a": "为了把模型选型变成配置而不是代码：成本、限流、合规与效果变化时可以切换或降级，业务侧不必改动，同一套知识库与工作流也能复用到不同模型上。"},
+          {"q": "已经有 RAG 了，还需要可视化编排吗？", "a": "RAG 只解决给模型看什么资料；真实业务还需要分支、重试、多步工具调用与人工审核，编排解决的是按什么顺序、在什么条件下做，两者互补。"},
+          {"q": "摘要这么短，为什么这张卡还值得看？", "a": "它是一张选型卡：给出能力边界与代码可获取性，适合作为技术调研入口；但缺少评测与设计细节，不能据此判断效果好坏。"}
+        ],
+        "mechanism": "它为什么这样组织：企业落地 agent 的痛点往往不在单个模型，而是接入杂乱、知识私有、流程多变三件事同时出现，所以框架把模型接入、知识库与 RAG、编排、多 agent 协作做成同一后台的分层能力，任一层可替换。收益是复用与合规：密钥与知识资产集中治理，新业务只需组合已有能力；代价是引入新的依赖面，必须评估可插拔性、可观测性与升级成本，否则改一层会牵动全链路。",
+        "boundary": "不适用或会失效的场景：需要极致性能与自研推理栈优化的团队、只要一次简单模型调用的轻量需求（引入框架反而更重）、以及团队不是 Java 技术栈时迁移成本偏高。摘要没有给压测、并发或效果指标，无法据此判断高精度 RAG 是否真的优于自建方案。",
+        "analogyBoundary": "排插的类比只在接口统一这一层成立：模型的上下文长度、工具调用格式、价格与限流差异需要额外归一化；而且排插不改变电器能力，框架也不改变模型能力，它只改变接入与组合的成本。",
+        "misconceptions": [
+          "以为装上框架就有高精度 RAG：框架只是把链路组件化，效果取决于切片、embedding、重排与提示词。",
+          "把多厂商管理理解成自动挑最优模型：摘要只说统一管理，没有说具备自动路由或自动评测选型。",
+          "以为可视化编排等于模型自主决策：画布表达的是静态骨架，动态工具选择仍需节点内部实现（推断）。"
+        ],
+        "ownAnalysis": "和本批次两篇论文放在一起看：FloWright 与 ScholarEvolve 都在训练侧优化工作流或 harness，ruoyi-ai 是运行侧的编排与知识底座，两边互补（推断）。值得留意：摘要极短，像只截取了仓库描述，所以『高精度 RAG』属于自述而非评测结论；项目名带 ruoyi，可能基于若依后台生态（推断，摘要未说明）。选型核查清单：许可证、模型适配列表、RAG 是否含重排与评测、是否支持标签里出现的 mcp 协议。",
+        "officialNotes": [
+          {"position": "仓库描述口径：企业级 AI agent 框架，含多厂商 LLM 管理、安全知识库与高精度 RAG、可视化工作流编排、多 agent 协作。", "source": "https://github.com/ageerle/ruoyi-ai"}
+        ],
+        "interviewAnswer": "面试聊到企业 Java 栈怎么落 agent，我会提 ruoyi-ai 这类框架：四件事打包——多厂商 LLM 管理、安全知识库与高精度 RAG、可视化编排、多 agent 协作。价值是工程复用与合规，模型、知识、流程三层解耦，模型选型变成配置。局限也要说清：摘要只有能力清单，没有评测，没说支持哪些厂商，高精度 RAG 没有指标，所以选型时要去 README 与基准核实可插拔性与升级成本。",
+        "studyPath": {
+          "prerequisites": ["LLM 接口调用基础", "RAG 链路（切片、向量检索、重排）", "Java 后端与微服务基础"],
+          "nextSteps": ["读仓库 README 与模块划分，确认模型适配与 RAG 实现", "对比 Python 生态的编排方案做一张选型表", "用一个小知识库跑通端到端 demo 并记录检索命中率"]
+        }
+      }
+    },
+    {
+      "id": "6eeb8b8a088c51e2",
+      "tldr": "让 agent 读论文进化 harness：主题建模按模块找策略，AppWorld 49.6%→63.6%。",
+      "keyPoints": [
+        "harness 是管工具调用、记忆管理与任务执行的软件层。",
+        "meta coding agent 照反馈改 harness，探索受限、偏被动。",
+        "ScholarEvolve 改从最新研究文献中提取改进方向。",
+        "按功能模块组织方向，用主题建模找策略并组合评测。",
+        "AppWorld 49.6%→63.6%，Tau2-Bench 也有提升。"
+      ],
+      "why": "harness 进化是不动模型也能抬高 agent 上限的路线；把文献检索与主题建模接进自动化，是自改进与终身学习方向的面试考点。",
+      "difficulty": "hard",
+      "tags": ["agent", "harness", "lifelong-learning", "topic-model", "self-improvement"],
+      "entities": ["ScholarEvolve", "AppWorld", "Tau2-Bench", "Qwen3.5-27B", "GPT-5.4-mini", "meta coding agent"],
+      "diagram": {
+        "kind": "flow",
+        "title": "ScholarEvolve 进化闭环",
+        "caption": "关键顺序：先读文献产生改进方向，再用主题建模分模块找策略，最后组合评测择优——把被动救火换成主动找方案。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='ScholarEvolve 文献驱动的 harness 进化流程'><rect x='56' y='14' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='38' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>文献</text><text x='408' y='38' font-size='13' text-anchor='end' fill='currentColor'>持续吸收最新论文</text><polygon points='240,60 236,52 244,52' fill='var(--line-1)'/><rect x='56' y='60' width='368' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.6'/><text x='72' y='84' font-size='14' text-anchor='start' fill='var(--accent)' font-weight='bold'>主题建模</text><text x='408' y='84' font-size='13' text-anchor='end' fill='currentColor'>按功能模块找策略</text><polygon points='240,106 236,98 244,98' fill='var(--line-1)'/><rect x='56' y='106' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='130' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>策略实现</text><text x='408' y='130' font-size='13' text-anchor='end' fill='currentColor'>改动 harness 代码</text><polygon points='240,152 236,144 244,144' fill='var(--line-1)'/><rect x='56' y='152' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='176' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>组合评测</text><text x='408' y='176' font-size='13' text-anchor='end' fill='currentColor'>择优保留有效组合</text><polygon points='240,198 236,190 244,190' fill='var(--line-1)'/><rect x='56' y='198' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='222' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>终身循环</text><text x='408' y='222' font-size='13' text-anchor='end' fill='currentColor'>新论文不断进入</text></svg>",
+        "alt": "竖直流程：研究文献持续更新，经主题建模按功能模块识别改进策略，实现到 harness 代码，组合评测择优保留，新论文不断进入形成终身进化循环。"
+      },
+      "concepts": [
+        {
+          "name": "智能体外壳层 (Agent Harness)",
+          "readable": "harness 指包在语言模型外面、负责工具调用、记忆管理与任务执行流程的那层软件。模型权重不变，改这一层就能改变 agent 的能力上限与行为方式。",
+          "analogy": "同一位厨师配不同厨房：灶台、备料流程、菜谱夹与传菜窗口决定他能不能一次做出一桌菜；换厨房比换厨师便宜得多。",
+          "analogyBreaksDown": "厨房改造只影响物理流程；harness 的改动还会改变模型看到的提示、工具返回与记忆内容，等于同时改变了模型的输入分布，原本有效的可靠性设计可能因此失效（推断）。",
+          "mechanism": "关键设计选择是冻结模型、进化外壳：模型训练昂贵且难以持续跟随任务变化，而 harness 是代码，可以被自动生成与快速验证，因此成为持续改进的落点。",
+          "visual": "同心圆：内圈写语言模型（冻结），外圈环分成四段写工具调用、记忆管理、任务执行、提示组装，外圈用 accent 描边表示可被改写，箭头由外圈指向内圈表示它决定模型看到什么。",
+          "prerequisites": ["LLM agent 的基本循环（think-act-observe）", "工具调用与函数调用协议", "执行反馈与评测指标的使用"],
+          "selfTest": ["harness 具体管哪些东西？", "为什么这条路线选择冻结模型而不继续训练模型？", "改 harness 为什么可能让原本有效的设计失效？"],
+          "formula": ""
+        },
+        {
+          "name": "文献驱动的外壳进化 (Literature-Guided Harness Evolution)",
+          "readable": "传统自动进化靠 meta coding agent 看失败日志改代码，受已有知识限制。ScholarEvolve 先读研究文献，把文献做法抽成候选策略，再落到 harness 上验证，使改进变主动。",
+          "analogy": "修 bug 有两种人：一种只盯着报错日志改；另一种先去翻最新的工程博客与论文，看别人怎么系统性解决，再动手。后者能跳出自己已知的解法空间。",
+          "analogyBreaksDown": "人类专家读文献时会判断适用性；自动流程只能靠主题建模与评测间接筛选，若文献与当前任务不匹配，可能引入看似先进却无效甚至有害的改动。",
+          "mechanism": "关键设计是把进化方向模块化：harness 的改进空间按功能模块切分，再用主题建模从文献里为每个模块识别不同的改进策略簇，最后实现并组合评测，从而既扩大探索空间又保留可评估性。",
+          "visual": "两条并排的箭头：上一条是执行失败日志直接改代码（短、闭环在小圈里）；下一条是执行失败到检索文献、主题建模、候选策略、实现与评测（长、跨越更大的解法空间）。",
+          "prerequisites": ["主题建模（如 LDA）基础", "代码生成与自动修补（meta coding agent）", "agent 评测基准的使用方式"],
+          "selfTest": ["失败驱动改 harness 与文献驱动改 harness，探索空间差在哪？", "为什么说只靠已有知识会限制探索？", "文献策略不匹配任务时会发生什么？"],
+          "formula": ""
+        },
+        {
+          "name": "主题建模识别改进策略 (Topic Modeling for Strategy Discovery)",
+          "readable": "把文献里的改进做法当成一组文本，用主题模型自动发现若干策略主题；对 harness 的每个功能模块，取与之最相关的主题作为候选改进方向，避免所有模块都被同一套方案覆盖。",
+          "analogy": "像把一柜子菜谱按火候类、调味类、摆盘类自动归类，然后针对今天要改的那道工序去对应抽屉里找做法，而不是把整柜菜谱通读一遍。",
+          "analogyBreaksDown": "菜谱分类由人按语义定义；主题模型给出的主题是词分布，未必对应人类可读的策略，可能把同一策略拆成多个主题，也可能把不同策略混在一起。",
+          "mechanism": "关键选择是用主题模型而不是关键词检索：主题是文档的软聚类，可以在没有预定义策略清单的情况下，从新增文献里持续发现新方向，这也是框架融入新论文、终身进化的基础。",
+          "visual": "矩阵热力图：行是 harness 的功能模块，列是主题，格子深浅表示该主题与该模块的相关度，每行取出最深的一格作为候选策略。",
+          "prerequisites": ["LDA/主题模型的基本假设", "文献语料的预处理（分词、去停用词）"],
+          "selfTest": ["为什么用主题模型而不是关键词检索文献？", "主题数与模块划分会怎样影响找到的策略质量？", "主题相关度高是否等于策略有效？"],
+          "formula": "p(w\\mid d)=\\sum_{k=1}^{K}p(w\\mid z=k)\\,p(z=k\\mid d)"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-topic-strategy",
+          "name": "主题模型下的策略发现 (Topic-Model Strategy Discovery)",
+          "category": "agent",
+          "latex": "p(w \\mid d) = \\sum_{k=1}^{K} p(w \\mid z=k)\\, p(z=k \\mid d)",
+          "symbols": [
+            ["d", "一篇文献（通常用摘要）"],
+            ["w", "文档中的词"],
+            ["z", "潜在主题，这里当作一个改进策略簇"],
+            ["K", "主题数，即候选策略方向的上限"],
+            ["p(z=k\\mid d)", "文档 d 属于第 k 个策略主题的权重"],
+            ["p(w\\mid z=k)", "第 k 个主题下词 w 的分布"]
+          ],
+          "derivation": [
+            "第 1 步（动机）：要在没有预定义策略清单的前提下，从不断新增的文献里发现可复用的改进方向。",
+            "第 2 步（假设）：把文献集合当作词袋语料，假设每篇文档由若干潜在主题混合生成，主题就是策略的代理变量。",
+            "第 3 步（估计与使用）：用 LDA 类模型估计 p(z|d) 与 p(w|z)，每篇文献得到主题权重向量，对每个功能模块取相关度最高的主题作为候选策略。",
+            "第 4 步（闭环）：策略实现后用任务指标评测、保留有效组合；新文献进入后重新估计主题，形成持续进化。"
+          ],
+          "analogy": "把一堆零散笔记自动归成几摞主题卡片，需要改哪儿就去对应那摞里挑做法。",
+          "pitfalls": [
+            "把主题当成因果策略：主题只是词的软聚类，相关不等于有效，必须靠任务评测筛选。",
+            "K 选得太大主题会碎、太小会把不同策略合并成同一方向，导致候选策略失真。",
+            "主题模型只看词共现，无法表达策略之间的结构与时序依赖，多模块组合的效果仍需实验验证。"
+          ],
+          "code": "from sklearn.decomposition import LatentDirichletAllocation\nfrom sklearn.feature_extraction.text import CountVectorizer\n\ndocs = [p['abstract'] for p in papers]                 # 文献摘要语料\nX = CountVectorizer(stop_words='english', max_features=5000).fit_transform(docs)\nlda = LatentDirichletAllocation(n_components=8, random_state=0).fit(X)\ndoc_topic = lda.transform(X)                           # 每篇文献的策略主题权重\nmodule_pick = doc_topic.argmax(axis=1)                 # 简化示意：实际需按模块算相关度",
+          "sources": [
+            {"title": "Learning from Research: Toward Lifelong Agent Harness Evolution", "url": "https://arxiv.org/abs/2609.40169v1"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "harness 指管工具使用、记忆管理与任务执行的软件，这条路线在保持底层语言模型固定的前提下进化 harness。",
+          "已有自动化方法用 meta coding agent 依据执行反馈修改 harness，但依赖它既有知识且只由已观测失败驱动，探索受限、适应被动。",
+          "ScholarEvolve 从最新研究文献中获取改进方向，把 harness 进化方向按功能模块组织，用主题建模为每个模块识别不同改进策略，并实现、组合与评测。",
+          "实验在 AppWorld 与 Tau2-Bench 上有提升：Qwen3.5-27B 在 AppWorld Challenge 的任务目标完成率从 49.6% 升到 63.6%；GPT-5.4-mini 在 Tau2-Bench Telecom 的 pass@1 从 72.7% 升到 81.9%。",
+          "框架设计为可随时间纳入新发表的文献，让研究进展驱动主动的终身进化。"
+        ],
+        "uncertain": [
+          "把文献策略实现到 harness 上的执行者是谁（是否仍由 meta coding agent 完成）摘要未明确。",
+          "主题建模用的具体模型、主题数与功能模块划分方式摘要未给出。",
+          "评测基线设置、提升是否为策略组合的叠加效果，以及两个基准的版本口径摘要未说明。",
+          "本条目数据标注 codeAvailable=false，摘要也未提是否开源，需人工核实。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "让 agent 去读论文找改进思路，从而不断升级自己的工具与记忆外壳。"},
+          {"level": "入门", "text": "语言模型外层有个叫 harness 的软件，管工具调用、记忆与任务执行。已有做法用会写代码的 agent 照失败日志改它，但只知道自己会的。ScholarEvolve 改成先读最新文献，把文献做法当候选策略再落到 harness 上试。"},
+          {"level": "进阶", "text": "关键设计有三步：先按功能模块切分 harness 的进化方向；再用主题建模从文献语料里为每个模块找出不同的改进策略簇；最后把策略实现出来，组合评测、择优保留。这样探索空间来自外部文献而不是 agent 的既有知识，改进从被动的失败驱动变成主动的方案搜索，新论文也可以持续进入。实验上 AppWorld 完成率 49.6%→63.6%、Tau2-Bench pass@1 72.7%→81.9%。"},
+          {"level": "专家", "text": "和几条相邻路线比：自我修正类方法只改 prompt 或重试策略，搜索空间最小；meta coding agent 直接改代码，空间更大但仍受自身知识与已观测失败限制；ScholarEvolve 把文献当作外部先验，再按模块做主题聚类，把搜索空间扩到 agent 自己想不到的策略。边界在于：文献与任务域不匹配时策略迁移不过来；组合评测的开销随模块与策略数上涨；持续进化还会带来 harness 膨胀与回归风险，缺少回归测试时越改越脆（推断）。摘要只给了两个基准的数字，没有消融说明文献与主题建模各贡献多少。"}
+        ],
+        "socratic": [
+          {"q": "为什么不直接让 meta coding agent 多试几次，而要引入文献？", "a": "多试几次只是在它已有的解法空间里搜索，而且由已观测的失败驱动，容易局部修补；文献带来它自己想不到的策略，把探索范围扩到外部知识。"},
+          {"q": "为什么用主题建模，而不是关键词检索文献？", "a": "关键词要求你先知道要找什么；主题模型是无监督软聚类，能从不断新增的文献里自动浮现新的策略方向，支撑持续进化。"},
+          {"q": "如果文献里的策略与当前任务不匹配会怎样？", "a": "会产生看似先进却无效的改动，白耗评测预算，甚至让 harness 退化；所以必须靠任务指标评测组合来筛选，不能直接采纳。"}
+        ],
+        "mechanism": "为什么必须这样设计：如果改进只来自 agent 自己观察到的失败，它就只能修补已知问题，探索空间被自身知识封死，而且永远是事后反应。文献是人类已经系统化过的外部经验，把它接进进化循环，等于给搜索过程一个持续更新、不依赖当前失败的先验。主题建模再解决怎么用的问题——把文献压成按功能模块组织的策略簇，使改进方向可枚举、可实现、可组合评测，从而既扩大搜索空间又保留可验证性。",
+        "boundary": "失效条件：任务域与文献语料不匹配时策略迁移不过来；harness 已接近该任务上限时收益递减；组合评测的开销随模块与策略数组合爆炸；主题模型只看到词共现，无法判断策略之间的依赖。摘要只报告 AppWorld 与 Tau2-Bench 两个基准的结果，没有消融实验说明文献检索与主题建模各自贡献多少。",
+        "analogyBoundary": "工程师先翻文献再动手的类比有两点不成立：人读文献时会判断适用性并做取舍，自动流程只能靠主题模型与评测间接筛；人看过一次能记住并泛化，而这里的主题权重是统计量，文献更新后可能漂移，需要重新估计。",
+        "misconceptions": [
+          "以为 ScholarEvolve 会更新语言模型权重：它明确保持底层模型固定，只改 harness 这层软件。",
+          "把提升全归功于读文献：主题建模、策略组合与评测筛选同样是流程的一部分，摘要没给逐项消融。",
+          "以为主题建模能理解策略语义：它只基于词共现做软聚类，策略是否有用只能靠实验判断。"
+        ],
+        "ownAnalysis": "对比同日 FloWright：两者都在进化 agent 外壳，但先验来源不同——FloWright 用执行总分做结构摊派，ScholarEvolve 用文献做方向搜索；理想形态是混合，文献给方向、反馈筛选（推断）。摘要没给消融，缺少『同样检索文献但不做主题建模』和『只用 agent 自身知识』的对照，主题建模的净贡献未知；两个数字来自不同模型与基准，不能横向比较。终身进化若缺回归测试与成本预算，harness 会越改越脆（推断）。",
+        "officialNotes": [
+          {"position": "摘要口径：依赖 meta coding agent 既有知识与已观测失败的做法会限制探索，并使适应变得被动。", "source": "https://arxiv.org/abs/2609.40169v1"},
+          {"position": "摘要口径：ScholarEvolve 用主题建模为每个功能模块识别改进策略，实现并组合评测这些策略，且设计为可纳入新论文以支持主动的终身进化。", "source": "https://arxiv.org/abs/2609.40169v1"}
+        ],
+        "interviewAnswer": "ScholarEvolve 的思路是：不动模型，只进化 harness，也就是管工具调用、记忆与任务执行的那层软件。过去的做法让 meta coding agent 照执行反馈改 harness，只能用它已知的解法，事后补救。这篇把改进方向换成研究文献：按模块切开，用主题建模为每个模块找不同策略，实现后组合评测择优，新论文可持续进入。实验上 AppWorld 完成率 49.6%→63.6%。",
+        "studyPath": {
+          "prerequisites": ["LLM agent 的 think-act-observe 循环与工具调用", "执行反馈驱动的自动改进/自我修正方法", "主题建模（LDA）与文本聚类基础"],
+          "nextSteps": ["读原文，找文献检索与主题建模的消融实验", "和 FloWright 等以工作流为载体的进化方法做一张先验来源对比表", "在自己的 harness 上做最小实验：固定模型，只改工具与记忆配置看指标变化"]
+        }
+      }
+    },
+    {
+      "id": "34943744e1ea5edd",
+      "tldr": "腾讯 IEG 后台实习一面：项目追问竞品与自研理由、算法考二叉树最大路径和 DFS、八股从 HTTP 起。",
+      "keyPoints": [
+        "约 20min 自我介绍+项目，15min 算法，20min 八股与场景。",
+        "面试官不做 agent，项目主要由候选人自述。",
+        "项目追问集中在同类产品做法与自研理由。",
+        "算法题：二叉树的最大路径和，DFS 做法。",
+        "八股与场景从 HTTP 开始（摘要在此截断）。"
+      ],
+      "why": "后台实习面的真实三段结构：跨域面试官考项目判断力、树形 DFS 考基本功、HTTP 八股考基础，可直接当模拟面试清单。",
+      "difficulty": "medium",
+      "tags": ["interview", "backend", "dfs", "http", "career"],
+      "entities": ["腾讯 IEG", "深度研究 agent", "二叉树的最大路径和", "DFS", "HTTP"],
+      "diagram": {
+        "kind": "timeline",
+        "title": "一面三段式时间线",
+        "caption": "20/15/20 分钟三段互补：项目考判断力、算法考基本功、八股考基础，准备也要分三条线。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='腾讯 IEG 后台实习一面三段式时间线'><line x1='16' y1='44' x2='456' y2='44' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='466,44 456,39 456,49' fill='var(--line-1)'/><line x1='66' y1='44' x2='66' y2='70' stroke='var(--line-1)' stroke-width='1.4'/><line x1='182' y1='44' x2='182' y2='70' stroke='var(--line-1)' stroke-width='1.4'/><line x1='298' y1='44' x2='298' y2='70' stroke='var(--line-1)' stroke-width='1.4'/><line x1='414' y1='44' x2='414' y2='70' stroke='var(--line-1)' stroke-width='1.4'/><rect x='16' y='70' width='100' height='110' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='66' y='94' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>项目</text><text x='66' y='118' font-size='13' text-anchor='middle' fill='currentColor'>约 20 分钟</text><text x='66' y='140' font-size='13' text-anchor='middle' fill='currentColor'>追问竞品</text><text x='66' y='162' font-size='13' text-anchor='middle' fill='currentColor'>与自研理由</text><rect x='132' y='70' width='100' height='110' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.6'/><text x='182' y='94' font-size='14' text-anchor='middle' fill='var(--accent)' font-weight='bold'>算法</text><text x='182' y='118' font-size='13' text-anchor='middle' fill='currentColor'>约 15 分钟</text><text x='182' y='140' font-size='13' text-anchor='middle' fill='currentColor'>二叉树最大</text><text x='182' y='162' font-size='13' text-anchor='middle' fill='currentColor'>路径和 DFS</text><rect x='248' y='70' width='100' height='110' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='298' y='94' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>八股</text><text x='298' y='118' font-size='13' text-anchor='middle' fill='currentColor'>约 20 分钟</text><text x='298' y='140' font-size='13' text-anchor='middle' fill='currentColor'>HTTP 开场</text><text x='298' y='162' font-size='13' text-anchor='middle' fill='currentColor'>摘要截断</text><rect x='364' y='70' width='100' height='110' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='414' y='94' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>进展</text><text x='414' y='118' font-size='13' text-anchor='middle' fill='currentColor'>一面已过</text><text x='414' y='140' font-size='13' text-anchor='middle' fill='currentColor'>等二面通知</text><text x='414' y='162' font-size='13' text-anchor='middle' fill='currentColor'>腾讯 IEG</text></svg>",
+        "spec": {
+          "type": "timeline",
+          "nodes": [
+            {"label": "项目", "detail": "约 20 分钟：自我介绍加项目，追问同类产品做法与自研理由"},
+            {"label": "算法", "detail": "约 15 分钟：二叉树的最大路径和，DFS 做法"},
+            {"label": "八股与场景", "detail": "约 20 分钟：从 HTTP 开始（摘要在此截断）"},
+            {"label": "进展", "detail": "一面已过，等二面通知"}
+          ]
+        },
+        "alt": "横向时间线：项目环节约 20 分钟、算法环节约 15 分钟考二叉树最大路径和 DFS、八股与场景约 20 分钟从 HTTP 开始，最后标注一面已过等二面通知。"
+      },
+      "concepts": [
+        {
+          "name": "树形 DFS 求最大路径和 (Maximum Path Sum via Tree DFS)",
+          "readable": "求二叉树中任意一条路径的最大节点值之和，路径可以不经过根、但同一条路径不能分叉。做法是后序 DFS：每个节点先算出自己向下延伸的单边最大贡献，再用左右两支在当前节点结算全局最优。",
+          "analogy": "像在山脊上选一条路线：往上走只能在岔路里选一条（单边贡献），但在山顶结算时可以把左右两边都算进去（拐点双边和），哪次总分最高就记下来。",
+          "analogyBreaksDown": "岔路口的比喻少了负数要舍弃这一层：如果某一边的贡献是负的，正确做法是不走那条路（取 0），而不是硬走；类比里没有可以不走这个选项。",
+          "mechanism": "关键设计是区分两个量：函数返回的是给父节点用的单边贡献（只能在左右中选一个，负数取 0），全局答案是以当前节点为拐点的双边和。把这两个量分开，才能避免对路径是否可以分叉的误判。",
+          "visual": "画一棵三层二叉树，每个节点里写两个数字：上排是它的值，下排是向上返回的单边贡献；用一条 accent 折线标出当前最优的拐点双边路径，被舍弃的负贡献边画成灰色虚线。",
+          "prerequisites": ["二叉树遍历，尤其后序 DFS", "递归返回值语义的区分（向上贡献 vs 全局最优）"],
+          "selfTest": ["为什么返回给父节点时只能在左右子树里选一个？", "子树贡献为负数时为什么取 0，而不是把负数加进去？", "全局最优在什么时候更新，为什么不能只在根节点结算？"],
+          "formula": "g(u)=\\max\\!\\big(0,\\; v(u)+\\max(g(L),g(R))\\big),\\quad \\mathrm{best}=\\max\\big(\\mathrm{best},\\; v(u)+\\max(0,g(L))+\\max(0,g(R))\\big)"
+        },
+        {
+          "name": "项目追问：自研理由与竞品视野 (Defending a Build-versus-Existing Decision)",
+          "readable": "面试官不做 agent，项目讲解要靠候选人自己组织；追问点不是实现细节，而是市面上同类产品怎么做，以及为什么不直接用大模型已有的深度研究功能。考的是选型判断与差异化定位。",
+          "analogy": "像向不懂你这行的投资人路演：他无法验证技术细节，只能问别人怎么做的、凭什么是你做，你要给出可对比的差异点。",
+          "analogyBreaksDown": "投资人关心商业回报，面试官更关心你个人的技术判断与取舍过程；把路演话术照搬到面试会显得空泛，需要具体到数据、链路与失败经验。",
+          "mechanism": "应对设计：先用一句话讲清产品定位与用户场景，再用一张表列竞品做法与差距，最后落到我们做了哪三件现成方案做不到或做不好的事；因为面试官跨域，术语要降到可理解的层级。",
+          "visual": "三列表格：左列写竞品或现成大模型功能，中列写它们怎么做、边界在哪，右列写我们的差异化与代价；每行末尾标一个面试官会追问的箭头。",
+          "prerequisites": ["对自己项目的动机、竞品与指标有清晰记录", "能用非领域语言解释系统链路"],
+          "selfTest": ["如何用一句话讲清你的项目与现成大模型功能的差别？", "竞品对比表里至少要放哪几类信息？", "面试官不懂你的领域时，你先讲什么？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-tree-max-path-sum",
+          "name": "二叉树最大路径和（后序 DFS）(Maximum Path Sum, Tree DFS)",
+          "category": "engineering",
+          "latex": "g(u)=\\max\\!\\big(0,\\; v(u)+\\max(g(L),g(R))\\big),\\quad \\mathrm{best}=\\max\\big(\\mathrm{best},\\; v(u)+\\max(0,g(L))+\\max(0,g(R))\\big)",
+          "symbols": [
+            ["u", "当前节点"],
+            ["v(u)", "节点 u 的值"],
+            ["L, R", "u 的左右子节点"],
+            ["g(x)", "以 x 为起点向下延伸的单边最大贡献，负数则取 0"],
+            ["best", "全局最大路径和"]
+          ],
+          "derivation": [
+            "第 1 步（路径形状）：一条合法路径在某个节点处拐弯，向左下和右下各延伸一条链并在拐点汇合；不在拐点汇合就不是同一条路径。",
+            "第 2 步（单边贡献）：向上传递时只能选一边，所以 g(u) = max(0, v(u) + max(g(L), g(R)))，负贡献不如不走。",
+            "第 3 步（结算答案）：在每个节点用两边贡献同时更新 best = max(best, v(u) + max(0,g(L)) + max(0,g(R)))，等价于枚举所有拐点。",
+            "第 4 步（复杂度）：后序遍历先拿到左右子树结果，时间 O(n)、递归栈空间 O(h)。"
+          ],
+          "analogy": "像在山脊上选路线：往上走只能选一条岔路（单边贡献），在山顶结算时可以把左右两边都算进总分（拐点双边和），哪次最高就记下来。",
+          "pitfalls": [
+            "把返回值与全局最优混成一个量：返回值只能选一边，答案要在当前节点用两边算。",
+            "子树贡献为负时直接加进去：应取 max(0, ·) 表示不走那条路。",
+            "只在根或只在叶子更新答案：最优路径可能在任意节点拐弯。"
+          ],
+          "code": "best = float('-inf')\n\ndef dfs(u):\n    global best\n    if u is None: return 0\n    left, right = max(0, dfs(u.left)), max(0, dfs(u.right))\n    best = max(best, u.val + left + right)   # 以 u 为拐点结算答案\n    return u.val + max(left, right)          # 向上只贡献单边\n\ndfs(root)",
+          "sources": [
+            {"title": "腾讯IEG后台开发实习一面面经（已过等二面通知中）", "url": "https://nowcoder.com/discuss/932638301494738944"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "面经记录的流程是：前约 20 分钟自我介绍加问项目，之后 15 分钟算法，最后 20 分钟八股与场景。",
+          "面试官不做 agent 方向，项目部分主要靠候选人讲述；追问集中在市面上同类型产品怎么做，以及为什么要做深度研究 agent 而不直接用各模型的深度研究功能。",
+          "算法题是二叉树的最大路径和，采用 DFS 做法。",
+          "八股与场景部分从 HTTP 说起（摘要在此处被截断）。",
+          "作者标注一面已过，正在等二面通知。"
+        ],
+        "uncertain": [
+          "摘要在中途截断（说到 HTTP 的……），八股与场景的完整题目以及二面结果均未知。",
+          "部门细分、面试轮次、候选人项目细节与自身背景摘要未提供。",
+          "二叉树最大路径和的题目约束（节点取值范围、是否允许空树）与考察点摘要未说明。",
+          "本条目给出的解法是通用的后序 DFS 标准做法，不是摘要原文提供的解题细节。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "一面三段：项目追问竞品与自研理由、算法考二叉树最大路径和、八股从 HTTP 起。"},
+          {"level": "入门", "text": "腾讯 IEG 后台实习一面面经：前 20 分钟自我介绍与讲项目，中间 15 分钟算法题（二叉树的最大路径和，DFS），最后 20 分钟八股与场景，从 HTTP 开始。面试官不做 agent，项目靠自述，追问集中在同类产品做法与自研理由。"},
+          {"level": "进阶", "text": "对准备者的含义：项目环节的胜负手不是把技术讲全，而是先让不懂这行的面试官听懂你在解决谁的问题，再给出竞品对比与自研理由——他问的是选型判断，不是实现细节。算法题是树形 DFS 的经典题，考点在分清向上返回的单边贡献与以当前节点为拐点的全局最优；写错通常错在把两者混为一谈，或忘记负贡献应取 0。八股从 HTTP 切入，说明网络基础在这类后台岗里是必答项。"},
+          {"level": "专家", "text": "把这份面经当样本看考法结构：20/15/20 的三段式说明面试官要在有限时间里同时取到项目深度、编码基本功、基础八股三路信号。项目部分因为面试官跨域，考察点从你做了什么迁移到你如何做技术判断，所以竞品视野与自研复用的取舍必须提前准备成可复述的结构（推断）。算法题属于树形 DP 里偏难的一档，面试中通常期望 15 分钟内写对并说清 O(n) 时间与 O(h) 空间。局限是样本只有一次面试，摘要还被截断，不能据此推断腾讯 IEG 的固定题库或权重分配。"}
+        ],
+        "socratic": [
+          {"q": "面试官不做 agent，为什么还要追问竞品与自研理由？", "a": "因为跨域面试官无法验证实现细节，只能通过你知不知道别人怎么做、你凭什么自己做一个，来判断技术选型能力与项目主人翁意识。"},
+          {"q": "最大路径和为什么不能把左右子树的贡献都返回给父节点？", "a": "因为合法路径不能分叉：向上延伸时只能在左右中选一条，双边和只能在当前节点作为拐点结算给全局答案。"},
+          {"q": "八股从 HTTP 开始说明了什么？", "a": "后台开发岗把网络基础当必答项；准备时宜把方法、状态码、连接复用、缓存这条线串成体系，而不是背零散条目（推断，摘要只记录到 HTTP）。"}
+        ],
+        "mechanism": "这份面经的价值在于它展示了面试的信息分配：面试官用 20 分钟项目确认你是不是项目的主人与决策者，所以追问竞品与自研理由而不是代码细节；用 15 分钟算法确认基本功，树形 DFS 正好能区分会背模板与理解递归语义的人；再用 20 分钟八股与场景确认基础是否成体系。三段互补，准备时也应按讲清判断、写对代码、串起基础三条线分别练。",
+        "boundary": "别把单份面经当题库：面试官偏好、部门与实习层级都会改变题目分布；摘要还被截断，八股与场景的具体内容未知，无法据此判断 HTTP 之外还考什么。也不要把面试官不做 agent 当成可以少讲背景的理由——恰恰因为跨域，讲清动机与竞品更重要。",
+        "analogyBoundary": "把面试比作路演只在对方不懂你的技术这一点上成立：投资人最终看回报，面试官看的是你个人的判断与可协作性；而且路演可以只讲结论，面试里每个结论都可能被追问到实现与权衡，准备深度不同。",
+        "misconceptions": [
+          "以为要顺着面试官的技术栈讲：他不懂 agent，反而更该讲清动机、竞品与取舍。",
+          "把最大路径和当普通后序求和：路径不能分叉，向上只返回单边贡献，负贡献要取 0。",
+          "只准备算法：这份面经里项目追问与八股各占约 20 分钟，权重大于算法。"
+        ],
+        "ownAnalysis": "和本批次的 agent 论文卡放一起看很有意思：论文讲怎么让 agent 更强，面经里面试官却在问为什么不直接用大模型的深度研究功能——这恰是 agent 工程岗在真实业务里要回答的选型题。可推断（推断）：这类自研项目的护城河通常不在模型，而在数据链路、评测与场景闭环，项目讲述时最好把这三点的量化结果准备好。可疑处：摘要从说到 HTTP 的处截断，后面内容缺失，本条目对八股部分的描述只到 HTTP 为止。",
+        "officialNotes": [],
+        "interviewAnswer": "这份腾讯 IEG 后台实习一面给我的信号是三块：项目、算法、基础。项目那 20 分钟面试官不做 agent，主要是我讲，他追问同类产品怎么做、为什么不直接用大模型的深度研究功能——考的是选型与差异化；我会先讲清场景，再给竞品对比与自研理由。算法 15 分钟是二叉树最大路径和，用后序 DFS：向上只返回单边贡献，负数取 0，在节点用两边结算全局最优。最后 20 分钟八股从 HTTP 开始。",
+        "studyPath": {
+          "prerequisites": ["二叉树递归与后序遍历", "HTTP 基础（方法、状态码、连接复用、缓存）", "能把项目讲成问题、方案、竞品、指标四段"],
+          "nextSteps": ["把二叉树最大路径和、二叉树直径一类拐点型树 DP 一起刷透", "准备一页竞品对比表：现成大模型功能与自研方案的差异和代价", "把 HTTP/HTTPS 常见追问整理成问答卡片并按场景题演练"]
+        }
+      }
+    }
+  ]
+}

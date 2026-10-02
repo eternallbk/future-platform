@@ -1,0 +1,102 @@
+{
+ "batchId": "queue-03",
+ "mode": "full",
+ "items": [
+  {
+   "id": "edfefc7dc6799d27",
+   "title": "得物Java开发工程师一面面经",
+   "category": "coding",
+   "channel": "nowcoder",
+   "url": "https://nowcoder.com/discuss/932614802113908736",
+   "sources": [
+    {
+     "url": "https://nowcoder.com/discuss/932614802113908736",
+     "name": "nowcoder"
+    }
+   ],
+   "tags": [
+    "牛客",
+    "面经"
+   ],
+   "publishedAt": "2026-10-01T17:46:23+08:00",
+   "lang": "zh",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 64.5,
+   "summary": "9.24bg双2，本人菜菜的，面试官人挺好的，没想到的点会引导，答得只能说还行八股：1.ThreadLocal使用场景、原理、风险漏洞？2.线程池线程之间的信息如何传递？3.除了ThreadLocal，还有哪些线程安全的变量访问方式？4.synchronized和ReentrantLock的区别？5_牛客网_牛客在手,offer不愁",
+   "depthScore": 47.37
+  },
+  {
+   "id": "a269d242962e0bae",
+   "title": "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）",
+   "category": "coding",
+   "channel": "nowcoder",
+   "url": "https://nowcoder.com/discuss/935191455750946816",
+   "sources": [
+    {
+     "url": "https://nowcoder.com/discuss/935191455750946816",
+     "name": "nowcoder"
+    }
+   ],
+   "tags": [
+    "牛客",
+    "面经"
+   ],
+   "publishedAt": "2026-10-01T16:43:08+08:00",
+   "lang": "zh",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 64.4,
+   "summary": "#发面经攒人品#二面：全程没有八股，只有35分钟项目，可以用做参考项目话术准备程度：你的深度研究项目相比较市面上的大模型的深度思考有什么优势；评估环节的覆盖率/来源质量/边际收益怎么怎么计算的；你微调训练模型的预训练模型从哪下载的，名字叫什么，各个参数是多少；你怎么知道训练后效果变好了，训练后的各项_牛客网_牛客在手,offer不愁",
+   "depthScore": 47.32
+  },
+  {
+   "id": "e642b13b2a0d9d5e",
+   "title": "【面经】字节/AI 应用工程师 一面挂经……",
+   "category": "coding",
+   "channel": "nowcoder",
+   "url": "https://nowcoder.com/discuss/933023499399024640",
+   "sources": [
+    {
+     "url": "https://nowcoder.com/discuss/933023499399024640",
+     "name": "nowcoder"
+    }
+   ],
+   "tags": [
+    "牛客",
+    "面经"
+   ],
+   "publishedAt": "2026-10-01T16:54:29+08:00",
+   "lang": "zh",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 64.4,
+   "summary": "岗位：AI 应用工程师（飞书多维表格方向）轮次：一面形式：视频面时长：约 70 分钟一、开场自我介绍二、算法现场手写一道算法题（1～N个数中选k个，给出可能的答案）追问：时间复杂度和空间复杂度是多少？三、项目深挖Agent 相关：为什么项目不用 Claude Code？是否是自己搭建的Agent r_牛客网_牛客在手,offer不愁",
+   "depthScore": 47.32
+  },
+  {
+   "id": "e57e1974a45388b9",
+   "title": "京东后端实习一二面面经（Offer）",
+   "category": "coding",
+   "channel": "nowcoder",
+   "url": "https://nowcoder.com/discuss/933060569995759616",
+   "sources": [
+    {
+     "url": "https://nowcoder.com/discuss/933060569995759616",
+     "name": "nowcoder"
+    }
+   ],
+   "tags": [
+    "牛客",
+    "面经"
+   ],
+   "publishedAt": "2026-10-01T20:28:57+08:00",
+   "lang": "zh",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 56.5,
+   "summary": "9.15一面（Tech），9.22二面（HR面），9.23OC，9.24Offer。京东jdy实习改成了两轮面试，总的来说面试体验还是很好的，这下可以做兄弟了，感谢京东。一面自我介绍实习问了最有挑战的地方，深入追问了一些东西。Agent和开发流程1.使用过哪些AI工具？2.codex和cursor有_牛客网_牛客在手,offer不愁",
+   "depthScore": 43.77
+  }
+ ]
+}

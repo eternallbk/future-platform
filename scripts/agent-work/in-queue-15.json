@@ -1,0 +1,105 @@
+{
+ "batchId": "queue-15",
+ "mode": "full",
+ "items": [
+  {
+   "id": "dd7bec184f4bc0d2",
+   "title": "DexPolicy: Scheduled Exploration for Trajectory-Guided Dexterous Manipulation",
+   "category": "rl",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2610.00360",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2610.00360",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2610.00360",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-30T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 68.9,
+   "summary": "Reinforcement learning (RL) for dexterous manipulation must discover finger-object contacts and then control the object precisely; the action noise that serves the first goal can interfere with the second. In trajectory-guided settings such as ViViDex, where RL refine hand-object trajectories from human video, our baseline PPO runs end near their initial action noise after 5M steps, motivating explicit control of exploration scale. DexPolicy makes that scale an explicit function of training steps, annealing from broad to narrow exploration while holding loss, architecture, reward, and optimizer settings fixed. We study three policy-optimization settings: PPO, critic-free GRPO continuation, and a flow-parameterized PPO variant (FPO). Across five YCB objects and three training seeds, mean deterministic Target success rises from 49.4% to 68.1% (FPO), 14.1% to 45.4% (GRPO), and 32.0% to 35.7% (PPO). On a RealMan RM75 arm with an Inspire/RH56 hand, 360 trials over three objects raise mean Target success from 25.0% to 85.0% (FPO), 10.0% to 63.3% (GRPO), and 8.3% to 43.3% (PPO), with one trained model per object-method condition. PPO component screening favors noise control over the tested optimizer contraction; the selected PPO schedule yields higher mean Target success than linear decay with the same endpoints on three tested objects. Training return, deterministic Target success, and tolerance to execution noise dissociate; schedules should therefore be judged by terminal task success under the intended execution conditions, per task and policy-optimization setting. Code: https://github.com/AIGeeksGroup/DexPolicy. Website: https://aigeeksgroup.github.io/DexPolicy.",
+   "depthScore": 68.16
+  },
+  {
+   "id": "73b1e746907e38f3",
+   "title": "When Do Intrinsic Rewards Lead to Exploration?",
+   "category": "rl",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.02159v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.02159v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG",
+    "cs.LG"
+   ],
+   "publishedAt": "2026-10-02T01:52:41+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 65.4,
+   "summary": "Intrinsic rewards are designed to guide exploration in reinforcement learning by assigning value to an agent's experience, for example through prediction error or learning progress. However, maximizing these rewards need not produce the most informative experience available. We propose a formal criterion for exploration that compares policies by the counterfactual information they acquire: how well their histories can substitute for experience under alternative policies. We construct a single, simple environment in which specified count-based, prediction-error, empowerment, and information-gain objectives have maximizing policies that are Pareto-suboptimal at acquiring counterfactual information. We explain these failures and establish conditions under which existing intrinsic rewards successfully encourage optimal exploration. We also construct an objective that assigns a higher value whenever exploration strictly improves under our criterion.",
+   "depthScore": 66.65
+  },
+  {
+   "id": "234de1752740810d",
+   "title": "Make Sparse Rewards Count: Density-Aware Reward Aggregation for Multi-Reward RL",
+   "category": "rl",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2610.00574",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2610.00574",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2610.00574",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-30T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 55.4,
+   "summary": "Multi-reward reinforcement learning trains large language models to satisfy multiple behavioral objectives simultaneously. Reward-wise normalization, as used in GDPO, preserves reward-specific relative information within rollout groups, but different objectives can still exhibit uneven learning progress. We study this behavior through advantage energy, the sum of a reward's squared advantages over a batch. Under idealized GDPO normalization, we show that this energy is proportional to active-group density: the fraction of rollout groups in which the reward provides nonzero relative advantages. This reveals a residual batch-level signal imbalance and provides a basis for calibrating reward contributions. Based on this relation, we propose Density-Aware Reward Aggregation (DARA). We derive an inverse-square-root density correction that gives greater weight to signals from less frequently active rewards. DARA computes its weights from each rollout batch, adapting to changes in reward activity throughout training without modifying the underlying policy optimization objective. Experiments on tool calling and mathematical reasoning show that DARA learns the targeted behaviors faster than GDPO, reaching high format compliance in up to 26% fewer training steps on tool calling and near-saturated length compliance in up to 65% fewer steps on mathematical reasoning, while remaining competitive in final performance. Our code is available at https://github.com/zhaihaotian/DARA.",
+   "depthScore": 62.33
+  },
+  {
+   "id": "d81df02863d8fdbc",
+   "title": "TERRA: Terrain-Aware Reconstruction, Retargeting and Control for Musculoskeletal Locomotion",
+   "category": "rl",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.38653",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.38653",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.38653",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-29T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 53.8,
+   "summary": "Recent advances in musculoskeletal modeling and reinforcement learning have enabled muscle-actuated agents to reproduce increasingly complex human motions. Yet these capabilities remain largely confined to flat ground, in part because motion datasets rarely include aligned terrain geometry and because retargeting terrain interactions to complex musculoskeletal bodies is challenging. We present TERRA, an end-to-end pipeline for terrain-aware retargeting and control of musculoskeletal locomotion. From kinematic trajectories alone, TERRA combines terrain priors, estimated contacts, and negative free-space evidence to recover task-relevant support geometry. TERRA further considers anatomical, tendon-continuity, and contact constraints during retargeting. Using the resulting motion-terrain pairs from five datasets, we successfully train a single muscle-actuated control policy on 9.4 hours of diverse locomotion. Across reconstruction, retargeting, and held-out tracking benchmarks, TERRA improves terrain accuracy, sharply reduces anatomical and interaction violations, and achieves the highest observed completion rate over supported terrain families. Overall, TERRA provides a practical route from scene-less motion data to muscle-actuated locomotion over diverse non-flat terrain. Project website: https://cnai.epfl.ch/terra/",
+   "depthScore": 61.64
+  }
+ ]
+}

@@ -63,6 +63,19 @@ def main() -> int:
     else:
         results.append(("公式渲染门禁", False, "check-formulas.mjs missing"))
 
+    # --- Gate: a formula that RENDERS but leaks raw LaTeX ---
+    # check-formulas.mjs only proves nothing throws. tex() deliberately degrades an
+    # unknown command into a visible marker, so a formula can pass that gate while
+    # showing the reader a literal "\!" or "\odot". Measured once: 38 of 155 formulas
+    # leaked a command, which looked like broken math in the drawer. Counting them
+    # here turns a missing symbol into a number instead of something to spot by eye.
+    tex_audit = SCRIPTS / "tex-audit.mjs"
+    if tex_audit.exists():
+        ok, tail = run("tex-audit", [NODE, str(tex_audit)])
+        results.append(("公式符号完整性（不泄漏 LaTeX）", ok, tail))
+    else:
+        results.append(("公式符号完整性（不泄漏 LaTeX）", False, "tex-audit.mjs missing"))
+
     # --- Health check: content wider than its box gets silently clipped ---
     layout_audit = SCRIPTS / "audit-layout.mjs"
     if not args.skip_layout:
@@ -83,11 +96,11 @@ def main() -> int:
         print(f"  [{'通过' if ok else '未通过'}] {name}")
         for line in (tail or "").splitlines()[-4:]:
             print(f"          {line}")
-        if not ok and name == "公式渲染门禁":
+        if not ok and name in ("公式渲染门禁", "公式符号完整性（不泄漏 LaTeX）"):
             gate_failed = True
     print("=" * 74)
     if gate_failed:
-        print("公式门禁未通过：畸形 LaTeX 会让公式剖析页整页空白，需立即修。")
+        print("公式门禁未通过：畸形或无法解析的 LaTeX 会让公式页显示原始命令、甚至整页空白，需立即修。")
     else:
         print("门禁通过。布局体检失败只代表「有内容被裁」，不阻断发布，但会记入日志。")
     print("")

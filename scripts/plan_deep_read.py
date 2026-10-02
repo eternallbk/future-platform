@@ -192,12 +192,84 @@ def depth_score(item: dict) -> tuple[float, dict]:
     return round(sum(parts.values()) * (0.6 + 0.4 * catw), 2), parts
 
 
+FORMULA_CATEGORIES = {
+    "multimodal", "posttraining", "worldmodel", "generative",
+    "rl", "agent", "foundation", "engineering",
+}
+
+
+def build_backfill_queue(items: list[dict], enrichment: dict) -> list[dict]:
+    """Items that are already enriched but whose analysis is INCOMPLETE.
+
+    Why this exists: every enrichment written before the diagram mandate (and before
+    the concept sub-fields were added) is thinner than what the workbench now
+    promises. 12 entries had no diagram at all and 6 had no formula, which is
+    exactly the "some cards explain, some don't" inconsistency the reader reported.
+    New runs only ever look at un-enriched items, so those old entries would stay
+    thin forever. This queue makes completing them an explicit, finite task.
+
+    Ordered by how much is missing, so the worst entries are fixed first.
+    """
+    out = []
+    for it in items:
+        iid = it.get("id")
+        e = enrichment.get(iid)
+        if not e:
+            continue                      # not analysed at all -> normal queue
+        cat = str(it.get("category") or "")
+        # Only these categories have a core formula worth extracting. For a job
+        # posting, an interview write-up or a tutorial repo there IS no formula, so
+        # demanding one would either waste a quota slot or invite the agent to invent
+        # a generic equation - which is exactly the kind of fabrication the prompt
+        # forbids. Measured: the naive rule asked for formulas on
+        # "微信小店-推荐算法工程师" and "携程AI应用开发实习一面（OC）".
+        wants_formula = cat in FORMULA_CATEGORIES
+        missing = []
+        if not (e.get("diagram") or {}).get("svg") and not (e.get("diagram") or {}).get("spec"):
+            missing.append("diagram")
+        if wants_formula and not e.get("formulas"):
+            missing.append("formulas")
+        if not e.get("concepts"):
+            missing.append("concepts")
+        # New teaching layers: the reader asked every deep analysis to explain by
+        # teaching, not just summarise.
+        if not e.get("teaching"):
+            missing.append("teaching")
+        if not missing:
+            continue
+        # Weight diagram gaps highest: a card without a figure is the visible defect.
+        weight = 0.0
+        if "diagram" in missing:
+            weight += 3
+        if "teaching" in missing:
+            weight += 2
+        if "formulas" in missing:
+            weight += 1
+        if "concepts" in missing:
+            weight += 1
+        out.append({
+            "id": iid,
+            "title": it.get("title"),
+            "category": it.get("category"),
+            "channel": it.get("channel"),
+            "url": it.get("url"),
+            "missing": missing,
+            "backfillWeight": weight,
+            "hasSummary": bool(str(it.get("summary") or "").strip()),
+        })
+    out.sort(key=lambda r: (-r["backfillWeight"], str(r["id"])))
+    return out
+
+
 def build_plan(per_min: int, per_max: int, fresh_only: bool) -> dict:
     index = load(DATA / "items" / "index.json", {}) or {}
     items = index.get("items") or []
     digest = load(DATA / "digest" / "today.json", {}) or {}
     fresh_ids = {i.get("id") for i in (digest.get("items") or [])}
     enrichment = (load(DATA / "enrichment.json", {}) or {}).get("byId") or {}
+
+    # Items already analysed but with an incomplete analysis (no diagram etc).
+    backfill = build_backfill_queue(items, enrichment)
 
     # Candidates: not already enriched, and (optionally) only today's fresh items.
     pool = [i for i in items
@@ -311,6 +383,12 @@ def build_plan(per_min: int, per_max: int, fresh_only: bool) -> dict:
         },
         "perCategory": per_category,
         "queue": selected,
+        # Entries whose EXISTING analysis is incomplete (no diagram / no formula /
+        # no teaching layer). The agent must complete these as well - they are the
+        # "some cards have analysis, some don't" cases the reader reported. Finite
+        # work: each backfill shrinks this list permanently.
+        "backfill": backfill,
+        "backfillTotal": len(backfill),
         "skimSample": skim[:40],
         "skimByRule": _count_by(skim, "rule"),
     }

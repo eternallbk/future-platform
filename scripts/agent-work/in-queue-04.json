@@ -1,0 +1,118 @@
+{
+ "batchId": "queue-04",
+ "mode": "full",
+ "items": [
+  {
+   "id": "0b3e16ecf4f67dcb",
+   "title": "cookiespiggy/agentic-rl - Agentic RL 中文零基础教程（33 章）：从概念到 GRPO 实战，含 TRL 最小可跑示例；26–33 章附一套可运行的三方判别模型实证工程（encoder vs LLM-LoRA vs 规则基线）。第 25 章讲清 Jev / TypeSafe System One 与 RL 的能力边界 | Chinese Agentic RL tutorial (33 chapters) + a reproducible discriminative-model benchmark",
+   "category": "course",
+   "channel": "github",
+   "url": "https://github.com/cookiespiggy/agentic-rl",
+   "sources": [
+    {
+     "url": "https://github.com/cookiespiggy/agentic-rl",
+     "name": "github"
+    }
+   ],
+   "tags": [
+    "agent-training",
+    "agentic-rl",
+    "beginner-friendly",
+    "benchmark",
+    "calibration",
+    "chinese-tutorial",
+    "discriminative-model",
+    "grpo",
+    "Python"
+   ],
+   "publishedAt": "2026-09-26T23:14:32+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 65.1,
+   "summary": "Agentic RL 中文零基础教程（33 章）：从概念到 GRPO 实战，含 TRL 最小可跑示例；26–33 章附一套可运行的三方判别模型实证工程（encoder vs LLM-LoRA vs 规则基线）。第 25 章讲清 Jev / TypeSafe System One 与 RL 的能力边界 | Chinese Agentic RL tutorial (33 chapters) + a reproducible discriminative-model benchmark",
+   "depthScore": 40.29
+  },
+  {
+   "id": "f92d0f5913e59e39",
+   "title": "sgl-project/sglang - SGLang is a high-performance serving framework for large language models and multimodal models.",
+   "category": "engineering",
+   "channel": "github",
+   "url": "https://github.com/sgl-project/sglang",
+   "sources": [
+    {
+     "url": "https://github.com/sgl-project/sglang",
+     "name": "github"
+    }
+   ],
+   "tags": [
+    "attention",
+    "blackwell",
+    "cuda",
+    "deepseek",
+    "diffusion",
+    "glm",
+    "gpt-oss",
+    "inference",
+    "Python"
+   ],
+   "publishedAt": "2026-10-01T00:09:26+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 84.8,
+   "summary": "SGLang is a high-performance serving framework for large language models and multimodal models.",
+   "depthScore": 60.25
+  },
+  {
+   "id": "205120feb76f0e57",
+   "title": "Decision-Oriented Recommendation Reranking: An Empirical Study of Jev",
+   "category": "engineering",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.40241",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.40241",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40241",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-29T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 60.7,
+   "summary": "Large language models (LLMs) have shown promise for recommendation reranking, but their use introduces an important tradeoff between recommendation quality and serving efficiency. We investigate whether a decision-oriented model provides a useful alternative when the reranking task is fundamentally a structured choice among predefined candidate items. Specifically, we conduct a controlled empirical study of Jev, described by TypeSafe AI as a ``System One Model,'' for personalized recommendation reranking and compare it with recommendation-specific models and pointwise and listwise Qwen rerankers across multiple Amazon Reviews domains and candidate-set sizes, evaluating both recommendation effectiveness and observed serving latency. Our results show that Jev maintains strong recommendation effectiveness relative to the evaluated baselines while exhibiting substantially more gradual latency growth than the pointwise Qwen rerankers, although its observed serving latency remains substantially higher than that of recommendation-specific models. Together, these characteristics place Jev in a distinct quality--latency operating regime across candidate sizes and domains. These findings motivate further investigation of decision-oriented models for recommendation and other ranking tasks with structured output spaces.",
+   "depthScore": 57.89
+  },
+  {
+   "id": "4151aaf2fefa6d1c",
+   "title": "What Makes Recurrence Effective in Looped Language Models?",
+   "category": "engineering",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.36636",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.36636",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.36636",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-29T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 54.1,
+   "summary": "Looped language models (LoopLMs) increase computational depth through parameter sharing, offering a path to scale inference computation without adding parameters. However, it remains unclear when additional recurrence is beneficial and how architectural choices affect its effectiveness. Through controlled experiments, we systematically examine (1) when recurrence helps, (2) where it should be applied, and (3) how its conditioning affects performance. Our evaluation covers inference budgets below, within, and beyond the training horizon under knowledge and reasoning tasks. (1) We find that recurrence can improve reasoning beyond the training horizon while degrading knowledge performance, but harder reasoning instances do not consistently benefit more. (2) Performance also depends on how distinct layers and recurrent iterations are allocated, showing that effective depth alone is insufficient to predict behavior. Non-recurrent output layers improve robustness to under-unrolling, while the preferred placement of input and output layers varies with inference budget. (3) Finally, we find that conventional initial-state injection offers limited robustness to varying recurrence depth. We therefore propose history-state injection as an alternative, and show that channel-wise history-state injection combined with timestep conditioning offers a low-cost and more effective design, better preserving knowledge under extended unrolling while improving robustness across inference budgets. Overall, our results clarify when recurrent computation helps, where it fails, and offer practical guidelines for designing LoopLMs across variable inference budgets.",
+   "depthScore": 55.34
+  }
+ ]
+}

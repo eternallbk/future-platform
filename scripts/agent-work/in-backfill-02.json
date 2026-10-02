@@ -1,0 +1,1575 @@
+{
+ "batchId": "backfill-02",
+ "mode": "backfill",
+ "items": [
+  {
+   "id": "0cba51532f6021bd",
+   "title": "RATIO: Reasoning Analysis and Token-level Inference Optimization for Quantized Reasoning Models",
+   "category": "engineering",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39801v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39801v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG"
+   ],
+   "publishedAt": "2026-09-30T02:14:24+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 63.6,
+   "summary": "Post-training quantization (PTQ) has become a widely adopted technique for reducing the memory footprint and inference cost of large language models (LLMs). However, recent studies reveal that when applied to reasoning models, PTQ not only degrades reasoning performance but also exacerbates overthinking, leading to longer reasoning trajectories. These issues may offset the efficiency gains expected from lower-precision inference. Existing approaches mainly rely on complex optimization procedures. More recent lightweight inference strategies instead use predefined overthinking markers, limiting their adaptability across quantized models. To address these issues, we propose Reasoning Analysis and Token-level Inference Optimization (RATIO), a framework that identifies model-specific overthinking tokens and assigns each a tailored penalty. RATIO first introduces Quantization-aware Reasoning Behavior Analysis (QRBA) to identify overthinking tokens by analyzing discrepancies between full-precision and quantized models. It then adopts Token-Specific Penalty Determination (TSPD), which leverages full-precision guidance to derive token-specific penalties without additional training. Extensive experiments show that RATIO achieves a better accuracy-efficiency trade-off than existing token-level interventions. Specifically, RATIO achieves up to 9.8 points accuracy improvement and reduces chain-of-thought (CoT) length by up to 51.3% compared with quantized baselines. The code will be available at https://github.com/steven-bao1/RATIO.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "0cba51532f6021bd",
+    "tldr": "RATIO 用全精度模型定位量化模型的过度思考 token 并施加专属惩罚，CoT 最长缩短 51.3%。",
+    "keyPoints": [
+     "PTQ 用在推理模型上不仅损害推理表现，还会加剧过度思考、拉长推理链。",
+     "已有的轻量推理策略依赖预定义过度思考标记，跨量化模型的适应性有限。",
+     "RATIO 的 QRBA 通过全精度与量化模型的差异识别过度思考 token。",
+     "TSPD 借助全精度引导推导 token 专属惩罚，无需额外训练。",
+     "相对量化基线，精度最多 +9.8 点，CoT 最长减少 51.3%。"
+    ],
+    "why": "面向推理效率与部署方向：量化叠加推理时 token 级干预，是后训练岗位常见的精度—成本权衡题；免训练标定与 CoT 压缩思路可直接迁移到自己的推理加速实验。",
+    "difficulty": "medium",
+    "tags": [
+     "quantization",
+     "ptq",
+     "reasoning",
+     "chain-of-thought",
+     "inference-optimization",
+     "overthinking"
+    ],
+    "entities": [
+     "RATIO",
+     "QRBA",
+     "TSPD",
+     "PTQ",
+     "CoT"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "RATIO 的 token 级惩罚流程",
+     "caption": "RATIO 先用全精度模型与量化模型的差异定位过度思考 token，再为每个 token 定出专属惩罚并作用于推理，得到更短 CoT 与更高精度。",
+     "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 960 420' role='img' aria-label='RATIO 流程示意图' font-family='sans-serif'><rect x='6' y='6' width='948' height='408' rx='16' fill='none' stroke='var(--line-1)'/><text x='30' y='50' font-size='20' fill='var(--fg-1)'>RATIO：量化推理模型的 token 级优化</text><rect x='20' y='130' width='160' height='110' rx='12' fill='none' stroke='var(--line-1)'/><text x='32' y='162' font-size='15' fill='var(--fg-1)'>全精度 vs 量化</text><text x='32' y='190' font-size='13' fill='var(--fg-1)'>同一轨迹对比</text><text x='32' y='212' font-size='13' fill='var(--fg-1)'>全精度与量化差异</text><rect x='210' y='130' width='160' height='110' rx='12' fill='none' stroke='var(--line-1)'/><text x='222' y='162' font-size='15' fill='var(--fg-1)'>QRBA</text><text x='222' y='190' font-size='13' fill='var(--fg-1)'>定位模型专属</text><text x='222' y='212' font-size='13' fill='var(--fg-1)'>过度思考 token</text><rect x='400' y='130' width='160' height='110' rx='12' fill='none' stroke='var(--line-1)'/><text x='412' y='162' font-size='15' fill='var(--fg-1)'>TSPD</text><text x='412' y='190' font-size='13' fill='var(--fg-1)'>以全精度为引导</text><text x='412' y='212' font-size='13' fill='var(--fg-1)'>定 token 专属惩罚</text><rect x='590' y='130' width='160' height='110' rx='12' fill='none' stroke='var(--line-1)'/><text x='602' y='162' font-size='15' fill='var(--fg-1)'>推理时施加惩罚</text><text x='602' y='190' font-size='13' fill='var(--fg-1)'>压低过度思考</text><text x='602' y='212' font-size='13' fill='var(--fg-1)'>token 的被选概率</text><rect x='780' y='130' width='160' height='110' rx='12' fill='none' stroke='var(--accent)'/><text x='792' y='162' font-size='15' fill='var(--accent)'>结果：CoT 更短</text><text x='792' y='190' font-size='13' fill='var(--fg-1)'>CoT 最长缩短 51.3%</text><text x='792' y='212' font-size='13' fill='var(--fg-1)'>精度最多 +9.8 点</text><line x1='182' y1='185' x2='202' y2='185' stroke='var(--accent)' stroke-width='2'/><polygon points='202,180 210,185 202,190' fill='var(--accent)'/><line x1='372' y1='185' x2='392' y2='185' stroke='var(--accent)' stroke-width='2'/><polygon points='392,180 400,185 392,190' fill='var(--accent)'/><line x1='562' y1='185' x2='582' y2='185' stroke='var(--accent)' stroke-width='2'/><polygon points='582,180 590,185 582,190' fill='var(--accent)'/><line x1='752' y1='185' x2='772' y2='185' stroke='var(--accent)' stroke-width='2'/><polygon points='772,180 780,185 772,190' fill='var(--accent)'/><text x='30' y='304' font-size='14' fill='var(--fg-1)'>流程：逐 token 对比全精度与量化输出 → QRBA 定位过度思考 token → TSPD 定专属惩罚 → 推理时施加 → CoT 缩短、精度提升</text><text x='30' y='340' font-size='14' fill='var(--fg-1)'>全程不更新参数，惩罚强度逐 token 不同</text></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "全精度 vs 量化",
+        "detail": "在同一轨迹上比较两个模型的行为差异"
+       },
+       {
+        "label": "QRBA",
+        "detail": "通过差异定位模型专属的过度思考 token"
+       },
+       {
+        "label": "TSPD",
+        "detail": "以全精度为引导推导 token 专属惩罚，无需额外训练"
+       },
+       {
+        "label": "推理时施加惩罚",
+        "detail": "压低过度思考 token 被选中的概率"
+       },
+       {
+        "label": "结果",
+        "detail": "CoT 最长缩短 51.3%，精度最多提升 9.8 点"
+       }
+      ],
+      "edges": [
+       {
+        "from": "全精度 vs 量化",
+        "to": "QRBA",
+        "label": "分布差异序列"
+       },
+       {
+        "from": "QRBA",
+        "to": "TSPD",
+        "label": "过度思考 token 位置"
+       },
+       {
+        "from": "TSPD",
+        "to": "推理时施加惩罚",
+        "label": "token 专属惩罚强度"
+       },
+       {
+        "from": "推理时施加惩罚",
+        "to": "结果",
+        "label": "更短 CoT、更高精度"
+       }
+      ]
+     },
+     "alt": "RATIO 流程：全精度与量化模型逐 token 对比 → QRBA 定位过度思考 token → TSPD 以全精度引导定出 token 专属惩罚 → 推理时施加惩罚 → CoT 缩短且精度提升"
+    },
+    "concepts": [
+     {
+      "name": "后训练量化与推理模型的过度思考",
+      "readable": "把训练好的模型权重压到低精度能省显存和算力，但用在推理模型上，答案不只会变差，模型还会更啰嗦：推理链变长，多花的算力把省下的又吃掉。",
+      "analogy": "像把资料缩印省钱：纸省了，字却糊了，读的人只好在同一段反复确认，最后耗掉的时间比不缩印还多。",
+      "analogyBreaksDown": "复印件再糊也不会主动多写内容；量化是改变了模型的输出分布，让它真的多生成冗余推理步，属于生成行为的变化而非被动读不清。",
+      "mechanism": "权重与激活的量化误差累积，使部分 token 上的分布发生偏移，本来一步可定的中间结论被反复推敲，于是 CoT 变长、精度与效率同时受损。",
+      "visual": "上下两条等宽横条对比：上条为全精度模型的 CoT 长度，下条为量化模型且明显更长，末端分别标注精度水平。",
+      "prerequisites": [
+       "Transformer 自回归解码",
+       "logits 与 softmax 的基本概念",
+       "权重量化与反量化（scale、zero-point）"
+      ],
+      "selfTest": [
+       "为什么 PTQ 用在推理模型上可能出现省了显存却没省时间的情况？",
+       "过度思考在模型输出上对应哪个可观测指标的变化？",
+       "量化误差大致通过什么途径影响到推理链长度？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "过度思考 token 与 token 级惩罚",
+      "readable": "并非整条推理链都有问题，只有少数位置在诱发冗余推敲。找出这些位置，给每个位置一个力度合适的惩罚，压低它被选中的概率，推理链就会变短。",
+      "analogy": "堵车往往不是整条路的问题，而是几个固定路口互相让行：与其全城限速，不如只在那几个路口装红绿灯，并按拥堵程度调节时长。",
+      "analogyBreaksDown": "红绿灯时长可以长期固定，而过度思考 token 随模型、量化配置与输入变化，需要按模型重新标定，一套参数不能通用。",
+      "mechanism": "QRBA 对比全精度与量化模型的行为差异，定位诱发冗余推理的 token；TSPD 以全精度输出为引导求出该 token 的专属惩罚强度，在解码时从该位置打分中扣除，降低其被选中的概率。",
+      "visual": "一行 token 方格：多数为浅色，3 至 4 个深色格标为过度思考 token，每个深色格上方竖着一条长度不同的惩罚条。",
+      "prerequisites": [
+       "自回归解码与 logits 干预",
+       "KL 散度等分布差异度量",
+       "贪心解码与采样解码的区别"
+      ],
+      "selfTest": [
+       "为什么采用逐 token 惩罚，而不是统一限制最大生成长度？",
+       "为什么惩罚强度必须随 token 不同而变化？",
+       "惩罚施加在 logits 上会改变解码过程中的什么？"
+      ],
+      "formula": "\\tilde{z}_t = z_t - \\lambda_t"
+     },
+     {
+      "name": "全精度引导的免训练惩罚标定（QRBA + TSPD）",
+      "readable": "惩罚强度不靠训练去学，而是把全精度模型当参考答案：量化模型在哪些位置偏离了它，就惩罚哪里，偏离越大罚得越重。",
+      "analogy": "老师对着标准答案批改：学生哪一步和标准答案分叉，就在那一步标注，不必重新编一套教材，只需要一份标准答案。",
+      "analogyBreaksDown": "标准答案是现成的，而全精度模型的引导信号要真的跑一遍才有；若部署端只能加载量化权重，这一参照可能拿不到，需要退化为预先标定好的惩罚表。",
+      "mechanism": "QRBA 在同一条轨迹上统计全精度与量化模型的分布差异序列，作为过度思考的判别信号；TSPD 直接把这些差异映射为 token 专属惩罚，全程不更新任何参数，因此无需额外训练。",
+      "visual": "左列全精度模型输出、右列量化模型输出，两者用差值箭头连到中间一张惩罚表，表中每个 token 对应一个数值。",
+      "prerequisites": [
+       "PTQ 与全精度模型的对照评测",
+       "分布差异（KL）计算",
+       "推理时干预，例如 logits processor"
+      ],
+      "selfTest": [
+       "TSPD 为什么能不加训练就得到惩罚强度？",
+       "这套方法对全精度模型的可得性有什么依赖？",
+       "摘要指出预定义过度思考标记的做法有什么局限？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-ratio-token-penalty",
+      "name": "Token 专属惩罚对打分（logits）的修正",
+      "category": "posttraining",
+      "glyph": "λ",
+      "tags": [
+       "quantization",
+       "reasoning",
+       "inference"
+      ],
+      "latex": "\\tilde{z}_t = z_t - \\lambda_t, \\quad \\lambda_t = \\mathrm{TSPD}\\big(\\Delta_t(f, q)\\big)",
+      "html": "<code>tilde_z[t] = z[t] - lambda[t]</code>",
+      "symbols": [
+       [
+        "z_t",
+        "量化模型在位置 t 的原始打分（logits）"
+       ],
+       [
+        "λ_t",
+        "该 token 的专属惩罚强度"
+       ],
+       [
+        "Δ_t(f, q)",
+        "全精度模型 f 与量化模型 q 在该 token 上的行为差异，由 QRBA 测得"
+       ],
+       [
+        "tilde z_t",
+        "施加惩罚后的打分，供解码使用"
+       ]
+      ],
+      "derivation": [
+       "让全精度模型 f 与量化模型 q 跑同一段推理，得到逐步的行为差异序列 Δ_t（QRBA）。",
+       "差异显著偏大的位置被判为量化诱发的过度思考 token。",
+       "以全精度输出为引导，为每个这样的 token 求出一个专属惩罚强度 λ_t（TSPD），过程中不更新任何参数。",
+       "解码时从该位置的打分中减去 λ_t，压低过度思考 token 被选中的概率。",
+       "效果：相对量化基线，CoT 长度最多减少 51.3%，精度最多提升 9.8 点。"
+      ],
+      "analogy": "像给每个容易跑题的步骤单独设一个提醒力度：先照着标准答案找出分叉处，再按分叉大小决定提醒多用力，而不是整段推理一律打断。",
+      "pitfalls": [
+       "惩罚过强会连同必要的推理步一起压掉，反而降低精度。",
+       "λ_t 依赖全精度模型提供的引导信号，部署时未必能同时加载全精度权重。",
+       "换模型、换量化位宽或换配置都需要重新标定，惩罚不具备通用性。",
+       "本公式是按采集摘要口径的示意重建，原文的具体惩罚形式与施加位置需查原文核实。"
+      ],
+      "code": "import torch\nimport torch.nn.functional as F\n\n\ndef ratio_penalty(logits_f, logits_q, scale=1.0):\n    # logits_f / logits_q: [T, V]，全精度与量化模型在同一条轨迹上的打分\n    # 1) QRBA：逐步比较两个模型的输出分布，得到行为差异序列\n    log_p_f = F.log_softmax(logits_f, dim=-1)\n    log_p_q = F.log_softmax(logits_q, dim=-1)\n    p_f = log_p_f.exp()\n    delta = (p_f * (log_p_f - log_p_q)).sum(-1)   # [T] 每步的分布差异\n    # 2) 差异明显偏大的位置判为过度思考 token\n    flag = delta > delta.mean()\n    # 3) TSPD：按差异大小给出 token 专属惩罚，不更新任何参数\n    lam = torch.where(flag, scale * delta, torch.zeros_like(delta))\n    # 4) 解码前，从该位置被选中 token 的打分中减去惩罚\n    chosen = logits_q.argmax(-1)\n    adjusted = logits_q.clone()\n    adjusted[torch.arange(adjusted.size(0)), chosen] -= lam\n    return adjusted, lam\n\n\nlogits_f = torch.randn(8, 100)\nlogits_q = logits_f + 0.3 * torch.randn(8, 100)\nadjusted, lam = ratio_penalty(logits_f, logits_q)\nprint(lam.round(decimals=3))\n",
+      "sources": [
+       {
+        "title": "RATIO: Reasoning Analysis and Token-level Inference Optimization for Quantized Reasoning Models（arXiv:2609.39801v1）",
+        "url": "https://arxiv.org/abs/2609.39801v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "论文提出 RATIO 框架，用于识别量化推理模型专属的过度思考 token 并为其分配定制惩罚。",
+      "RATIO 包含 QRBA，通过分析全精度模型与量化模型之间的差异来识别过度思考 token。",
+      "RATIO 包含 TSPD，借助全精度引导推导 token 专属惩罚且不需要额外训练。",
+      "摘要称后训练量化会损害推理模型的表现并加剧过度思考，使推理轨迹变长。",
+      "摘要称已有轻量推理策略依赖预定义过度思考标记，跨量化模型的适应性受限。",
+      "实验报告相对量化基线精度最多提升 9.8 点，CoT 长度最多减少 51.3%。",
+      "摘要称代码将发布于 https://github.com/steven-bao1/RATIO 。"
+     ],
+     "uncertain": [
+      "采集摘要未给出惩罚的具体数学形式与施加对象，条目中的公式是按摘要口径的示意重建，非原文公式。",
+      "9.8 点与 51.3% 所对应的评测基准、模型规模与量化位宽在摘要中未说明。",
+      "摘要只说「优于现有 token 级干预」，未列出具体对比方法与完整实验设置。",
+      "formulas 里的 Python 片段为示意实现，不是论文官方代码。",
+      "量化导致过度思考的机理描述（误差累积使分布偏移）属通用解释，原文未必如此表述。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "5edfee114f60afd1",
+   "title": "vllm-project/vllm - A high-throughput and memory-efficient inference and serving engine for LLMs",
+   "category": "engineering",
+   "channel": "github",
+   "url": "https://github.com/vllm-project/vllm",
+   "sources": [
+    {
+     "url": "https://github.com/vllm-project/vllm",
+     "name": "github"
+    }
+   ],
+   "tags": [
+    "amd",
+    "blackwell",
+    "cuda",
+    "deepseek",
+    "deepseek-v3",
+    "gpt",
+    "gpt-oss",
+    "inference",
+    "Python"
+   ],
+   "publishedAt": "2026-09-30T23:54:57+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 92.8,
+   "summary": "A high-throughput and memory-efficient inference and serving engine for LLMs - vllm-project/vllm",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "5edfee114f60afd1",
+    "tldr": "vLLM 仓库条目：面向 LLM 的高吞吐、显存高效推理与服务引擎。采集摘要有限，仅一句仓库简介。",
+    "keyPoints": [
+     "标题与摘要都把 vllm 定位为 LLM 推理与服务引擎",
+     "核心卖点是高吞吐与显存高效",
+     "来源为 GitHub 仓库 vllm-project/vllm，代码可获取",
+     "仓库标签含 cuda、amd、blackwell、deepseek、gpt",
+     "采集摘要只有一句仓库简介，无实验数据"
+    ],
+    "why": "推理服务是后训练与 Agent 落地的基础设施，吞吐与显存决定成本与批量规模。对做 RL 采样、多模态批推理、Agent 工具调用者可写进履历。",
+    "difficulty": "medium",
+    "tags": [
+     "inference",
+     "serving",
+     "throughput",
+     "kv-cache",
+     "llm-engineering",
+     "gpu"
+    ],
+    "entities": [
+     "vLLM",
+     "vllm-project/vllm",
+     "CUDA",
+     "AMD",
+     "Blackwell",
+     "DeepSeek"
+    ],
+    "diagram": {
+     "kind": "architecture",
+     "title": "vLLM 推理服务数据流",
+     "caption": "请求经调度进入 GPU 执行，Token 流式返回；同时以分页的 KV Cache 缓存历史键值，省显存、提高批量并发。",
+     "svg": "<svg viewBox=\"0 0 880 340\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"vLLM 推理服务数据流\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><rect x=\"24\" y=\"40\" width=\"160\" height=\"72\" rx=\"8\"/><rect x=\"240\" y=\"40\" width=\"180\" height=\"72\" rx=\"8\"/><rect x=\"476\" y=\"40\" width=\"170\" height=\"72\" rx=\"8\"/><rect x=\"702\" y=\"40\" width=\"154\" height=\"72\" rx=\"8\"/><rect x=\"240\" y=\"212\" width=\"406\" height=\"86\" rx=\"8\" stroke-dasharray=\"6 5\"/></g><g fill=\"currentColor\" font-size=\"15\" text-anchor=\"middle\"><text x=\"104\" y=\"72\">请求到达</text><text x=\"104\" y=\"94\" font-size=\"13\">各类客户端</text><text x=\"330\" y=\"72\">调度与批处理</text><text x=\"330\" y=\"94\" font-size=\"13\">把请求攒成一批</text><text x=\"561\" y=\"72\">GPU 执行</text><text x=\"561\" y=\"94\" font-size=\"13\">前向计算</text><text x=\"779\" y=\"72\">流式返回</text><text x=\"779\" y=\"94\" font-size=\"13\">逐 Token 输出</text><text x=\"443\" y=\"246\">KV Cache：历史键值按块分页存放</text><text x=\"443\" y=\"272\" font-size=\"13\">显存利用率提高，可并发更多序列</text></g><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" marker-end=\"url(#ar)\"><line x1=\"184\" y1=\"76\" x2=\"236\" y2=\"76\"/><line x1=\"420\" y1=\"76\" x2=\"472\" y2=\"76\"/><line x1=\"646\" y1=\"76\" x2=\"698\" y2=\"76\"/></g><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-dasharray=\"6 5\"><line x1=\"561\" y1=\"112\" x2=\"561\" y2=\"208\"/><line x1=\"561\" y1=\"208\" x2=\"561\" y2=\"208\"/></g><defs><marker id=\"ar\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"currentColor\"/></marker></defs></svg>",
+     "spec": {
+      "type": "architecture",
+      "nodes": [
+       {
+        "label": "请求到达",
+        "detail": "客户端提交推理请求，进入服务队列"
+       },
+       {
+        "label": "调度与批处理",
+        "detail": "把多条请求组成一批，减少 GPU 空转"
+       },
+       {
+        "label": "GPU 执行",
+        "detail": "在 GPU 上完成前向计算，读写 KV Cache"
+       },
+       {
+        "label": "KV Cache 分页",
+        "detail": "历史键值按块存放，提高显存利用率与并发度"
+       },
+       {
+        "label": "流式返回",
+        "detail": "逐 Token 返回结果给客户端"
+       }
+      ],
+      "edges": [
+       {
+        "from": "请求到达",
+        "to": "调度与批处理",
+        "label": "入队"
+       },
+       {
+        "from": "调度与批处理",
+        "to": "GPU 执行",
+        "label": "组批"
+       },
+       {
+        "from": "GPU 执行",
+        "to": "KV Cache 分页",
+        "label": "读写键值"
+       },
+       {
+        "from": "GPU 执行",
+        "to": "流式返回",
+        "label": "生成 Token"
+       }
+      ]
+     },
+     "alt": "流程图：请求到达后经调度组批，进入 GPU 执行，读写分页 KV Cache，并逐 Token 流式返回。"
+    },
+    "concepts": [
+     {
+      "name": "KV Cache 显存占用",
+      "readable": "自回归生成时，历史 Token 的键和值要被反复用到，如果每步重算就太慢。于是把每层每个注意力头的键值存下来，这就是 KV Cache。它的大小随层数、头数、序列长度和并发路数线性增长，是长上下文与大批量推理的主要显存开销。",
+      "analogy": "像写长论文时把已写章节留在桌面上，方便随时回看，不用每次重读全书；但桌子就那么大，章节越多、同时铺开的稿子越多，就越放不下。",
+      "analogyBreaksDown": "桌面是均匀的物理空间，放不下就是放不下；而 KV Cache 的块可以被换出、共享前缀可以复用、精度还能压到 FP8，空间是可压缩、可调度的，不像桌子那样刚性地满。",
+      "mechanism": "每生成一个 Token，就为它算出各层的 K、V 向量并追加进缓存；下一步注意力直接读取整段缓存，避免重算历史。缓存总量与 batch、序列长度成正比，因此常用分页（按块分配）、前缀共享、低精度存储来压低占用，从而换取更大的并发批量。",
+      "visual": "画一条向右延伸的横条代表序列长度，每一小格是一个 Token；横条按层堆叠成多行，行数等于层数。右侧再并列若干条同样的横条代表并发序列，整体高度即显存占用；把格子换成半高表示低精度缓存，高度随之减半。",
+      "prerequisites": [
+       "Transformer 自注意力中 Q、K、V 的作用",
+       "自回归解码的逐步生成过程",
+       "字节数与张量形状的换算（元素数 × 每元素字节）"
+      ],
+      "selfTest": [
+       "把并发序列数从 8 提高到 32，KV Cache 显存大约变成原来的几倍？",
+       "上下文长度翻倍但并发数减半，KV Cache 显存总量大致如何变化？",
+       "把缓存从 FP16 换成 FP8，显存和精度各会受什么影响？"
+      ],
+      "formula": "M_{kv} = 2 \\cdot L \\cdot n_{kv} \\cdot d_{h} \\cdot s \\cdot b \\cdot p",
+      "formulaId": "f-kv-cache-footprint"
+     },
+     {
+      "name": "吞吐与延迟的取舍",
+      "readable": "推理服务同时被两个指标约束：每秒能处理多少 Token（吞吐）和单条请求要等多久（延迟）。把更多请求凑成一批能提高吞吐、摊薄权重读取成本，但每条请求的响应会变慢。服务引擎的核心工作就是在显存允许的范围内找这个平衡点。",
+      "analogy": "像拼车：车上人越多，人均油耗越低、总运力越高，但每个乘客的到达时间会被绕路拖长；想让人人都快，就只能少拉人。",
+      "analogyBreaksDown": "拼车的座位数是硬上限，而推理批量的上限是显存里 KV Cache 能装多少块，可以靠分页、前缀共享、低精度动态放宽，且批内不同请求长度不一，不是整齐的座位。",
+      "mechanism": "解码阶段每步都要读取全部模型权重，这部分开销与批量大小关系不大，因此增大批量能显著提高单位时间产出。但批量越大，KV Cache 占用越高、单步耗时越长，尾延迟上升。调度器据此在显存预算内动态决定每一步放哪些请求进批。",
+      "visual": "横轴为批量大小，纵轴向上画吞吐曲线（先陡升后趋平），向下画单请求延迟曲线（逐渐抬升）；两条曲线的交叉区域用阴影标出，注为可用的工作点区间。",
+      "prerequisites": [
+       "解码阶段每步需读取全部权重",
+       "KV Cache 占用随批量线性增长",
+       "吞吐与延迟的定义与关系"
+      ],
+      "selfTest": [
+       "为什么增大批量能提高吞吐？瓶颈在读取权重还是读取缓存？",
+       "批量增大后，首 Token 延迟和每 Token 延迟哪个先恶化？",
+       "如果显存足够但吞吐不涨，可能是什么原因？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-kv-cache-footprint",
+      "name": "KV Cache 显存占用估算",
+      "category": "engineering",
+      "glyph": "M",
+      "tags": [
+       "inference",
+       "kv-cache",
+       "memory",
+       "serving"
+      ],
+      "latex": "M_{kv} = 2 \\cdot L \\cdot n_{kv} \\cdot d_{h} \\cdot s \\cdot b \\cdot p",
+      "html": "<code>M_kv = 2 · L · n_kv · d_h · s · b · p</code>",
+      "symbols": [
+       [
+        "M_{kv}",
+        "KV Cache 显存总量（字节）"
+       ],
+       [
+        "2",
+        "K 与 V 两份张量"
+       ],
+       [
+        "L",
+        "Transformer 层数"
+       ],
+       [
+        "n_{kv}",
+        "键值注意力头数（GQA/MQA 下小于查询头数）"
+       ],
+       [
+        "d_{h}",
+        "每个注意力头的维度"
+       ],
+       [
+        "s",
+        "序列长度（含提示与已生成部分）"
+       ],
+       [
+        "b",
+        "并发序列数（批量大小）"
+       ],
+       [
+        "p",
+        "每个元素的字节数（FP16 为 2，FP8 为 1）"
+       ]
+      ],
+      "derivation": [
+       "单层单个 Token 的键与值各是一个 n_{kv} × d_h 的向量，故元素数为 2 · n_{kv} · d_h。",
+       "序列长度为 s 时，单层单条序列的元素数放大为 2 · n_{kv} · d_h · s。",
+       "叠加 L 层得到单条序列全部缓存元素数 2 · L · n_{kv} · d_h · s。",
+       "并发 b 条序列同时驻留时再乘 b，最后乘每元素字节数 p 得到显存总量。"
+      ],
+      "analogy": "像给每位同时办公的同事配一个文件柜：柜子层数相当于层数，每层抽屉数相当于头数，抽屉里放的历史页数相当于序列长度，同事人数相当于并发批量，纸张厚度相当于精度。任意一项变大，需要的柜子空间都线性变大。",
+      "pitfalls": [
+       "GQA/MQA 下键值头数小于查询头数，误用查询头数会把显存估算放大若干倍",
+       "忘记乘 2，只算了 K 或只算了 V",
+       "漏掉并发批量 b，把单序列占用当成整机占用",
+       "忽略精度 p：FP16 与 FP8 相差一倍，直接影响可并发序列数",
+       "把该式当精确值：分页分配的块内碎片、未用满的块会让实际占用高于估算"
+      ],
+      "code": "def kv_cache_bytes(num_layers, num_kv_heads, head_dim, seq_len, batch, bytes_per_elem=2):\n    # 单条序列单层：K 和 V 各 num_kv_heads * head_dim 个元素\n    per_token_per_layer = 2 * num_kv_heads * head_dim\n    total_elems = per_token_per_layer * num_layers * seq_len * batch\n    return total_elems * bytes_per_elem\n\n# 例：32 层、8 个键值头、头维度 128、4096 上下文、并发 16、FP16\nmb = kv_cache_bytes(32, 8, 128, 4096, 16) / 1024 ** 2\nprint(f'{mb:.1f} MiB')  # 约 8192.0 MiB\n\n# 换成 FP8 缓存，占用减半，可支撑的并发批量翻倍\nmb_fp8 = kv_cache_bytes(32, 8, 128, 4096, 16, bytes_per_elem=1) / 1024 ** 2\nprint(f'{mb_fp8:.1f} MiB')  # 约 4096.0 MiB",
+      "sources": [
+       {
+        "title": "vllm-project/vllm - A high-throughput and memory-efficient inference and serving engine for LLMs",
+        "url": "https://github.com/vllm-project/vllm"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "标题为 vllm-project/vllm - A high-throughput and memory-efficient inference and serving engine for LLMs",
+      "摘要原文为 A high-throughput and memory-efficient inference and serving engine for LLMs - vllm-project/vllm",
+      "该条被归类为 engineering，来源为 github，代码可获取（codeAvailable 为 true）",
+      "仓库标签包含 amd、blackwell、cuda、deepseek、deepseek-v3、gpt、gpt-oss、inference、Python",
+      "唯一 source 的 url 为 https://github.com/vllm-project/vllm"
+     ],
+     "uncertain": [
+      "采集摘要只有一句仓库简介，没有版本号、架构说明、性能数据或论文引用，tldr 与 keyPoints 之外的机制描述均来自通用背景而非本条摘要",
+      "KV Cache 分页（PagedAttention）、连续批处理等具体机制未在本条 title/summary 中出现，属于 vLLM 的常见公开认知，需人工核实当前版本实现",
+      "标签中的具体模型与硬件支持名单来自仓库标签字段，未在摘要中说明其含义与支持程度",
+      "本节公式是通用 KV Cache 估算式，并非从本条摘要中提取",
+      "仓库当前特性与本文写作时是否一致，需查看仓库 README 与发布说明"
+     ]
+    }
+   }
+  },
+  {
+   "id": "fb8063dfdeda93d7",
+   "title": "Herschel: Continuous Optimization of Production LLM Inference through On-Demand Profiling",
+   "category": "engineering",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.40247v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.40247v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.OS"
+   ],
+   "publishedAt": "2026-09-30T05:36:45+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 62.0,
+   "summary": "Model-as-a-service platforms call for continuous optimization as complex serving conditions expose inefficiencies missed before deployment. Detailed always-on profiling can incur substantial overhead, while lightweight collection omits information needed for diagnosis. We present Herschel, a continuous optimization system for production large language model (LLM) inference. Our key insight is that adaptive, on-demand profiling can provide rich full-stack evidence without continuous collection. Herschel safely attaches to and detaches from selected running processes without engine changes or restarts, and adapts coverage as investigations reveal missing evidence. Herschel reconstructs operator executions and cross-process dependencies to identify inefficiency mechanisms and suggest solutions using applicable reference fixes. AI agents implement and test engine and kernel changes under controlled conditions that preserve the triggering workload and dependencies, with expert review before deployment. Controlled tests show active-collection overhead below 0.5% for time to first token and 7% for time per output token. Bounded windows, typically 30 s, avoid the continuous cost of always-on tracing. Over six months, Herschel collected approximately 17,000 traces across over 120 model variants and more than 10 accelerator types, identifying inefficiency patterns in 23% of the traces. Representative findings guide widely deployed optimizations, including restructured synchronization, removal of unused computation, and improved operator implementations.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "fb8063dfdeda93d7",
+    "tldr": "按需剖析替代常开采集：免重启附着生产推理进程，TTFT 开销低于 0.5%，六个月定位 23% 轨迹的低效机制。",
+    "keyPoints": [
+     "常开详细剖析开销大，轻量采集又缺诊断信息",
+     "关键洞见：按需自适应剖析即可给出全栈证据",
+     "免引擎改动与重启，安全附着/分离运行中进程",
+     "活跃采集开销 TTFT 低于 0.5%、TPOT 7%",
+     "六月约 1.7 万轨迹、120+ 变体，23% 定位到低效"
+    ],
+    "why": "生产推理优化岗既要会定位性能问题，又不能让剖析本身拖慢服务；这套「按需采证 + 有界窗口」的取舍与 0.5%/7% 开销口径，是面试可直接引用的工程基线。",
+    "difficulty": "hard",
+    "tags": [
+     "profiling",
+     "llm-inference",
+     "production",
+     "observability",
+     "efficiency"
+    ],
+    "entities": [
+     "Herschel",
+     "model-as-a-service",
+     "on-demand profiling",
+     "time to first token",
+     "time per output token"
+    ],
+    "diagram": {
+     "kind": "architecture",
+     "title": "Herschel 的按需剖析闭环",
+     "caption": "只在需要时附着到运行中进程，采完即分离，证据不足再扩大覆盖",
+     "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Herschel 从按需附着、有界窗口采集、跨进程重建到受控验证与评审的五层结构'><rect x='60.0' y='20.0' width='360.0' height='24.8' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='37.4' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>按需附着</text><text x='406.0' y='37.4' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>免重启 / 免改引擎</text><line x1='240.0' y1='44.8' x2='240.0' y2='46.8' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,53.8 236.4,46.8 243.6,46.8' fill='var(--line-1)'/><rect x='60.0' y='53.8' width='360.0' height='24.8' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='71.2' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>有界窗口采集</text><text x='406.0' y='71.2' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>典型 30 秒</text><line x1='240.0' y1='78.6' x2='240.0' y2='80.6' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,87.6 236.4,80.6 243.6,80.6' fill='var(--line-1)'/><rect x='60.0' y='87.6' width='360.0' height='24.8' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='105.0' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>算子与依赖重建</text><text x='406.0' y='105.0' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>跨进程全栈视图</text><line x1='240.0' y1='112.4' x2='240.0' y2='114.4' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,121.4 236.4,114.4 243.6,114.4' fill='var(--line-1)'/><rect x='60.0' y='121.4' width='360.0' height='24.8' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='138.8' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>参考修复建议</text><text x='406.0' y='138.8' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>对应低效机制</text><line x1='240.0' y1='146.2' x2='240.0' y2='148.2' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,155.2 236.4,148.2 243.6,148.2' fill='var(--line-1)'/><rect x='60.0' y='155.2' width='360.0' height='24.8' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='172.6' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>受控验证与评审</text><text x='406.0' y='172.6' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>专家复核后部署</text></svg>",
+     "spec": {
+      "type": "architecture",
+      "nodes": [
+       {
+        "label": "按需附着",
+        "detail": "免重启 / 免改引擎"
+       },
+       {
+        "label": "有界窗口采集",
+        "detail": "典型 30 秒"
+       },
+       {
+        "label": "算子与依赖重建",
+        "detail": "跨进程全栈视图"
+       },
+       {
+        "label": "参考修复建议",
+        "detail": "对应低效机制"
+       },
+       {
+        "label": "受控验证与评审",
+        "detail": "专家复核后部署"
+       }
+      ]
+     },
+     "alt": "Herschel 从按需附着、有界窗口采集、跨进程重建到受控验证与评审的五层结构"
+    },
+    "concepts": [
+     {
+      "name": "On-Demand Adaptive Profiling（按需自适应剖析）",
+      "readable": "不常开采集：只在需要诊断时附着到选定的运行中进程，采完即分离；若发现证据不足，再自动扩大采集覆盖范围。",
+      "analogy": "像家里漏水不装全屋水表，而是拎着测漏仪挨个点位去听，听不清就多贴几个探头，查完就收走。",
+      "analogyBreaksDown": "测漏仪不会改变水管压力；剖析器要占 CPU、内存与带宽，附着动作本身就可能改变被观测进程的时序与延迟。",
+      "mechanism": "剖析器在不改引擎、不重启的前提下附着/分离选定进程，并按调查进展自适应调节采集覆盖，从而用有界窗口拿到全栈证据，而不是一直开着采集。",
+      "visual": "时间轴上一条服务负载曲线，只在三处高亮标出 30 秒采集窗，每个窗内标注「附着 → 采集 → 分离」。",
+      "prerequisites": [
+       "服务化推理架构",
+       "进程内探针与采样的基本概念",
+       "性能剖析基础"
+      ],
+      "selfTest": [
+       "「按需」与「常开」在成本结构上的根本差别是什么？",
+       "为什么必须做到免重启、免改引擎才能用于生产？",
+       "自适应扩大覆盖是为了解决哪种失败情形？"
+      ],
+      "formula": "\\mathrm{ovh}=\\rho\\cdot c_{\\mathrm{sample}},\\qquad \\rho=\\frac{K\\,w}{T}"
+     },
+     {
+      "name": "Cross-process Operator Reconstruction（跨进程算子执行重建）",
+      "readable": "把各进程里零散的算子执行片段按调用关系重新拼成一条完整链路，并接上跨进程依赖，才能判断低效究竟出在哪个环节。",
+      "analogy": "像把事故现场散落在多个摄像头里的片段按时间轴对齐拼起来，才看得清是谁先动的手。",
+      "analogyBreaksDown": "拼接依赖时钟同步与请求标识；跨机时钟偏差或采样缺失会让片段错位，从而给出错误的因果顺序。",
+      "mechanism": "按请求标识与算子边界重建算子执行序列，再补上跨进程依赖，形成全栈视图，用于判定低效机制并匹配适用的参考修复。",
+      "visual": "泳道图：横轴是时间，三条进程泳道，用同一个请求 ID 的连线把算子块串成一条穿越泳道的路径。",
+      "prerequisites": [
+       "分布式追踪 / span 模型",
+       "推理引擎的算子调度",
+       "时钟同步的基本概念"
+      ],
+      "selfTest": [
+       "为什么单个进程内的剖析不足以定位低效机制？",
+       "重建算子执行需要哪两类关键信息？",
+       "拼接错位会导致什么错误结论？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "Bounded-window Evidence Budget（有界窗口证据预算）",
+      "readable": "采集只发生在固定长度的短窗口里（典型 30 秒），而不是一直开着；用占空比而不是总时长来度量观测成本。",
+      "analogy": "像体检只做几个 30 秒的采样片段，而不是 24 小时全监护——窗口挑得准，信息量就够用。",
+      "analogyBreaksDown": "窗口外的偶发长尾故障会被整段漏掉，采到的是有偏样本，其故障率不能直接当成整体故障率。",
+      "mechanism": "把采集限制在长度为 w 的窗口内，用窗口数 K 与观测期 T 的比值控制常开成本，证据不足时再追加窗口而不是改成全量追踪。",
+      "visual": "条形时间轴：全长 T 画成灰底，上面叠 K 个 30 秒的彩色窗口条，右下角标注占空比 K·w/T。",
+      "prerequisites": [
+       "采样与占空比",
+       "长尾延迟与分位数",
+       "开销预算思维"
+      ],
+      "selfTest": [
+       "为什么用占空比而不是采集总量描述成本？",
+       "窗口长度 30 秒这个量级意味着什么取舍？",
+       "有界窗口会系统性漏掉哪类问题？"
+      ],
+      "formula": "\\mathcal{E}=K\\,w\\,b,\\qquad \\rho=\\frac{K\\,w}{T}"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-amortized-profiling-overhead",
+      "name": "分摊剖析开销（Amortized Profiling Overhead）",
+      "category": "engineering",
+      "latex": "\\mathrm{ovh}=\\rho\\cdot c_{\\mathrm{sample}},\\qquad \\rho=\\frac{K\\,w}{T},\\qquad \\mathrm{ovh}_{\\mathrm{TTFT}}<0.5\\%,\\quad \\mathrm{ovh}_{\\mathrm{TPOT}}<7\\%",
+      "symbols": [
+       [
+        "\\rho",
+        "采集占空比：活跃窗口总时长 / 观测期总时长"
+       ],
+       [
+        "K",
+        "观测期内的采集窗口个数"
+       ],
+       [
+        "w",
+        "单个窗口长度，摘要给出典型值 30 秒"
+       ],
+       [
+        "T",
+        "观测期总时长"
+       ],
+       [
+        "c_{\\mathrm{sample}}",
+        "窗口内单位时间的相对采集成本"
+       ],
+       [
+        "\\mathrm{ovh}_{\\mathrm{TTFT}}",
+        "首 token 时间上的活跃采集相对开销"
+       ],
+       [
+        "\\mathrm{ovh}_{\\mathrm{TPOT}}",
+        "每输出 token 时间上的活跃采集相对开销"
+       ]
+      ],
+      "derivation": [
+       "用窗口个数乘窗口长度 K·w 得到活跃采集总时长，它是唯一可调的分子。",
+       "再除以观测期总时长 T，把「采多久」化成无量纲的占空比 ρ，便于跨部署比较。",
+       "乘以窗口内单位时间的相对采集成本 c_sample，就得到分摊到整体服务上的开销 ovh。",
+       "把同一占空比分别代入首 token 与每 token 输出的延迟口径，即得摘要给出的 0.5% 与 7% 两个上界。"
+      ],
+      "analogy": "像电费只按空调实际开机时长乘以功率算，而不是按整个夏天算；开机时段挑得准，账就不会失控。",
+      "pitfalls": [
+       "把「窗口内开销」当成「全局开销」：真正的成本必须乘占空比才是分摊值。",
+       "TTFT 与 TPOT 的开销口径不同，不能用一个比例互相套用（摘要给的是 <0.5% 与 7%）。",
+       "c_sample 随采集粒度非线性增长，占空比减半不等于开销减半。"
+      ],
+      "code": "import numpy as np\n\n\ndef duty_cycle(horizon_s, window_s=30.0, n_windows=10):\n    # 有界窗口：K 个 w 秒窗口摊到 T 秒观测期上\n    max_windows = max(int(horizon_s // window_s), 1)\n    k = min(int(n_windows), max_windows)\n    return k, k * window_s / horizon_s\n\n\ndef amortized_overhead(horizon_s, window_s=30.0, n_windows=10,\n                       cost_ttft=0.004, cost_tpot=0.06):\n    # 分摊开销 = 占空比 * 窗口内单位时间相对成本\n    k, rho = duty_cycle(horizon_s, window_s, n_windows)\n    return {\"K\": k, \"rho\": rho,\n            \"ovh_ttft\": rho * cost_ttft,\n            \"ovh_tpot\": rho * cost_tpot}\n\n\nif __name__ == \"__main__\":\n    for T in (600.0, 3600.0, 86400.0):\n        r = amortized_overhead(T)\n        print(\"T=%.0fs K=%d rho=%.4f ttft=%.3f%% tpot=%.3f%%\"\n              % (T, r[\"K\"], r[\"rho\"], 100 * r[\"ovh_ttft\"], 100 * r[\"ovh_tpot\"]))\n    # 常开追踪的对照：占空比恒为 1，开销不随观测期增长而摊薄\n    always_on = 1.0 * 0.06\n    print(\"always-on tpot overhead = %.3f%%\" % (100 * always_on))\n",
+      "sources": [
+       {
+        "title": "Herschel: Continuous Optimization of Production LLM Inference through On-Demand Profiling",
+        "url": "https://arxiv.org/abs/2609.40247v1"
+       }
+      ]
+     },
+     {
+      "id": "f-bounded-window-evidence-budget",
+      "name": "有界窗口证据预算与低效命中率（Bounded-window Evidence Budget）",
+      "category": "engineering",
+      "latex": "\\mathcal{E}=K\\,w\\,b,\\qquad \\rho=\\frac{K\\,w}{T},\\qquad \\eta=\\frac{N_{\\mathrm{ineff}}}{N_{\\mathrm{trace}}}=23\\%,\\qquad N_{\\mathrm{trace}}\\approx 1.7\\times10^{4}",
+      "symbols": [
+       [
+        "\\mathcal{E}",
+        "观测期内采集到的证据总量"
+       ],
+       [
+        "K",
+        "采集窗口个数"
+       ],
+       [
+        "w",
+        "单个窗口长度，摘要给出典型值 30 秒"
+       ],
+       [
+        "b",
+        "窗口内单位时间产出的证据量（每秒条数）"
+       ],
+       [
+        "\\rho",
+        "占空比 K·w/T，即成本预算约束"
+       ],
+       [
+        "\\eta",
+        "低效命中率：定位到低效模式的轨迹占比，摘要给 23%"
+       ],
+       [
+        "N_{\\mathrm{trace}}",
+        "观测期内累计轨迹数，摘要给约 17,000"
+       ],
+       [
+        "N_{\\mathrm{ineff}}",
+        "其中定位到低效模式的轨迹数"
+       ]
+      ],
+      "derivation": [
+       "每个窗口按每秒 b 条产出证据，K 个窗口合起来给出总证据量 E = K·w·b。",
+       "证据不能无限采，占空比 ρ = K·w/T 就是成本预算约束，需要在预算内挑窗口而不是全量追踪。",
+       "把观测期内的产出概括成命中率 η = N_ineff / N_trace，它衡量这套采证流程是否真能定位低效。",
+       "代入摘要的六个月口径 N_trace ≈ 1.7 万与 η = 23%，命中率本身就是评估系统产出的核心指标。"
+      ],
+      "analogy": "像质检不是全检而是按批抽检：抽检次数决定成本，抽中缺陷的比例决定这套抽检方案值不值。",
+      "pitfalls": [
+       "把 23% 当成「低效发生率」：它只是被采集与判定覆盖到的轨迹占比，存在分母口径歧义。",
+       "命中率与占空比不是单调关系，加窗口未必线性提高 η，要防止只报好看的比值。",
+       "证据量 E 大不等于可诊断，缺少跨进程依赖时仍拼不出机制。"
+      ],
+      "code": "def evidence_budget(horizon_s, window_s=30.0, n_windows=10, evi_per_s=50.0):\n    # E = K * w * b, 同时报告占空比预算\n    k = min(int(n_windows), max(int(horizon_s // window_s), 1))\n    evidence = k * window_s * evi_per_s\n    return {\"K\": k, \"evidence\": evidence, \"rho\": k * window_s / horizon_s}\n\n\ndef inefficiency_yield(n_trace=17000, eta=0.23):\n    # 摘要口径：约 1.7 万条轨迹，23% 定位到低效模式\n    return round(n_trace * eta)\n\n\nif __name__ == \"__main__\":\n    print(evidence_budget(86400.0))\n    print(\"ineff traces ~\", inefficiency_yield())\n",
+      "sources": [
+       {
+        "title": "Herschel: Continuous Optimization of Production LLM Inference through On-Demand Profiling",
+        "url": "https://arxiv.org/abs/2609.40247v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "Herschel 是面向生产 LLM 推理的持续优化系统（continuous optimization）",
+      "关键洞见是按需自适应剖析能在不常开采集的前提下提供丰富全栈证据",
+      "可安全附着/分离选定的运行中进程，无需引擎改动或重启",
+      "活跃采集开销低于 0.5%（TTFT）与 7%（TPOT），典型窗口约 30 秒",
+      "重建算子执行与跨进程依赖以定位低效机制，并给出参考修复建议",
+      "六个月收集约 17,000 条轨迹，覆盖 120+ 模型变体与 10+ 加速器类型，23% 轨迹发现低效模式",
+      "代表发现包括重构同步、移除无用计算与改进算子实现"
+     ],
+     "uncertain": [
+      "「低于 0.5% / 7%」的测量口径（基数、负载形态、硬件与并发配置）摘要未给；两个公式均为按摘要重建的通用成本形式（公式为按摘要重建的通用形式）",
+      "17,000 条轨迹与 23% 的分母口径（是否同一批轨迹、是否经人工确认）摘要未说明",
+      "AI agent 实施与测试引擎/内核改动的受控条件、基准与回滚机制摘要未给",
+      "「applicable reference fixes」修复库如何构建与匹配，摘要未说明",
+      "「over 10 accelerator types」的具体厂商与型号未列出，不得据此推断供应商"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ff26e0bb61fb7364",
+   "title": "Periodic Weak Spots: Phase Sensitivity from Chunked KV-Cache Compression",
+   "category": "foundation",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.36322",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.36322",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.36322",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-28T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 71.7,
+   "summary": "Chunked KV-cache compression reduces the memory and attention costs of long-context inference by compressing windows of consecutive tokens into fewer cache entries at a fixed stride. Such compression also introduces a new positional coordinate: a token's phase, or its position relative to compression-window boundaries. We uncover a systematic asymmetry in models using such compression: the same information can be easy to retrieve at one phase and difficult at another. We call this periodic variation in retrieval performance phase sensitivity. In large open-weight models with such compression, long-context retrieval accuracy can differ by up to 40 percentage points across phases, revealing periodic weak spots that average benchmark scores can conceal. To investigate this behavior, we pretrain a family of transformers from scratch across multiple KV-compression designs, reproducing phase sensitivity across the variants. Mechanistic analysis using causal interventions in these models reveals phase specialization: different attention components contribute asymmetrically to retrieving information at different source phases. We further analyze idealized retrieval models, showing how gradient flow dynamics may favor sharp phase specialization. Evaluating models with chunked KV-cache compression thus requires measuring across compression phases: high average accuracy can coexist with systematic positional failures.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "ff26e0bb61fb7364",
+    "tldr": "分块 KV 缓存压缩引入相位坐标，同一信息在不同相位检索难度不同，准确率最多差 40 个百分点。",
+    "keyPoints": [
+     "分块 KV 缓存压缩按固定步长压缩连续 token 窗口",
+     "相位即 token 相对压缩窗口边界的位置坐标",
+     "大开源模型长上下文检索准确率跨相位最多差 40 个百分点",
+     "平均基准分可能掩盖这种周期性的检索弱点",
+     "从头预训练多种压缩设计复现该现象，评估需跨相位"
+    ],
+    "why": "长上下文推理岗绕不开 KV 缓存压缩；这篇说明平均基准分会掩盖相位弱点，面试谈压缩方案时必须回答「在哪些相位评测」。",
+    "difficulty": "medium",
+    "tags": [
+     "kv-cache",
+     "long-context",
+     "compression",
+     "retrieval",
+     "phase-sensitivity"
+    ],
+    "entities": [
+     "chunked KV-cache compression",
+     "phase sensitivity",
+     "phase specialization",
+     "KV cache",
+     "causal interventions",
+     "idealized retrieval model"
+    ],
+    "diagram": {
+     "kind": "curve",
+     "title": "相位敏感的检索准确率",
+     "caption": "同一模型在不同相位上的检索准确率呈周期性起伏，波峰与波谷相差最多 40 个百分点（数值为示意）",
+     "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='分块 KV 压缩下检索准确率随相位做周期锯齿波动、而相位平均线掩盖波谷的曲线示意'><line x1='58.0' y1='26.0' x2='58.0' y2='148.0' stroke='var(--line-1)' stroke-width='1.4'/><line x1='58.0' y1='148.0' x2='456.0' y2='148.0' stroke='var(--line-1)' stroke-width='1.4'/><text x='52.0' y='30.0' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>1e+02</text><text x='52.0' y='152.0' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>0</text><polyline points='58.0,40.6 114.9,55.3 171.7,74.8 228.6,89.4 285.4,40.6 342.3,55.3 399.1,74.8 456.0,89.4' fill='none' stroke='var(--accent)' stroke-width='2'/><circle cx='58.0' cy='40.6' r='2.6' fill='var(--accent)'/><circle cx='114.9' cy='55.3' r='2.6' fill='var(--accent)'/><circle cx='171.7' cy='74.8' r='2.6' fill='var(--accent)'/><circle cx='228.6' cy='89.4' r='2.6' fill='var(--accent)'/><circle cx='285.4' cy='40.6' r='2.6' fill='var(--accent)'/><circle cx='342.3' cy='55.3' r='2.6' fill='var(--accent)'/><circle cx='399.1' cy='74.8' r='2.6' fill='var(--accent)'/><circle cx='456.0' cy='89.4' r='2.6' fill='var(--accent)'/><polyline points='58.0,65.0 114.9,65.0 171.7,65.0 228.6,65.0 285.4,65.0 342.3,65.0 399.1,65.0 456.0,65.0' fill='none' stroke='currentColor' stroke-width='2'/><circle cx='58.0' cy='65.0' r='2.6' fill='currentColor'/><circle cx='114.9' cy='65.0' r='2.6' fill='currentColor'/><circle cx='171.7' cy='65.0' r='2.6' fill='currentColor'/><circle cx='228.6' cy='65.0' r='2.6' fill='currentColor'/><circle cx='285.4' cy='65.0' r='2.6' fill='currentColor'/><circle cx='342.3' cy='65.0' r='2.6' fill='currentColor'/><circle cx='399.1' cy='65.0' r='2.6' fill='currentColor'/><circle cx='456.0' cy='65.0' r='2.6' fill='currentColor'/><text x='58.0' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位0</text><text x='114.9' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位1</text><text x='171.7' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位2</text><text x='228.6' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位3</text><text x='285.4' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位4</text><text x='342.3' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位5</text><text x='399.1' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位6</text><text x='456.0' y='166.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相位7</text><line x1='58.0' y1='184.0' x2='76.0' y2='184.0' stroke='var(--accent)' stroke-width='2'/><text x='81.0' y='188.0' font-size='13' text-anchor='start' fill='currentColor' font-weight='normal'>逐相位检索</text><line x1='162.0' y1='184.0' x2='180.0' y2='184.0' stroke='currentColor' stroke-width='2'/><text x='185.0' y='188.0' font-size='13' text-anchor='start' fill='currentColor' font-weight='normal'>相位平均</text><text x='52.0' y='16.0' font-size='13' text-anchor='start' fill='currentColor' font-weight='normal'>检索准确率（示意）</text></svg>",
+     "spec": {
+      "type": "curve",
+      "xLabels": [
+       "相位0",
+       "相位1",
+       "相位2",
+       "相位3",
+       "相位4",
+       "相位5",
+       "相位6",
+       "相位7"
+      ],
+      "series": [
+       {
+        "label": "逐相位检索",
+        "values": [
+         88.0,
+         76.0,
+         60.0,
+         48.0,
+         88.0,
+         76.0,
+         60.0,
+         48.0
+        ]
+       },
+       {
+        "label": "相位平均",
+        "values": [
+         68.0,
+         68.0,
+         68.0,
+         68.0,
+         68.0,
+         68.0,
+         68.0,
+         68.0
+        ]
+       }
+      ]
+     },
+     "alt": "分块 KV 压缩下检索准确率随相位做周期锯齿波动、而相位平均线掩盖波谷的曲线示意"
+    },
+    "concepts": [
+     {
+      "name": "Phase Coordinate（相位坐标）",
+      "readable": "分块 KV 压缩把每 W 个连续 token 的缓存压成更少条目，于是 token 在窗口内的偏移量成了一个新位置坐标；同一个 token 因为偏移不同，压缩后能留下的信息量也不同。",
+      "analogy": "像把一叠纸每 8 张装订成一册：夹在册子中间的那张最容易被压得看不清，贴在册子最上面或最下面的那张反而最显眼。",
+      "analogyBreaksDown": "装订只改变物理位置；相位改变的是注意力能否从压缩条目里重建出该 token 的信息，而且不同层、不同注意力头的相位偏好并不一致。",
+      "mechanism": "在固定步长 W 的分块压缩下，把 token 索引 i 的相位定义为 i mod W，即它相对压缩窗口边界的位置；窗口内多个 token 的 KV 被聚合成少量条目，使同一信息在不同相位的可恢复程度不同，形成周期性的检索强弱。",
+      "visual": "横轴为相位 0…W−1，纵轴为检索准确率；曲线呈周期锯齿，波峰波谷相差最多 40 个百分点，另用一条水平线标出相位平均值，落在波谷之上。",
+      "prerequisites": [
+       "Transformer 注意力与 KV 缓存",
+       "长上下文推理的显存瓶颈",
+       "取模与周期性的基本直觉"
+      ],
+      "selfTest": [
+       "相位坐标是由什么压缩操作引入的？",
+       "为什么同一份信息在不同相位会有不同可检索性？",
+       "相位和绝对位置编码是同一个概念吗？"
+      ],
+      "formula": "\\phi(i)=i\\bmod W"
+     },
+     {
+      "name": "Phase Sensitivity（相位敏感性）",
+      "readable": "使用分块 KV 压缩的模型，同一份信息在一个相位容易检索、在另一个相位却很难；这种随相位周期性起伏的检索表现差异就叫相位敏感性。",
+      "analogy": "像一排路灯每隔几盏就有一盏是暗的：你看得清看不清，取决于正好站在哪一盏下面，而不是路面本身有什么不同。",
+      "analogyBreaksDown": "路灯是固定的硬件缺陷；相位敏感性来自压缩后的信息聚合方式，可以随压缩设计、注意力组件与训练过程改变，并非不可逆的物理限制。",
+      "mechanism": "固定步长压缩让窗口不同位置的 token 被聚合成质量不同的缓存项，注意力的可恢复性因此随相位周期性变化；在采用该压缩的大开源模型上，长上下文检索准确率跨相位最多相差 40 个百分点。",
+      "visual": "把相位画成一个圆环，环上每个刻度用颜色深浅表示该相位的检索准确率，整体呈现明暗相间的环状条纹。",
+      "prerequisites": [
+       "KV 缓存压缩（分块/窗口压缩）",
+       "长上下文检索评测",
+       "注意力机制与缓存读取"
+      ],
+      "selfTest": [
+       "相位敏感性与「模型某些位置更差」有什么区别？",
+       "为什么相位平均分会掩盖这种效应？",
+       "换一种压缩设计就能完全消除它吗？"
+      ],
+      "formula": "\\Delta_{\\mathrm{phase}}=\\max_{\\phi}\\mathrm{Acc}(\\phi)-\\min_{\\phi}\\mathrm{Acc}(\\phi)"
+     },
+     {
+      "name": "Phase Specialization（相位专精）",
+      "readable": "用因果干预分析发现，不同注意力组件并不是平均地服务所有相位：某个组件在某个源相位上贡献特别大，换到别的相位就几乎不起作用。",
+      "analogy": "像流水线上几个人分工：甲只盯从左边送来的零件，乙只认右边的；谁在岗决定了哪一段传送带上的活能干好。",
+      "analogyBreaksDown": "工人的分工是明确设计出来的；这里的分工是训练中自然形成的，作者只用理想化检索模型说明梯度流动力学可能偏好这种锐利分工，并未证明真实模型必然如此。",
+      "mechanism": "对从头预训练的模型做因果干预，逐个屏蔽或替换注意力组件并观察不同源相位的检索表现，发现各组件对不同相位的贡献高度不对称；理想化检索模型的分析显示梯度流动力学可能偏好这种锐利的相位专精。",
+      "visual": "一张热力图：纵轴是注意力组件（层或头），横轴是源相位，格子颜色深浅表示该组件对该相位检索的贡献，呈现明显的列状条纹。",
+      "prerequisites": [
+       "因果干预/消融实验设计",
+       "注意力头功能分化",
+       "梯度流与训练动力学直觉"
+      ],
+      "selfTest": [
+       "为什么用因果干预而不是只看注意力权重？",
+       "相位专精对压缩方案选型意味着什么？",
+       "理想化检索模型的结论能直接外推到真实模型吗？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-phase-coordinate",
+      "name": "相位坐标与压缩步长（Phase Coordinate and Compression Stride）",
+      "category": "foundation",
+      "latex": "\\phi(i)=i\\bmod W\\in\\{0,1,\\dots,W-1\\},\\qquad n_{\\mathrm{cache}}=\\left\\lceil\\frac{L}{W}\\right\\rceil\\cdot k,\\qquad k\\ge 1,\\ \\ W>k",
+      "symbols": [
+       [
+        "i",
+        "token 在序列中的索引"
+       ],
+       [
+        "W",
+        "分块压缩的固定步长，即压缩窗口覆盖的连续 token 数"
+       ],
+       [
+        "\\phi(i)",
+        "第 i 个 token 的相位，即它相对压缩窗口边界的位置"
+       ],
+       [
+        "L",
+        "序列长度"
+       ],
+       [
+        "k",
+        "每个压缩窗口保留下来的缓存条目数"
+       ],
+       [
+        "n_{\\mathrm{cache}}",
+        "压缩后的缓存条目总数"
+       ]
+      ],
+      "derivation": [
+       "分块压缩以固定步长 W 切分连续 token，每个 token 因此落在一个压缩窗口内。",
+       "用索引对 W 取模就得到它相对窗口边界的偏移，这就是新的位置坐标「相位」。",
+       "每个窗口压成 k 条缓存项，W > k 才叫压缩，于是缓存条目数从 L 降到约 L/W·k。",
+       "缓存条目变少，窗口内不同位置的信息被聚合的强度不同，可恢复性遂随相位周期变化。"
+      ],
+      "analogy": "像把一长串座位每 W 个编成一个包厢、只留 k 个观察窗；你坐在包厢里的第几个座位，决定了你还能不能被看见。",
+      "pitfalls": [
+       "相位定义可以说成 i mod W，也可以说到最近窗口边界的距离，两者在 W 为偶数时得到的相位数是不同的。",
+       "把相位当成绝对位置编码来理解会出错：它是一个周期量，同一相位在整条序列上反复出现。",
+       "k 不变而增大 W 会同时放大压缩率与相位效应，两个变量被混在一起比较就无法归因。"
+      ],
+      "code": "import torch\n\n\ndef phase_of_token(seq_len: int, stride: int) -> torch.Tensor:\n    # 分块压缩步长 stride=W: 每个 token 的相位 = 它在压缩窗口内的偏移\n    i = torch.arange(seq_len)\n    return i % stride                      # (L,) 取值 0 .. W-1\n\n\ndef compressed_cache_len(seq_len: int, stride: int, keep_per_window: int = 1) -> int:\n    # 把每 stride 个连续 token 的缓存压成 keep_per_window 条\n    windows = (seq_len + stride - 1) // stride\n    return windows * keep_per_window\n\n\nif __name__ == \"__main__\":\n    print(phase_of_token(16, 4))                    # 相位 0,1,2,3 循环出现\n    print(compressed_cache_len(8192, 8, 1))         # 8192 -> 1024 条缓存项\n",
+      "sources": [
+       {
+        "title": "Periodic Weak Spots: Phase Sensitivity from Chunked KV-Cache Compression",
+        "url": "https://huggingface.co/papers/2609.36322"
+       }
+      ]
+     },
+     {
+      "id": "f-phase-average-gap",
+      "name": "相位平均准确率与最差相位差（Phase-averaged Accuracy and Worst-phase Gap）",
+      "category": "foundation",
+      "latex": "\\overline{\\mathrm{Acc}}=\\frac{1}{W}\\sum_{\\phi=0}^{W-1}\\mathrm{Acc}(\\phi),\\qquad \\mathrm{Acc}(\\phi)=\\mathbb{E}\\big[\\,\\mathrm{hit}\\mid \\phi(i)=\\phi\\,\\big],\\qquad \\Delta_{\\mathrm{phase}}=\\max_{\\phi}\\mathrm{Acc}(\\phi)-\\min_{\\phi}\\mathrm{Acc}(\\phi)\\ \\le\\ 40\\%",
+      "symbols": [
+       [
+        "W",
+        "压缩步长，也是相位取值个数"
+       ],
+       [
+        "\\phi",
+        "相位索引，取 0 到 W−1"
+       ],
+       [
+        "\\mathrm{Acc}(\\phi)",
+        "源 token 相位为 φ 时的检索准确率"
+       ],
+       [
+        "\\mathrm{hit}",
+        "该条检索样本是否成功（0/1）"
+       ],
+       [
+        "\\overline{\\mathrm{Acc}}",
+        "跨相位的平均准确率，即常见基准分"
+       ],
+       [
+        "\\Delta_{\\mathrm{phase}}",
+        "最好相位与最差相位的准确率之差"
+       ]
+      ],
+      "derivation": [
+       "把评测样本按源 token 的相位 φ 分桶，在每个桶内算检索成功率，得到 Acc(φ)。",
+       "对全部 W 个相位取平均，得到通常汇报的那个「平均基准分」。",
+       "再取各相位准确率的最大值与最小值之差，作为相位敏感性的标量指标。",
+       "摘要报告该差值在大开源模型上最多可达 40 个百分点，说明平均分可以掩盖系统性的位置性失败。"
+      ],
+      "analogy": "像用全班平均分评价一门课：平均 68 分看着还行，但如果每次换座位就有四成学生从会做变成不会做，这个平均分掩盖了大问题。",
+      "pitfalls": [
+       "只看平均准确率会完全看不到相位效应：高平均分与低最差相位可以同时存在。",
+       "各相位的样本数不均衡时，未加权的相位平均会被样本多的相位主导。",
+       "差值还要看样本量与置信区间，40 个百分点是「最多」而非所有设置下的典型值。",
+       "相位的定义（i mod W 还是到边界的距离）一变，分桶结果随之改变，指标不可跨定义比较。"
+      ],
+      "code": "import torch\n\n\ndef phase_accuracy(hits: torch.Tensor, phases: torch.Tensor, n_phase: int) -> torch.Tensor:\n    # hits: (N,) 每条检索样本是否命中(0/1); phases: (N,) 该样本源 token 的相位\n    acc = torch.full((n_phase,), float(\"nan\"))\n    for p in range(n_phase):\n        mask = phases == p\n        if mask.any():\n            acc[p] = hits[mask].float().mean()\n    return acc\n\n\ndef phase_average_and_gap(hits: torch.Tensor, phases: torch.Tensor, n_phase: int):\n    acc = phase_accuracy(hits, phases, n_phase)\n    valid = acc[~torch.isnan(acc)]                 # 忽略没有样本的相位\n    mean_acc = valid.mean().item()                 # 平均基准分\n    gap = (valid.max() - valid.min()).item()       # 最差相位差\n    return mean_acc, gap, acc\n\n\nif __name__ == \"__main__\":\n    hits = torch.tensor([1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0])\n    phases = torch.arange(hits.numel()) % 8                   # W = 8\n    print(phase_average_and_gap(hits, phases, 8))\n",
+      "sources": [
+       {
+        "title": "Periodic Weak Spots: Phase Sensitivity from Chunked KV-Cache Compression",
+        "url": "https://arxiv.org/abs/2609.36322"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "分块 KV 缓存压缩以固定步长把连续 token 窗口压成更少的缓存条目，从而降低长上下文推理的显存与注意力开销",
+      "压缩引入了新的位置坐标「相位」，即 token 相对压缩窗口边界的位置",
+      "在采用该压缩的大开源模型上，长上下文检索准确率跨相位最多相差 40 个百分点",
+      "作者从头预训练了一族 Transformer，覆盖多种 KV 压缩设计并复现了相位敏感性",
+      "因果干预显示不同注意力组件对不同源相位的贡献不对称，即存在相位专精",
+      "理想化检索模型的分析显示梯度流动力学可能偏好锐利的相位专精，因此评估压缩模型必须跨相位测量"
+     ],
+     "uncertain": [
+      "摘要未给出压缩步长 W、每窗口保留的缓存条目数或压缩比，f-phase-coordinate 是按「固定步长分块压缩」重建的通用形式",
+      "「在一个相位容易、在另一个相位困难」到「最多 40 个百分点」的量化口径摘要未说明，f-phase-average-gap 是按通用评测定义重建的指标形式",
+      "相位的确切定义（i mod W 还是到最近窗口边界的距离）摘要只说 position relative to compression-window boundaries，需查原文",
+      "曲线图中的数值为示意（按摘要的 40 个百分点差值构造的周期锯齿），非原文数据",
+      "「大开源模型」「多种 KV 压缩设计」「理想化检索模型」的具体模型名与压缩方案名摘要均未给出，此处不编造",
+      "「最多 40 个百分点」对应的模型、任务与基准名称摘要未给，无法核对实验设置与置信区间"
+     ]
+    }
+   }
+  },
+  {
+   "id": "9abd174e0b0ef99f",
+   "title": "Enhancing Autoregressive Video Generation via Representation Adversarial Distillation",
+   "category": "generative",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.40037v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.40037v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV"
+   ],
+   "publishedAt": "2026-09-30T04:09:12+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 71.8,
+   "summary": "Few-step autoregressive video generation enables efficient streaming synthesis, but errors introduced in early temporal blocks are reused as context and can propagate through subsequent rollouts, leading to detail degradation, structural drift, and unstable motion. Existing distribution matching distillation (DMD) primarily aligns student and teacher distributions in diffusion latent space, but provides no direct supervision over the perceptual quality of decoded videos. We introduce Radian, a representation-space adversarial distillation framework that complements on-policy DMD with real-data adversarial supervision in the feature space defined by a frozen visual foundation model (VFM). During training, Radian sparsely decodes frames from autoregressive student rollouts, extracts multi-level visual representations, and applies lightweight discriminator heads to distinguish generated outputs from real video frames. The DMD objective anchors the student to the pretrained teacher, while the representation-space adversarial objective supplies complementary perceptual and semantic gradients that promote high-quality modes. These additional components are discarded after training, leaving the generator architecture and inference-time denoising budget unchanged. Experiments on Wan2.1-1.3B cover four-step chunk-wise, one-step frame-wise, and minute-long autoregressive generation. Our method achieves a VBench Total of 0.8444 and a VideoAlign Total of 0.8033 under four-step generation, and improves VBench-Long from 0.7805 to 0.8041 over Rolling Forcing while using fewer denoising steps. Controlled comparisons across image, video, and diffusion representations further indicate that the choice of representation spaces induces distinct adversarial signals, and external VFM gradient",
+   "missing": [
+    "diagram",
+    "formulas",
+    "teaching"
+   ],
+   "backfillWeight": 6.0,
+   "existingEnrichment": {
+    "id": "9abd174e0b0ef99f",
+    "tldr": "在冻结视觉基础模型的特征空间加对抗监督，补上 DMD 缺失的感知梯度。",
+    "keyPoints": [
+     "少步自回归视频生成会把早期时间块的误差当上下文反复传播。",
+     "DMD 只在 diffusion 隐空间对齐师生，不监督解码后画质。",
+     "Radian 稀疏解码学生 rollout，在冻结 VFM 特征上加判别头。",
+     "四步生成下 VBench Total 0.8444。",
+     "VBench-Long 由 0.7805 提升到 0.8041，且步数更少。"
+    ],
+    "why": "少步/实时视频生成是生成式方向的核心工程问题，表征空间对抗是可复用的蒸馏增强手段。",
+    "difficulty": "hard",
+    "tags": [
+     "video-generation",
+     "distillation",
+     "adversarial",
+     "autoregressive",
+     "diffusion"
+    ],
+    "entities": [
+     "Radian",
+     "DMD",
+     "VBench",
+     "VideoAlign",
+     "Wan2.1-1.3B",
+     "Rolling Forcing",
+     "VFM"
+    ],
+    "concepts": [
+     {
+      "name": "表征空间对抗蒸馏 Representation-Space Adversarial Distillation",
+      "readable": "少步自回归视频生成会把早期时间块的误差当作后续上下文反复使用，导致细节退化、结构漂移。已有的分布匹配蒸馏（DMD）只在 diffusion 隐空间里对齐学生与教师分布，对「解码后人眼看到的画质」没有直接监督。Radian 在冻结视觉基础模型（VFM）定义的特征空间里补上真实数据的对抗监督：训练时稀疏解码学生 rollout 的帧，抽取多层视觉表示，用轻量判别头区分生成帧与真实帧；DMD 项把学生锚定在教师上，对抗项提供互补的感知与语义梯度。这些附加组件训练后即丢弃，生成器架构与推理去噪预算完全不变。",
+      "analogy": "学生临摹画作，只看铅笔草稿像不像（隐空间对齐）不够；Radian 相当于请一位只看成品照片的评委，指出成品哪里有「AI 味」。评委只在训练时在场，交卷后不增加任何成本。",
+      "visual": "左侧画学生 rollout 的稀疏采样帧，经冻结 VFM 得到多层特征；右侧画真实视频帧经同一 VFM 得到多层特征；两侧特征各接一个轻量判别头，输出真/假。中间一条实线箭头表示 DMD 锚定教师，另一色虚线箭头表示对抗损失并标注「推理时丢弃」。",
+      "formula": ""
+     }
+    ],
+    "formulas": [],
+    "selfCheck": {
+     "claims": [
+      "四步生成下 VBench Total 0.8444、VideoAlign Total 0.8033。",
+      "VBench-Long 从 Rolling Forcing 的 0.7805 提升到 0.8041，且去噪步数更少。",
+      "对抗与判别组件在训练后丢弃，不改变生成器架构和推理去噪预算。",
+      "实验覆盖四步分块、单步逐帧与分钟级自回归生成。"
+     ],
+     "uncertain": [
+      "判别头数量与选用 VFM 的哪些层，摘要未给出。",
+      "DMD 项与对抗项的损失权重配比未给出。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "d3e5d21ce6e1f22d",
+   "title": "Looped Diffusion Transformer",
+   "category": "generative",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.40305v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.40305v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV",
+    "cs.LG"
+   ],
+   "publishedAt": "2026-09-30T05:52:08+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 70.0,
+   "summary": "Improving text-to-image models has traditionally relied on increasing model size or the number of denoising steps. In this work, we explore an alternative way to scale computation by repeatedly running shared Transformer blocks within each denoising step, effectively increasing computational depth while keeping the parameter count fixed. This looped computation enables iterative refinement of internal representations without explicit reasoning tokens. However, naive looping fails to consistently improve image quality. We trace this problem to weak supervision across intermediate loops and unregulated attention updates that progressively erode local information. To overcome these challenges, we propose Looped Diffusion Transformer (Looped-DiT), which combines deep supervision across intermediate loops with self-modulating attention to stabilize looped feature updates. Under matched-parameter and matched-compute settings, Looped-DiT consistently outperforms non-looped baselines. Notably, a 260M-parameter looped model can surpass a model 6.5x larger across multiple text-to-image benchmarks while requiring 4.9x lower inference compute. Beyond this performance gain, we find that looped computation can offer a more effective form of iterative computation for diffusion models, with increasing loop depth yielding larger gains than adding more denoising steps under a fixed inference budget. Furthermore, deeper loops can progressively correct mistakes made in earlier loops, exhibiting behaviors suggestive of latent reasoning. Together, these results show that looped computation offers a promising way to scale visual generation models.",
+   "missing": [
+    "diagram",
+    "formulas",
+    "teaching"
+   ],
+   "backfillWeight": 6.0,
+   "existingEnrichment": {
+    "id": "d3e5d21ce6e1f22d",
+    "tldr": "在每个去噪步内重复跑共享 Transformer 块，260M 模型超过 6.5 倍大的基线。",
+    "keyPoints": [
+     "朴素循环不涨点：中间循环监督弱、注意力更新无约束会侵蚀局部信息。",
+     "Looped-DiT 用循环间深监督 + 自调制注意力稳定特征更新。",
+     "相同参数与算力下稳定优于非循环基线。",
+     "固定推理预算时，增加循环深度比增加去噪步数收益更大。",
+     "深层循环能逐步修正前几轮的错误，表现出类似隐式推理的行为。"
+    ],
+    "why": "参数与推理算力受限时，「循环换深度」比堆参数更实际，与基础理论、生成式方向都相关。",
+    "difficulty": "medium",
+    "tags": [
+     "diffusion",
+     "dit",
+     "text-to-image",
+     "looped-transformer",
+     "efficiency"
+    ],
+    "entities": [
+     "Looped Diffusion Transformer",
+     "Looped-DiT",
+     "self-modulating attention",
+     "deep supervision"
+    ],
+    "concepts": [
+     {
+      "name": "循环深度与深监督 Looped Depth with Deep Supervision",
+      "readable": "不增加参数，而是在每个去噪步内把同一组 Transformer block 重复运行多次，等效增加计算深度、迭代精修内部表示。朴素循环不涨点的原因有两个：中间循环的监督信号太弱，以及无约束的注意力更新会逐步侵蚀局部信息。Looped-DiT 的对策是给每个循环加深度监督，并用自调制注意力稳定循环之间的特征更新。结果是在匹配参数、匹配算力下都稳定优于非循环基线，而且在固定推理预算下，增加循环深度比增加去噪步数收益更大。",
+      "analogy": "一道题让同一个人反复检查几遍，比换一个更大的脑子做一遍更划算——但前提是每一遍都有检查清单（深监督），否则越改越乱。",
+      "visual": "画一个去噪步内部的竖直循环链：同一块「shared DiT block」方块重复出现四次，用回环箭头连接；每个方块旁标一个 loss（深监督），用颜色深浅表示权重；右侧放对比条形图，横轴两组分别是「增加循环深度」与「增加去噪步数」，纵轴为固定推理预算下的画质增益。",
+      "formula": ""
+     }
+    ],
+    "formulas": [],
+    "selfCheck": {
+     "claims": [
+      "260M 参数循环模型可超过 6.5 倍大的模型，且推理算力低 4.9 倍。",
+      "固定推理预算下，增加循环深度的收益大于增加去噪步数。",
+      "匹配参数与匹配算力两种设置下，Looped-DiT 都优于非循环基线。"
+     ],
+     "uncertain": [
+      "「多个文生图基准」具体是哪些、用什么指标，摘要未列出。",
+      "循环次数的具体配置与自调制注意力的实现细节未给出。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "d5b06f5694d9123e",
+   "title": "DC-SAE: Deep Compression Semantic Autoencoder for Faster Diffusion Convergence",
+   "category": "generative",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.39222",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.39222",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.39222",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-29T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 70.4,
+   "summary": "High-compression tokenizers are essential for scaling latent image generative models. However, aggressive compression creates a fundamental tradeoff between reconstruction fidelity and generation efficiency: high compression image encoder always increases the learning difficulty of diffusion training, resulting in slow model convergence. Recent representation autoencoders speed up the diffusion training by improving the latent feature's expressive capability by replacing VAE encoders with pretrained semantic encoders, yet they are typically limited to moderate compression and lose pixel-level details necessary for faithful reconstruction. To achieve both high compression and fast diffusion training, we propose DC-SAE, a Decoupled Compact Semantic Autoencoder designed for high-compression image generation with accelerated diffusion model convergence. DC-SAE consists of two key components: (1) a macro-level architecture design that leverages semantic encoders to enable higher compression ratios, and (2) a pixel-level encoder that preserves low-level details, ensuring high-fidelity image reconstruction. We empirically demonstrate that DC-SAE performs strongly on image generation tasks, achieving both compact latent representations and efficient training dynamics. Specifically, on the ImageNet dataset with 512 times 512 resolution, DC-SAE achieves 32times spatial compression, with 29.79 PSNR and 3.37 gFID, substantially outperforming the previous state-of-the-art high-compression tokenizer baselines DC-AE by 13.5% and 54.9% on PSNR and gFID, respectively, maintaining comparable throughput and faster diffusion model training convergence. Beyond class-conditional generation, a 1.6B-parameter DiT using DC-SAE achieves 0.84 on GenEval and 86.007 on DPG-Bench for text-to-image g",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "d5b06f5694d9123e",
+    "tldr": "解耦语义与像素编码，32 倍压缩下达 29.79 PSNR 与 3.37 gFID，扩散收敛更快。",
+    "keyPoints": [
+     "语义编码器负责宏观高压缩，像素编码器保留低层细节",
+     "ImageNet 512×512 上实现 32 倍空间压缩",
+     "PSNR 高 13.5%、gFID 降 54.9%，均相对 DC-AE",
+     "吞吐与基线相当，扩散模型训练收敛更快",
+     "1.6B DiT 上 GenEval 0.84、DPG-Bench 86.007"
+    ],
+    "why": "高压缩 tokenizer 决定 latent 扩散的训练成本与画质上限；做文生图/图像生成的岗位，选型与复现都绕不开这条权衡。",
+    "difficulty": "hard",
+    "tags": [
+     "generative",
+     "tokenizer",
+     "autoencoder",
+     "diffusion",
+     "image-generation",
+     "compression"
+    ],
+    "entities": [
+     "DC-SAE",
+     "DC-AE",
+     "semantic encoder",
+     "pixel-level encoder",
+     "DiT",
+     "ImageNet",
+     "GenEval",
+     "DPG-Bench"
+    ],
+    "diagram": {
+     "kind": "architecture",
+     "title": "DC-SAE 的解耦编码结构",
+     "caption": "语义编码器把图压到高压缩比，像素编码器补回细节，紧凑潜变量再交给扩散模型生成",
+     "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='DC-SAE 由语义编码器、像素编码器、紧凑潜变量与 DiT 扩散生成四层构成的架构图'><rect x='60.0' y='20.0' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='41.6' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>语义编码器</text><text x='406.0' y='41.6' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>宏观高压缩</text><line x1='240.0' y1='53.2' x2='240.0' y2='55.2' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,62.2 236.4,55.2 243.6,55.2' fill='var(--line-1)'/><rect x='60.0' y='62.2' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='83.9' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>像素编码器</text><text x='406.0' y='83.9' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>保留低层细节</text><line x1='240.0' y1='95.5' x2='240.0' y2='97.5' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,104.5 236.4,97.5 243.6,97.5' fill='var(--line-1)'/><rect x='60.0' y='104.5' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='126.1' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>紧凑潜变量</text><text x='406.0' y='126.1' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>32× 空间压缩</text><line x1='240.0' y1='137.8' x2='240.0' y2='139.8' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,146.8 236.4,139.8 243.6,139.8' fill='var(--line-1)'/><rect x='60.0' y='146.8' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='168.4' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>DiT 扩散生成</text><text x='406.0' y='168.4' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>收敛更快</text></svg>",
+     "spec": {
+      "type": "architecture",
+      "nodes": [
+       {
+        "label": "语义编码器",
+        "detail": "宏观高压缩"
+       },
+       {
+        "label": "像素编码器",
+        "detail": "保留低层细节"
+       },
+       {
+        "label": "紧凑潜变量",
+        "detail": "32× 空间压缩"
+       },
+       {
+        "label": "DiT 扩散生成",
+        "detail": "收敛更快"
+       }
+      ]
+     },
+     "alt": "DC-SAE 由语义编码器、像素编码器、紧凑潜变量与 DiT 扩散生成四层构成的架构图"
+    },
+    "concepts": [
+     {
+      "name": "Decoupled Semantic-Pixel Encoding（语义与像素的解耦编码）",
+      "readable": "普通高压缩 VAE 只用一个编码器同时兼顾语义与像素，压得越狠细节丢得越多。DC-SAE 把两件事拆成两路：语义编码器给出紧凑潜变量，像素级编码器专门保住低层细节。",
+      "analogy": "像做一张海报的两种素材：一份是压到极小的内容索引，另一份单独存高清纹理贴图，出图时把两份合起来用。",
+      "analogyBreaksDown": "两个素材文件是分开存的，DC-SAE 的两路信息最后必须汇进同一个潜空间才被解码器使用；一旦像素通路的信息进不了紧凑潜变量，重建照样是糊的。",
+      "mechanism": "把高压缩拆成宏观架构设计与像素级编码两条通路：语义编码器提供利于扩散学习的紧凑语义表征，像素编码器补回低层细节，二者共同支撑高保真重建与更快的扩散收敛。",
+      "visual": "画两条并列支路：上方蓝色方块串逐级变窄，表示语义编码器降采样到高压缩比；下方橙色细网格表示像素编码器一直保留细节；两支末端汇入一个标着 32× 的窄长潜变量条。",
+      "prerequisites": [
+       "VAE / 自编码器基础",
+       "潜空间扩散模型（LDM）",
+       "自监督预训练的语义编码器"
+      ],
+      "selfTest": [
+       "为什么单个高压缩 VAE 编码器难以同时兼顾语义和像素细节？",
+       "像素级编码器如果不接入同一个潜空间，会出什么问题？",
+       "两路解耦之后，扩散模型训练的对象变成了什么？"
+      ],
+      "formula": "z=\\phi\\big(E_{\\mathrm{sem}}(x),\\,E_{\\mathrm{pix}}(x)\\big),\\qquad \\hat{x}=D(z)"
+     },
+     {
+      "name": "Compression-Fidelity-Convergence Tradeoff（压缩率、保真度与收敛速度的权衡）",
+      "readable": "提高空间压缩率可以让扩散模型在更短的潜序列上训练与推理，更省算力；但潜变量承载的信息变少，逐像素保真度下降，扩散也变得更难学、收敛更慢。",
+      "analogy": "像把长视频压成很小的文件：压得越狠越省流量，画面越糊，而且播放器要花更久才能把画面补回去。",
+      "analogyBreaksDown": "视频压缩是一次性编解码，扩散模型还要在这个潜空间上做多步迭代训练；训练难度还随噪声调度与时间步变化，不是单纯的「文件变小」问题。",
+      "mechanism": "高压缩缩短潜序列、提升生成吞吐，却抬高了扩散拟合潜分布的难度；语义编码器提升潜表征表达力、像素编码器补回细节，使高压缩、高保真与快收敛在同一模型里同时成立。",
+      "visual": "画一个三角形，三个顶点分别标注压缩率、保真度、收敛速度；DC-AE 与语义自编码器的色块各贴一条边，DC-SAE 的色块覆盖三角形中部，表示三项同时被兼顾。",
+      "prerequisites": [
+       "率失真（rate-distortion）直觉",
+       "扩散模型训练动力学",
+       "PSNR 与 FID 指标含义"
+      ],
+      "selfTest": [
+       "为什么压缩率提高会让扩散模型收敛更慢？",
+       "「高压缩」与「高保真」在本方法里分别由哪个部件负责？",
+       "如果只看 gFID 不看 PSNR，可能漏判什么？"
+      ],
+      "formula": "\\max_{r}\\ \\mathrm{PSNR}(r)\\quad \\mathrm{s.t.}\\quad r=32,\\ \\ T_{\\mathrm{conv}}(r)\\le T_{\\mathrm{base}}"
+     },
+     {
+      "name": "Semantic Representation Autoencoder（语义表征自编码器）",
+      "readable": "用预训练的语义编码器替换 VAE 编码器，让潜特征本身带更强的语义信息，从而加快扩散训练。但这类做法通常只能做到中等压缩，而且会丢掉像素级细节。",
+      "analogy": "像不抄原稿，而是先让人写一份内容摘要，再训练模型从摘要还原全文：有摘要学得快，但摘要里本来就没写的字句复原不出来。",
+      "analogyBreaksDown": "摘要理论上还能扩写回原文，语义编码器丢掉的高频细节在潜空间里根本没有对应信息，再强的解码器也补不回来——这正是 DC-SAE 要额外加像素编码器的原因。",
+      "mechanism": "以自监督预训练的语义编码器替换 VAE 编码器，使潜表征具备语义表达力，扩散模型更容易拟合；代价是压缩率受限、像素级细节在潜空间中被丢弃。",
+      "visual": "画一组对照折线：横轴是空间压缩率，纵轴是重建保真度；蓝色曲线表示语义表征自编码器，中等压缩后就快速下滑；橙色曲线表示 DC-SAE，在高压缩端仍保持较高。",
+      "prerequisites": [
+       "自监督/CLIP 类语义编码器",
+       "VAE 潜空间与重建损失",
+       "扩散模型收敛性"
+      ],
+      "selfTest": [
+       "语义编码器为什么能加快扩散模型训练？",
+       "这类方法的两个已知短板是什么？",
+       "DC-SAE 相对它多加了哪个部件来补短板？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-latent-diffusion-objective",
+      "name": "潜空间扩散训练目标（Latent Diffusion Objective）",
+      "category": "generative",
+      "latex": "\\mathcal{L}(\\theta)=\\mathbb{E}_{x,\\,\\epsilon,\\,t}\\Big\\|\\epsilon-\\epsilon_\\theta\\big(z_t,\\,t,\\,c\\big)\\Big\\|_2^2,\\qquad z=E(x),\\quad z_t=\\sqrt{\\bar\\alpha_t}\\,z+\\sqrt{1-\\bar\\alpha_t}\\,\\epsilon",
+      "symbols": [
+       [
+        "x",
+        "训练图像"
+       ],
+       [
+        "E",
+        "图像编码器（高压缩 tokenizer，如 DC-SAE）"
+       ],
+       [
+        "z",
+        "紧凑潜变量，空间尺寸为原图的 1/r"
+       ],
+       [
+        "\\epsilon",
+        "标准高斯噪声"
+       ],
+       [
+        "t",
+        "扩散时间步"
+       ],
+       [
+        "\\bar\\alpha_t",
+        "累积噪声调度系数"
+       ],
+       [
+        "z_t",
+        "第 t 步加噪后的潜变量"
+       ],
+       [
+        "\\epsilon_\\theta",
+        "去噪网络（如 1.6B DiT）"
+       ],
+       [
+        "c",
+        "条件（类别标签或文本）"
+       ]
+      ],
+      "derivation": [
+       "先用高压缩编码器把图像映射成紧凑潜变量 z，把扩散的建模对象从像素搬到更短的序列上。",
+       "按噪声调度对 z 加噪得到 z_t，让网络在每个噪声水平上都见到训练样本。",
+       "让网络预测注入的噪声 ε，回归目标就是这一项 MSE，等价于在潜空间上做去噪得分匹配。",
+       "压缩率 r 越高，潜序列越短、训练与推理越省，但 z 承载的信息越少，同一个目标更难拟合、收敛更慢——这正是 DC-SAE 要缓解的矛盾。"
+      ],
+      "analogy": "像先把大图缩成小缩略图再学修图：缩略图越小越省事，但细节丢得越多，修图模型要花更久才能学会还原。",
+      "pitfalls": [
+       "高压缩造成的信息损失无法靠更长训练补回，损失下降不等于重建变好。",
+       "潜变量的缩放因子（latent scale）不校准，会让噪声预测目标与激活尺度不匹配。",
+       "PSNR 衡量逐像素重建、gFID 衡量生成分布质量，只看其中一个会误判 tokenizer 的好坏。",
+       "像素归一化范围与 PSNR 里的 MAX 取值不一致时，PSNR 数字无法跨论文比较。"
+      ],
+      "code": "import torch\nimport torch.nn.functional as F\n\n\ndef latent_diffusion_loss(eps_net, encoder, x, alphas_bar, cond=None, num_steps=1000):\n    # x: (B,3,H,W); encoder: 冻结的高压缩潜编码器（DC-SAE 的压缩通路）\n    with torch.no_grad():\n        z = encoder(x)                                     # (B,C,h,w)，h = H / 32\n    b = z.shape[0]\n    t = torch.randint(0, num_steps, (b,), device=z.device)\n    eps = torch.randn_like(z)                              # 目标噪声\n    a = alphas_bar.to(z.device)[t].view(b, 1, 1, 1)\n    z_t = a.sqrt() * z + (1.0 - a).sqrt() * eps            # 前向加噪\n    eps_hat = eps_net(z_t, t, cond)                        # 预测噪声\n    return F.mse_loss(eps_hat, eps)\n",
+      "sources": [
+       {
+        "title": "DC-SAE: Deep Compression Semantic Autoencoder for Faster Diffusion Convergence",
+        "url": "https://arxiv.org/abs/2609.39222"
+       }
+      ]
+     },
+     {
+      "id": "f-compression-psnr-gfid",
+      "name": "空间压缩率与 PSNR/gFID 指标（Compression Ratio, PSNR and gFID）",
+      "category": "generative",
+      "latex": "r=\\frac{H}{h}=\\frac{W}{w}=32,\\qquad \\mathrm{PSNR}=10\\log_{10}\\frac{\\mathrm{MAX}^2}{\\mathrm{MSE}},\\qquad \\mathrm{gFID}=\\big\\|\\mu_r-\\mu_g\\big\\|_2^2+\\mathrm{Tr}\\Big(\\Sigma_r+\\Sigma_g-2\\big(\\Sigma_r\\Sigma_g\\big)^{1/2}\\Big)",
+      "symbols": [
+       [
+        "r",
+        "空间压缩率，原图边长与潜变量边长之比（像素数之比为 r^2）"
+       ],
+       [
+        "H\\times W",
+        "原图像素尺寸（本文为 512×512）"
+       ],
+       [
+        "h\\times w",
+        "潜变量尺寸（r=32 时为 16×16）"
+       ],
+       [
+        "\\mathrm{MAX}",
+        "像素最大值（通常取 1 或 255）"
+       ],
+       [
+        "\\mathrm{MSE}",
+        "重建与真值的均方误差"
+       ],
+       [
+        "\\mu_r,\\Sigma_r",
+        "真实图像特征的均值与协方差"
+       ],
+       [
+        "\\mu_g,\\Sigma_g",
+        "生成图像特征的均值与协方差"
+       ]
+      ],
+      "derivation": [
+       "空间压缩率定义为原图边长与潜变量边长之比，DC-SAE 在 512×512 上取到 32（潜变量 16×16）。",
+       "PSNR 把重建的均方误差取对数，MSE 越小分数越高，衡量的是逐像素保真度。",
+       "gFID 用真实与生成图像特征分布之间的 Fréchet 距离，衡量的是生成质量与分布距离。",
+       "把这两组指标放在同一压缩率、同一吞吐下比较，才能判断高压缩是否真的同时保住了重建与生成。"
+      ],
+      "analogy": "PSNR 像逐题对答案的准确率，gFID 像把全班成绩分布拿来对比：一个看单张图像素对得准不准，一个看整体分布像不像。",
+      "pitfalls": [
+       "PSNR 对模糊不敏感，解码器输出偏糊仍可能拿到不低的分数。",
+       "gFID 依赖特征提取器与评测样本量，不同实现的数值不可直接横向比较。",
+       "比较时必须固定压缩率与吞吐；压缩率不同的两个 tokenizer，PSNR 不具可比性。"
+      ],
+      "code": "import torch\n\n\ndef compression_ratio(img_hw, latent_hw):\n    # DC-SAE @ 512x512: 512 / 16 = 32 倍空间压缩（每个空间维度各降 32 倍）\n    assert img_hw[0] / latent_hw[0] == img_hw[1] / latent_hw[1], \"各向同性下采样\"\n    return img_hw[0] / latent_hw[0]\n\n\ndef psnr(x, x_hat, max_val=1.0):\n    # 29.79 dB 对应 MSE ≈ 10 ** (-2.979) ≈ 1.05e-3\n    mse = torch.mean((x - x_hat) ** 2)\n    return float(10.0 * torch.log10(torch.tensor(max_val ** 2) / mse.clamp(min=1e-12)))\n\n\nassert abs(compression_ratio((512, 512), (16, 16)) - 32.0) < 1e-9\n",
+      "sources": [
+       {
+        "title": "DC-SAE: Deep Compression Semantic Autoencoder for Faster Diffusion Convergence",
+        "url": "https://huggingface.co/papers/2609.39222"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "高压缩 tokenizer 在重建保真度与生成效率之间存在根本权衡，压缩越狠扩散训练越难收敛",
+      "语义表征自编码器用预训练语义编码器替换 VAE 编码器来加速扩散训练，但通常限于中等压缩且丢失像素级细节",
+      "DC-SAE 由宏观架构设计与像素级编码器两部分组成，前者借语义编码器提高压缩率，后者保留低层细节",
+      "在 ImageNet 512×512 上达到 32 倍空间压缩，PSNR 29.79、gFID 3.37，相对 DC-AE 分别提升 13.5% 与 54.9%",
+      "吞吐与基线相当且扩散训练收敛更快；1.6B 参数 DiT 配 DC-SAE 在 GenEval 得 0.84、DPG-Bench 得 86.007"
+     ],
+     "uncertain": [
+      "公式为按摘要重建的通用形式：摘要未给出 DC-SAE 的损失组成与语义项/像素项加权方式，潜空间扩散目标与 PSNR/gFID 均为教科书通用写法",
+      "摘要末尾被截断（结尾为 text-to-image g），GenEval 0.84 与 DPG-Bench 86.007 的完整实验设定需查原文",
+      "「13.5% 与 54.9%」是相对提升还是绝对差值、对应哪个 DC-AE 基线变体，摘要未说明",
+      "32 倍空间压缩的具体下采样路径（层数与通道宽度）摘要未给；「comparable throughput」也没有具体数字"
+     ]
+    }
+   }
+  },
+  {
+   "id": "da13c9f17083344c",
+   "title": "WorldAuditBench: Interactive 3D World Auditing with Multimodal Agents",
+   "category": "multimodal",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.40325",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.40325",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40325",
+     "name": "canonical"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40325v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.AI"
+   ],
+   "publishedAt": "2026-09-29T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 73.8,
+   "summary": "As interactive 3D worlds are increasingly used to study intelligent behavior, it becomes important to develop efficient pipelines for identifying anomalies in these simulated environments, such as floating objects, traversable walls, or objects inconsistent with the surrounding scene. Multimodal AI systems, including vision-language models (VLMs) and vision-language-action models (VLAs), have shown potential for automating this task. However, 3D world auditing is complex, requiring the close coupling of two distinct capabilities: action, to navigate the 3D world and search for anomalies systematically and efficiently; and visual reasoning, to understand the environment and identify anomalies from multimodal observations. It remains largely unexplored whether multimodal agents can effectively couple these two capabilities, using visual reasoning to identify potential anomalies while taking actions to validate them. In this paper, we introduce WorldAuditBench, a benchmark for 3D world auditing comprising 213 anomaly tasks across 13 environments built with Unreal Engine 5 and Three.js, spanning five anomaly families. We evaluate five frontier models under a fixed exploration budget using two auditing paradigms: VLA-based exploration followed by VLM-based anomaly identification, and an end-to-end VLM agent in which visual reasoning directly guides action selection. Across the evaluated models and two paradigms, success rates range from 6.6% to 42.3%, substantially below human performance (83.4%). Through the task of world auditing, WorldAuditBench provides a testbed for studying how multimodal agents couple action and visual reasoning in interactive 3D environments, while highlighting current limitations in their ability to gather and interpret evidence during exploration.",
+   "missing": [
+    "diagram",
+    "formulas",
+    "teaching"
+   ],
+   "backfillWeight": 6.0,
+   "existingEnrichment": {
+    "id": "da13c9f17083344c",
+    "tldr": "213 个 3D 世界异常审计任务：最强模型 42.3%，人类 83.4%。",
+    "keyPoints": [
+     "任务要在 3D 世界里同时做动作探索与视觉推理，二者需紧耦合。",
+     "含 13 个 UE5 / Three.js 环境、213 个异常任务。",
+     "评测两种范式：VLA 探索 + VLM 识别，以及端到端 VLM 智能体。",
+     "固定预算下，五个前沿模型成功率 6.6%-42.3%。",
+     "同一基准上人类成功率为 83.4%。"
+    ],
+    "why": "它把「多模态智能体在交互环境中收集并解释证据」变成可量化基准，是具身/世界模型方向的直接证据。",
+    "difficulty": "easy",
+    "tags": [
+     "benchmark",
+     "multimodal",
+     "3d",
+     "agent",
+     "vla"
+    ],
+    "entities": [
+     "WorldAuditBench",
+     "Unreal Engine 5",
+     "Three.js",
+     "VLM",
+     "VLA"
+    ],
+    "concepts": [
+     {
+      "name": "3D 世界审计 3D World Auditing",
+      "readable": "让多模态智能体在交互式 3D 环境里自主导航，找出「浮空物体、可穿透的墙、与场景不一致的物体」等异常。这个任务难在必须把两种能力紧耦合：动作，用来系统高效地探索世界；视觉推理，用来从多模态观测里判断哪里不对劲，并采取动作去验证。基准在固定探索预算下评测两种范式——先 VLA 探索再 VLM 识别，以及由视觉推理直接驱动动作选择的端到端 VLM 智能体。",
+      "analogy": "像质检员巡厂：既要一眼看出哪里不对（视觉推理），又要走过去换个角度确认（动作验证）。只会看不会走、或只会走不会看，都完不成。",
+      "visual": "画一个 2D 俯视的 3D 场景网格：灰色为正常区域，红点为异常物体位置；蓝色折线表示智能体的探索轨迹并带方向箭头；轨迹经过红点旁时画一个放大镜图标表示「视觉确认」。下方画柱状图，对比五个前沿模型的成功率区间 6.6%-42.3% 与人类的 83.4%。",
+      "formula": ""
+     }
+    ],
+    "formulas": [],
+    "selfCheck": {
+     "claims": [
+      "WorldAuditBench 含 213 个异常任务、13 个环境、五类异常，环境由 Unreal Engine 5 与 Three.js 构建。",
+      "固定探索预算下，五个前沿模型成功率区间为 6.6%-42.3%，人类为 83.4%。",
+      "评测覆盖两种范式：VLA 探索 + VLM 识别，以及端到端 VLM 智能体。"
+     ],
+     "uncertain": [
+      "五个前沿模型具体是哪几个，摘要未列出。",
+      "五类异常的英文名称与任务难度分布未给出。"
+     ]
+    }
+   }
+  }
+ ]
+}

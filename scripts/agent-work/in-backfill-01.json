@@ -1,0 +1,1827 @@
+{
+ "batchId": "backfill-01",
+ "mode": "backfill",
+ "items": [
+  {
+   "id": "c31038343524cca2",
+   "title": "Scaling Laws for Looped Mixture of Experts",
+   "category": "agent",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.40316",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.40316",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40316",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-29T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 53.6,
+   "summary": "Looped transformers and Mixture-of-Experts (MoE) offer complementary routes to efficient scaling: recurrence increases computational depth at fixed parameters, while MoE sparsity expands total capacity at fixed active compute. Yet existing scaling laws model recurrence or sparsity in isolation. In this work, we introduce Loop Scaling Laws, the first scaling law to jointly model recurrence and sparsity alongside model size and data. At its core is a bounded, sparsity-conditional recurrence mapping that characterizes the effective-parameter gain from looping and how sparsity raises this gain. The laws predict the held-out loss of looped models more accurately than prior alternatives, and recover the standard dense and MoE scaling laws as special cases. Beyond prediction, the fitted laws provide a principled foundation for designing looped MoE models under compute and memory constraints. Downstream evaluations further demonstrate the complementary benefits of the two axes: sparsity delivers ~3x active-parameter efficiency, recurrence yields ~2x total-parameter efficiency on reasoning, and joint scaling further advances the performance frontier. As a practical extension, we show these gains hold at trillion-token scale: at matched training compute, a looped MoE with law-derived recurrence matches a ~2x larger non-looped MoE on the reasoning benchmarks, while enabling test-time scaling through recurrence.",
+   "missing": [
+    "diagram",
+    "teaching"
+   ],
+   "backfillWeight": 5.0,
+   "existingEnrichment": {
+    "id": "c31038343524cca2",
+    "tldr": "首个同时建模循环与 MoE 稀疏的缩放律，用来决定加人还是多跑几轮。",
+    "keyPoints": [
+     "循环固定参数增加计算深度，MoE 稀疏固定激活计算扩大容量。",
+     "已有缩放律只单独建模其中一条，无法预测两者叠加。",
+     "核心是有界、以稀疏度为条件的循环映射，刻画循环的有效参数增益。",
+     "标准稠密与 MoE 缩放律都是它的特例。",
+     "万亿 token 规模下，循环 MoE 可匹敌约 2 倍大的非循环 MoE。"
+    ],
+    "why": "缩放律是判断「堆参数、堆数据还是加循环」的依据，基础理论与大模型训练岗都会问到。",
+    "difficulty": "medium",
+    "tags": [
+     "scaling-law",
+     "mixture-of-experts",
+     "looped-transformer",
+     "efficiency",
+     "foundation"
+    ],
+    "entities": [
+     "Loop Scaling Laws",
+     "Mixture-of-Experts",
+     "looped transformers",
+     "test-time scaling"
+    ],
+    "concepts": [
+     {
+      "name": "循环与稀疏的联合缩放律 Joint Recurrence-Sparsity Scaling",
+      "readable": "循环（recurrence）在固定参数下增加计算深度，MoE 稀疏在固定激活计算下扩大总容量，两者是互补的扩展轴。已有缩放律只单独建模其中一条，无法预测叠加效果。本文提出同时含模型规模、数据量、循环次数与稀疏度的缩放律，核心是一个有界、以稀疏度为条件的循环映射，用来刻画「循环带来的有效参数增益」以及稀疏度如何抬高这个增益。稠密与标准 MoE 缩放律都是它的特例。",
+      "analogy": "同样预算下，你可以多雇人（MoE 容量），也可以让现有的人多干几轮（循环）。这条定律是一张「该加人还是该多干几轮」的对照表，并说明两者如何叠加。",
+      "visual": "画一张等高线图：横轴为循环次数 r，纵轴为专家稀疏度 s，颜色深浅表示 held-out loss；图上叠两条辅助线，分别表示「固定激活计算」与「固定显存」约束下损失下降最快的方向，两条线交点即该约束下的最优配置。",
+      "formula": "L(N, D, r, s) = E + A\\,N_{\\mathrm{eff}}^{-\\alpha} + B\\,D^{-\\beta}, \\quad N_{\\mathrm{eff}} = N \\cdot g(r, s)"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-loop-scaling",
+      "name": "循环 MoE 的联合缩放律 (Joint Scaling Law for Looped Mixture-of-Experts)",
+      "category": "foundation",
+      "glyph": "L",
+      "tags": [
+       "scaling-law",
+       "moe",
+       "recurrence",
+       "foundation"
+      ],
+      "latex": "L(N, D, r, s) = E + A\\,N_{\\mathrm{eff}}^{-\\alpha} + B\\,D^{-\\beta}, \\qquad N_{\\mathrm{eff}} = N \\cdot g(r, s),\\ \\ 0 < g \\le g_{\\max}(s)",
+      "html": "<code>L(N, D, r, s) = E + A·N<sub>eff</sub><sup>−α</sup> + B·D<sup>−β</sup>,   N<sub>eff</sub> = N · g(r, s),  0 &lt; g ≤ g<sub>max</sub>(s)</code>",
+      "symbols": [
+       [
+        "L",
+        "held-out loss"
+       ],
+       [
+        "N",
+        "模型总参数量"
+       ],
+       [
+        "D",
+        "训练 token 数"
+       ],
+       [
+        "r",
+        "循环次数（recurrence），固定参数下增加计算深度"
+       ],
+       [
+        "s",
+        "MoE 稀疏度/激活比例"
+       ],
+       [
+        "N_eff",
+        "有效参数量，由有界、以稀疏度为条件的循环映射 g(r,s) 给出"
+       ],
+       [
+        "E, A, B, α, β",
+        "与标准缩放律一致的常数项与指数项"
+       ]
+      ],
+      "derivation": [
+       "循环与 MoE 稀疏是两条互补的扩展轴：前者固定参数增加计算深度，后者固定激活计算扩大总容量。",
+       "已有缩放律只单独建模其中一条，无法预测两者叠加后的 loss。",
+       "引入有界、以稀疏度为条件的循环映射 g(r,s)，刻画循环带来的有效参数增益以及稀疏度如何抬高这个增益。",
+       "当 r=1 或 s 取稠密极限时，g→0，公式退回标准稠密/MoE 缩放律，保证与既有结论自洽。"
+      ],
+      "analogy": "像给团队排班：给定预算，加人（专家数）和让现有的人加班轮次（循环）都能提产出，但加班收益有上限，而且人越多时「多干几轮」的边际收益越高——这张表就是排班指南。",
+      "pitfalls": [
+       "循环增益有上界：无限制增加循环次数不会线性降低 loss。",
+       "稀疏度会抬高循环增益的上界，但稀疏本身带来容量与路由代价，不能只看 loss。",
+       "这是拟合型经验定律，外推到训练 token 规模或模型规模之外需谨慎。"
+      ],
+      "code": "import numpy as np\n\n\ndef looped_moe_loss(N, D, r, s, E, A, alpha, B, beta, gmax=2.0, k=1.0):\n    \"\"\"g(r, s) 为有界、以稀疏度为条件的循环映射（此处为示意形式）。\"\"\"\n    g = gmax * (1.0 - np.exp(-k * (r - 1.0))) * s   # r=1 时 g=0 -> 退回标准缩放律\n    N_eff = N * (1.0 + g)\n    return E + A * N_eff ** (-alpha) + B * D ** (-beta)\n\n\n# 用法：先在多个 (N, D, r, s) 观测点上拟合常数，再在算力/显存约束下外推选配置\n",
+      "sources": [
+       {
+        "title": "Scaling Laws for Looped Mixture of Experts",
+        "url": "https://huggingface.co/papers/2609.40316"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "稀疏带来约 3 倍激活参数效率，循环带来约 2 倍总参数效率。",
+      "匹配训练算力下，用定律设计的循环 MoE 可匹配约 2 倍大的非循环 MoE。",
+      "标准稠密与 MoE 缩放律是该定律的特例。"
+     ],
+     "uncertain": [
+      "循环映射 g(r,s) 的具体函数形式与拟合常数，摘要未给出；上式是按描述重建的通用形式。",
+      "「reasoning benchmarks」具体是哪些、外推验证的规模未列出。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "2f84c181617f7429",
+   "title": "One Signal Theory - A Conceptual Architecture for Context Management in Large Language Models via Synthetic Affective Signal Modulation of Attention",
+   "category": "agent",
+   "channel": "s2",
+   "url": "https://doi.org/10.5281/zenodo.23068062",
+   "sources": [
+    {
+     "url": "https://doi.org/10.5281/zenodo.23068062",
+     "name": "s2"
+    },
+    {
+     "url": "https://doi.org/10.5281/zenodo.23068063",
+     "name": "s2"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-10-01T00:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": true,
+   "codeAvailable": false,
+   "relevanceScore": 70.1,
+   "summary": "Context window capacity remains a central bottleneck for large language models (LLMs): enlarging the window does not guarantee that a model attends to the right information, and empirical work has shown systematic degradation when relevant content sits in the middle of a long context. Biological cognition faces an analogous problem—an effectively unbounded stream of multimodal sensory input arriving at a working memory of limited capacity—and appears to manage it, in part, through affective and endocrine signals that act as a salience filter, bias- ing which stimuli reach conscious attention. This paper introduces One Signal Theory (OST), a conceptual software architecture that draws a loose analogy to this biological mechanism: a background “subconscious” sub-agent produces low-dimensional synthetic affective indices (here named synthetic adrenaline and synthetic dopamine), converted into multiplicative modifiers— an inverse-temperature term and a pruning threshold—applied to the attention-weight distri- bution of a main “working memory” context. We present the architecture, its mathematical formulation, and probe its behavior on a controlled synthetic salience-retrieval task. Two re- sults emerge. First, we prove, and confirm empirically without exception, that OST’s gating mechanism is rank-invariant: because it is built entirely from order-preserving transforms (tem- perature scaling, thresholding, renormalization), it cannot change which single token receives the most attention, and therefore cannot on its own correct the kind of attention misdirection documented in th",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "2f84c181617f7429",
+    "tldr": "提出 OST 概念架构：用合成情绪信号调温与剪枝注意力，证明该门控排序不变，改不了最受关注的 token。",
+    "keyPoints": [
+     "提出 OST 概念软件架构，为 LLM 上下文管理设计",
+     "后台「潜意识」子代理生成合成肾上腺素与多巴胺指标",
+     "指标转成逆温度项与剪枝阈值，乘在注意力权重上",
+     "证明并实测该门控是排序不变的（rank-invariant）",
+     "在受控合成显著性检索任务上探测其行为"
+    ],
+    "why": "对注意力干预有直接参考：温度缩放与阈值剪枝都改不了 argmax，做长上下文检索或 Agent 记忆筛选时可避开这类无效干预；与多模态、RL 主线弱相关。",
+    "difficulty": "medium",
+    "tags": [
+     "attention",
+     "context-management",
+     "affective-computing",
+     "llm-architecture",
+     "rank-invariance"
+    ],
+    "entities": [
+     "One Signal Theory",
+     "synthetic adrenaline",
+     "synthetic dopamine",
+     "inverse temperature",
+     "working memory context",
+     "subconscious sub-agent"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "OST 门控流程",
+     "caption": "潜意识子代理产出合成情绪指标，经乘性变换作用到工作记忆上下文的注意力分布上。",
+     "svg": "<svg viewBox='0 0 960 400' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='OST 门控流程：情绪指标转成逆温度与剪枝阈值，乘性作用于注意力分布。'><g fill='none' stroke='var(--line-1)' stroke-width='1.5'><rect x='30' y='60' width='170' height='80' rx='10'/><rect x='30' y='240' width='170' height='80' rx='10'/><rect x='275' y='150' width='180' height='80' rx='10'/><rect x='530' y='60' width='170' height='80' rx='10'/><rect x='530' y='240' width='170' height='80' rx='10'/><rect x='775' y='150' width='155' height='80' rx='10'/><path d='M200 100 L262 172'/><path d='M200 280 L262 208'/><path d='M455 175 L517 115'/><path d='M455 205 L517 265'/><path d='M700 100 C735 100 745 150 762 172'/><path d='M700 280 C735 280 745 230 762 208'/></g><g fill='var(--line-1)' font-size='17'><text x='115' y='92' text-anchor='middle'>潜意识子代理</text><text x='115' y='116' text-anchor='middle'>产出低维情绪指标</text><text x='115' y='272' text-anchor='middle'>合成肾上腺素</text><text x='115' y='296' text-anchor='middle'>合成多巴胺</text><text x='365' y='182' text-anchor='middle'>乘性修饰子</text><text x='365' y='206' text-anchor='middle'>逆温度与剪枝阈值</text><text x='615' y='92' text-anchor='middle'>按逆温度缩放 logits</text><text x='615' y='116' text-anchor='middle'>softmax 重新归一化</text><text x='615' y='272' text-anchor='middle'>低于阈值的位置</text><text x='615' y='296' text-anchor='middle'>权重剪枝并补归一</text><text x='852' y='182' text-anchor='middle'>工作记忆上下文的</text><text x='852' y='206' text-anchor='middle'>注意力分布</text></g><g fill='var(--accent)' font-size='16'><text x='330' y='352' text-anchor='middle'>三者都是保序变换：argmax 不变</text><text x='330' y='378' text-anchor='middle'>因此无法纠正注意力误导向</text></g></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "潜意识子代理",
+        "detail": "后台子代理产出低维合成情绪指标"
+       },
+       {
+        "label": "合成肾上腺素 / 多巴胺",
+        "detail": "论文命名的两个合成情绪指数"
+       },
+       {
+        "label": "乘性修饰子",
+        "detail": "一个逆温度项 + 一个剪枝阈值"
+       },
+       {
+        "label": "注意力分布",
+        "detail": "作用于工作记忆上下文的注意力权重"
+       },
+       {
+        "label": "排序不变",
+        "detail": "温度缩放、阈值化、重归一化都是保序变换"
+       }
+      ],
+      "edges": [
+       {
+        "from": "潜意识子代理",
+        "to": "合成肾上腺素 / 多巴胺",
+        "label": "产出"
+       },
+       {
+        "from": "合成肾上腺素 / 多巴胺",
+        "to": "乘性修饰子",
+        "label": "转换"
+       },
+       {
+        "from": "乘性修饰子",
+        "to": "注意力分布",
+        "label": "乘性作用"
+       },
+       {
+        "from": "注意力分布",
+        "to": "排序不变",
+        "label": "推论"
+       }
+      ]
+     },
+     "alt": "流程图：潜意识子代理产出合成肾上腺素与多巴胺，转换为逆温度与剪枝阈值，乘性作用于工作记忆上下文的注意力分布，并得出 argmax 不变的结论。"
+    },
+    "concepts": [
+     {
+      "name": "温度缩放的注意力锐化",
+      "readable": "先把注意力分数除以温度再归一化：温度小，分布更尖，高分行拿走更多份额；温度大，分布更平。它只改变份额大小，不改变谁排第一。",
+      "analogy": "像给考试成绩做开方或平方的曲线调整：所有人的分数都被压缩或拉开，排名顺序一个都没变。",
+      "analogyBreaksDown": "考试调分只改总分展示，而注意力缩放要经过 softmax 后再归一化，份额是此消彼长的；而且这里的温度来自「情绪信号」而非固定常数。",
+      "mechanism": "注意力 logits 除以温度系数后做 softmax，再用阈值把低权重位置截断并重新归一化。因为温度缩放与阈值截断都是逐元素单调映射，元素间的相对次序被完整保留。",
+      "visual": "横轴为 token 位置，竖直柱表示注意力权重；动画演示温度 0.5 与 2.0 两帧下柱子高度变化，但柱子的高低排序与顶端标记的冠军柱始终不变。",
+      "prerequisites": [
+       "softmax 的定义与数值稳定性",
+       "单调函数的保序性质",
+       "注意力机制中 logits 与权重的区别"
+      ],
+      "selfTest": [
+       "把温度从 1 降到 0.5，注意力权重的 argmax 会变吗？为什么？",
+       "温度趋于 0 和趋于无穷时，注意力分布分别退化成什么形状？",
+       "若同时做温度缩放与阈值剪枝，被剪掉的会不会是最初的 argmax 位置？"
+      ],
+      "formula": "\\alpha_i = \\frac{\\exp(z_i / T)}{\\sum_j \\exp(z_j / T)}"
+     },
+     {
+      "name": "保序变换与排序不变性",
+      "readable": "只要对每个分数单独施加同一个单调递增函数，谁大谁小就不变。温度缩放、阈值化、重归一化各自都满足这一点，所以合成情绪信号改变不了最受关注的 token。",
+      "analogy": "像把一列身高数据从厘米换成英寸：数值全变了，谁最高依旧是谁。",
+      "analogyBreaksDown": "保序只保证单次单模态的排序不变；一旦阈值剪枝把某些位置直接清零，参与竞争的元素集合就变了，此时「不变」需要重新论证，论文正是靠重归一化的单调性补上这一步。",
+      "mechanism": "设 s 为单调递增映射，则对任意 i、j 有 z_i ≤ z_j 当且仅当 s(z_i) ≤ s(z_j)；softmax 的输出次序与输入次序一致，阈值化与重归一化同样保序，于是整条门控链的 argmax 与门控前相同。",
+      "visual": "一列竖条表示注意力分数，对全部竖条叠加同一条单调伸缩曲线；用虚线标出最高柱，观察它在变形前后位置不动。",
+      "prerequisites": [
+       "单调函数的定义",
+       "softmax 的保序性",
+       "argmax 的概念"
+      ],
+      "selfTest": [
+       "举一个非单调变换的例子，说明它为什么能改变 argmax。",
+       "阈值剪枝是否属于逐元素单调变换？它对排序不变性的证明有什么影响？",
+       "若要把注意力真正「导向」别处，至少需要什么类型的操作？"
+      ],
+      "formula": "\\operatorname*{arg\\,max}_i \\; s(z_i) = \\operatorname*{arg\\,max}_i \\; z_i \\quad (s \\text{ 单调递增})"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-ost-rank-invariant-gating",
+      "name": "OST 门控的保序性与排序不变性",
+      "category": "foundation",
+      "glyph": "β",
+      "tags": [
+       "attention",
+       "softmax",
+       "rank-invariance"
+      ],
+      "latex": "\\alpha_i = \\frac{\\exp(\\beta z_i)}{\\sum_j \\exp(\\beta z_j)}, \\qquad \\beta > 0 \\;\\Longrightarrow\\; \\operatorname*{arg\\,max}_i \\alpha_i = \\operatorname*{arg\\,max}_i z_i",
+      "html": "<code>α_i = exp(β·z_i) / Σ_j exp(β·z_j)，且 β &gt; 0 时 argmax_i α_i = argmax_i z_i</code>",
+      "symbols": [
+       [
+        "z_i",
+        "第 i 个位置的注意力 logit（门控前的原始分数）"
+       ],
+       [
+        "β",
+        "逆温度系数，由合成情绪指标转换而来（β = 1/T）"
+       ],
+       [
+        "α_i",
+        "门控后第 i 个位置归一化得到的注意力权重"
+       ],
+       [
+        "argmax",
+        "取得最大值的下标，即最受关注的那个 token"
+       ]
+      ],
+      "derivation": [
+       "设 β > 0，映射 u ↦ exp(βu) 在实数域上严格单调递增，故 z_i ≥ z_j ⇔ exp(βz_i) ≥ exp(βz_j)。",
+       "softmax 对每个元素施加同一个严格递增函数 exp(·) 后除以同一个正数配分函数 Z = Σ_j exp(βz_j)，不改变元素间的相对大小。",
+       "OST 剩余步骤（阈值剪枝、重归一化）同样是逐元素单调映射与除以正常数的组合，保持保序性。",
+       "因此整条门控链复合后仍保序，α 的最大值下标与 z 的最大值下标相同。"
+      ],
+      "analogy": "像同一批人按身高排队后统一换单位：数字变大变小，队首那个人不会换。",
+      "pitfalls": [
+       "β 必须为正：若允许 β < 0，exp(βu) 变成单调递减，会把排序完全颠倒。",
+       "保序不等于分布不变：份额（权重数值）会被显著改变，只是次序不变。",
+       "阈值剪枝会改变参与竞争的元素集合，论证其排序不变性时必须算上随后的重归一化步骤。",
+       "该结论只针对「哪个 token 排第一」；它不排除门控改变权重数值从而影响下游层聚合结果的可能性。"
+      ],
+      "code": "import numpy as np\n\n\ndef ost_gate(z, beta, prune_threshold=0.0):\n    \"\"\"OST 门控：逆温度缩放 -> softmax -> 阈值剪枝 -> 重归一化。\"\"\"\n    z = np.asarray(z, dtype=float)\n    assert beta > 0, '逆温度必须为正，否则排序会被颠倒'\n    e = np.exp(beta * z - beta * z.max())\n    alpha = e / e.sum()\n    kept = alpha >= prune_threshold\n    if not kept.any():\n        kept = np.zeros_like(alpha, dtype=bool)\n        kept[int(alpha.argmax())] = True\n    alpha = np.where(kept, alpha, 0.0)\n    return alpha / alpha.sum()\n\n\nz = np.array([0.2, 3.1, -1.4, 2.0, 0.7])\nfor beta in (0.25, 1.0, 4.0):\n    a = ost_gate(z, beta, prune_threshold=0.02)\n    print(f'beta={beta:>5}  argmax={a.argmax()}  argmax(z)={z.argmax()}  weights={np.round(a, 4)}')",
+      "sources": [
+       {
+        "title": "One Signal Theory - A Conceptual Architecture for Context Management in Large Language Models via Synthetic Affective Signal Modulation of Attention (DOI)",
+        "url": "https://doi.org/10.5281/zenodo.23068062"
+       },
+       {
+        "title": "One Signal Theory - A Conceptual Architecture for Context Management in Large Language Models via Synthetic Affective Signal Modulation of Attention (DOI, 关联记录)",
+        "url": "https://doi.org/10.5281/zenodo.23068063"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "论文题为 One Signal Theory - A Conceptual Architecture for Context Management in Large Language Models via Synthetic Affective Signal Modulation of Attention。",
+      "OST 是一个概念性的软件架构，面向 LLM 的上下文管理。",
+      "架构中有一个后台「潜意识」子代理，产出低维合成情绪指标，命名为 synthetic adrenaline 与 synthetic dopamine。",
+      "这些指标被转换成乘性修饰子：一个逆温度项和一个剪枝阈值，施加在「工作记忆」上下文的注意力权重分布上。",
+      "论文给出该架构的数学形式，并在受控的合成显著性检索任务上探测其行为。",
+      "论文证明并经实验无例外地确认：该门控机制是排序不变的，无法改变哪个单一 token 获得最多注意力。",
+      "论文写作动机包括：扩大上下文窗口并不保证模型关注正确信息，已有实证工作显示相关内容位于长上下文中部时性能系统性退化。"
+     ],
+     "uncertain": [
+      "采集摘要在中途被截断，合成显著性检索任务的具体数值结果与结论未能读取，需人工核实原文。",
+      "摘要未交代所用基座模型、上下文长度与评判指标，无法判断该探测的可迁移性。",
+      "逆温度项与剪枝阈值由合成情绪指标到具体数值的映射函数细节，摘要仅给出「乘法修饰子」的笼统描述。",
+      "该架构是否包含能真正改变 argmax 的组件（例如查询/键的重写或位置重加权），摘要未提及。",
+      "论文标注为 peerReviewed 且发表于 Zenodo，其评审状态与版本关系需人工核实。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "49cb899dc35e83a0",
+   "title": "Skill-Based AI Agents for Power-System Studies",
+   "category": "agent",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.40272v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.40272v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "eess.SY"
+   ],
+   "publishedAt": "2026-09-30T05:44:35+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 72.0,
+   "summary": "This paper describes a skill-based agentic framework for power-system studies using Model Context Protocol (MCP)-connected engineering tools. A custom MCP server was developed to expose Siemens PTI PSSE functions for power-flow analysis, dynamic simulation, result extraction, and model-validation workflows. Two implementation pathways built on a programmable OpenAI Agents software development kit (SDK) and a Claude Code command-line interface (CLI) were evaluated, both using reusable skills, subagents, MCP tools, data-repository connections, and local shell/Python execution. Both frontier-model-based implementations successfully executed representative study tasks. Success was evaluated based on task completion, output accuracy, and the need for human expert interventions. Results based on public datasets show that agentic systems can greatly accelerate power system dynamic simulation process for transmission planning studies leveraging industry-grade simulation platforms. This points toward a shift in transmission planning practice, where agentic systems could handle routine simulation setup and result extraction, allowing engineers to focus expert judgment on scenario design and interpretation rather than tool operation.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "49cb899dc35e83a0",
+    "tldr": "用 MCP 把 PSSE 接成工具，以 skills 和 subagents 编排，两条路径均跑通电力仿真任务。",
+    "keyPoints": [
+     "自研 MCP server 暴露 PSSE 潮流/动态仿真/结果提取/模型校验",
+     "两条路径：OpenAI Agents SDK、Claude Code CLI",
+     "均复用 skills、subagents、MCP 工具与数据仓库/本地执行",
+     "按任务完成、输出准确、是否需要人工介入三项验收，代表性任务均成功",
+     "公开数据集结果显示可大幅加速输电规划的动态仿真流程"
+    ],
+    "why": "Agent 工程正从 prompt 走向「skill 库 + 子代理 + MCP 工具」编排；这套分层验收与工具接入思路可迁移到多模态/后训练实验流水线。",
+    "difficulty": "medium",
+    "tags": [
+     "mcp",
+     "agentic-workflow",
+     "skill-library",
+     "subagents",
+     "power-system-simulation",
+     "tool-use"
+    ],
+    "entities": [
+     "Model Context Protocol (MCP)",
+     "Siemens PTI PSSE",
+     "OpenAI Agents SDK",
+     "Claude Code CLI"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "技能化智能体电力仿真流程",
+     "caption": "记住分工：Agent 编排 skill 与 subagent，MCP 打通 PSSE，专家只在门控处介入并按三项标准验收。",
+     "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 280'><g font-size='13' fill='var(--fg-1)'><rect x='14' y='30' width='110' height='50' rx='8' fill='none' stroke='var(--line-1)'/><text x='69' y='52' text-anchor='middle'>工程师需求</text><text x='69' y='70' text-anchor='middle' fill='var(--accent)'>输电规划研究</text><rect x='140' y='30' width='110' height='50' rx='8' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='195' y='52' text-anchor='middle'>编排 Agent</text><text x='195' y='70' text-anchor='middle' fill='var(--accent)'>SDK / CLI</text><rect x='266' y='30' width='110' height='50' rx='8' fill='none' stroke='var(--line-1)'/><text x='321' y='47' text-anchor='middle'>skills 库</text><text x='321' y='61' text-anchor='middle'>subagents</text><text x='321' y='76' text-anchor='middle' fill='var(--accent)'>潮流·仿真·校验</text><rect x='392' y='30' width='110' height='50' rx='8' fill='none' stroke='var(--line-1)'/><text x='447' y='52' text-anchor='middle'>MCP server</text><text x='447' y='70' text-anchor='middle' fill='var(--accent)'>自研</text><rect x='518' y='30' width='110' height='50' rx='8' fill='none' stroke='var(--line-1)'/><text x='573' y='47' text-anchor='middle'>PSSE 平台</text><text x='573' y='61' text-anchor='middle'>数据仓库</text><text x='573' y='76' text-anchor='middle'>shell/Python</text><line x1='124' y1='55' x2='133' y2='55' stroke='var(--line-1)'/><polygon points='140,55 133,51 133,59' fill='currentColor'/><line x1='250' y1='55' x2='259' y2='55' stroke='var(--line-1)'/><polygon points='266,55 259,51 259,59' fill='currentColor'/><line x1='376' y1='55' x2='385' y2='55' stroke='var(--line-1)'/><polygon points='392,55 385,51 385,59' fill='currentColor'/><line x1='502' y1='55' x2='511' y2='55' stroke='var(--line-1)'/><polygon points='518,55 511,51 511,59' fill='currentColor'/><rect x='180' y='160' width='448' height='100' rx='10' fill='none' stroke='var(--line-1)'/><text x='204' y='183'>人工专家介入门控 · Human-in-the-loop</text><rect x='196' y='200' width='132' height='34' rx='6' fill='none' stroke='var(--accent)'/><text x='262' y='222' text-anchor='middle' fill='var(--accent)'>任务完成</text><rect x='340' y='200' width='132' height='34' rx='6' fill='none' stroke='var(--accent)'/><text x='406' y='222' text-anchor='middle' fill='var(--accent)'>输出准确</text><rect x='484' y='200' width='132' height='34' rx='6' fill='none' stroke='var(--accent)'/><text x='550' y='222' text-anchor='middle' fill='var(--accent)'>人工介入次数</text><line x1='573' y1='85' x2='573' y2='152' stroke='var(--line-1)'/><polygon points='573,158 568,151 578,151' fill='currentColor'/><text x='566' y='124' text-anchor='end'>输出送审</text><line x1='195' y1='158' x2='195' y2='92' stroke='var(--accent)' stroke-dasharray='4 3'/><polygon points='195,85 190,92 200,92' fill='var(--accent)'/><text x='188' y='124' text-anchor='end' fill='var(--accent)'>介入回灌</text></g></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "工程师需求",
+        "detail": "输电规划研究任务（场景设计由专家给出）"
+       },
+       {
+        "label": "编排 Agent",
+        "detail": "两条实现路径：OpenAI Agents SDK / Claude Code CLI，负责调度与决策"
+       },
+       {
+        "label": "skills 库 + subagents",
+        "detail": "可复用 skill：潮流分析、动态仿真、结果提取、模型校验；复杂子任务下沉给 subagents"
+       },
+       {
+        "label": "MCP server（自研）",
+        "detail": "把 PSSE 功能封装为 MCP 工具，供两条路径共用"
+       },
+       {
+        "label": "PSSE / 数据仓库 / 本地 shell+Python",
+        "detail": "Siemens PTI PSSE 行业级仿真平台、公开数据集与本地执行环境"
+       },
+       {
+        "label": "人工专家介入门控",
+        "detail": "门控点：何时需要人接手；介入可回灌给编排 Agent"
+       },
+       {
+        "label": "三项验收",
+        "detail": "任务完成、输出准确、人工介入次数"
+       }
+      ],
+      "edges": [
+       {
+        "from": 0,
+        "to": 1,
+        "label": "提出研究任务"
+       },
+       {
+        "from": 1,
+        "to": 2,
+        "label": "调用可复用 skill / 派发 subagent"
+       },
+       {
+        "from": 2,
+        "to": 3,
+        "label": "经 MCP 协议调用工具"
+       },
+       {
+        "from": 3,
+        "to": 4,
+        "label": "执行潮流/动态仿真与结果提取"
+       },
+       {
+        "from": 4,
+        "to": 5,
+        "label": "输出送审（检查输出准确）"
+       },
+       {
+        "from": 5,
+        "to": 1,
+        "label": "人工介入时回灌修正"
+       },
+       {
+        "from": 5,
+        "to": 6,
+        "label": "按三项标准判定验收"
+       }
+      ]
+     },
+     "alt": "流程图：工程师需求进入编排 Agent（OpenAI Agents SDK 或 Claude Code CLI 两条路径），Agent 调用可复用 skills 与 subagents，经自研 MCP server 调用 Siemens PTI PSSE、数据仓库与本地 shell/Python；下方是人工专家介入门控与三项验收（任务完成、输出准确、人工介入次数），人工介入会回灌给编排 Agent。"
+    },
+    "concepts": [
+     {
+      "name": "技能化智能体编排 Skill-Based Agent Orchestration",
+      "readable": "把研究流程拆成可复用的 skill（潮流分析、动态仿真、结果提取、模型校验），由编排 Agent 决定调用哪个 skill、派给哪个 subagent，而不是把所有步骤塞进一条提示。",
+      "analogy": "像医院分诊：主诊医生（编排 Agent）不亲自做每项检查，而是开单让放射科、检验科（skills/subagents）各干各的，最后汇总成一份报告。",
+      "analogyBreaksDown": "医院科室接口是行业标准、结果格式固定；这里的 skill 边界要靠人手工划分与维护，skill 之间还会争抢同一份模型状态，出错时很难定位是「分诊错」还是「科室做错」。",
+      "mechanism": "关键设计是把「会什么」与「怎么调度」解耦：能力以 skills 落成文档+脚本，调度交给 Agent，复杂子任务再下沉给 subagents；代价是需要额外维护 skill 库与接口约定。",
+      "visual": "画三层泳道图：顶层是编排 Agent 的决策节点，中层是四张并列 skill 卡片（潮流/动态/提取/校验），底层是 PSSE 工具调用；实线表示 Agent→skill 的派发，虚线表示 skill→工具的执行，用 accent 色高亮当前被选中的 skill。",
+      "prerequisites": [
+       "LLM 工具调用 / function calling 基础",
+       "多智能体编排范式（planner-executor、subagent）",
+       "电力系统潮流与动态仿真的基本概念"
+      ],
+      "selfTest": [
+       "skill 与 subagent 的分工边界应该怎么划？",
+       "把流程拆成 skill 为什么能降低上下文压力？",
+       "skill 库变大之后，编排失败的主要来源是什么？"
+      ],
+      "formula": "a^{*}=\\arg\\max_{a\\in\\mathcal{S}} f_\\theta(q, a)"
+     },
+     {
+      "name": "MCP 工具接入层 Model Context Protocol Tool Layer",
+      "readable": "MCP 是一套让模型用统一协议调用外部工具的接口规范；论文自研了一个 MCP server，把 PSSE 的潮流、动态仿真、结果提取、模型校验暴露成可被 Agent 调用的工具。",
+      "analogy": "像 USB-C 转接：不管后面接的是仿真软件、数据库还是本地脚本，Agent 这头永远只插同一个口。",
+      "analogyBreaksDown": "USB-C 只统一物理形状，不保证语义；MCP 统一的是调用格式，工具参数含义、单位、失败返回仍需工程师逐个约定，工具报错时模型也未必能自我纠正。",
+      "mechanism": "把工程软件封装成 server 端工具，模型侧只处理工具名、参数与返回值；好处是换模型或换客户端（SDK 或 CLI）不用重写仿真代码，代价是多一层进程与协议开销，且要自己维护 server。",
+      "visual": "画左右两栏：左栏两个客户端（OpenAI Agents SDK、Claude Code CLI），右栏是 PSSE 与数据仓库；中间竖一条 MCP 协议带，用双向箭头表示请求/返回，同一颜色表示「同一套工具被两条路径复用」。",
+      "prerequisites": [
+       "JSON-RPC / 工具 schema 基本概念",
+       "Python 进程与子进程调用",
+       "PSSE 或同类电力仿真软件的操作常识"
+      ],
+      "selfTest": [
+       "MCP server 解决的是接口统一还是能力增强？",
+       "为什么同一套 MCP 工具能同时服务 SDK 和 CLI 两条路径？",
+       "工具调用失败时，协议层能给 Agent 提供哪些信息？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "人在回路验收门控 Human-in-the-Loop Acceptance Gate",
+      "readable": "论文不只看智能体能否跑完，还统计它是否需要人类专家介入；也就是把「专家要不要接手」当成一等评测信号，而不是隐藏成本。",
+      "analogy": "像自动驾驶的接管率：跑完一段路不算本事，全程零接管才算；论文同时看「跑通率」和「接管率」。",
+      "analogyBreaksDown": "开车接管有明确安全阈值，科研任务「该不该介入」是主观判断，不同专家松紧不一；而且介入后任务做成了也会被算作完成，两个指标并不独立。",
+      "mechanism": "把人的介入从「后台补丁」变成显式门控：任务完成、输出准确、介入次数三项一起算，于是优化目标从「能不能做」变成「少让人插手还能做对」。",
+      "visual": "画一个十字象限：横轴是任务完成率、纵轴是人工介入率，右上角是「能跑但离不开人」，右下角才是目标区；用箭头标出希望移动的方向。",
+      "prerequisites": [
+       "评测指标设计基础（指示函数、均值统计）",
+       "理解 agent benchmark 的常见评测维度",
+       "知道「完成」与「准确」是两个独立条件"
+      ],
+      "selfTest": [
+       "为什么只报成功率会高估智能体的自主性？",
+       "人工介入率的分母应该怎么定？",
+       "三项验收里哪一项最难自动判定，为什么？"
+      ],
+      "formula": "HIR=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}[H_i]"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-agent-task-success",
+      "name": "任务成功率与人工介入率（Task Success Rate & Human Intervention Rate）",
+      "category": "agent",
+      "glyph": "Σ",
+      "tags": [
+       "agent",
+       "evaluation",
+       "success-rate",
+       "human-in-the-loop"
+      ],
+      "latex": "SR = \\frac{1}{N}\\sum_{i=1}^{N} \\mathbb{1}[\\,C_i \\land A_i\\,], \\qquad HIR = \\frac{1}{N}\\sum_{i=1}^{N} \\mathbb{1}[\\,H_i\\,]",
+      "html": "<code>SR = (1/N) * Σ 1[C_i ∧ A_i];  HIR = (1/N) * Σ 1[H_i]</code>",
+      "symbols": [
+       [
+        "SR",
+        "任务成功率，取值 [0,1]，无量纲"
+       ],
+       [
+        "HIR",
+        "人工介入率，取值 [0,1]，无量纲"
+       ],
+       [
+        "N",
+        "被评估的代表性研究任务总数（摘要未给出具体数值）"
+       ],
+       [
+        "C_i",
+        "第 i 条任务完成（task completion）的布尔指示"
+       ],
+       [
+        "A_i",
+        "第 i 条任务输出准确（output accuracy）的布尔指示"
+       ],
+       [
+        "H_i",
+        "第 i 条任务需要人类专家介入的布尔指示"
+       ],
+       [
+        "\\mathbb{1}[\\cdot]",
+        "指示函数：条件成立取 1，否则取 0"
+       ],
+       [
+        "\\land",
+        "逻辑与：完成且准确才计入成功率分子"
+       ]
+      ],
+      "derivation": [
+       "摘要明确验收只看三件事：任务完成、输出准确、是否需要人工介入，因此把每条任务压成可判定的布尔向量 (C_i, A_i, H_i)。",
+       "成功率只统计「既完成又准确」的任务，用逻辑与 C_i ∧ A_i 同时约束两个条件，避免「跑完但算错」被当成成功。",
+       "对 N 条任务取指示函数均值得到 SR；把指示函数换成 H_i 再取均值，就得到人工介入率 HIR。",
+       "两项一起看才有意义：SR 高而 HIR 也高，说明智能体能跑通却仍离不开专家兜底，离「自动执行常规仿真设置与结果提取」还有距离。"
+      ],
+      "analogy": "像驾考：SR 是「一次通过且没压线的比例」，HIR 是「需要教练踩副刹的比例」；通过率再高，教练仍频繁踩刹车，就说明还不能单独上路。",
+      "pitfalls": [
+       "把「完成」和「准确」拆成两个独立数字汇报，而不是取交集成 SR——口径不同结论可能反过来。",
+       "忽略 H_i 与 C_i 的相关性：人在介入后把任务做成了，C_i 仍可能为 1，会虚高 SR；摘要未说明是否剔除介入样本。",
+       "分母 N 的口径（是否包含超时/放弃任务）没有定义，跨系统比较前必须对齐。",
+       "误以为 HIR 越低越好：有场景下专家介入本身就是设计好的门控，而不是缺陷。"
+      ],
+      "code": "from typing import Any\n\n\ndef evaluate(results: list[dict[str, Any]]) -> dict[str, float]:\n    \"\"\"results: 每条任务的三项验收结果（摘要口径：完成/准确/是否需人工介入）。\"\"\"\n    n = len(results)\n    if n == 0:\n        return {\"SR\": float(\"nan\"), \"HIR\": float(\"nan\")}\n    sr = sum(1 for r in results if r[\"completed\"] and r[\"accurate\"]) / n\n    hir = sum(1 for r in results if r[\"human_intervention\"]) / n\n    return {\"SR\": sr, \"HIR\": hir}\n\n\ntasks = [\n    {\"completed\": True, \"accurate\": True, \"human_intervention\": False},\n    {\"completed\": True, \"accurate\": False, \"human_intervention\": True},\n    {\"completed\": True, \"accurate\": True, \"human_intervention\": True},\n]\nprint(evaluate(tasks))  # {'SR': 0.6666666666666666, 'HIR': 0.6666666666666666}\n",
+      "sources": [
+       {
+        "title": "Skill-Based AI Agents for Power-System Studies",
+        "url": "https://arxiv.org/abs/2609.40272v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "论文提出一个面向电力系统研究的技能化（skill-based）智能体框架。",
+      "框架使用 Model Context Protocol (MCP) 连接工程工具。",
+      "作者自研了一个 MCP server，把 Siemens PTI PSSE 的功能暴露出来，覆盖潮流分析、动态仿真、结果提取与模型校验工作流。",
+      "评估了两条实现路径：基于 OpenAI Agents SDK 的可编程方式，与 Claude Code CLI。",
+      "两条路径都使用可复用 skills、subagents、MCP 工具、数据仓库连接以及本地 shell/Python 执行。",
+      "两个基于前沿模型的实现都成功执行了代表性研究任务。",
+      "验收依据是任务完成情况、输出准确性与是否需要人类专家介入。",
+      "基于公开数据集的结果显示，智能体系统可以大幅加速输电规划研究中的电力系统动态仿真流程。",
+      "论文认为这指向输电规划实践的转变：智能体承担常规仿真设置与结果提取，工程师把专家判断放在场景设计与结果解读上。"
+     ],
+     "uncertain": [
+      "摘要未给出 SR / HIR 的具体数值与任务数 N；formulas 中的公式按「任务完成 ∧ 输出准确」的领域标准写法给出，论文变体的精确形式（是否加权、是否有阈值或归一化）需看原文。",
+      "摘要未说明人工介入后仍未完成的任务如何计数，也未说明「介入」是按次数还是按是否发生过统计。",
+      "摘要未给出所用前沿模型的具体型号、PSSE 版本、MCP server 的实现细节与公开数据集名称。",
+      "「大幅加速」的具体加速比摘要未给出数字，任何量化倍数都需回原文核实。",
+      "arXiv 编号 2609.40272v1 为用户给定信息，本次未自行联网核实其存在。",
+      "concepts 中「技能化智能体编排」的 skill 选择 argmax 公式属于通用写法，论文未在摘要中给出对应形式化定义。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "f1959ffd8e7058e7",
+   "title": "How Much of a Harness Does a Strong Agent Need for Autonomous ML Engineering?",
+   "category": "agent",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.40303v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.40303v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.AI"
+   ],
+   "publishedAt": "2026-09-30T05:51:30+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 64.0,
+   "summary": "Recent autonomous machine learning engineering (MLE) agents have made significant progress on public leaderboards. Often motivated by progress stagnation over long-horizon cycles and limited Large Language Model (LLM) primitives, modern MLE agents are deployed on top of increasingly elaborate machinery: multi-agent orchestrators, dedicated retrieval subagents, and more. While such harnesses expand, the use of more primitive but improved coding agents - where LLMs have direct access to the execution environment through read, write, and bash primitives - has received little attention in the field. In this paper we find that, under an equal time budget and the same frontier LLM backbone, open-source state-of-the-art harnesses provide no advantages over a single session of a minimal-harness coding agent baseline, pointing to the backbone as the primary driver for performance. Via a series of large-scale systematic ablation studies, we argue that the machinery layers become redundant in the coding agent setting. We conclude that the effort spent elaborating hand-crafted harnesses around strong models yields poor returns for current MLE benchmarks.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "f1959ffd8e7058e7",
+    "tldr": "等时间预算与同一前沿主干下，开源最强 harness 相比最小 harness 单会话编码智能体并无优势。",
+    "keyPoints": [
+     "现代 MLE 智能体常堆叠多智能体编排器与专用检索子智能体",
+     "动机是长程循环里的进展停滞与 LLM 原语有限",
+     "更原始但更强的编码智能体用 read/write/bash 直连环境",
+     "等时间预算与同一主干下，开源最强 harness 无优势",
+     "大规模消融显示机制层在编码智能体设定下冗余"
+    ],
+    "why": "Agent 岗高频争论是「继续堆 harness 还是换更强主干」；这篇给出等预算、同主干下的对照结论，帮你判断工程复杂度该加到哪一层。",
+    "difficulty": "medium",
+    "tags": [
+     "agent",
+     "harness",
+     "mle",
+     "coding-agent",
+     "ablation"
+    ],
+    "entities": [
+     "autonomous MLE agent",
+     "minimal-harness coding agent",
+     "multi-agent orchestrator",
+     "retrieval subagent",
+     "read/write/bash primitives"
+    ],
+    "diagram": {
+     "kind": "matrix",
+     "title": "等预算下的 harness 对照",
+     "caption": "同一主干与等时间预算下，精雕机制层并没有换回更高成绩",
+     "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='最小 harness 与精雕 harness 在同一主干、等时间预算与机制层数上的对照矩阵'><text x='152.2' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>同一主干</text><text x='240.8' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>等时间预算</text><text x='329.2' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>机制层数</text><text x='417.8' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>相对成绩</text><text x='98.0' y='72.5' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>*最小 harness</text><text x='98.0' y='139.5' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>精雕 harness</text><rect x='108.0' y='34.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='152.2' y='72.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是</text><rect x='196.5' y='34.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='240.8' y='72.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是</text><rect x='285.0' y='34.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='329.2' y='72.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>最少</text><rect x='373.5' y='34.0' width='88.5' height='67.0' fill='none' stroke='var(--accent)' stroke-width='2.0'/><text x='417.8' y='72.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>无优势</text><rect x='108.0' y='101.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='152.2' y='139.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是</text><rect x='196.5' y='101.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='240.8' y='139.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是</text><rect x='285.0' y='101.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='329.2' y='139.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>最多</text><rect x='373.5' y='101.0' width='88.5' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='417.8' y='139.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>无优势</text></svg>",
+     "spec": {
+      "type": "matrix",
+      "rows": [
+       "*最小 harness",
+       "精雕 harness"
+      ],
+      "cols": [
+       "同一主干",
+       "等时间预算",
+       "机制层数",
+       "相对成绩"
+      ],
+      "cells": [
+       [
+        "是",
+        "是",
+        "最少",
+        "*无优势"
+       ],
+       [
+        "是",
+        "是",
+        "最多",
+        "无优势"
+       ]
+      ]
+     },
+     "alt": "最小 harness 与精雕 harness 在同一主干、等时间预算与机制层数上的对照矩阵"
+    },
+    "concepts": [
+     {
+      "name": "Minimal-harness Coding Agent（最小 harness 编码智能体）",
+      "readable": "指 LLM 直接通过 read、write、bash 三个原语操作执行环境，不再叠加多智能体编排器或专用检索子智能体；论文用它作为单一会话的对照基线。",
+      "analogy": "像让一个熟练工程师直接坐到服务器前，能读文件、写文件、敲命令；不必先搭一整套项目管理系统再开工。",
+      "analogyBreaksDown": "真人的经验是内生且可迁移的；这里的全部能力来自 LLM 主干本身，换掉主干就等于换掉了智能体的能力来源。",
+      "mechanism": "把 LLM 接入执行环境的最小接口：读文件、写文件、跑命令，规划、检索与验证都留在同一个模型会话内完成，不拆成子智能体。",
+      "visual": "画一条时间轴，上面只有一个会话框，框内循环箭头依次标 read、write、bash；旁边对照画多智能体编排器的多层框。",
+      "prerequisites": [
+       "LLM 工具调用 / function calling",
+       "Agent 观察-动作循环",
+       "代码执行沙箱"
+      ],
+      "selfTest": [
+       "最小 harness 只给智能体哪三个原语？",
+       "它与多智能体编排器在结构上的差别是什么？",
+       "作者为什么用单一会话作为对照基线？"
+      ],
+      "formula": "\\pi_{\\text{agent}}(a_t\\mid o_t)=\\mathrm{LLM}_\\theta(\\mathrm{ctx}_t),\\qquad a_t\\in\\{\\texttt{read},\\texttt{write},\\texttt{bash}\\}"
+     },
+     {
+      "name": "Equal-budget Same-backbone Comparison（等预算同主干对照）",
+      "readable": "比较 harness 时必须同时固定两件事：给每种方案相同的时间预算，并让它们共用同一个前沿 LLM 主干，否则无法把差异归因给机制层。",
+      "analogy": "像比较两种学习方法：必须给同样的复习时间和同一本教材，否则分不清是方法好还是资料好。",
+      "analogyBreaksDown": "复习时间可以精确切分，真实系统的开销还包括排队、限流与并行度；固定 wall-clock 预算会掩盖这些维度。",
+      "mechanism": "在相同时间预算与相同前沿主干下，让开源最强 harness 与最小 harness 单会话跑同一批 MLE 任务，使 harness 复杂度成为唯一变量。",
+      "visual": "画两条等长的时间预算条，一条标「最小 harness 单会话」、一条标「多智能体 harness」，末端成绩条画成等高。",
+      "prerequisites": [
+       "受控实验与消融设计",
+       "wall-clock 时间预算",
+       "主干与 harness 的分层概念"
+      ],
+      "selfTest": [
+       "为什么必须同时固定时间预算与主干模型？",
+       "只固定主干而不固定时间，结论会怎样变？",
+       "「无优势」是在什么条件下得出的？"
+      ],
+      "formula": "S(B)=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}\\big[\\mathrm{solve}_i=1\\ \\wedge\\ \\tau_i\\le B\\big]"
+     },
+     {
+      "name": "Machinery Redundancy（机制层冗余）",
+      "readable": "多智能体编排器、专用检索子智能体这类机制层，在编码智能体设定下被大规模系统消融证明是冗余的：去掉之后成绩并不下降。",
+      "analogy": "像给已经会开车的司机再装一套副驾提示：车本身够好时，提示既不提速也不改路线。",
+      "analogyBreaksDown": "副驾提示还能在长途疲劳时兜底；摘要只在等时间预算与同一主干下比较基准成绩，兜底价值不体现在分数里。",
+      "mechanism": "用一系列大规模系统性消融逐一移除机制层，观察同主干同预算下的成绩变化，发现这些层次在编码智能体设定下被剥掉也不损失性能。",
+      "visual": "横向条形图：每移除一层机制画一根条，条长几乎不变；最后一根保留全部机制作为参照。",
+      "prerequisites": [
+       "消融实验设计",
+       "多智能体编排",
+       "检索增强与子智能体"
+      ],
+      "selfTest": [
+       "论文用什么手段判断机制层是否必要？",
+       "被点名的机制层有哪些？",
+       "冗余结论的适用条件是什么？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-budget-normalized-success",
+      "name": "等时间预算成功率（Time-budget-normalised Success Rate）",
+      "category": "agent",
+      "latex": "S(B)=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}\\!\\left[\\mathrm{solve}_i=1\\ \\wedge\\ \\tau_i\\le B\\right],\\qquad \\tau_i=\\sum_{t=1}^{T_i} c_t",
+      "symbols": [
+       [
+        "N",
+        "参与比较的 MLE 任务数量"
+       ],
+       [
+        "B",
+        "每个任务允许的 wall-clock 时间预算"
+       ],
+       [
+        "T_i",
+        "第 i 个任务的交互轮数"
+       ],
+       [
+        "c_t",
+        "第 t 轮读、写、执行所消耗的时间"
+       ],
+       [
+        "\\tau_i",
+        "第 i 个任务的实际耗时"
+       ],
+       [
+        "\\mathrm{solve}_i",
+        "第 i 个任务是否被解决（0/1）"
+       ],
+       [
+        "S(B)",
+        "预算 B 下的成功率"
+       ]
+      ],
+      "derivation": [
+       "先把「做得对」与「做得快」分开定义：solve 表示任务是否被解决。",
+       "把每一轮读、写、执行的时间累加，得到该任务的实际耗时 τ_i。",
+       "只有任务被解决且耗时不超过预算 B 时才计为成功，避免用无限时间换分数。",
+       "对全部任务取平均，得到可在不同 harness 之间直接比较的单一指标。"
+      ],
+      "analogy": "像限时考试：答对但超时不算分，这样比较两种做法的优劣才公平。",
+      "pitfalls": [
+       "预算 B 的取值会改变排名：B 很小时比的是速度，B 很大时机制层的开销被掩盖。",
+       "不同任务耗时量级差异大，直接平均会让慢任务主导结果。",
+       "时间统计口径（是否计入模型推理、是否计入排队）必须与对照方案完全一致。"
+      ],
+      "code": "def budget_success_rate(tasks, budget):\n    # tasks: [{\"solved\": bool, \"costs\": [每轮耗时, ...]}, ...]\n    hit = 0\n    for t in tasks:\n        tau = sum(t[\"costs\"])                     # 任务实际耗时\n        hit += int(bool(t[\"solved\"]) and tau <= budget)\n    return hit / len(tasks)                       # S(B)：等预算成功率\n",
+      "sources": [
+       {
+        "title": "How Much of a Harness Does a Strong Agent Need for Autonomous ML Engineering?",
+        "url": "https://arxiv.org/abs/2609.40303v1"
+       }
+      ]
+     },
+     {
+      "id": "f-harness-ablation-effect",
+      "name": "harness 消融效应估计（Harness Ablation Effect）",
+      "category": "agent",
+      "latex": "\\hat{\\Delta}=\\frac{1}{N}\\sum_{i=1}^{N}\\big(s_i^{\\text{min}}-s_i^{\\text{harness}}\\big),\\qquad \\mathrm{SE}(\\hat{\\Delta})=\\frac{\\sigma_d}{\\sqrt{N}},\\qquad \\sigma_d^2=\\frac{1}{N-1}\\sum_{i=1}^{N}\\big(d_i-\\hat{\\Delta}\\big)^2",
+      "symbols": [
+       [
+        "s_i^{\\text{min}}",
+        "最小 harness 单会话在第 i 个任务上的得分"
+       ],
+       [
+        "s_i^{\\text{harness}}",
+        "精雕 harness 在同一任务、同一主干上的得分"
+       ],
+       [
+        "d_i",
+        "两种方案在第 i 个任务上的配对差"
+       ],
+       [
+        "\\hat{\\Delta}",
+        "平均配对差，接近 0 表示 harness 没有带来优势"
+       ],
+       [
+        "\\sigma_d",
+        "配对差的标准差"
+       ],
+       [
+        "\\mathrm{SE}",
+        "均值估计的标准误"
+       ],
+       [
+        "N",
+        "配对任务数量"
+       ]
+      ],
+      "derivation": [
+       "对每个任务取两种方案的得分并作差，得到配对差 d_i，先消掉任务难度差异。",
+       "对全部任务求平均，得到 harness 带来的平均分数变化 Δ。",
+       "用配对差的标准差除以 √N 给出标准误，用来判断 Δ 是否只是随机噪声。",
+       "当 Δ 的置信区间跨过 0 时，说明精雕 harness 相对最小基线没有可测优势。"
+      ],
+      "analogy": "像同一批学生用两种教辅各做一遍同样的卷子，只看每人两次的分差，而不是比较两个班的平均分。",
+      "pitfalls": [
+       "不做配对而直接比两组平均分，任务难度差异会淹没 harness 的真实效应。",
+       "同一任务多次运行的随机性要一并估计，否则标准误会偏小、结论过于自信。",
+       "Δ≈0 只说明在当前基准与主干下无优势，不能外推到所有任务与所有预算。"
+      ],
+      "code": "import math\n\n\ndef harness_ablation_effect(minimal, harness):\n    # minimal / harness: 同一批任务上两种方案的得分, 一一配对\n    diffs = [a - b for a, b in zip(minimal, harness)]\n    n = len(diffs)\n    delta = sum(diffs) / n\n    var = sum((d - delta) ** 2 for d in diffs) / (n - 1)\n    se = math.sqrt(var / n)\n    ci = (delta - 1.96 * se, delta + 1.96 * se)\n    return delta, se, ci          # 置信区间跨 0 => 无显著优势\n",
+      "sources": [
+       {
+        "title": "How Much of a Harness Does a Strong Agent Need for Autonomous ML Engineering?",
+        "url": "https://arxiv.org/abs/2609.40303v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "现代自主 MLE 智能体常建立在多智能体编排器、专用检索子智能体等日益复杂的机制之上",
+      "通过 read、write、bash 直接访问执行环境的更原始编码智能体路线此前关注不足",
+      "在等时间预算与同一前沿 LLM 主干下，开源最强 harness 相比最小 harness 单会话没有优势",
+      "作者据此认为主干模型是性能的主要驱动，且大规模系统性消融显示机制层在编码智能体设定下冗余",
+      "结论是围绕强模型手工打磨 harness 对当前 MLE 基准回报很低"
+     ],
+     "uncertain": [
+      "摘要未给出任何基准名称、任务数、时间预算数值与分数，本模块的矩阵与曲线仅为定性可视化",
+      "「无优势」的统计口径（种子数、置信区间、显著性检验）摘要未说明，消融效应估计公式为按摘要重建的通用形式",
+      "等时间预算成功率公式为按摘要重建的通用形式，非原文公式",
+      "「此前关注不足」只说关注度，未给出文献计量证据；「大规模」的具体规模摘要未给"
+     ]
+    }
+   }
+  },
+  {
+   "id": "38b311baeaddf577",
+   "title": "DeepSeek 开源算子工具大礼包，联手华为昇腾，手撕 CUDA 绑定！",
+   "category": "coding",
+   "channel": "leiphone",
+   "url": "https://leiphone.com/category/yanxishe/UUIfK7eeFE9Ws1JI.html",
+   "sources": [
+    {
+     "url": "https://leiphone.com/category/yanxishe/UUIfK7eeFE9Ws1JI.html",
+     "name": "leiphone"
+    }
+   ],
+   "tags": [
+    "资讯",
+    "AI",
+    "中文媒体"
+   ],
+   "publishedAt": "2026-09-30T18:58:00+08:00",
+   "lang": "zh",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 55.7,
+   "summary": "一套代码能跑遍所有芯片。 作者丨 高允毅 编辑丨岑 峰 刚刚，DeepSeek做了一个开源壮举： 把给英伟达 GPU 写代码的全套工具链，原样铺到了华为昇腾 950 NPU 上。 最核心的算子开发产品 TileLang 官宣原生支持昇腾。不仅如此，连同 DeepGEMM、DeepEP、FlashMLA、TileKernels、DeepSelect 五大核心计算与通信库也同步推出昇腾版本，直接对标英伟达平台的全套工具链。 这意味着国产算力第一次在核心算子工具层面，做到了与英伟达生态的能力对标 。 在此之前，全球 AI 行业苦 CUDA 垄断久矣；而现在，DeepSeek 用一行行开源代码，为国产算力自主生态蹚出了一条康庄大道。 01 写算子的 “手工作坊” 时代，该结束了 做过 AI 底层开发的都知道， “写算子” 一直是门槛最高、耗时最久的工作之一。 一张芯片的理论算力上限很高，但如果底层算子写得不达标，芯片内部的计算单元就会有大量时间等数据流转，导致几万块钱的芯片可能只能发挥出 20% 的性能。写算子的目的，就是为了把这 20% 的硬件利用率提高到 95% 以上。 拿最常见的 矩阵乘法（GEMM） 来说，要想榨干一张 AI 芯片的算力，开发者要手动管理三级缓存、调度线程块、搞定数据预取流水线，甚至要深入到寄存器分块和指令重排层面。 为了优化上千行底层代码，资深工程师打磨好几周都是常态。这就导致了一个行业的核心冲突：模型算法迭代太快，芯片厂商官方算子库永远跟不上。 过去行业里有三条路可选，但各有各的局限： 第一条路是自己手写 CUDA ： 性能天花板最高，但开发效率极低，深度绑定英伟达生态，无法跨平台移植； 第二条路是使用厂商的预制算子库 ： 比如英伟达 cuBLAS，标准算子开箱即用、性能拉满，但灵活性极差，开发者无法修改内部逻辑、也无法做算子融合，新算法很容易卡在算力层； 第三条路是使用高层 DSL 编译器： 比如 OpenAI 的 Triton，大幅降低了开发门槛，但性能上限受限于编译器本身的优化策略，对昇腾、AMD 等非英伟达硬件原生支持度低，异构适配成本很高。",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "38b311baeaddf577",
+    "tldr": "雷锋网报道：DeepSeek 把算子工具链铺到华为昇腾 950 NPU，TileLang 原生支持，五大库出昇腾版本。",
+    "keyPoints": [
+     "TileLang 官宣原生支持华为昇腾 NPU",
+     "DeepGEMM、DeepEP、FlashMLA 等五库出昇腾版",
+     "报道称目标是对标英伟达平台的全套算子工具链",
+     "文章称写算子可把硬件利用率从约 20% 提到 95% 以上"
+    ],
+    "why": "主题是算子工具链与国产芯片后端适配，与多模态、后训练、世界模型、RL、Agent 主线弱相关；对推理与 kernel 工程方向是生态信号。",
+    "difficulty": "medium",
+    "tags": [
+     "inference",
+     "kernel",
+     "toolchain",
+     "hardware",
+     "open-source"
+    ],
+    "entities": [
+     "DeepSeek",
+     "华为昇腾 950 NPU",
+     "TileLang",
+     "DeepGEMM",
+     "DeepEP",
+     "FlashMLA"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "算子工具链从英伟达迁到昇腾",
+     "caption": "英伟达平台工具链被原样铺到昇腾 950，TileLang 与五个核心库同步给出昇腾版本；三条原本的替代路径各有局限。",
+     "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 440\" width=\"960\" height=\"440\" font-family=\"system-ui, sans-serif\"><rect x=\"0\" y=\"0\" width=\"960\" height=\"440\" fill=\"none\"/><defs><marker id=\"a1\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--fg-1)\"/></marker></defs><rect x=\"12\" y=\"81\" width=\"156\" height=\"78\" rx=\"8\" fill=\"none\" stroke=\"var(--line-1)\"/><text x=\"90\" y=\"111\" font-size=\"14\" text-anchor=\"middle\" fill=\"var(--fg-1)\">英伟达 CUDA</text><text x=\"90\" y=\"131\" font-size=\"13\" text-anchor=\"middle\" fill=\"var(--fg-1)\">工具链</text><line x1=\"168\" y1=\"120\" x2=\"209\" y2=\"120\" stroke=\"var(--fg-1)\" marker-end=\"url(#a1)\"/><rect x=\"212\" y=\"81\" width=\"156\" height=\"78\" rx=\"8\" fill=\"none\" stroke=\"var(--line-1)\"/><text x=\"290\" y=\"111\" font-size=\"14\" text-anchor=\"middle\" fill=\"var(--fg-1)\">TileLang 原生</text><text x=\"290\" y=\"131\" font-size=\"13\" text-anchor=\"middle\" fill=\"var(--fg-1)\">支持昇腾</text><line x1=\"368\" y1=\"120\" x2=\"409\" y2=\"120\" stroke=\"var(--fg-1)\" marker-end=\"url(#a1)\"/><rect x=\"412\" y=\"81\" width=\"156\" height=\"78\" rx=\"8\" fill=\"none\" stroke=\"var(--line-1)\"/><text x=\"490\" y=\"111\" font-size=\"14\" text-anchor=\"middle\" fill=\"var(--fg-1)\">五大计算与通信</text><text x=\"490\" y=\"131\" font-size=\"13\" text-anchor=\"middle\" fill=\"var(--fg-1)\">库出昇腾版本</text><line x1=\"568\" y1=\"120\" x2=\"609\" y2=\"120\" stroke=\"var(--fg-1)\" marker-end=\"url(#a1)\"/><rect x=\"612\" y=\"81\" width=\"156\" height=\"78\" rx=\"8\" fill=\"none\" stroke=\"var(--line-1)\"/><text x=\"690\" y=\"111\" font-size=\"14\" text-anchor=\"middle\" fill=\"var(--fg-1)\">昇腾 950</text><text x=\"690\" y=\"131\" font-size=\"13\" text-anchor=\"middle\" fill=\"var(--fg-1)\">NPU 运行</text><line x1=\"768\" y1=\"120\" x2=\"809\" y2=\"120\" stroke=\"var(--fg-1)\" marker-end=\"url(#a1)\"/><rect x=\"812\" y=\"81\" width=\"136\" height=\"78\" rx=\"8\" fill=\"none\" stroke=\"var(--accent)\"/><text x=\"880\" y=\"111\" font-size=\"14\" text-anchor=\"middle\" fill=\"var(--accent)\">国产算子</text><text x=\"880\" y=\"131\" font-size=\"13\" text-anchor=\"middle\" fill=\"var(--accent)\">工具层补齐</text><text x=\"12\" y=\"232\" font-size=\"14\" fill=\"var(--fg-1)\">文章提到的三条替代路径及其局限</text><line x1=\"52\" y1=\"250\" x2=\"880\" y2=\"250\" stroke=\"var(--line-1)\"/><text x=\"12\" y=\"284\" font-size=\"13\" fill=\"var(--fg-1)\">路径一 · 手写 CUDA</text><text x=\"212\" y=\"284\" font-size=\"13\" fill=\"var(--fg-1)\">性能天花板高，开发效率低，绑死英伟达</text><text x=\"12\" y=\"318\" font-size=\"13\" fill=\"var(--fg-1)\">路径二 · 厂商预制算子库</text><text x=\"252\" y=\"318\" font-size=\"13\" fill=\"var(--fg-1)\">开箱即用性能好，但改不了内部逻辑</text><text x=\"12\" y=\"352\" font-size=\"13\" fill=\"var(--fg-1)\">路径三 · 高层 DSL 编译器</text><text x=\"248\" y=\"352\" font-size=\"13\" fill=\"var(--fg-1)\">门槛低，性能受编译器限制，异构适配贵</text><line x1=\"480\" y1=\"374\" x2=\"480\" y2=\"394\" stroke=\"var(--line-1)\" marker-end=\"url(#a1)\" stroke-dasharray=\"4 3\"/><rect x=\"300\" y=\"398\" width=\"360\" height=\"34\" rx=\"17\" fill=\"none\" stroke=\"var(--line-1)\"/><text x=\"480\" y=\"420\" font-size=\"13\" text-anchor=\"middle\" fill=\"var(--fg-1)\">三条路都没解决：算法迭代快于算子供给</text></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "英伟达 CUDA 工具链",
+        "detail": "为英伟达 GPU 写算子的全套工具链"
+       },
+       {
+        "label": "TileLang 原生支持昇腾",
+        "detail": "报道称最核心的算子开发产品官宣原生支持昇腾"
+       },
+       {
+        "label": "五大库出昇腾版本",
+        "detail": "DeepGEMM、DeepEP、FlashMLA、TileKernels、DeepSelect"
+       },
+       {
+        "label": "昇腾 950 NPU 运行",
+        "detail": "同一套工具链铺到昇腾 950 NPU"
+       },
+       {
+        "label": "国产算子工具层补齐",
+        "detail": "报道称首次在核心算子工具层与英伟达生态对标"
+       },
+       {
+        "label": "路径一 · 手写 CUDA",
+        "detail": "性能天花板高，开发效率极低，无法跨平台移植"
+       },
+       {
+        "label": "路径二 · 厂商预制算子库",
+        "detail": "标准算子性能拉满，但无法改内部逻辑或做算子融合"
+       },
+       {
+        "label": "路径三 · 高层 DSL 编译器",
+        "detail": "门槛低，但性能受编译器限制，非英伟达硬件适配成本高"
+       },
+       {
+        "label": "未解决的核心冲突",
+        "detail": "模型算法迭代太快，芯片厂商官方算子库跟不上"
+       }
+      ],
+      "edges": [
+       {
+        "from": "英伟达 CUDA 工具链",
+        "to": "TileLang 原生支持昇腾",
+        "label": "迁移"
+       },
+       {
+        "from": "TileLang 原生支持昇腾",
+        "to": "五大库出昇腾版本",
+        "label": "配套"
+       },
+       {
+        "from": "五大库出昇腾版本",
+        "to": "昇腾 950 NPU 运行",
+        "label": "落位"
+       },
+       {
+        "from": "昇腾 950 NPU 运行",
+        "to": "国产算子工具层补齐",
+        "label": "对标"
+       },
+       {
+        "from": "路径一 · 手写 CUDA",
+        "to": "未解决的核心冲突",
+        "label": "效率低"
+       },
+       {
+        "from": "路径二 · 厂商预制算子库",
+        "to": "未解决的核心冲突",
+        "label": "不灵活"
+       },
+       {
+        "from": "路径三 · 高层 DSL 编译器",
+        "to": "未解决的核心冲突",
+        "label": "异构适配贵"
+       }
+      ]
+     },
+     "alt": "流程图：英伟达 CUDA 工具链经 TileLang 原生支持昇腾与五大库昇腾版本，落到昇腾 950 NPU 运行；下方列出三条替代路径的局限。"
+    },
+    "concepts": [
+     {
+      "name": "算子开发与算子库",
+      "readable": "算子就是芯片上干某个具体计算的小程序，比如矩阵乘法。把它写好，芯片才不空转；写不好，贵的芯片也只发挥一小部分性能。",
+      "analogy": "像给一支很能跑的施工队排工序：砖不缺、人也不缺，但没人安排谁先搬料谁先砌墙，工人大部分时间在等材料，工地照旧磨洋工。",
+      "analogyBreaksDown": "工地上加人加料通常就能提速，而算子的瓶颈往往在片上一小块高速缓存容量和寄存器数量上，加硬件也未必有用，得改计算的分块与搬运次序。",
+      "mechanism": "把矩阵乘法切成小块驻留片上高速缓存，调度线程块并行、预取下一块数据形成流水线，再在寄存器层面分块并重排指令，让计算单元尽量不空等数据。",
+      "visual": "时间轴上交替出现「算一算」与「等数据」两色方块：优化前等数据块又长又密，优化后等数据块被压短、被流水线重叠掉，整条轴几乎全是算一算。",
+      "prerequisites": [
+       "矩阵乘法的基本计算量含义",
+       "芯片的访存层次（全局显存 → 片上缓存 → 寄存器）",
+       "算子融合为何能省搬运"
+      ],
+      "selfTest": [
+       "为什么同一张芯片上，算子写得好坏能带来数倍性能差？",
+       "厂商预制算子库在什么情况下会成为瓶颈？",
+       "算子融合省下的主要是计算还是数据搬运？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "硬件后端与跨平台算子工具链",
+      "readable": "同一份算子代码要能跑在不同厂商的芯片上，就得有一层工具把芯片差异藏起来；文章说 TileLang 做到原生支持昇腾，五个库也同步给了昇腾版本。",
+      "analogy": "像同一份菜谱换厨房：灶台火候、锅具规格各家不同，中间有个懂行的帮厨替你换算火候和锅具，菜谱本身不用重写，换厨房也不用重新学一遍。",
+      "analogyBreaksDown": "换厨房最多影响口味，而换芯片后端时数值精度、并行粒度和通信原语都可能对不上，迁移后的正确性与性能必须逐项验证，类比给不出这种保证。",
+      "mechanism": "上层用统一的高层写法描述算子，编译层针对不同芯片生成各自指令，并让集合通信、注意力、矩阵乘法等库分别对接各家后端，从而复用同一套调用方式。",
+      "visual": "左右两栏对照：左栏英伟达平台列出工具链与各库，右栏昇腾平台列出「原生支持」与「昇腾版本」，中间用并列箭头表明一一对应关系。",
+      "prerequisites": [
+       "GPU 与 NPU 执行模型的差异",
+       "编译器前后端与代码生成的分工",
+       "集合通信库在分布式训练推理中的角色"
+      ],
+      "selfTest": [
+       "原生支持某个后端，和用适配层转译，差别可能体现在哪里？",
+       "为什么通信库也有必要单独出昇腾版本？",
+       "工具链能否跨平台，是否等于性能也能持平？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-roofline-kernel-utilization",
+      "name": "Roofline 耗时下界与硬件利用率",
+      "category": "engineering",
+      "glyph": "U",
+      "tags": [
+       "roofline",
+       "kernel",
+       "utilization",
+       "gemm",
+       "performance"
+      ],
+      "latex": "T=\\max\\!\\left(\\frac{\\mathrm{FLOPs}}{\\pi},\\ \\frac{\\mathrm{Bytes}}{\\beta}\\right),\\qquad U=\\frac{\\mathrm{FLOPS}_{\\text{实测}}}{\\pi}",
+      "html": "<code>T = max(FLOPs/π, Bytes/β) ; U = 实测 FLOPS / π</code>",
+      "symbols": [
+       [
+        "\\pi",
+        "芯片峰值算力（FLOPS/s）"
+       ],
+       [
+        "\\beta",
+        "显存带宽（Bytes/s）"
+       ],
+       [
+        "\\mathrm{FLOPs}",
+        "该算子需要的浮点运算次数"
+       ],
+       [
+        "\\mathrm{Bytes}",
+        "该算子需要搬运的字节数"
+       ],
+       [
+        "T",
+        "理论最短耗时，取计算与访存两个下界中的较大者"
+       ],
+       [
+        "U",
+        "硬件利用率，摘要称写算子的目标是把约 20% 提到 95% 以上"
+       ]
+      ],
+      "derivation": [
+       "算子要么受算力限制，要么受带宽限制，分别给出两个耗时下界 FLOPs/π 与 Bytes/β。",
+       "真实耗时不可能低于两者中较大的那个，于是有 T = max(FLOPs/π, Bytes/β)。",
+       "两者的比值 FLOPs/Bytes 称为算术强度；强度高于拐点时受算力限制，低于拐点时受带宽限制。",
+       "硬件利用率定义为实测每秒浮点运算数除以峰值算力，摘要用它刻画算子优化空间（约 20% → 95%+）。"
+      ],
+      "analogy": "像工厂出货由最慢的工序决定：算力是机床加工速度，带宽是传送带送料速度，哪一步先卡住，整条线就按那一步的节拍走。",
+      "pitfalls": [
+       "只看峰值算力而不看算术强度，会误判瓶颈在计算还是访存。",
+       "理论 FLOPS 是理想峰值，实际受频率、占用率影响，利用率分母口径必须一致。",
+       "摘要中的 20% 与 95% 是报道性的整体说法，未给出具体算子、输入规模与测试环境。",
+       "Roofline 给出的是下界，缓存命中、数据复用与指令调度会让真实耗时高于该下界。"
+      ],
+      "code": "def roofline(flops, nbytes, peak_flops, bandwidth):\n    \"\"\"返回计算下界、访存下界、理论最短耗时与瓶颈类型。\"\"\"\n    t_compute = flops / peak_flops\n    t_memory = nbytes / bandwidth\n    bottleneck = 'compute' if t_compute >= t_memory else 'memory'\n    return t_compute, t_memory, max(t_compute, t_memory), bottleneck\n\n\ndef utilization(measured_flops_per_s, peak_flops):\n    return measured_flops_per_s / peak_flops\n\n\n# 例：GEMM 2*M*N*K 次浮点运算，读写 (M*K + K*N + M*N) 个 FP16 元素\nM = N = K = 4096\nt_c, t_m, t_bound, why = roofline(2 * M * N * K, 2 * (M * K + K * N + M * N) * 2,\n                                  peak_flops=1.0e15, bandwidth=3.0e12)\nprint(round(t_c, 6), round(t_m, 6), why)       # 访存受限时 why == 'memory'\nprint('利用率示例:', round(utilization(2.0e14, 1.0e15), 2))  # 0.2 -> 20%",
+      "sources": [
+       {
+        "title": "DeepSeek 开源算子工具大礼包，联手华为昇腾，手撕 CUDA 绑定！",
+        "url": "https://leiphone.com/category/yanxishe/UUIfK7eeFE9Ws1JI.html"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "该条标题为 DeepSeek 开源算子工具大礼包，联手华为昇腾，手撕 CUDA 绑定",
+      "摘要称把给英伟达 GPU 写代码的全套工具链原样铺到华为昇腾 950 NPU 上",
+      "摘要称最核心的算子开发产品 TileLang 官宣原生支持昇腾",
+      "摘要称 DeepGEMM、DeepEP、FlashMLA、TileKernels、DeepSelect 五大核心计算与通信库同步推出昇腾版本",
+      "摘要称这意味着国产算力第一次在核心算子工具层面做到与英伟达生态能力对标",
+      "摘要列举了手写 CUDA、厂商预制算子库、高层 DSL 编译器三条路径各自的局限",
+      "摘要称写算子可把硬件利用率从约 20% 提升到 95% 以上",
+      "该条为雷锋网中文媒体报道，codeAvailable 为 false，唯一来源是雷锋网文章链接"
+     ],
+     "uncertain": [
+      "报道的具体发布日期、发布场合与原始公告未给出，需核对 DeepSeek 官方仓库或公告",
+      "五个库昇腾版本的实际开源地址、许可证与可用状态未知",
+      "TileLang 原生支持昇腾的实现方式（自研后端还是适配层）摘要未说明",
+      "昇腾 950 NPU 的规格与对标英伟达哪一代产品，摘要未给出",
+      "利用率从 20% 到 95% 的具体算子、测试条件与来源缺少可核验数据",
+      "是否已有第三方复现或性能对比，摘要未提及"
+     ]
+    }
+   }
+  },
+  {
+   "id": "525ceb8535fee263",
+   "title": "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
+   "category": "coding",
+   "channel": "nowcoder",
+   "url": "https://nowcoder.com/discuss/933796596888662016",
+   "sources": [
+    {
+     "url": "https://nowcoder.com/discuss/933796596888662016",
+     "name": "nowcoder"
+    }
+   ],
+   "tags": [
+    "牛客",
+    "面经"
+   ],
+   "publishedAt": "2026-10-01T20:42:15+08:00",
+   "lang": "zh",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 56.5,
+   "summary": "线上问题排查系列的第三篇。前三篇分别讲OOM排查、CPU飙高排查。这一篇讲消息堆积。它可以被称为“慢性病”。排查的底层逻辑相同：先测量，再动手，用数据驱动行动。一、事发那天我正在忙别的事，屏幕弹出了告警。【云监控】消息队列Kafka发生告警告警规则：xx Kafka 堆积10万我熟练地点开 Graf_牛客网_牛客在手,offer不愁",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "525ceb8535fee263",
+    "tldr": "牛客面经题：面试官问如何排查 Kafka 消息堆积；帖子正文未被采集，此处给出可复述的排查链路与量化式。",
+    "keyPoints": [
+     "标题即问题：面试官让候选人讲 Kafka 消息堆积的排查思路",
+     "来源是牛客公开讨论页，采集摘要只有一句，没有正文与回答",
+     "下述排查链路、概念与公式是通用参考答案框架，不是原帖内容",
+     "主线：量化 LAG → 判生产/消费方向 → 定位根因 → 处置 → 验证回落",
+     "两个可复述量化式：排空时间 B0/(R−A)；有效并行度 min(消费者, 分区)"
+    ],
+    "why": "Kafka 堆积排查是后端/基础架构岗高频面试题；LAG、排空时间、并行度上限这套量化语言，也能用于多模态数据管道与训练任务队列的容量估算。",
+    "difficulty": "medium",
+    "tags": [
+     "kafka",
+     "consumer-lag",
+     "message-queue",
+     "troubleshooting",
+     "distributed-systems",
+     "interview"
+    ],
+    "entities": [
+     "Apache Kafka",
+     "Consumer Group",
+     "Consumer Lag",
+     "Partition",
+     "Rebalance"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "Kafka 堆积排查五步",
+     "caption": "记住主线：先量化分区级 LAG，再判生产涨还是消费慢，最后按根因处置并验证 LAG 回落。",
+     "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 270'><g font-size='13' fill='var(--fg-1)'><rect x='14' y='30' width='108' height='56' rx='8' fill='none' stroke='var(--line-1)'/><text x='68' y='52' text-anchor='middle'>① 发现堆积</text><text x='68' y='70' text-anchor='middle' fill='var(--accent)'>LAG 持续偏高</text><rect x='140' y='30' width='108' height='56' rx='8' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='194' y='52' text-anchor='middle'>② 量化 LAG</text><text x='194' y='70' text-anchor='middle' fill='var(--accent)'>分区级 describe</text><rect x='266' y='30' width='108' height='56' rx='8' fill='none' stroke='var(--line-1)'/><text x='320' y='52' text-anchor='middle'>③ 判方向</text><text x='320' y='70' text-anchor='middle' fill='var(--accent)'>生产涨 / 消费慢</text><rect x='392' y='30' width='108' height='56' rx='8' fill='none' stroke='var(--line-1)'/><text x='446' y='52' text-anchor='middle'>④ 定位根因</text><text x='446' y='70' text-anchor='middle' fill='var(--accent)'>消费端 / Broker</text><rect x='518' y='30' width='108' height='56' rx='8' fill='none' stroke='var(--line-1)'/><text x='572' y='52' text-anchor='middle'>⑤ 处置验证</text><text x='572' y='70' text-anchor='middle' fill='var(--accent)'>扩容 · 限流</text><line x1='122' y1='58' x2='133' y2='58' stroke='var(--line-1)'/><polygon points='140,58 133,54 133,62' fill='currentColor'/><line x1='248' y1='58' x2='259' y2='58' stroke='var(--line-1)'/><polygon points='266,58 259,54 259,62' fill='currentColor'/><line x1='374' y1='58' x2='385' y2='58' stroke='var(--line-1)'/><polygon points='392,58 385,54 385,62' fill='currentColor'/><line x1='500' y1='58' x2='511' y2='58' stroke='var(--line-1)'/><polygon points='518,58 511,54 511,62' fill='currentColor'/><rect x='14' y='140' width='612' height='112' rx='10' fill='none' stroke='var(--line-1)'/><text x='30' y='164'>三类根因（按方向分流）</text><rect x='30' y='178' width='180' height='52' rx='6' fill='none' stroke='var(--accent)'/><text x='120' y='200' text-anchor='middle' fill='var(--accent)'>消费端</text><text x='120' y='218' text-anchor='middle'>逻辑慢 · GC · rebalance</text><rect x='232' y='178' width='180' height='52' rx='6' fill='none' stroke='var(--accent)'/><text x='322' y='200' text-anchor='middle' fill='var(--accent)'>Broker</text><text x='322' y='218' text-anchor='middle'>磁盘 IO · 网络 · 副本</text><rect x='434' y='178' width='178' height='52' rx='6' fill='none' stroke='var(--accent)'/><text x='523' y='200' text-anchor='middle' fill='var(--accent)'>生产端</text><text x='523' y='218' text-anchor='middle'>流量突增 · key 倾斜</text><line x1='320' y1='140' x2='320' y2='94' stroke='var(--accent)' stroke-dasharray='4 3'/><polygon points='320,86 315,94 325,94' fill='var(--accent)'/><text x='330' y='120' fill='var(--accent)'>按方向分流</text></g></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "发现堆积",
+        "detail": "监控看到 consumer group 的 LAG 持续偏高，先确认是持续堆积还是一次性抖动"
+       },
+       {
+        "label": "量化 LAG",
+        "detail": "kafka-consumer-groups.sh --describe 读每个分区的 current-offset / log-end-offset / LAG"
+       },
+       {
+        "label": "判方向",
+        "detail": "是生产速率突增（上游放量）还是消费速率下降（下游变慢、重试放大）"
+       },
+       {
+        "label": "定位根因",
+        "detail": "消费端：单条处理慢、GC、频繁 rebalance、下游 DB/RPC 超时；Broker：磁盘 IO/网络/副本；生产端：流量突增或 key 倾斜"
+       },
+       {
+        "label": "处置",
+        "detail": "扩消费者（不超过分区数）、加分区、批量+异步、生产端限流、临时转储；重置 offset 要谨慎"
+       },
+       {
+        "label": "验证",
+        "detail": "LAG 回落到稳定区间，补 lag 告警与容量评估，避免只压症状不治根因"
+       }
+      ],
+      "edges": [
+       {
+        "from": 0,
+        "to": 1,
+        "label": "确认是堆积而非抖动"
+       },
+       {
+        "from": 1,
+        "to": 2,
+        "label": "看 LAG 随时间与分区的分布"
+       },
+       {
+        "from": 2,
+        "to": 3,
+        "label": "按方向缩小范围"
+       },
+       {
+        "from": 3,
+        "to": 4,
+        "label": "对症处置"
+       },
+       {
+        "from": 4,
+        "to": 5,
+        "label": "观察 LAG 是否回落"
+       }
+      ]
+     },
+     "alt": "流程图：发现堆积后用 kafka-consumer-groups.sh --describe 量化每个分区的 LAG，判断是生产速率突增还是消费速率下降，再定位消费端、Broker 或生产端根因，随后扩容/加分区/限流处置，最后验证 LAG 回落。"
+    },
+    "concepts": [
+     {
+      "name": "消费者滞后 Consumer Lag",
+      "readable": "LAG = 分区最新消息位点（log-end-offset）减去消费者组已提交位点（committed offset）。它衡量「还有多少条没消费」，是判断堆积严重程度与恢复趋势的第一指标；必须按分区看，不能只看总和。",
+      "analogy": "像食堂出餐口：log-end-offset 是已经做好的餐数，committed offset 是已经取走的餐数，两者之差就是排队还没被取走的份数。",
+      "analogyBreaksDown": "食堂只有一条队；Kafka 每个分区各自一条队，几条队长度不同才是真问题。而且「已取走」指位点已提交，不等于业务真的处理成功——先提交后处理会低估 LAG。",
+      "mechanism": "Kafka 把消费进度存在 __consumer_offsets 里，消费者按分区批量拉取并提交位点。用 describe 读每个分区的 LAG，既能确认是否真的堆积，也能看出是整体均匀变慢还是个别分区过热。",
+      "visual": "横轴时间、纵轴消息位点，画两条线：log-end-offset 单调上升，committed offset 跟随其后；两线之间的竖直距离就是 LAG，用 accent 阴影填充。再画一张分区级柱状图，横轴分区号、纵轴当前 LAG，突出最高的那根。",
+      "prerequisites": [
+       "Kafka 主题 / 分区 / 消费者组基本模型",
+       "offset 提交语义（自动或手动、至多一次或至少一次）"
+      ],
+      "selfTest": [
+       "LAG 的定义式是什么？分子分母分别读哪个字段？",
+       "为什么总 LAG 看起来正常，仍可能有分区级堆积？",
+       "位点已提交是否等于消息已被成功处理？"
+      ],
+      "formula": "L_p = \\mathrm{LEO}_p - \\mathrm{CommittedOffset}_p"
+     },
+     {
+      "name": "再平衡放大堆积 Rebalance Amplification",
+      "readable": "消费者组内成员变化，或心跳 / 处理超时，都会触发 rebalance：分区被收回再分配，期间消费短暂停止。如果单次处理超过 max.poll.interval.ms，消费者会被判掉线，于是反复 rebalance，出现「越扩容、堆积越涨」的假象。",
+      "analogy": "像换班时收银员集体离岗重新分工：每次分工都要停几分钟，顾客越排越长；如果某个收银员结一单太久被认定离岗，还得再分一次工。",
+      "analogyBreaksDown": "换班是一次性成本；Kafka 的心跳线程与处理线程是分开的，只有 poll 间隔超时才会被踢出组。而且扩容本意是加人，却可能因为触发 rebalance 让吞吐先掉一段，因果方向和时间尺度都不能照搬。",
+      "mechanism": "排查时先看消费者日志有没有连续 rebalance，以及 max.poll.interval.ms 与单批处理耗时的关系。对策是缩小 max.poll.records、把处理异步化或适当加长超时，让单次 poll 的处理时间稳定小于阈值。",
+      "visual": "画时间轴：正常消费的吞吐平台期之间插入若干短促的「rebalance 停摆」谷底，用红色竖条标出触发原因（成员加入/离开、poll 超时）；再叠加一条 LAG 曲线，显示每次停摆后 LAG 台阶式抬升。",
+      "prerequisites": [
+       "消费者组协调器与分区分配策略",
+       "max.poll.interval.ms / session.timeout.ms / heartbeat 的区别"
+      ],
+      "selfTest": [
+       "rebalance 期间被收回的分区还能继续被消费吗？",
+       "为什么扩容消费者反而可能先让堆积变多？",
+       "max.poll.interval.ms 与 session.timeout.ms 各管什么？"
+      ],
+      "formula": "T_{\\mathrm{batch}} < \\mathrm{max.poll.interval.ms}"
+     },
+     {
+      "name": "并行度上限与分区倾斜 Parallelism Ceiling & Partition Skew",
+      "readable": "同一个分区同一时刻只能被组内一个消费者消费，所以消费者再多，有效并行度也只是 min(消费者数, 分区数)。如果消息按 key 分区且分布不均，个别分区会远高于平均值，扩容也救不了那条热分区。",
+      "analogy": "像超市只开 N 个收银台：收银员再多，同时结账的也只有 N 个；如果某条队特别长，说明客流没被均匀分到各队，加收银员不如先把队伍重新分。",
+      "analogyBreaksDown": "超市可以随时让顾客换队；Kafka 分区键一旦确定，同一 key 的消息永远进同一分区，不能靠「重新排队」解决。要真正打散只能改分区键或增加分区数，而后者会破坏同 key 的顺序性。",
+      "mechanism": "排查时把 LAG 按分区分组，先算有效并行度 min(C, Np)，再看倾斜度 max LAG / mean LAG。若倾斜高，说明瓶颈在分区键分布而不是总消费能力，处置应是改 key、加分区或对热 key 单独降级。",
+      "visual": "左右两张图：左边横轴消费者数、纵轴有效并行度，画一条到分区数就压平的饱和曲线，用 accent 标出饱和点；右边画分区级 LAG 柱状图，最高的柱子标红，并用虚线画平均 LAG 作为参照。",
+      "prerequisites": [
+       "Kafka 分区与分区键的对应关系",
+       "消费者组分区分配策略（range / round-robin / sticky）"
+      ],
+      "selfTest": [
+       "消费者数超过分区数时，吞吐会继续线性上涨吗？",
+       "倾斜度 skew 的定义是什么，多大算需要处理？",
+       "为什么增加分区可能破坏顺序语义？"
+      ],
+      "formula": "P_{\\mathrm{eff}} = \\min(C,\\,N_p)"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-consumer-lag-drain",
+      "name": "堆积排空时间 (Backlog Drain Time)",
+      "category": "engineering",
+      "glyph": "∑",
+      "tags": [
+       "kafka",
+       "consumer-lag",
+       "capacity-planning",
+       "backlog"
+      ],
+      "latex": "T_{\\mathrm{drain}} = \\frac{B_0}{R - A}, \\quad R > A",
+      "html": "<code>T_drain = B0 / (R − A)，仅当 R &gt; A</code>",
+      "symbols": [
+       [
+        "B_0",
+        "初始堆积消息数（当前 LAG 总量）"
+       ],
+       [
+        "R",
+        "消费者组当前消费速率（条/秒）"
+       ],
+       [
+        "A",
+        "消息到达速率（条/秒），即生产者写入速率"
+       ],
+       [
+        "T_{\\mathrm{drain}}",
+        "把 B_0 排空所需时间（秒）；R ≤ A 时不存在有限解"
+       ]
+      ],
+      "derivation": [
+       "把堆积看成水位：单位时间净减少量 = 消费速率 R 减去到达速率 A。",
+       "初始水位是 B_0，在 R、A 近似稳定的假设下按净速率线性下降。",
+       "令 B_0 − (R−A)·T = 0，解出 T = B_0/(R−A)。",
+       "若 R ≤ A，水位不降反升，必须先扩容消费者或对生产端限流，让 R 真正大于 A。"
+      ],
+      "analogy": "水池一边进水一边放水：只有放水比进水快，水位才会下降；问「多久排空」就是初始水量除以净流出速度。",
+      "pitfalls": [
+       "把总 LAG 当 B_0，却忽略 R 会随下游变慢、重试放大而下降，估出的排空时间过于乐观。",
+       "只用消费者数估 R：消费者数超过分区数后 R 不再线性增长，min(C, Np) 才是并行度上限。",
+       "忽略 A 的变化：上游回补或大促时 A 可能突然翻倍，原本 R > A 的结论会失效。"
+      ],
+      "code": "def drain_seconds(backlog, rate, arrival):\n    \"\"\"backlog: 当前 LAG 总量; rate: 消费速率 msg/s; arrival: 到达速率 msg/s.\"\"\"\n    if rate <= arrival:\n        return None  # 永远排不空，必须先扩容或限流\n    return backlog / (rate - arrival)\n\n# 例：LAG 120 万，消费 8000/s，到达 5000/s -> 400 秒排空\nprint(drain_seconds(1_200_000, 8000, 5000))\n",
+      "sources": [
+       {
+        "title": "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
+        "url": "https://nowcoder.com/discuss/933796596888662016"
+       }
+      ]
+     },
+     {
+      "id": "f-partition-parallelism",
+      "name": "有效并行度与分区倾斜 (Effective Parallelism & Partition Skew)",
+      "category": "engineering",
+      "glyph": "∥",
+      "tags": [
+       "kafka",
+       "partition",
+       "parallelism",
+       "skew",
+       "capacity-planning"
+      ],
+      "latex": "P_{\\mathrm{eff}}=\\min(C,\\,N_p),\\qquad \\mathrm{skew}=\\frac{\\max_p L_p}{\\frac{1}{N_p}\\sum_{p=1}^{N_p} L_p}",
+      "html": "<code>P_eff = min(C, Np)；skew = max LAG / mean LAG</code>",
+      "symbols": [
+       [
+        "C",
+        "消费者组内实例数"
+       ],
+       [
+        "N_p",
+        "主题分区数"
+       ],
+       [
+        "L_p",
+        "第 p 个分区当前的 LAG"
+       ],
+       [
+        "P_{\\mathrm{eff}}",
+        "有效并行度：同时被消费的分区数上限"
+       ],
+       [
+        "\\mathrm{skew}",
+        "倾斜度：最大分区 LAG 与平均 LAG 的比值，1 表示均匀"
+       ]
+      ],
+      "derivation": [
+       "Kafka 保证同一分区在同一时刻只被组内一个消费者消费，因此并行消费的分区数不超过消费者数。",
+       "并行度也不可能超过分区总数，两个上限取最小，得到 P_eff = min(C, Np)。",
+       "并行度够但仍堆积，往往是分区之间不均衡：某个 key 的消息全落在一个分区。",
+       "用最大分区 LAG 除以平均 LAG 得到 skew，把「有没有热分区」变成一个可比较的数。"
+      ],
+      "analogy": "超市只开 N 个收银台，收银员再多也只有 N 个能同时结账；某条队排得特别长，说明顾客没被均匀分到各队，加人不如重新分流。",
+      "pitfalls": [
+       "只看消费者数就认定「已扩容」：超过分区数的实例只是空转，还可能因 rebalance 拖慢整体。",
+       "把 skew 当绝对值：它是相对平均值的倍数，LAG 整体很小时高 skew 未必需要处理。",
+       "为打散热分区而随意加分区：同 key 的顺序性会被破坏，消费者端若有顺序假设需同步评估。"
+      ],
+      "code": "def parallelism(consumers, partitions):\n    return min(consumers, partitions)\n\n\ndef partition_skew(lags):\n    \"\"\"lags: 每个分区的当前 LAG 列表.\"\"\"\n    if not lags or sum(lags) == 0:\n        return 0.0\n    mean = sum(lags) / len(lags)\n    return max(lags) / mean if mean else 0.0\n\nlags = [9000, 120, 150, 8000, 130]\nprint(parallelism(8, 5), partition_skew(lags))  # 5, 4.17 -> 有热分区\n",
+      "sources": [
+       {
+        "title": "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
+        "url": "https://nowcoder.com/discuss/933796596888662016"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "该条目 id 为 525ceb8535fee263，channel 为 nowcoder，分类为 coding，相关度 51.0。",
+      "标题为「面试官：“介绍一下你怎么排查Kafka消息堆积的？”」，即题目本身是排查 Kafka 消息堆积。",
+      "采集层写入的摘要只有「牛客社区公开讨论页，可能包含面经或招聘信息。」，没有正文与回答内容。",
+      "该条目是本轮唯一 fresh 条目（manifest.newItems=1，plan.totals.candidates=1，queueSize=1）。"
+     ],
+     "uncertain": [
+      "原帖正文与高赞回答未被采集；本条的排查链路、概念与公式是通用工程参考答案，不是对原帖内容的复述，请人工打开 https://nowcoder.com/discuss/933796596888662016 核对。",
+      "题目是否指定 Kafka 版本、是否讨论特定积压场景（如 rebalance、顺序消费、重复消费），无法从标题与摘要判断。",
+      "帖子发布于 2026-10-01 20:42，与采集时间接近，正文与高赞答案可能仍在更新。",
+      "该题是系统/后端运维题却被编码层因「面经」归入 coding（面试手撕题），分类是否应改判为 engineering 需人工确认。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "e82ba51d6a4c33e2",
+   "title": "mbzuai-oryx/Awesome-LLM-Post-training - Awesome Reasoning LLM Tutorial/Survey/Guide",
+   "category": "course",
+   "channel": "github",
+   "url": "https://github.com/mbzuai-oryx/Awesome-LLM-Post-training",
+   "sources": [
+    {
+     "url": "https://github.com/mbzuai-oryx/Awesome-LLM-Post-training",
+     "name": "github"
+    }
+   ],
+   "tags": [
+    "fine",
+    "large-language-models",
+    "post-training",
+    "reasoning",
+    "reinforcement-learning",
+    "scaling",
+    "Python"
+   ],
+   "publishedAt": "2026-09-05T04:51:57+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 53.9,
+   "summary": "Awesome Reasoning LLM Tutorial/Survey/Guide. Contribute to mbzuai-oryx/Awesome-LLM-Post-training development by creating an account on GitHub.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "e82ba51d6a4c33e2",
+    "tldr": "仓库 Awesome-LLM-Post-training 自述为推理大模型的教程、综述与指南合集；采集摘要仅一句简介。",
+    "keyPoints": [
+     "标题给出仓库名 Awesome-LLM-Post-training",
+     "标题自述内容是 Reasoning LLM 的教程、综述与指南",
+     "摘要只有一句 GitHub 通用仓库简介，未列目录或方法",
+     "摘要提到在 GitHub 上创建账号即可参与该仓库开发",
+     "组织为 mbzuai-oryx，摘要未说明维护活跃度"
+    ],
+    "why": "面向后训练/RL 与推理方向求职者：可作为查找 SFT、偏好优化、推理链相关教程与综述的索引；但摘要过简，覆盖范围与质量须打开仓库核实，别直接写进简历。",
+    "difficulty": "easy",
+    "tags": [
+     "post-training",
+     "reasoning",
+     "awesome-list",
+     "llm",
+     "survey"
+    ],
+    "entities": [
+     "mbzuai-oryx",
+     "Awesome-LLM-Post-training",
+     "GitHub",
+     "Reasoning LLM"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "该条可确证的信息链",
+     "caption": "采集摘要只有一句简介，因此图中只画标题与摘要能支撑的三步：仓库名、内容定位、使用方式。",
+     "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 240' width='640' height='240' role='img' aria-label='仓库名、内容定位与使用方式三步流程'> <rect x='12' y='70' width='180' height='100' rx='12' fill='none' stroke='var(--line-1)'/> <rect x='230' y='70' width='180' height='100' rx='12' fill='none' stroke='var(--line-1)'/> <rect x='448' y='70' width='180' height='100' rx='12' fill='none' stroke='var(--line-1)'/> <text x='320' y='34' text-anchor='middle' font-size='16' fill='var(--fg-1)'>依据标题与摘要可确证的信息</text> <text x='102' y='94' text-anchor='middle' font-size='13' fill='var(--accent)'>仓库名</text> <text x='102' y='120' text-anchor='middle' font-size='13' fill='var(--fg-1)'>mbzuai-oryx</text> <text x='102' y='140' text-anchor='middle' font-size='13' fill='var(--fg-1)'>Awesome-LLM-</text> <text x='102' y='160' text-anchor='middle' font-size='13' fill='var(--fg-1)'>Post-training</text> <text x='320' y='94' text-anchor='middle' font-size='13' fill='var(--accent)'>内容定位</text> <text x='320' y='124' text-anchor='middle' font-size='13' fill='var(--fg-1)'>Reasoning LLM</text> <text x='320' y='148' text-anchor='middle' font-size='13' fill='var(--fg-1)'>教程 · 综述 · 指南</text> <text x='538' y='94' text-anchor='middle' font-size='13' fill='var(--accent)'>使用方式</text> <text x='538' y='124' text-anchor='middle' font-size='13' fill='var(--fg-1)'>按目录查阅</text> <text x='538' y='148' text-anchor='middle' font-size='13' fill='var(--fg-1)'>在 GitHub 参与贡献</text> <line x1='196' y1='120' x2='222' y2='120' stroke='currentColor'/> <polygon points='230,120 218,115 218,125' fill='currentColor'/> <line x1='414' y1='120' x2='440' y2='120' stroke='currentColor'/> <polygon points='448,120 436,115 436,125' fill='currentColor'/> <text x='320' y='205' text-anchor='middle' font-size='13' fill='var(--fg-1)'>摘要仅一句 GitHub 通用简介，主题细节未经证实</text> </svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "仓库名",
+        "detail": "mbzuai-oryx/Awesome-LLM-Post-training"
+       },
+       {
+        "label": "内容定位",
+        "detail": "Reasoning LLM 的教程、综述与指南"
+       },
+       {
+        "label": "使用方式",
+        "detail": "按目录查阅，并可在 GitHub 参与贡献"
+       }
+      ],
+      "edges": [
+       {
+        "from": "仓库名",
+        "to": "内容定位",
+        "label": "标题自述主题"
+       },
+       {
+        "from": "内容定位",
+        "to": "使用方式",
+        "label": "摘要说明可贡献"
+       }
+      ]
+     },
+     "alt": "三步流程：仓库 mbzuai-oryx/Awesome-LLM-Post-training，内容定位是 Reasoning LLM 的教程、综述与指南，使用方式为按目录查阅并在 GitHub 参与贡献。"
+    },
+    "concepts": [
+     {
+      "name": "Post-training（后训练）",
+      "readable": "预训练之后的一个阶段：用规模更小但更对口的数据和反馈，把只会续写的通用模型调成会听指令、会一步步推理的模型。",
+      "analogy": "像通识专业毕业的新人入职后的岗位集训：学校学的是通用知识，集训教的是把知识用在本岗位的具体做法。",
+      "analogyBreaksDown": "类比失效在于：后训练不只加新技能，还会改掉预训练留下的行为（啰嗦、回避、乱编），也可能让模型遗忘部分旧能力，而人类集训很少把大学知识忘掉。",
+      "mechanism": "先用示范数据做监督微调对齐格式与解题风格，再用偏好比较或可验证奖励做强化学习，提高推理链的正确率与稳定性，同时压缩无效的冗长输出。",
+      "visual": "纯文本流程：[预训练权重] --监督微调--> [指令跟随模型] --偏好/奖励强化学习--> [推理模型]；下方标注反馈来源：人工偏好、规则校验、可验证答案。",
+      "prerequisites": [
+       "预训练语言模型与自回归建模基础",
+       "监督微调 SFT 的损失与数据格式",
+       "策略梯度、偏好优化（如 DPO/RLHF）的基本概念"
+      ],
+      "selfTest": [
+       "后训练与预训练在数据规模和数据性质上通常有什么差别？",
+       "监督微调和基于偏好/奖励的强化学习，各自主要修正模型的什么问题？",
+       "为什么后训练可能带来能力遗忘或输出风格退化，可以怎么缓解？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "Awesome 清单式知识库",
+      "readable": "一种社区维护的索引仓库：把同一主题的论文、教程、代码按子方向整理成一份目录，条目本身只是标题加链接，不含正文。",
+      "analogy": "像图书馆门口的主题书单：告诉你有哪些书、索书号是多少，但书的内容还得自己借来看。",
+      "analogyBreaksDown": "类比失效处：书单由馆员定期核对，而清单仓库靠志愿者提 PR，条目可能失效、过时或只反映了维护者的偏好，收录不等于被同行认可。",
+      "mechanism": "维护者在 README 中按分类目录沉淀条目，读者沿目录跳转到外部论文或代码；新增与纠错通过 issue 和 pull request 完成，整体是弱结构化的纯文本索引。",
+      "visual": "纯文本树：[README 目录] ├─ 综述/教程条目 └─ 代码与论文链接，所有叶子节点均指向仓库外部。",
+      "prerequisites": [
+       "GitHub 基本操作（浏览、提 issue、提 PR）",
+       "对该主题有基本检索与判读能力，能分辨原始论文与二手解读"
+      ],
+      "selfTest": [
+       "清单仓库里的条目本身是否经过同行评审？判断依据是什么？",
+       "想核实一条清单内容是否可靠，应该沿着链接去查什么？",
+       "如果你发现清单缺少某个子方向，标准的补充流程是怎样的？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-sft-crossentropy",
+      "name": "监督微调（SFT）的交叉熵目标",
+      "category": "posttraining",
+      "glyph": "L",
+      "tags": [
+       "sft",
+       "cross-entropy",
+       "fine-tuning",
+       "post-training"
+      ],
+      "latex": "\\mathcal{L}_{\\mathrm{SFT}}(\\theta)=-\\sum_{t=1}^{T}\\log \\pi_{\\theta}\\!\\left(y_{t}\\mid x,\\,y_{<t}\\right)",
+      "html": "<code>L_SFT = -Σ_t log π_θ(y_t | x, y_&lt;t)</code>",
+      "symbols": [
+       [
+        "x",
+        "提示或指令（示范数据的输入部分）"
+       ],
+       [
+        "y_{<t}",
+        "目标回答里第 t 步之前的 token"
+       ],
+       [
+        "y_{t}",
+        "第 t 步的目标 token（来自示范数据）"
+       ],
+       [
+        "T",
+        "目标回答的长度"
+       ],
+       [
+        "\\pi_{\\theta}",
+        "待微调的语言模型；只对回答部分计算损失"
+       ]
+      ],
+      "derivation": [
+       "把示范数据写成 (x, y) 对，模型按自回归方式预测回答的每个 token。",
+       "对第 t 步取模型给出的条件概率 π_θ(y_t | x, y_<t)，越接近 1 越好。",
+       "取负对数把最大化概率转成最小化损失，并对全部 T 步求和。",
+       "对参数求梯度即可把模型输出分布推向示范答案；通常只在回答 token 上计算，不计算提示部分。"
+      ],
+      "analogy": "像照着字帖临摹：每一步都告诉你下一个字应该写什么，写错就扣分，练到能自己接着写下去。",
+      "pitfalls": [
+       "把提示 token 也算进损失会稀释监督信号，是常见实现错误。",
+       "只做 SFT 容易学到示范数据的表面格式，不一定提升推理正确率，后续常需偏好优化或可验证奖励。",
+       "在紧接 SFT 的强化学习里，过拟合 SFT 会压缩策略探索空间。",
+       "该公式是通用后训练基础式，不是本条仓库简介的内容，列入 selfCheck.uncertain。"
+      ],
+      "code": "import torch\nimport torch.nn.functional as F\n\ndef sft_loss(logits, labels, ignore_index=-100):\n    \"\"\"logits: [B, T, V]; labels: [B, T]，提示部分置为 ignore_index。\"\"\"\n    return F.cross_entropy(\n        logits[:, :-1, :].reshape(-1, logits.size(-1)),\n        labels[:, 1:].reshape(-1),\n        ignore_index=ignore_index,\n    )\n\nB, T, V = 2, 8, 100\nlogits = torch.randn(B, T, V, requires_grad=True)\nlabels = torch.randint(0, V, (B, T))\nlabels[:, :3] = -100          # 前 3 个位置是提示, 不计算损失\nprint(float(sft_loss(logits, labels)))",
+      "sources": [
+       {
+        "title": "mbzuai-oryx/Awesome-LLM-Post-training - Awesome Reasoning LLM Tutorial/Survey/Guide",
+        "url": "https://github.com/mbzuai-oryx/Awesome-LLM-Post-training"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "标题给出仓库名 mbzuai-oryx/Awesome-LLM-Post-training",
+      "标题副标题为 Awesome Reasoning LLM Tutorial/Survey/Guide，即教程/综述/指南",
+      "摘要说明这是 GitHub 仓库，并提示创建账号即可参与其开发",
+      "摘要只提供了一句仓库简介，未给出目录结构、方法或数据"
+     ],
+     "uncertain": [
+      "目录具体覆盖哪些子方向（监督微调、RLHF、DPO、蒸馏、长思维链等）摘要未说明",
+      "是否附带可运行代码、教程正文或视频，摘要未说明",
+      "条目数量、更新频率与维护活跃度未知，无法判断时效性",
+      "是否覆盖多模态后训练、生成式或世界模型方向未知，与本工作台主线的相关度需打开仓库核实",
+      "采集给出的相关度评分为 50.1，属偏低，说明采集侧也认为这条信息量有限",
+      "概念卡片中的后训练与清单仓库机制属通用背景知识，不是该条摘要中的结论",
+      "f-sft-crossentropy 是通用后训练基础公式，并非该条仓库简介中的内容，仅因该仓库面向后训练主题而收入。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "1f2a2da9e59225fd",
+   "title": "WUSH-KV: KV Cache Quantization with Data-Adaptive Transforms",
+   "category": "engineering",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.38121",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.38121",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.38121",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-28T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 76.5,
+   "summary": "KV cache memory and bandwidth costs grow with context length and batch size, which limits efficient long-context inference. To address this bottleneck, we introduce WUSH-KV for low-bit KV-cache quantization. It adapts WUSH, which constructs a data-aware transform from the second-order statistics of both factors in a matrix product to reduce quantization error. WUSH-KV uses calibration data to construct separate key and value transforms, with the value transform folded into the model weights and the key transform applied after RoPE. The transforms can be paired with clipped quantizers. For one such quantizer, QuEST INT, we show that, under mild assumptions, the WUSH transform is near-optimal. With this quantizer, WUSH-KV reduces layerwise reconstruction error and achieves the lowest end-to-end perplexity among other tested transforms. For end-to-end evaluation, we integrate WUSH-KV into SGLang using OSCAR-style percentile-clipped affine quantization. At 2-bit, WUSH-KV performs comparably to or outperforms the OSCAR transform across all evaluated models and downstream tasks.",
+   "missing": [
+    "diagram",
+    "teaching"
+   ],
+   "backfillWeight": 5.0,
+   "existingEnrichment": {
+    "id": "1f2a2da9e59225fd",
+    "tldr": "用两侧二阶统计构造可逆变换再量化 KV cache，2-bit 下不输 OSCAR。",
+    "keyPoints": [
+     "KV cache 显存与带宽随上下文和 batch 增长，限制长上下文推理。",
+     "WUSH 从矩阵乘法两侧因子的二阶统计构造数据感知变换以降低量化误差。",
+     "WUSH-KV 用校准数据分别为 key 与 value 构造变换。",
+     "value 变换折进权重，key 变换在 RoPE 之后施加。",
+     "与 QuEST INT 配合时近最优；2-bit 下不劣于 OSCAR。"
+    ],
+    "why": "KV cache 量化是长上下文推理落地的必经环节，也是推理框架与工程岗的高频考点。",
+    "difficulty": "hard",
+    "tags": [
+     "kv-cache",
+     "quantization",
+     "inference",
+     "sglang",
+     "long-context"
+    ],
+    "entities": [
+     "WUSH-KV",
+     "WUSH",
+     "QuEST INT",
+     "SGLang",
+     "OSCAR",
+     "RoPE"
+    ],
+    "concepts": [
+     {
+      "name": "数据自适应变换量化 Data-Adaptive Transform Quantization",
+      "readable": "低比特量化的误差取决于待量化张量的动态范围。只按单侧统计做缩放会忽略矩阵乘法另一侧因子的分布。WUSH 从矩阵乘法两侧因子的二阶统计构造一个可逆变换，把数值能量在两侧重新分配，使量化格点更贴合实际分布。WUSH-KV 用校准数据分别构造 key 与 value 的变换：value 变换折进模型权重，key 变换在 RoPE 之后施加；变换可与裁剪量化器配合，与 QuEST INT 配对时在温和假设下近最优。",
+      "analogy": "装箱前先按形状把货物重新摆一遍再统一压缩，比乱塞省空间得多；到目的地按原样摆回来，内容不变。",
+      "visual": "画左右两组一维数值分布：左侧是未变换的 K/V 分布（又宽又偏，量化阶梯只能覆盖中间一部分），右侧是变换后的分布（收窄、居中，量化阶梯贴合），中间用双向箭头标注「可逆变换 T」。",
+      "formula": "\\min_{T}\\ \\mathbb{E}\\left\\| XW - Q(TX)\\,Q(T^{-\\top}W) \\right\\|_F^{2}"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-wush-transform",
+      "name": "基于二阶统计的数据自适应量化变换 (Second-Order Data-Adaptive Transform for Quantization)",
+      "category": "engineering",
+      "glyph": "W",
+      "tags": [
+       "quantization",
+       "kv-cache",
+       "inference",
+       "sglang"
+      ],
+      "latex": "\\min_{T}\\ \\mathbb{E}\\left\\| XW - Q(TX)\\,Q(T^{-\\top}W) \\right\\|_F^{2}, \\qquad T \\text{ built from } \\Sigma_X=\\mathbb{E}[XX^{\\top}],\\ \\Sigma_W=\\mathbb{E}[WW^{\\top}]",
+      "html": "<code>min_T E‖ XW − Q(TX)·Q(T<sup>−⊤</sup>W) ‖<sub>F</sub><sup>2</sup>,  T 由 Σ<sub>X</sub>=E[XX<sup>⊤</sup>], Σ<sub>W</sub>=E[WW<sup>⊤</sup>] 构造</code>",
+      "symbols": [
+       [
+        "X, W",
+        "矩阵乘法的两个因子（KV cache 场景下即待量化因子与投影权重）"
+       ],
+       [
+        "T",
+        "数据自适应可逆变换，由两侧二阶统计量构造"
+       ],
+       [
+        "Σ_X, Σ_W",
+        "两个因子的二阶统计（协方差），由校准数据估计"
+       ],
+       [
+        "Q(·)",
+        "低位量化器（如按百分位裁剪的仿射量化 QuEST INT）"
+       ],
+       [
+        "T^{−⊤}",
+        "逆变换的转置，保证 (TX)·(T^{−⊤}W) 与原乘积在数值上还原"
+       ]
+      ],
+      "derivation": [
+       "KV cache 的显存与带宽随上下文长度与 batch 增长，低比特量化是最直接的缓解手段。",
+       "量化误差取决于待量化张量的动态范围；只按单侧统计做缩放会忽略另一侧因子的分布。",
+       "WUSH 用矩阵乘法两侧因子的二阶统计构造可逆变换 T，把数值能量在两侧重新分配，让量化格点更贴合分布。",
+       "WUSH-KV 用校准数据分别构造 key 与 value 的变换：value 变换折进模型权重，key 变换在 RoPE 之后施加。",
+       "与裁剪量化器 QuEST INT 配合时，论文在温和假设下证明该变换近最优；集成进 SGLang 后 2-bit 端到端不劣于 OSCAR。"
+      ],
+      "analogy": "像把一摞长短不一的行李先按形状重排（可逆变换）再统一压缩，比直接乱塞省空间；落地后按原样摆回，行李一件不少。",
+      "pitfalls": [
+       "变换必须可逆且成对施加，只变换一侧就会改变矩阵乘积的语义。",
+       "key 变换必须在 RoPE 之后施加，否则位置编码的旋转会破坏变换所依赖的统计假设。",
+       "校准数据分布与线上分布不一致时，二阶统计失配会让变换收益明显缩水。"
+      ],
+      "code": "import torch\n\n\ndef wush_transforms(X, W, eps=1e-5):\n    \"\"\"示意：分别用两个因子的二阶统计做白化，成对施加以保持乘积不变。\"\"\"\n    def whiten(S):\n        d, V = torch.linalg.eigh(S + eps * torch.eye(S.shape[0], device=S.device))\n        return V @ torch.diag(d.rsqrt()) @ V.t()\n\n    Sx = X.t() @ X / max(X.shape[0] - 1, 1)      # [d_in, d_in]\n    Sw = W @ W.t() / max(W.shape[1] - 1, 1)      # [d_out, d_out]\n    Tx, Tw = whiten(Sx), whiten(Sw)\n    # X @ W == (Tx @ X) @ (Tw.inverse() @ W)  -> 成对量化后再还原\n    return Tx, torch.linalg.inv(Tw)\n",
+      "sources": [
+       {
+        "title": "WUSH-KV: KV Cache Quantization with Data-Adaptive Transforms",
+        "url": "https://huggingface.co/papers/2609.38121"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "WUSH 从矩阵乘法两侧因子的二阶统计构造数据感知变换以降低量化误差。",
+      "WUSH-KV 用校准数据分别构造 key 与 value 变换，value 变换折进权重，key 变换在 RoPE 之后施加。",
+      "与 QuEST INT 配合时该变换在温和假设下近最优；2-bit 下与 OSCAR 相当或更优。"
+     ],
+     "uncertain": [
+      "WUSH 变换的闭式解与「温和假设」的具体内容，摘要未给出；上式是按描述重建的通用量化误差目标。",
+      "端到端评测使用的模型清单与下游任务清单未列出。"
+     ]
+    }
+   }
+  }
+ ]
+}

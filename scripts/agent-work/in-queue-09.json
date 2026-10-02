@@ -1,0 +1,102 @@
+{
+ "batchId": "queue-09",
+ "mode": "full",
+ "items": [
+  {
+   "id": "f32b36ee07ec60ba",
+   "title": "微信小店-高级风控算法工程师",
+   "category": "job",
+   "channel": "jobs_tencent",
+   "url": "http://careers.tencent.com/jobdesc.html?postId=2077293039302393856",
+   "sources": [
+    {
+     "url": "http://careers.tencent.com/jobdesc.html?postId=2077293039302393856",
+     "name": "jobs_tencent"
+    }
+   ],
+   "tags": [
+    "招聘",
+    "广州"
+   ],
+   "publishedAt": "2026-09-30T00:00:00+08:00",
+   "lang": "zh",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 61.7,
+   "summary": "1.设计、开发和优化机器学习模型，应用于微信小店及微信交易的内容审核、风险控制、商家行为监管和用户安全等治理场景； 2.基于海量的数据，进行数据清洗、特征提取、模型训练和评估，提升平台违规行为检测的准确性和效率； 3.参与反作弊、信息过滤、虚假交易检测等关键系统的算法研发和优化，维护平台生态健康。 | 广州 | 微信交易平台 | WXG",
+   "depthScore": 24.92
+  },
+  {
+   "id": "05fcd1723c34ab79",
+   "title": "微信小店-推荐算法工程师",
+   "category": "job",
+   "channel": "jobs_tencent",
+   "url": "http://careers.tencent.com/jobdesc.html?postId=1936827400029601792",
+   "sources": [
+    {
+     "url": "http://careers.tencent.com/jobdesc.html?postId=1936827400029601792",
+     "name": "jobs_tencent"
+    }
+   ],
+   "tags": [
+    "招聘",
+    "广州"
+   ],
+   "publishedAt": "2026-09-30T00:00:00+08:00",
+   "lang": "zh",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 59.5,
+   "summary": "1.负责微信小店业务的推荐技术研发，包括但不限于召回、精排、重排，新用户冷启等； 2.结合微信小店的业务特点，对推荐全链路上的模型进行效果优化以及推荐策略迭代，提升用户体验以及业务指标。 | 广州 | 技术 | 微信交易平台 | WXG",
+   "depthScore": 23.31
+  },
+  {
+   "id": "ba56b9931ac7df09",
+   "title": "Omni-Embed-Mini: Binding Modalities Without Forgetting via Dense Distillation",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.02148v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.02148v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV",
+    "cs.CV"
+   ],
+   "publishedAt": "2026-10-02T01:49:40+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 67.4,
+   "summary": "Extending a text embedding model to new modalities typically degrades text retrieval quality, and existing omni-modal embedders compensate with multi-billion parameters. We present Omni-Embed-Mini, a 0.9B-parameter model that maps text, speech, audio, images, video, and visually-rich documents into a single shared cosine space without updating any text-side parameter. Our key insight is that the teacher signal requires no separate embedding model: each media sample is paired with a dense cascaded caption, and the teacher target is simply the frozen backbone's own embedding of that caption. Because teacher and student share the same backbone weights, they inhabit byte-identical geometry, and lightweight projectors plus phased LoRA adapters on the modality encoders suffice for alignment. Training combines a Matryoshka SigLIP contrastive loss with an online hybrid hard-negative miner whose negatives sharpen as the encoder improves. The recipe carries over to a 2.3B variant by swapping in a native vision-language backbone. Omni-Embed-Mini-0.9B keeps its text weights bit-identical to the backbone, so training cannot regress text retrieval (49.57 nDCG@10 on MTEB-v2 BEIR-8), while extending it to five additional modalities, and is ~2.7x to 9.5x smaller than every open omni embedder we compare against. The 2.3B variant is competitive with the closed gemini-embedding-2, edging ahead of it on the overall-modality average. Models, code, data and evaluation harness are on our project page: https://omniembed.cvmbzuai.com",
+   "depthScore": 78.33
+  },
+  {
+   "id": "8ee29a23442adc89",
+   "title": "Fewer Tokens, Better Action: GPT-6 Astra Robot Agents with 14% Higher Success Rate but 65% Fewer Tokens",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.01939v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.01939v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV",
+    "cs.CV"
+   ],
+   "publishedAt": "2026-10-02T00:07:49+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 67.2,
+   "summary": "Vision language model (VLM) agents can control robots through visual feedback and action primitives, but repeated model invocations and redundant observations incur substantial token overhead. We introduce PyRUA-Lean, an interactive code-execution framework that couples feedback-driven primitive composition with selective observation: the agent composes classical robot primitives and learned vision-language-action (VLA) policies into Python cells that perform conditional checks and local retries, returning only explicitly requested images and state feedback for replanning. Across 700 simulated task instances from LIBERO-PRO, RoboTwin 2.0, and RoboCasa365, we compare PyRUA-Lean with a tool-calling baseline using the same GPT-6 Astra planner and underlying robot primitives. Under equal LLM-call budgets, PyRUA-Lean increases overall success from 63.1% to 71.7%. On instances solved by both agents, it uses 49% fewer LLM calls and 65% fewer input tokens.",
+   "depthScore": 78.24
+  }
+ ]
+}

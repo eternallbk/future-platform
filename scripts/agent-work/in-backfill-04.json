@@ -1,0 +1,1659 @@
+{
+ "batchId": "backfill-04",
+ "mode": "backfill",
+ "items": [
+  {
+   "id": "9672dc8fe08e75d2",
+   "title": "UniAE-MoE: A Unified Audio Encoder via Mixture of Experts",
+   "category": "paper",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39199v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39199v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.SD",
+    "cs.AI"
+   ],
+   "publishedAt": "2026-09-29T19:49:18+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 71.0,
+   "summary": "Large Audio Language Models (LALMs) rely on effective audio encoders for multi-task performance. We introduce UniAE-MoE, a unified audio encoder designed to model cross-domain audio representations and achieve outstanding downstream understanding performance via a Mixture-of-Experts (MoE) architecture. Specifically, we explore mainstream audio encoders and integrate those from Qwen2-Audio and Audio-Flamingo 3, which demonstrate superior downstream capabilities. To facilitate effective model fusion, we improve our encoder using SwiGLU with shared experts to decouple encoder networks, and we further introduce a two-stage instruction-tuning strategy to better adapt the model to diverse downstream tasks. Moreover, we propose the task-specific data scaling (TSDS) technique to enhance \\tool's understanding capabilities. On the XARES-LLM benchmark, UniAE-MoE attains a score of 0.802, achieving state-of-the-art performance. It also delivers top-tier performance in the official Interspeech 2026 Audio Encoder Capability Challenge, further demonstrating robust generalization across diverse audio tasks. Together, these results validate the effectiveness of \\tool for unified audio understanding across speech, music, and general audio domains.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "9672dc8fe08e75d2",
+    "tldr": "UniAE-MoE 以共享专家 MoE 融合多个音频编码器，靠两阶段指令微调与 TSDS 提升跨域音频理解。",
+    "keyPoints": [
+     "统一音频编码器，用 MoE 建模跨域音频表征。",
+     "整合 Qwen2-Audio 与 Audio-Flamingo 3 的编码器。",
+     "SwiGLU + 共享专家改进编码器，解耦编码器网络。",
+     "两阶段指令微调，更好适配多样下游任务。",
+     "XARES-LLM 得分 0.802 达 SOTA；挑战赛顶级表现。"
+    ],
+    "why": "MoE 融合多编码器 + 两阶段 SFT 是多模态后训练常见配方，面试常追问共享专家作用与路由设计；0.802 提供可对比的量化锚点。",
+    "difficulty": "medium",
+    "tags": [
+     "mixture-of-experts",
+     "audio-encoder",
+     "multimodal",
+     "instruction-tuning",
+     "data-scaling"
+    ],
+    "entities": [
+     "UniAE-MoE",
+     "Qwen2-Audio",
+     "Audio-Flamingo 3",
+     "SwiGLU",
+     "TSDS",
+     "XARES-LLM",
+     "Interspeech 2026 Audio Encoder Capability Challenge"
+    ],
+    "diagram": {
+     "kind": "architecture",
+     "title": "UniAE-MoE 架构与训练流程",
+     "caption": "两个主流音频编码器经 SwiGLU+共享专家的 MoE 融合，再过两阶段指令微调支撑语音/音乐/通用音频理解，TSDS 从数据侧介入。",
+     "svg": "<svg viewBox='0 0 640 280' xmlns='http://www.w3.org/2000/svg'><defs><marker id='ah' viewBox='0 0 10 10' refX='9' refY='5' markerWidth='7' markerHeight='7' orient='auto-start-reverse'><path d='M0,0 L10,5 L0,10 z' fill='currentColor'/></marker></defs><rect x='195' y='16' width='240' height='36' rx='6' fill='none' stroke='var(--accent)' stroke-width='1.5'/><text x='315' y='39' font-size='14' text-anchor='middle' fill='var(--accent)'>TSDS 任务特定数据扩增</text><line x1='315' y1='52' x2='315' y2='87' stroke='var(--line-1)' stroke-width='1.5' marker-end='url(#ah)'/><text x='325' y='76' font-size='13' fill='currentColor'>训练数据侧</text><rect x='20' y='70' width='170' height='48' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1.5'/><text x='105' y='93' font-size='14' text-anchor='middle' fill='currentColor'>Qwen2-Audio</text><text x='105' y='111' font-size='13' text-anchor='middle' fill='currentColor'>音频编码器</text><rect x='20' y='150' width='170' height='48' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1.5'/><text x='105' y='173' font-size='14' text-anchor='middle' fill='currentColor'>Audio-Flamingo 3</text><text x='105' y='191' font-size='13' text-anchor='middle' fill='currentColor'>音频编码器</text><polyline points='190,94 208,94 208,140' fill='none' stroke='var(--line-1)' stroke-width='1.5'/><polyline points='190,174 208,174 208,140' fill='none' stroke='var(--line-1)' stroke-width='1.5'/><line x1='208' y1='140' x2='222' y2='140' stroke='var(--line-1)' stroke-width='1.5' marker-end='url(#ah)'/><rect x='225' y='90' width='180' height='100' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.5'/><text x='315' y='124' font-size='14' text-anchor='middle' fill='var(--accent)'>MoE 融合</text><text x='315' y='146' font-size='13' text-anchor='middle' fill='currentColor'>SwiGLU + 共享专家</text><text x='315' y='166' font-size='13' text-anchor='middle' fill='currentColor'>解耦编码器网络</text><line x1='405' y1='140' x2='443' y2='140' stroke='var(--line-1)' stroke-width='1.5' marker-end='url(#ah)'/><rect x='445' y='95' width='175' height='90' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.5'/><text x='532' y='132' font-size='14' text-anchor='middle' fill='currentColor'>两阶段指令微调</text><text x='532' y='154' font-size='13' text-anchor='middle' fill='currentColor'>适配多样下游任务</text><line x1='532' y1='185' x2='532' y2='197' stroke='var(--line-1)' stroke-width='1.5' marker-end='url(#ah)'/><rect x='445' y='200' width='175' height='48' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1.5'/><text x='532' y='222' font-size='14' text-anchor='middle' fill='currentColor'>语音/音乐/通用音频</text><text x='532' y='240' font-size='13' text-anchor='middle' fill='currentColor'>下游统一理解</text><text x='20' y='235' font-size='13' fill='currentColor'>结果：XARES-LLM 0.802（SOTA）</text><text x='20' y='258' font-size='13' fill='currentColor'>Interspeech 2026 音频编码器挑战赛顶级表现</text></svg>",
+     "spec": {
+      "type": "architecture",
+      "nodes": [
+       {
+        "label": "Qwen2-Audio 编码器",
+        "detail": "摘要中被选用的主流音频编码器之一"
+       },
+       {
+        "label": "Audio-Flamingo 3 编码器",
+        "detail": "另一个被整合的编码器，下游能力更强"
+       },
+       {
+        "label": "MoE 融合层",
+        "detail": "SwiGLU 加共享专家，用于解耦各编码器网络"
+       },
+       {
+        "label": "两阶段指令微调",
+        "detail": "让模型更好适配多样下游任务"
+       },
+       {
+        "label": "语音/音乐/通用音频理解",
+        "detail": "统一音频表征的下游理解目标"
+       },
+       {
+        "label": "TSDS",
+        "detail": "任务特定数据缩放，作用于训练数据侧"
+       }
+      ],
+      "edges": [
+       {
+        "from": 0,
+        "to": 2,
+        "label": "编码表征汇入"
+       },
+       {
+        "from": 1,
+        "to": 2,
+        "label": "编码表征汇入"
+       },
+       {
+        "from": 5,
+        "to": 2,
+        "label": "训练数据侧增强"
+       },
+       {
+        "from": 2,
+        "to": 3,
+        "label": "融合后表征"
+       },
+       {
+        "from": 3,
+        "to": 4,
+        "label": "适配下游任务"
+       }
+      ]
+     },
+     "alt": "架构图：Qwen2-Audio 与 Audio-Flamingo 3 两个音频编码器汇入以 SwiGLU 与共享专家实现的 MoE 融合层，再经两阶段指令微调输出语音、音乐与通用音频的下游理解能力，TSDS 从训练数据侧提供增强。"
+    },
+    "concepts": [
+     {
+      "name": "共享专家混合 (Shared-Expert Mixture of Experts)",
+      "readable": "把多个已训好的音频编码器当成不同专家，用一个门控网络按输入挑选或加权混合它们的表征，并额外留一组「共享专家」对所有输入都生效，从而在一个编码器里同时用上多个上游模型的优势。",
+      "analogy": "像球队把几位专长不同的球探报告汇总，由总教练按对手风格决定听谁的；同时总有一位熟悉所有对手的通识教练，他的意见每场都算数。",
+      "analogyBreaksDown": "球探是先独立写好报告再汇总投票，而这里的专家本身就是网络里的层，门控与专家是端到端一起训练的；共享专家也不是「顾问意见」，而是恒定参与计算的网络分支。",
+      "mechanism": "用 SwiGLU 替换专家内部的普通 FFN，并加一组对所有 token 恒定激活的共享专家：共享专家承载跨域共性，路由专家承载领域特化，使融合时各编码器的表征不必挤在同一组参数里，从而达到摘要所说的「解耦编码器网络」。",
+      "visual": "画一个横向门控图：左侧三条输入 token 流（语音/音乐/通用音频），中间一排专家方块，其中一个用 accent 描边并写成「共享专家」、始终点亮；右侧连线粗细表示门控权重大小，最终汇聚成一条输出。",
+      "prerequisites": [
+       "MoE 基本结构（专家、门控、top-k 稀疏激活）",
+       "Transformer FFN 与 SwiGLU/GLU 变体",
+       "音频编码器的输入输出形态（如 Mel 特征到帧级表征）"
+      ],
+      "selfTest": [
+       "共享专家与路由专家在激活模式上的关键区别是什么？",
+       "为什么作者要用共享专家来「解耦」多个编码器网络？",
+       "把普通 FFN 换成 SwiGLU 改变了什么？摘要能证明的部分到哪为止？"
+      ],
+      "formula": "\\mathrm{SwiGLU}(x) = W_2\\big(\\mathrm{Swish}(W_1 x) \\odot W_3 x\\big),\\quad \\mathrm{Swish}(z)=z\\,\\sigma(z)"
+     },
+     {
+      "name": "两阶段指令微调 (Two-Stage Instruction Tuning)",
+      "readable": "把指令微调拆成先后两个阶段来做，目的是让模型更好适配语音、音乐、通用音频等多样下游任务。摘要只说明了「分两阶段」和「为了适配多样任务」，每一阶段具体做什么并未说明。",
+      "analogy": "像先上新兵通用训练营，学会听懂各种口令，再进专业兵种集训，针对具体岗位练专项技能。",
+      "analogyBreaksDown": "军队训练的阶段与考核是人定的且边界清晰；本文两阶段的具体划分、各阶段数据配比摘要都没给，而且微调的目标是拟合任务分布，并不存在一个明确的「结业考核」。",
+      "mechanism": "关键设计是把「适配下游任务」从一步微调拆成两个连续阶段，以缓解多任务一起调时的相互干扰；通常第一段偏通用指令对齐、第二段偏任务特化，但摘要未确认这一分工，需看原文。",
+      "visual": "画一条从左到右的两段式时间轴：第一段用较宽的方块表示覆盖广泛的通用指令数据，第二段用略窄的方块表示任务特化数据；时间轴右端分叉出语音、音乐、通用音频三条箭头指向下游任务。",
+      "prerequisites": [
+       "监督指令微调（SFT）的基本流程",
+       "多任务微调中的任务干扰与灾难性遗忘",
+       "音频-文本指令数据的构造方式"
+      ],
+      "selfTest": [
+       "为什么把指令微调拆成两个阶段，而不是一步到位？",
+       "摘要能说清两阶段各自的内容吗？如果不能，应该去原文的哪部分找？",
+       "两阶段微调与前面的 MoE 融合分别解决什么问题？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "任务特定数据缩放 (Task-Specific Data Scaling, TSDS)",
+      "readable": "一种在训练数据侧做「按任务调整」的技术：针对不同下游任务改变其训练数据的配比或规模，让模型在不擅长的任务上获得更多训练信号，从而提升 UniAE-MoE 的理解能力。",
+      "analogy": "像备赛复习时按各科薄弱程度重排时间：弱科多刷题、强科少刷，用同样的总复习时间换更高的总分。",
+      "analogyBreaksDown": "复习时间是连续可调且效果立竿见影；TSDS 究竟缩放样本数量、采样权重还是别的维度，摘要没有交代，也不保证总数据量保持不变。",
+      "mechanism": "摘要只给出两点：它是任务特定（task-specific）的数据缩放技术，用来增强 UniAE-MoE 的理解能力。它作用在训练数据侧，与结构侧的 MoE 融合互补；准确的缩放维度与调度策略属摘要外信息。",
+      "visual": "画一张分组柱状图：横轴是任务（语音、音乐、通用音频），纵轴是该任务的采样权重或样本数；每组两根柱子，灰色为 baseline、accent 色为 TSDS 之后，弱任务上的 accent 柱明显更高。",
+      "prerequisites": [
+       "多任务训练中数据混合比例/采样权重的作用",
+       "数据配比对下游指标的影响",
+       "按任务难度调整训练信号的直觉"
+      ],
+      "selfTest": [
+       "TSDS 作用在模型结构侧还是训练数据侧？",
+       "摘要能证明 TSDS 的具体缩放方式吗？",
+       "TSDS 和两阶段指令微调解决的是同一个问题吗？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-moe-shared-expert",
+      "name": "共享专家混合层与 SwiGLU 专家（Shared-Expert MoE Layer with SwiGLU Experts）",
+      "category": "multimodal",
+      "glyph": "Σ",
+      "tags": [
+       "moe",
+       "swiglu",
+       "shared-expert",
+       "gating"
+      ],
+      "latex": "\\mathrm{MoE}(x) = x + \\sum_{s=1}^{N_s} \\mathrm{SwiGLU}_s(x) + \\sum_{i \\in \\mathcal{T}(x)} g_i(x)\\,\\mathrm{SwiGLU}_i(x),\\quad g_i(x)=\\frac{\\exp(e_i^{\\top} x)}{\\sum_{j\\in\\mathcal{T}(x)}\\exp(e_j^{\\top} x)},\\quad \\mathrm{SwiGLU}(x)=W_2\\big(\\mathrm{Swish}(W_1x)\\odot W_3x\\big)",
+      "html": "<code>MoE(x) = x + Σ_s SwiGLU_s(x) + Σ_{i∈TopK(x)} g_i(x)·SwiGLU_i(x)，其中 g 只在选中的 top-k 上 softmax，SwiGLU(x)=W2(Swish(W1x)⊙W3x)</code>",
+      "symbols": [
+       [
+        "x",
+        "该层输入表征（一个 token 的隐藏向量），shape 记为 [B, T, d]；摘要未给具体维度"
+       ],
+       [
+        "N_s",
+        "共享专家数量，其输出对所有 token 恒定参与；摘要未给取值"
+       ],
+       [
+        "T(x)",
+        "由门控为 token x 选出的 top-k 路由专家集合"
+       ],
+       [
+        "g_i(x)",
+        "路由专家 i 的门控权重，只在 T(x) 内归一化，∑_{i∈T(x)} g_i(x) = 1"
+       ],
+       [
+        "SwiGLU_i",
+        "第 i 个专家前馈网络，内部为 W1/W3 双投影 + Swish 门控 + W2 输出投影"
+       ],
+       [
+        "σ(·)",
+        "Sigmoid 函数，SwiGLU 中 Swish(z)=z·σ(z) 的门控因子"
+       ]
+      ],
+      "derivation": [
+       "动机：单一 FFN 难以同时承载多个上游音频编码器的异构表征，于是用多个专家并行替代单个 FFN。",
+       "稀疏路由：用 top-k 门控让每个 token 只激活少数路由专家，把参数量与计算量解耦。",
+       "补共享专家：全稀疏路由会把跨域共性也打散，于是加一组对所有 token 都激活的共享专家承载共性知识。",
+       "换成 SwiGLU：用门控线性单元增强单个专家的表达力，配合共享专家使各编码器表征更容易解耦。",
+       "残差相加：把输入 x、共享专家之和与加权路由专家之和相加，得到该层输出。"
+      ],
+      "analogy": "像科室里既有几位「全科医生」对所有病人都接诊，又有专科医生由分诊台按病情叫号；SwiGLU 相当于每位医生先自己筛一遍信息再下结论，而不是把所有信息一股脑塞进一个判断。",
+      "pitfalls": [
+       "把共享专家也算进 top-k 路由竞争：共享专家不参与门控，恒定激活。",
+       "认为门控权重对「所有专家」求和为 1：实际只对选中的 top-k 归一化。",
+       "把 SwiGLU 当普通 ReLU-FFN：它有两个并行线性投影，其中一个过 Swish 后逐元素门控另一个。",
+       "把摘要里的「解耦编码器网络」理解为各编码器完全独立训练：摘要说的是融合时的结构设计。"
+      ],
+      "code": "import torch, torch.nn as nn, torch.nn.functional as F\n\nclass SwiGLU(nn.Module):\n    \"\"\"SwiGLU 专家：W2(Swish(W1x) * W3x)\"\"\"\n    def __init__(self, d, hidden):\n        super().__init__()\n        self.w1 = nn.Linear(d, hidden, bias=False)\n        self.w3 = nn.Linear(d, hidden, bias=False)\n        self.w2 = nn.Linear(hidden, d, bias=False)\n\n    def forward(self, x):\n        return self.w2(F.silu(self.w1(x)) * self.w3(x))\n\nclass SharedExpertMoE(nn.Module):\n    \"\"\"共享专家恒激活 + top-k 路由专家，相加后残差回加。\"\"\"\n    def __init__(self, d, hidden, n_routed=4, n_shared=1, top_k=2):\n        super().__init__()\n        self.top_k = top_k\n        self.router = nn.Linear(d, n_routed, bias=False)\n        self.routed = nn.ModuleList([SwiGLU(d, hidden) for _ in range(n_routed)])\n        self.shared = nn.ModuleList([SwiGLU(d, hidden) for _ in range(n_shared)])\n\n    def forward(self, x):                      # x: [B, T, d]\n        out = x\n        for e in self.shared:                  # 共享专家：所有 token 都走\n            out = out + e(x)\n        logits = self.router(x)                # [B, T, n_routed]\n        w, idx = logits.topk(self.top_k, dim=-1)\n        w = w.softmax(dim=-1)                  # 只在选中的 top-k 上归一化\n        for k in range(self.top_k):            # 逐 slot 聚合（工程上用 scatter/gather）\n            wk = w[..., k:k + 1]               # [B, T, 1]\n            ik = idx[..., k]                   # [B, T]\n            for i, e in enumerate(self.routed):\n                m = (ik == i).unsqueeze(-1).float()   # 命中第 i 个专家的 token\n                out = out + m * wk * e(x)\n        return out\n\nmoe = SharedExpertMoE(d=64, hidden=128)\nprint(moe(torch.randn(2, 5, 64)).shape)   # torch.Size([2, 5, 64])",
+      "sources": [
+       {
+        "title": "UniAE-MoE: A Unified Audio Encoder via Mixture of Experts",
+        "url": "https://arxiv.org/abs/2609.39199v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "UniAE-MoE 是一个统一音频编码器，基于 MoE 架构建模跨域音频表征并提升下游理解。",
+      "它调研了主流音频编码器，并整合了其中下游能力更强的 Qwen2-Audio 与 Audio-Flamingo 3 的编码器。",
+      "它用带共享专家的 SwiGLU 改进编码器，以解耦编码器网络。",
+      "它引入两阶段指令微调，让模型更好适配多样下游任务。",
+      "它提出任务特定数据缩放（TSDS）技术来增强自身理解能力。",
+      "在 XARES-LLM 基准上拿到 0.802，达到 state-of-the-art。",
+      "在官方 Interspeech 2026 Audio Encoder Capability Challenge 中获得顶级表现，说明跨音频任务泛化稳健。",
+      "覆盖语音、音乐、通用音频三类域的统一音频理解。"
+     ],
+     "uncertain": [
+      "摘要中的 \\tool 是论文自己的 LaTeX 占位符，指代其系统 UniAE-MoE，本文件按此理解。",
+      "带共享专家的 SwiGLU-MoE 的精确形式（专家数量、top-k 取值、共享专家是否参与门控归一化）摘要未给，公式条目采用该领域标准形式（DeepSeekMoE 式共享专家 + SwiGLU），本文变体的精确形式需看原文。",
+      "两阶段指令微调每一阶段的具体内容、数据构成与训练顺序摘要未说明。",
+      "TSDS 的「数据缩放」具体机制（缩放样本数、采样权重还是其他）与调度策略摘要未说明。",
+      "XARES-LLM 的 0.802 分制、评测细节与对比基线摘要未给，无法判断提升幅度。",
+      "「top-tier performance」在 Interspeech 2026 挑战赛中的具体名次/指标摘要未给。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "aa59255c96356e14",
+   "title": "Polymer informatics: A review of ai-driven structure-property modeling and material design",
+   "category": "paper",
+   "channel": "s2",
+   "url": "https://doi.org/10.13374/j.issn2095-9389.2026.01.24.001",
+   "sources": [
+    {
+     "url": "https://doi.org/10.13374/j.issn2095-9389.2026.01.24.001",
+     "name": "s2"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-10-01T00:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": true,
+   "codeAvailable": false,
+   "relevanceScore": 62.1,
+   "summary": "Polymer science is undergoing a profound paradigm shift from labor-intensive, empirical trial-and-error experimentation to AI-guided, data-driven, and predictive material design. Owing to their multiscale structural diversity (spanning atomic connectivity, chain-packing behavior, and macroscopic morphology), polymer materials possess an enormous chemical design space that traditional experimental and computational methods cannot efficiently explore. High-precision quantum-chemical calculations are too computationally expensive for large-scale screening, whereas classical molecular dynamics simulations often involve trade-offs between force-field accuracy and accessible time scales. Against this backdrop, polymer informatics has emerged as a transformative interdisciplinary field that leverages artificial intelligence algorithms to mine structure–property–processing relationships from accumulated experimental, simulation, and literature data, enabling accurate property prediction and on-demand inverse design of polymer materials. This Review systematically summarizes recent advances in AI-guided informatics for polymer science based on an analysis of representative literature published between 2023 and 2025. The survey covers the current state of polymer informatics across four interconnected dimensions, organized around the logical backbone of data foundation, property prediction, inverse design, interpretability, and physical constraints. In the domain of polymer representation and data strategies, we evaluate the essential differences and applicable boundaries of major re",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "aa59255c96356e14",
+    "tldr": "聚合物信息学综述：梳理 2023-2025 年用 AI 挖结构-性质关系，做性质预测与逆向设计。采集摘要有限。",
+    "keyPoints": [
+     "聚合物科学正从劳动密集的试错实验，转向 AI 引导的数据驱动预测性材料设计",
+     "聚合物具有跨原子连接、链堆积到宏观形貌的多尺度结构，化学设计空间极大",
+     "高精度量子化学计算太贵，经典分子动力学在力场精度与可达时间尺度间权衡",
+     "综述基于 2023 至 2025 年代表性文献，属同行评审的 Review 文章",
+     "内容按数据基础、性质预测、逆向设计、可解释性与物理约束组织"
+    ],
+    "why": "与多模态/后训练/RL/Agent 主线弱相关，属 AI for Science 应用向。可迁移点是「小数据加物理约束」下的表征与评估流程。",
+    "difficulty": "medium",
+    "tags": [
+     "polymer-informatics",
+     "materials-design",
+     "structure-property",
+     "inverse-design",
+     "ai-for-science",
+     "review"
+    ],
+    "entities": [
+     "polymer informatics",
+     "structure-property-processing relationships",
+     "quantum-chemical calculations",
+     "classical molecular dynamics",
+     "inverse design"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "聚合物信息学综述框架",
+     "caption": "综述沿数据基础→表示与性质预测→逆向设计展开，并以可解释性与物理约束闭环回灌。",
+     "svg": "<svg viewBox=\"0 0 900 340\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"聚合物信息学综述的四维框架流程\"><rect x=\"1\" y=\"1\" width=\"898\" height=\"338\" rx=\"14\" fill=\"none\" stroke=\"var(--line-1)\"/><text x=\"450\" y=\"38\" text-anchor=\"middle\" font-size=\"18\" fill=\"var(--fg-1)\">聚合物信息学：综述组织框架</text><rect x=\"40\" y=\"70\" width=\"160\" height=\"70\" rx=\"10\" fill=\"none\" stroke=\"currentColor\"/><text x=\"120\" y=\"100\" text-anchor=\"middle\" font-size=\"15\" fill=\"var(--fg-1)\">数据基础</text><text x=\"120\" y=\"122\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">实验·模拟·文献</text><rect x=\"250\" y=\"70\" width=\"160\" height=\"70\" rx=\"10\" fill=\"none\" stroke=\"currentColor\"/><text x=\"330\" y=\"100\" text-anchor=\"middle\" font-size=\"15\" fill=\"var(--fg-1)\">表示方法</text><text x=\"330\" y=\"122\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">适用边界比较</text><rect x=\"460\" y=\"70\" width=\"160\" height=\"70\" rx=\"10\" fill=\"none\" stroke=\"currentColor\"/><text x=\"540\" y=\"100\" text-anchor=\"middle\" font-size=\"15\" fill=\"var(--fg-1)\">性质预测</text><text x=\"540\" y=\"122\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">结构-性质-加工</text><rect x=\"670\" y=\"70\" width=\"190\" height=\"70\" rx=\"10\" fill=\"none\" stroke=\"currentColor\"/><text x=\"765\" y=\"100\" text-anchor=\"middle\" font-size=\"15\" fill=\"var(--fg-1)\">逆向设计</text><text x=\"765\" y=\"122\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">按需反向找材料</text><line x1=\"200\" y1=\"105\" x2=\"250\" y2=\"105\" stroke=\"currentColor\"/><path d=\"M242 100 L252 105 L242 110 Z\" fill=\"currentColor\"/><line x1=\"410\" y1=\"105\" x2=\"460\" y2=\"105\" stroke=\"currentColor\"/><path d=\"M452 100 L462 105 L452 110 Z\" fill=\"currentColor\"/><line x1=\"620\" y1=\"105\" x2=\"670\" y2=\"105\" stroke=\"currentColor\"/><path d=\"M662 100 L672 105 L662 110 Z\" fill=\"currentColor\"/><rect x=\"250\" y=\"200\" width=\"420\" height=\"70\" rx=\"10\" fill=\"none\" stroke=\"var(--accent)\" stroke-dasharray=\"7 5\"/><text x=\"460\" y=\"230\" text-anchor=\"middle\" font-size=\"15\" fill=\"var(--fg-1)\">可解释性与物理约束</text><text x=\"460\" y=\"252\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">保证可解释、不违物理规律</text><line x1=\"540\" y1=\"140\" x2=\"540\" y2=\"200\" stroke=\"currentColor\"/><path d=\"M535 192 L540 202 L545 192 Z\" fill=\"currentColor\"/><text x=\"556\" y=\"176\" font-size=\"13\" fill=\"var(--fg-1)\">约束</text><path d=\"M250 235 L120 235 L120 140\" fill=\"none\" stroke=\"var(--accent)\"/><path d=\"M115 148 L120 138 L125 148 Z\" fill=\"var(--accent)\"/><text x=\"185\" y=\"300\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">物理约束回灌数据与表示</text></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "数据基础",
+        "detail": "实验、模拟与文献数据的整合"
+       },
+       {
+        "label": "表示方法",
+        "detail": "各种聚合物表示与适用边界"
+       },
+       {
+        "label": "性质预测",
+        "detail": "结构-性质-加工关系建模"
+       },
+       {
+        "label": "逆向设计",
+        "detail": "按目标性质反向生成材料"
+       },
+       {
+        "label": "可解释性与物理约束",
+        "detail": "约束预测、回灌数据与表示"
+       }
+      ],
+      "edges": [
+       {
+        "from": "数据基础",
+        "to": "表示方法",
+        "label": "数据支撑"
+       },
+       {
+        "from": "表示方法",
+        "to": "性质预测",
+        "label": "输入编码"
+       },
+       {
+        "from": "性质预测",
+        "to": "逆向设计",
+        "label": "作为打分器"
+       },
+       {
+        "from": "性质预测",
+        "to": "可解释性与物理约束",
+        "label": "约束"
+       },
+       {
+        "from": "可解释性与物理约束",
+        "to": "数据基础",
+        "label": "物理约束回灌"
+       }
+      ]
+     },
+     "alt": "从数据基础到表示方法、性质预测、逆向设计的单向流程，配一条从可解释性与物理约束回到数据基础的回灌路径。"
+    },
+    "concepts": [
+     {
+      "name": "结构-性质-加工关系建模",
+      "readable": "把聚合物的化学结构、链堆积方式和加工条件当成输入，用机器学习拟合出它们与最终材料性质之间的映射，再用这个映射去预测还没做出来的新聚合物会有什么性质。",
+      "analogy": "像做菜时看菜谱：食材搭配和火候决定味道，做多了就能从配料表大致猜出成品口味。",
+      "analogyBreaksDown": "菜谱一旦定下味道基本确定，而聚合物性质还强烈依赖分子量分布、链缠结与热历史，同一配方不同加工历史会给出不同结果。",
+      "mechanism": "先用描述符、指纹或序列/图表示把聚合物编码成向量，再在实验、模拟与文献数据上训练回归或图神经网络，学习结构-性质-加工映射，用于性质预测。",
+      "visual": "箱形图思路：左侧输入列[化学组成 / 链堆积 / 加工条件] → 中间方框[机器学习映射] → 右侧输出列[预测性质]，方框下方标注训练数据来源。",
+      "prerequisites": [
+       "聚合物结构与形态的基础概念",
+       "常见分子表示与描述符",
+       "监督学习回归的基本流程"
+      ],
+      "selfTest": [
+       "为什么聚合物性质不能只从单个分子的化学式直接读出？",
+       "结构-性质-加工映射里，模型真正拟合的是哪一组变量之间的关系？",
+       "如果训练数据集中在某几类聚合物，这个映射的外推边界在哪里？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "逆向设计",
+      "readable": "不是先有材料再测性质，而是先写下想要的性质指标，再反过来搜索或生成满足这些指标的结构与配方。因为可能有很多种结构都能达到同一指标，所以这是一个一对多的搜索问题。",
+      "analogy": "像先定好想要的味道，再倒推该放哪些调料、各放多少，而不是先炒一盘再尝是什么味。",
+      "analogyBreaksDown": "调料总有可用的组合，而生成出的聚合物结构未必可合成、可加工，倒推出来的候选可能根本做不出来。",
+      "mechanism": "以性质预测模型当打分器，在生成模型、贝叶斯优化或变分自编码器等搜索策略下遍历设计空间，用预测性质逼近目标并加约束，迭代筛出候选结构。",
+      "visual": "箭头图思路：[目标性质向量] → [候选生成/搜索] → [性质预测打分] → 若未达标则回到生成步骤形成循环，外侧加一个[可合成性约束]的闸门标记。",
+      "prerequisites": [
+       "前向性质预测模型的训练与评估",
+       "生成模型或黑箱优化的基本概念",
+       "化学空间与合成可行性的常识"
+      ],
+      "selfTest": [
+       "逆向设计相比正向预测多出来的主要困难是什么？",
+       "打分器本身的预测误差会在搜索中被放大还是抵消？",
+       "为什么生成出的候选结构还需要经过可合成性检查？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "物理约束与可解释性",
+      "readable": "纯数据驱动的模型可能给出违反物理规律或无法解释的预测，所以要让模型在预测时受物理规律约束，并让人能看懂它凭什么这么预测，这样才能被材料研究者信任和采纳。",
+      "analogy": "像天气预报模型说要同时出现零下气温和暴雨成灾，懂常识的人会立刻怀疑模型出错，物理约束就扮演这种常识审查。",
+      "analogyBreaksDown": "常识审查往往靠人主观判断，物理约束必须写成可计算的目标或结构，而很多聚合物的物理规律本身还没有公认的定量形式。",
+      "mechanism": "把物理规律以约束、损失项或结构先验的形式加入建模，并辅以可解释性分析，让预测同时满足数据一致性与物理合理性，并暴露模型依据。",
+      "visual": "双栏对比图思路：左栏[纯数据模型]下方列出可能给出的不合理预测，右栏[含物理约束模型]下方列出被约束拦下的同类预测，中间用一条竖向[物理规律]闸门分隔。",
+      "prerequisites": [
+       "热力学与聚合物物理的基本规律",
+       "约束优化或正则化的基本思想",
+       "模型可解释性分析的常见手段"
+      ],
+      "selfTest": [
+       "为什么纯数据驱动模型在材料任务里容易给出物理上不合理的预测？",
+       "物理约束可以以哪几种形式进入建模流程？",
+       "可解释性对研究成果被实验团队采纳有什么作用？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-qspr-inverse-design",
+      "name": "结构-性质预测与逆向设计目标",
+      "category": "generative",
+      "glyph": "x*",
+      "tags": [
+       "inverse-design",
+       "structure-property",
+       "materials",
+       "optimization"
+      ],
+      "latex": "\\hat{p}=f_{\\theta}\\!\\left(D(x)\\right),\\qquad x^{\\star}=\\arg\\max_{x\\in\\mathcal{X}}\\; U\\!\\left(f_{\\theta}(D(x))\\right)\\ \\ \\text{s.t.}\\ \\ g_{j}(x)\\le 0",
+      "html": "<code>p_hat = f_theta(D(x)) ; x* = argmax_x U(f_theta(D(x))) s.t. g_j(x) &lt;= 0</code>",
+      "symbols": [
+       [
+        "x",
+        "候选化学结构或聚合物表示"
+       ],
+       [
+        "D(x)",
+        "结构描述符/表示，综述按「数据基础与表示策略」讨论"
+       ],
+       [
+        "f_{\\theta}",
+        "性质预测模型，学习结构-性质-加工关系"
+       ],
+       [
+        "\\hat{p}",
+        "预测的材料性质"
+       ],
+       [
+        "U(\\cdot)",
+        "设计目标效用，通常是多个目标性质的加权或打分"
+       ],
+       [
+        "g_{j}(x)\\le 0",
+        "物理约束与可制造性约束，综述强调物理约束与可解释性"
+       ],
+       [
+        "x^{\\star}",
+        "逆向设计给出的候选结构"
+       ]
+      ],
+      "derivation": [
+       "先用实验、模拟与文献数据训练结构到性质的映射 f_θ，输入是描述符 D(x)。",
+       "正向使用：给定结构 x，预测性质 p̂，用于大规模虚拟筛选替代昂贵的量子化学计算。",
+       "逆向使用：把预测模型当成可微或可搜索的目标函数，在结构空间里最大化效用 U。",
+       "加入物理与可制造性约束 g_j(x) ≤ 0，避免搜到化学上不合理或无法合成的结构。",
+       "候选结构再回到实验或高精度模拟验证，形成「预测—设计—验证」闭环。"
+      ],
+      "analogy": "像配一副合脚的鞋：先学会脚型到尺码的对应关系（正向预测），再反过来给定想要的舒适度去挑鞋型（逆向设计），最后还得受限于材料与工艺能不能做出来（约束）。",
+      "pitfalls": [
+       "正向预测精度高不代表逆向设计可用：优化器会主动钻到模型误差最大的区域。",
+       "摘要被截断，综述对表示方法差异与适用边界的结论未能读到，U 与 g_j 的具体形式属通用写法。",
+       "多目标性质之间常相互冲突，需要显式权衡而不是单一加权和。",
+       "缺少物理约束时容易生成无法合成或违反热力学规律的结构。"
+      ],
+      "code": "import torch\n\ndef inverse_design(f_theta, encode, x0, steps=200, lr=0.05):\n    \"\"\"对连续松弛的结构表示做梯度上升, 最大化预测效用 U(f_theta(D(x))).\"\"\"\n    x = x0.clone().requires_grad_(True)\n    opt = torch.optim.Adam([x], lr=lr)\n    for _ in range(steps):\n        opt.zero_grad()\n        p_hat = f_theta(encode(x))     # 正向: 结构 -> 性质\n        loss = -p_hat.mean()           # 逆向: 最大化目标性质\n        loss.backward()\n        opt.step()\n    return x.detach()\n\n# 约束 g_j(x) <= 0 通常以惩罚项或投影的方式加进 loss/更新步骤",
+      "sources": [
+       {
+        "title": "Polymer informatics: A review of ai-driven structure-property modeling and material design",
+        "url": "https://doi.org/10.13374/j.issn2095-9389.2026.01.24.001"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "该条是一篇综述文章，venue 为 DOAJ，peerReviewed 为 true，codeAvailable 为 false",
+      "综述主题是 AI 驱动的聚合物结构-性质建模与材料设计，即 polymer informatics",
+      "摘要称聚合物科学正从劳动密集的试错实验转向 AI 引导的数据驱动、预测性材料设计",
+      "摘要称聚合物的多尺度结构（原子连接、链堆积、宏观形貌）带来传统实验与计算方法难以高效探索的巨大化学设计空间",
+      "摘要称高精度量子化学计算对大规模筛选过于昂贵，经典分子动力学在力场精度与可达时间尺度间存在权衡",
+      "摘要称综述基于 2023 至 2025 年代表性文献，围绕数据基础、性质预测、逆向设计、可解释性与物理约束四个维度组织"
+     ],
+     "uncertain": [
+      "摘要文本在「数据与表示策略」处被截断，综述对各类表示方法的具体结论与推荐未能读到",
+      "综述是否给出统一的基准数据集、评测协议或定量性能对比表，未在摘要中体现",
+      "摘要未给出任何具体方法名、模型名或作者机构，entities 只能取摘要中的通用概念词",
+      "摘要未提及该综述是否覆盖多模态大模型或基础模型在聚合物领域的应用",
+      "publishedAt 为 2026-10-01、DOI 前缀指向中文期刊，实际见刊时间与语言需人工核实"
+     ]
+    }
+   }
+  },
+  {
+   "id": "2249a2664c17959b",
+   "title": "Fenchel Tilting: Weighted Correction for Efficient Finetuning of Generative Models",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.40030v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.40030v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG",
+    "cs.AI"
+   ],
+   "publishedAt": "2026-09-30T04:02:58+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 33.8,
+   "summary": "Adapting a pretrained generative model to an arbitrary preference expressed as a utility function underlies reward alignment, guided design, and constraint satisfaction, enabling diverse applications. Existing fine-tuning methods trade off generality against computational cost: they either restrict the family class of supported preferences to keep optimization simple or preserve generality at the expense of efficiency. We introduce Fenchel Tilt Flow Control (FTFC), which decouples utility optimization from generative-model fitting. FTFC first optimizes for a target distribution by jointly fitting an effective reward and density-ratio weights on pretrained samples. Method combines the utility's variational structure with Fenchel duality, supporting general $f$-divergence penalties that determine how rewards are transformed into an distribution-correction weights. These weights are then frozen and used to modify a diffusion or flow model in a single stage of importance-weighted denoising or flow matching, without differentiating through sampling trajectories. We establish exact duality for concave utilities under suitable conditions and show that weighted fitting reproduces the optimal target distribution for a given utility. Across image and molecule generation benchmarks, FTFC improves over baselines on diverse preference functions, while also being up to $20\\times$ more efficient. roposed method enables adaptation beyond expected-reward maximization without complex optimization, while preserving robustness for more general class of the utility functions compared to baselines.",
+   "missing": [
+    "diagram",
+    "teaching"
+   ],
+   "backfillWeight": 5.0,
+   "existingEnrichment": {
+    "id": "2249a2664c17959b",
+    "tldr": "把效用优化与生成模型拟合解耦：先算冻结权重，再一次加权训练，快 20 倍。",
+    "keyPoints": [
+     "支持任意效用函数（不止期望奖励最大化）通常代价很高。",
+     "FTFC 在预训练样本上联合拟合有效奖励与密度比权重。",
+     "用 Fenchel 对偶支撑一般 f-散度惩罚，决定奖励如何变成修正权重。",
+     "权重冻结后只用一次重要性加权训练，不需对采样轨迹求导。"
+    ],
+    "why": "奖励对齐与 diffusion 微调常在采样轨迹上反传；FTFC 的解耦与对偶视角是面试加分点。",
+    "difficulty": "hard",
+    "tags": [
+     "diffusion",
+     "flow-matching",
+     "reward-alignment",
+     "fenchel-duality",
+     "finetuning"
+    ],
+    "entities": [
+     "Fenchel Tilt Flow Control",
+     "FTFC",
+     "Fenchel duality",
+     "f-divergence",
+     "flow matching",
+     "diffusion"
+    ],
+    "concepts": [
+     {
+      "name": "Fenchel 对偶与分布倾斜 Fenchel Duality and Distribution Tilting",
+      "readable": "把「对齐任意效用函数」和「拟合生成模型」解耦。第一步只在预训练样本上联合拟合一个有效奖励与密度比权重：用效用函数的变分结构与 Fenchel 对偶，支持一般 f-散度惩罚，由惩罚形式决定奖励如何被变换成分布修正权重。第二步把这些权重冻结，只用一次重要性加权的去噪或 flow matching 去修改扩散/flow 模型，完全不需要对采样轨迹求导。论文对凹效用函数给出精确对偶，并证明加权拟合能复现给定效用下的最优目标分布。",
+      "analogy": "不重新学做菜，只调整每种半成品的采购比例就能让最终菜单符合新口味；比例算一次就固定下来，做菜流程一个字不改。",
+      "visual": "分左右两段流程。左段：预训练样本点云 → 拟合奖励与权重（点的大小/颜色深浅表示权重）→ 一把锁表示「冻结」。右段：同一个扩散/flow 模型 + 冻结权重 → 一次重要性加权训练 → 目标分布点云。两段之间标注「不反向传播穿过采样轨迹」。",
+      "formula": "p^{\\star}(x) \\propto p_{\\text{base}}(x)\\, e^{\\,r(x)/\\lambda}"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-fenchel-tilt",
+      "name": "Fenchel 倾斜的分布修正权重 (Fenchel-Tilted Distribution-Correction Weights)",
+      "category": "generative",
+      "glyph": "T",
+      "tags": [
+       "fenchel",
+       "diffusion",
+       "flow-matching",
+       "importance-weighting"
+      ],
+      "latex": "p^{\\star}(x) \\propto p_{\\text{base}}(x)\\, e^{\\,r(x)/\\lambda}, \\qquad w(x) = \\frac{e^{\\,r(x)/\\lambda}}{\\mathbb{E}_{p_{\\text{base}}}\\left[e^{\\,r/\\lambda}\\right]}",
+      "html": "<code>p*(x) ∝ p_base(x) · e^(r(x)/λ),   w(x) = e^(r(x)/λ) / E_pbase[e^(r/λ)]</code>",
+      "symbols": [
+       [
+        "p_base",
+        "预训练生成模型的采样分布"
+       ],
+       [
+        "r(x)",
+        "由效用函数经 Fenchel 对偶得到的有效奖励"
+       ],
+       [
+        "λ",
+        "温度/正则强度，由所选 f-散度惩罚的形式决定"
+       ],
+       [
+        "w(x)",
+        "冻结后用于重要性加权去噪/flow matching 的密度比权重"
+       ],
+       [
+        "f*",
+        "效用函数的 Fenchel 共轭，决定奖励如何映射为权重"
+       ]
+      ],
+      "derivation": [
+       "目标是把预训练生成模型适配到任意效用函数 u(x) 定义的目标分布，而不是只做期望奖励最大化。",
+       "直接在采样轨迹上做反向传播代价高；先把「优化效用」与「拟合生成模型」解耦。",
+       "用 Fenchel 对偶把「最大化效用 − f-散度惩罚」转成对偶问题，解出有效奖励 r 与密度比权重 w。",
+       "冻结 w，只用一次重要性加权的去噪/flow matching 拟合目标分布；对凹效用函数可证明该加权拟合复现最优目标分布。"
+      ],
+      "analogy": "像调音台而不是重录：不重新演奏，只把各轨音量按一张一次算好的比例表调一遍，成品就换了风格；比例表算完就锁死。",
+      "pitfalls": [
+       "若只支持期望奖励最大化，就丢掉了约束满足、多样性等一般效用——Fenchel 形式的价值正在于覆盖更广的效用类。",
+       "λ 太小会让分布过度倾斜到奖励尖峰，生成多样性骤降；λ 太大则几乎不改变分布。",
+       "权重冻结后若继续更新模型却不重估权重，重要性加权会与当前模型失配。"
+      ],
+      "code": "import torch\n\n\ndef fenchel_weights(reward, lam=1.0):\n    \"\"\"在预训练样本上算一次密度比权重，然后冻结（detach）。\"\"\"\n    w = torch.exp(reward / lam)\n    return w / w.mean()\n\n\n# 一次重要性加权 flow matching：不对采样轨迹反传\nloss = (w.detach() * ((v_theta(x_t, t) - v_target) ** 2).mean(dim=-1)).mean()\n",
+      "sources": [
+       {
+        "title": "Fenchel Tilting: Weighted Correction for Efficient Finetuning of Generative Models",
+        "url": "https://arxiv.org/abs/2609.40030v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "FTFC 在图像与分子生成基准上优于基线，效率最高提升 20 倍。",
+      "对凹效用函数在适当条件下建立了精确对偶，并证明加权拟合复现给定效用的最优目标分布。",
+      "权重冻结后只用一次重要性加权去噪或 flow matching，无需对采样轨迹求导。"
+     ],
+     "uncertain": [
+      "「up to 20x」对比的基线是哪一个，摘要未说明。",
+      "摘要原文存在笔误（“roposed method”），且未给出 venue 信息，需人工确认正式发表信息。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "d87fd23589892f16",
+   "title": "Semifactual Credit-Augmented Policy Optimization",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.40360v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.40360v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG",
+    "cs.AI",
+    "cs.CL"
+   ],
+   "publishedAt": "2026-09-30T05:59:56+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 64.0,
+   "summary": "Reinforcement learning with verifiable rewards (RLVR) has improved the reasoning capabilities of large language models (LLMs), yet their predictions remain sensitive to task-irrelevant prompt features. We investigate this sensitivity through semifactual prompt interventions that preserve the underlying problem and its answer. Our analysis reveals substantial variation in token-level sensitivity and shows that suppressing high-drift token candidates during decoding improves reasoning accuracy without updating model weights. These findings highlight a limitation of Group Relative Policy Optimization (GRPO), which assigns the same outcome-derived advantage to every response token and may reinforce potential spurious dependence alongside useful reasoning. Motivated by this observation, we introduce Semifactual Credit-Augmented Policy Optimization (SCAPO), a causally inspired variant of GRPO that incorporates semifactual stability into token-level credit assignment. SCAPO measures token probability drift for fixed responses under semifactual interventions and uses normalized stability scores to reduce advantages for relatively unstable tokens during early training, while granting no additional credit for stability alone. On Qwen3-4B-Base and Qwen3-1.7B-Base, SCAPO improves AIME 2024-2026 accuracy over GRPO by 5.63 and 4.17 percentage points, respectively. At both model scales, SCAPO achieves the best results on most evaluated mathematics benchmarks and all evaluated out-of-distribution benchmarks among the compared methods. These results suggest that semifactual stability provides an effective training signal for improving reasoning and generalization through finer-grained credit assignment in RLVR. The code is available at https://github.com/DtYXs/SCAPO.",
+   "missing": [
+    "diagram",
+    "teaching"
+   ],
+   "backfillWeight": 5.0,
+   "existingEnrichment": {
+    "id": "d87fd23589892f16",
+    "tldr": "用半事实提示找出不稳定 token 并降低其优势，AIME 比 GRPO 高 5.63 分。",
+    "keyPoints": [
+     "GRPO 把同一个答案级优势广播给每个 token，会强化虚假依赖。",
+     "半事实提示保持问题与答案不变，只改无关措辞。",
+     "测 token 概率漂移并归一化成稳定性，降权不稳定 token 的优势。",
+     "稳定本身不加分；Qwen3-4B 上 AIME 提升 5.63 分。"
+    ],
+    "why": "token 级信用分配是 RLVR 后训练的核心争议；该文给出可复现的细粒度改造，适合后训练岗深挖。",
+    "difficulty": "hard",
+    "tags": [
+     "rlvr",
+     "grpo",
+     "credit-assignment",
+     "post-training",
+     "reasoning"
+    ],
+    "entities": [
+     "SCAPO",
+     "GRPO",
+     "RLVR",
+     "Qwen3-4B-Base",
+     "Qwen3-1.7B-Base",
+     "AIME 2024-2026"
+    ],
+    "concepts": [
+     {
+      "name": "半事实干预与 token 级信用分配 Semifactual Interventions and Token-Level Credit Assignment",
+      "readable": "GRPO 把同一个答案级优势 A_i 发给回答里的每个 token。如果模型是靠题面里的无关特征（措辞、选项位置）答对的，这份虚假依赖也会被一起强化。SCAPO 构造「底层问题与答案不变、只改无关措辞」的半事实提示，测每个 token 的概率漂移；漂移大的 token 稳定性差，早期训练就降低它的优势，而稳定本身不额外加分。论文还发现：解码时直接抑制高漂移 token 候选就能提升准确率，且不需要更新权重。",
+      "analogy": "同一道菜换个盘子装。如果评委打分立刻变了，说明他在看盘子而不是在尝菜。SCAPO 找出这几口并压低它们的权重；但「换盘子也不变」并不额外加分，否则会鼓励对所有输入都麻木的答案。",
+      "visual": "横轴是 token 位置，纵轴是半事实干预下的概率漂移，画成柱状图。图上叠两条线：一条水平虚线表示 GRPO 给所有 token 的同一优势，一条随漂移增大而下降的实线表示 SCAPO 调整后的优势。柱子越高（越不稳定），实线压得越低。",
+      "formula": "A'_{i,t} = A_i \\cdot \\left(1 - \\lambda\\,(1 - \\hat{s}_{i,t})\\right)_{+}"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-scapo-credit",
+      "name": "半事实稳定性加权的 token 优势 (Semifactual-Stability Reweighted Token Advantage)",
+      "category": "posttraining",
+      "glyph": "S",
+      "tags": [
+       "grpo",
+       "rlvr",
+       "credit-assignment",
+       "advantage"
+      ],
+      "latex": "A'_{i,t} = A_i \\cdot \\bigl(1 - \\lambda\\,(1 - \\hat{s}_{i,t})\\bigr)_{+}, \\qquad \\hat{s}_{i,t} = \\mathrm{norm}\\bigl(1 - \\lvert p_\\theta(y_t \\mid x) - p_\\theta(y_t \\mid \\tilde{x}) \\rvert\\bigr)",
+      "html": "<code>A'<sub>i,t</sub> = A<sub>i</sub> · (1 − λ(1 − ŝ<sub>i,t</sub>))<sub>+</sub>,  ŝ<sub>i,t</sub> = norm(1 − |p<sub>θ</sub>(y<sub>t</sub>|x) − p<sub>θ</sub>(y<sub>t</sub>|x̃)|)</code>",
+      "symbols": [
+       [
+        "A_i",
+        "GRPO 的答案级组相对优势（同一回答内所有 token 共享）"
+       ],
+       [
+        "x̃",
+        "半事实提示：保持底层问题与答案，只改无关措辞"
+       ],
+       [
+        "|p(y_t|x) − p(y_t|x̃)|",
+        "token t 在干预下的概率漂移，越大越不稳定"
+       ],
+       [
+        "ŝ_{i,t}",
+        "归一化稳定性，漂移越小越接近 1"
+       ],
+       [
+        "λ",
+        "早期训练中对不稳定 token 的降权强度"
+       ],
+       [
+        "(·)_+",
+        "截断到非负：稳定 token 的系数封顶为 1，不获得额外奖励"
+       ]
+      ],
+      "derivation": [
+       "GRPO 用组内归一化得到答案级优势 A_i，并把它广播给回答里的每个 token。",
+       "若模型依据题面里的无关特征答对，这份虚假依赖也会随 A_i 被一起强化。",
+       "构造半事实提示 x̃：问题与答案不变、只改无关措辞，测量每个 token 的概率漂移。",
+       "把漂移归一化成稳定性 ŝ，对不稳定 token 按 (1−λ(1−ŝ))_+ 缩放优势；ŝ=1 时系数为 1，不额外加分。",
+       "论文另证：解码时抑制高漂移 token 候选即可提升准确率，且无需更新任何权重。"
+      ],
+      "analogy": "像老师改小组作业：组内总分（答案级优势）平均到每个人头上，但那个只靠抄题面措辞得分的人，这次要单独把他的分数压下来——而不是给「措辞怎么变都不动」的人加分。",
+      "pitfalls": [
+       "把稳定性当正奖励会鼓励模型输出对所有输入都不敏感的「死板」答案，因此只能降权不能加分。",
+       "只在早期训练降权是设计选择：后期不稳定 token 可能正是需要探索的部分。",
+       "半事实提示必须保证答案不变，否则测到的是任务难度而不是虚假依赖。"
+      ],
+      "code": "import torch\n\n\ndef scapo_advantage(grpo_adv, drift, lam=0.5):\n    \"\"\"grpo_adv: [B] 组相对优势; drift: [B, T] 半事实干预下的 token 概率漂移。\"\"\"\n    stability = 1.0 - drift / (drift.amax(dim=-1, keepdim=True) + 1e-8)   # 归一化\n    scale = (1.0 - lam * (1.0 - stability)).clamp(min=0.0)               # 稳定不加分\n    return grpo_adv.unsqueeze(-1) * scale\n",
+      "sources": [
+       {
+        "title": "Semifactual Credit-Augmented Policy Optimization",
+        "url": "https://arxiv.org/abs/2609.40360v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "SCAPO 在 Qwen3-4B-Base / Qwen3-1.7B-Base 上分别比 GRPO 提升 AIME 2024-2026 准确率 5.63 / 4.17 个百分点。",
+      "抑制高漂移 token 候选可在不更新权重的情况下提升推理准确率。",
+      "两个模型规模上，SCAPO 在多数数学基准和全部评测的分布外基准上取得最好结果。",
+      "摘要写明代码位于 github.com/DtYXs/SCAPO；该地址未登记在 items/index.json 的 sources 中，仅作线索，需人工核实。"
+     ],
+     "uncertain": [
+      "半事实提示如何自动构造（改写模型、模板还是人工）摘要未说明。",
+      "归一化稳定性所用 norm 的具体形式与 λ 取值未给出。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "4a643af09b98ef5b",
+   "title": "No Task Vector Is an Island: A Comprehensive Study on the Composability of Task Vectors from On-Policy Distillation",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39405v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39405v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG"
+   ],
+   "publishedAt": "2026-09-29T21:48:16+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 63.2,
+   "summary": "Task vectors provide a simple mechanism for composing learned capabilities through model merging. However, the composability of task vectors produced by on-policy distillation (OPD) remains largely unexplored. OPD trains a student using teacher feedback on student-generated trajectories, yielding parameter updates that differ from those produced by the teacher model, usually by reinforcement learning (RL). We therefore ask whether OPD task vectors can complement their RL teacher updates and compose effectively across tasks. Across five domains and two model architectures, we find evidence for both forms of composability. Within a task, merging OPD and RL task vectors can outperform both constituent models, even when the OPD student is weaker than its RL teacher. Across tasks, OPD task-vector compositions achieve higher average scores than corresponding RL compositions in seven of eight backbone-merging-rule comparisons. Parameter-space analyses reveal substantial non-collinearity between OPD and RL updates. Experiment in CODE domain on SMOLLM3-3B shows that the combined direction outperforms either constituent direction at the tested global update norm, supporting directional complementarity in this configuration. Across tasks, OPD updates also show lower overlap among the top-10% feed-forward channels ranked by update energy. Together, these results show that weaker standalone performance does not imply weaker task-vector composability. OPD task vectors can complement stronger RL teacher updates and combine effectively across tasks, highlighting composability as a distinct property for understanding and evaluating post-training updates.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "4a643af09b98ef5b",
+    "tldr": "在策略蒸馏的 task vector 与 RL 更新互补：同任务合并常优于两者，跨任务组合 7/8 项更好。",
+    "keyPoints": [
+     "在策略蒸馏用学生自己的轨迹接受教师反馈",
+     "其参数更新与 RL 教师产生的不一样",
+     "五个领域、两种架构上验证两类可组合性",
+     "同任务内合并 OPD 与 RL 向量可超过两者",
+     "参数空间分析显示两者更新显著不共线"
+    ],
+    "why": "后训练工程里「能不能合并能力」比「单任务最强」更接近现实；这篇把可组合性当成独立评估维度，面试可直接讲。",
+    "difficulty": "medium",
+    "tags": [
+     "posttraining",
+     "task-vector",
+     "model-merging",
+     "distillation",
+     "rl"
+    ],
+    "entities": [
+     "task vector",
+     "on-policy distillation",
+     "RL teacher",
+     "SmolLM3-3B",
+     "model merging"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "两类后训练更新的合并",
+     "caption": "OPD 学生向量与 RL 教师向量方向不同，合并后能同时补上对方缺的能力",
+     "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='RL 教师更新与学生蒸馏更新合并成组合向量并提升跨任务表现的流程'><rect x='12.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='61.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>RL 教师</text><text x='61.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>task vector A</text><rect x='131.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='180.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>OPD 学生</text><text x='180.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>task vector B</text><rect x='250.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='299.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>参数空间合并</text><text x='299.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>αA + βB</text><rect x='369.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='418.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>组合能力</text><text x='418.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>跨任务更强</text><line x1='111.0' y1='100.0' x2='243.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='250.0,100.0 243.0,103.6 243.0,96.4' fill='var(--line-1)'/><line x1='230.0' y1='100.0' x2='243.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='250.0,100.0 243.0,103.6 243.0,96.4' fill='var(--line-1)'/><line x1='349.0' y1='100.0' x2='362.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='369.0,100.0 362.0,103.6 362.0,96.4' fill='var(--line-1)'/><text x='359.0' y='90.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>评估平均分</text></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "RL 教师",
+        "detail": "task vector A"
+       },
+       {
+        "label": "OPD 学生",
+        "detail": "task vector B"
+       },
+       {
+        "label": "参数空间合并",
+        "detail": "αA + βB"
+       },
+       {
+        "label": "组合能力",
+        "detail": "跨任务更强"
+       }
+      ],
+      "edges": [
+       {
+        "from": 0,
+        "to": 2,
+        "label": ""
+       },
+       {
+        "from": 1,
+        "to": 2,
+        "label": ""
+       },
+       {
+        "from": 2,
+        "to": 3,
+        "label": "评估平均分"
+       }
+      ]
+     },
+     "alt": "RL 教师更新与学生蒸馏更新合并成组合向量并提升跨任务表现的流程"
+    },
+    "concepts": [
+     {
+      "name": "Task Vector and Composition（任务向量与可组合性）",
+      "readable": "task vector 就是微调后与基座的参数差 τ = θ_ft − θ_base；把它当成一个可加减的方向，多个任务的向量相加就得到多能力模型。",
+      "analogy": "像给同一辆车装不同改装件：每个改装对应一个位移向量，合起来看能不能同时提升多项性能。",
+      "analogyBreaksDown": "向量相加假设各任务的位移大致正交；两个任务争夺同一批参数时，相加会互相抵消甚至破坏基座能力。",
+      "mechanism": "以基座为原点把每个后训练更新表示成向量，再用不同系数组合；评估组合后模型在多个任务上的平均表现，而不是看单个向量有多强。",
+      "visual": "二维参数平面：RL 更新箭头与 OPD 更新箭头夹角接近直角，合成箭头明显长于任一原箭头。",
+      "prerequisites": [
+       "微调与参数空间",
+       "权重平均式模型合并",
+       "策略蒸馏"
+      ],
+      "selfTest": [
+       "task vector 的定义是什么？",
+       "为什么可组合性与单项性能是两件事？",
+       "参数不共线为什么意味着可以互补？"
+      ],
+      "formula": "\\tau_k=\\theta_k-\\theta_{\\mathrm{base}}"
+     },
+     {
+      "name": "On-Policy Distillation（在策略蒸馏）",
+      "readable": "学生自己在环境里生成轨迹，教师只对这些学生轨迹给反馈，因此参数更新方向和直接模仿教师、或让 RL 教师自己训练都不一样。",
+      "analogy": "像学徒先自己动手做，师傅只在学徒的做法上点评，而不是把师傅的完整操作录像塞给学徒照抄。",
+      "analogyBreaksDown": "学生轨迹分布受学生当前水平限制，教师反馈再准也纠正不到学生根本没探索到的区域。",
+      "mechanism": "用学生策略采样轨迹，教师提供逐步反馈作为监督或奖励信号，得到与 RL 教师不同的参数位移，为合并提供互补方向。",
+      "visual": "两条轨迹对照：教师自己采样，与学生采样后由教师点评，后者分布更贴近学生当前水平。",
+      "prerequisites": [
+       "策略梯度 / RLVR",
+       "知识蒸馏",
+       "分布偏移"
+      ],
+      "selfTest": [
+       "on-policy 蒸馏与离线蒸馏的差别？",
+       "为什么它的更新方向与 RL 教师不同？",
+       "它的主要短板在哪里？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-task-vector-composition",
+      "name": "任务向量线性组合（Task Vector Composition）",
+      "category": "posttraining",
+      "latex": "\\tau_k=\\theta_k-\\theta_{\\mathrm{base}},\\qquad \\theta_{\\mathrm{merged}}=\\theta_{\\mathrm{base}}+\\sum_{k}\\lambda_k\\,\\tau_k,\\qquad \\tau_{\\mathrm{OPD}}\\not\\parallel\\tau_{\\mathrm{RL}}",
+      "symbols": [
+       [
+        "\\theta_{\\mathrm{base}}",
+        "基座模型参数"
+       ],
+       [
+        "\\theta_k",
+        "第 k 个任务微调后的参数"
+       ],
+       [
+        "\\tau_k",
+        "第 k 个任务的 task vector"
+       ],
+       [
+        "\\lambda_k",
+        "合并系数（可按范数缩放）"
+       ],
+       [
+        "\\not\\parallel",
+        "两者方向不共线，即更新子空间互补"
+       ]
+      ],
+      "derivation": [
+       "把每个任务的微调结果写成相对基座的参数位移 τ_k。",
+       "用系数 λ_k 对多个 τ_k 做线性组合，得多任务模型。",
+       "系数按各 τ 的范数缩放，避免某个任务的更新尺度压倒其他任务。",
+       "评估时看组合模型在全部任务上的平均分，而不是看组合向量本身有多长。"
+      ],
+      "analogy": "像用几支不同方向的画笔在同一张画布上叠加颜色，方向越不同，叠加出的色域越宽。",
+      "pitfalls": [
+       "λ 不归一化会整体改变更新范数，等价于换了学习率。",
+       "不同任务的 τ 尺度差异大，不缩放就会由一个任务主导。",
+       "不同 backbone 的 τ 不可混用，合并必须在同一基座坐标系里。"
+      ],
+      "code": "import torch\n\ndef merge_task_vectors(base_sd, vectors, lambdas=None):\n    # base_sd: 基座 state_dict; vectors: [{\"state\": sd, \"name\": str}, ...]\n    lambdas = lambdas or [1.0 / len(vectors)] * len(vectors)\n    out = {k: v.clone() for k, v in base_sd.items()}\n    for w, vec in zip(lambdas, vectors):\n        for k, v in vec[\"state\"].items():\n            if out[k].dtype.is_floating_point:\n                out[k] = out[k] + w * (v - base_sd[k])   # base + sum lambda * tau\n    return out\n\n\ndef tau_norm(merged_sd, base_sd):\n    return sum(((merged_sd[k] - base_sd[k]) ** 2).sum().item()\n               for k in base_sd if base_sd[k].dtype.is_floating_point) ** 0.5\n",
+      "sources": [
+       {
+        "title": "No Task Vector Is an Island: A Comprehensive Study on the Composability of Task Vectors from On-Policy Distillation",
+        "url": "https://arxiv.org/abs/2609.39405v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "OPD 用学生在自己轨迹上的教师反馈训练，其更新通常不同于 RL 教师产生的更新",
+      "在五个领域、两种模型架构上找到同任务与跨任务两类可组合性证据",
+      "同任务内合并 OPD 与 RL 向量可以超过两者，即使 OPD 学生单独更弱",
+      "跨任务 OPD 组合在 8 组 backbone-合并规则对比中 7 组平均分更高",
+      "参数空间分析显示 OPD 与 RL 更新显著不共线",
+      "SmolLM3-3B 的 CODE 域上合并方向优于任一组成方向"
+     ],
+     "uncertain": [
+      "合并系数与合并规则的具体设置摘要未给，公式是通用形式的重构",
+      "「更弱的单项不代表更弱的可组合性」只给了定性解释，机制层面的原因需查原文",
+      "各领域的绝对分值未在摘要中列出"
+     ]
+    }
+   }
+  },
+  {
+   "id": "764c0c088c2c1372",
+   "title": "MeanVoiceFlow2: Joint Optimization of Mean Flow and Content Encoder for Fast One-Step Zero-Shot Voice Conversion",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.40087v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.40087v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.SD",
+    "cs.AI",
+    "cs.LG",
+    "eess.AS"
+   ],
+   "publishedAt": "2026-09-30T04:31:01+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 55.9,
+   "summary": "Flow-matching approaches to voice conversion (VC) have gained attention owing to their high speech quality and strong speaker similarity. Among them, one-step models such as MeanVoiceFlow are particularly attractive because they enable efficient inference; however, their reliance on a computationally intensive content encoder remains a bottleneck. We therefore propose MeanVoiceFlow2, a framework that jointly optimizes a flow-based conversion module and a computationally efficient content encoder. The model is trained through conversion distillation using MeanVoiceFlow and the reconstruction of real data. We further incorporate diffusion-GAN training with sample mixing and teacher-guided conditioning augmentation to enhance realism and disentanglement. Experiments on zero-shot VC showed that MeanVoiceFlow2 achieved higher perceptual quality and approximately $9\\times$ faster inference than MeanVoiceFlow while maintaining comparable speaker similarity. Audio samples are available at https://www.kecl.ntt.co.jp/people/kaneko.takuhiro/projects/meanvoiceflow2/.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "764c0c088c2c1372",
+    "tldr": "联合优化一步流匹配转换模块与轻量内容编码器，零样本语音转换质量更高、推理快约9倍。",
+    "keyPoints": [
+     "一步模型 MeanVoiceFlow 的瓶颈是计算量大的内容编码器",
+     "MeanVoiceFlow2 联合优化流式转换模块与高效内容编码器",
+     "训练用 MeanVoiceFlow 做转换蒸馏 + 真实数据重建",
+     "再加 diffusion-GAN、样本混合与教师引导条件增强",
+     "零样本 VC 感知质量更高，推理约 9 倍加速，说话人相似度相当"
+    ],
+    "why": "一步流匹配+蒸馏+GAN 是生成式后训练的常见组合；9 倍推理加速与联合优化编码器的思路可迁移到 TTS、语音转换与多模态生成部署。",
+    "difficulty": "medium",
+    "tags": [
+     "voice-conversion",
+     "flow-matching",
+     "one-step-generation",
+     "knowledge-distillation",
+     "diffusion-gan",
+     "zero-shot"
+    ],
+    "entities": [
+     "MeanVoiceFlow",
+     "MeanVoiceFlow2",
+     "diffusion-GAN",
+     "zero-shot voice conversion"
+    ],
+    "diagram": {
+     "kind": "architecture",
+     "title": "MeanVoiceFlow2 结构与监督",
+     "caption": "轻量内容编码器与一步 mean-flow 转换模块联合优化，训练侧由蒸馏、真实重建、diffusion-GAN 三路监督。",
+     "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 200'><defs><marker id='arw' markerWidth='8' markerHeight='8' refX='7' refY='4' orient='auto'><polygon points='0,0 8,4 0,8' fill='currentColor'/></marker></defs><text x='14' y='24' font-size='13' fill='var(--fg-1)'>推理</text><rect x='14' y='32' width='118' height='34' rx='6' fill='none' stroke='var(--line-1)'/><text x='73' y='54' font-size='13' text-anchor='middle' fill='var(--fg-1)'>轻量内容编码器</text><rect x='14' y='84' width='118' height='34' rx='6' fill='none' stroke='var(--line-1)'/><text x='73' y='106' font-size='13' text-anchor='middle' fill='var(--fg-1)'>说话人 / 条件</text><rect x='180' y='32' width='130' height='56' rx='6' fill='var(--accent)' fill-opacity='0.14' stroke='var(--accent)'/><text x='245' y='58' font-size='13' text-anchor='middle' fill='var(--fg-1)'>一步 mean-flow</text><text x='245' y='78' font-size='13' text-anchor='middle' fill='var(--fg-1)'>转换模块</text><rect x='370' y='32' width='94' height='36' rx='6' fill='none' stroke='var(--line-1)'/><text x='417' y='55' font-size='13' text-anchor='middle' fill='var(--fg-1)'>输出波形</text><line x1='132' y1='45' x2='174' y2='50' stroke='var(--accent)' marker-end='url(#arw)'/><text x='134' y='28' font-size='13' fill='var(--fg-1)'>内容特征</text><line x1='132' y1='98' x2='174' y2='84' stroke='var(--accent)' marker-end='url(#arw)'/><line x1='310' y1='54' x2='364' y2='54' stroke='var(--accent)' marker-end='url(#arw)'/><text x='314' y='44' font-size='13' fill='var(--fg-1)'>一步采样</text><text x='14' y='132' font-size='13' fill='var(--fg-1)'>训练监督</text><rect x='14' y='142' width='140' height='44' rx='6' fill='none' stroke='var(--line-1)'/><text x='84' y='162' font-size='13' text-anchor='middle' fill='var(--fg-1)'>转换蒸馏</text><text x='84' y='180' font-size='13' text-anchor='middle' fill='var(--fg-1)'>来自 MeanVoiceFlow</text><rect x='170' y='142' width='140' height='44' rx='6' fill='none' stroke='var(--line-1)'/><text x='240' y='171' font-size='13' text-anchor='middle' fill='var(--fg-1)'>真实数据重建</text><rect x='326' y='142' width='140' height='44' rx='6' fill='none' stroke='var(--line-1)'/><text x='396' y='162' font-size='13' text-anchor='middle' fill='var(--fg-1)'>diffusion-GAN</text><text x='396' y='180' font-size='13' text-anchor='middle' fill='var(--fg-1)'>样本混合+条件增强</text><line x1='84' y1='142' x2='196' y2='92' stroke='var(--line-1)' stroke-dasharray='4 4' marker-end='url(#arw)'/><line x1='240' y1='142' x2='240' y2='92' stroke='var(--line-1)' stroke-dasharray='4 4' marker-end='url(#arw)'/><line x1='396' y1='142' x2='304' y2='92' stroke='var(--line-1)' stroke-dasharray='4 4' marker-end='url(#arw)'/></svg>",
+     "spec": {
+      "type": "architecture",
+      "nodes": [
+       {
+        "label": "轻量内容编码器",
+        "detail": "计算高效、可与转换模块联合优化的内容编码器"
+       },
+       {
+        "label": "说话人 / 条件",
+        "detail": "零样本 VC 的目标说话人条件，进入转换模块"
+       },
+       {
+        "label": "一步 mean-flow 转换模块",
+        "detail": "flow-based 转换模块，一步生成，推理约快 9 倍"
+       },
+       {
+        "label": "输出波形",
+        "detail": "转换后的目标说话人语音"
+       },
+       {
+        "label": "转换蒸馏",
+        "detail": "以 MeanVoiceFlow 为教师提供转换监督"
+       },
+       {
+        "label": "真实数据重建",
+        "detail": "在真实数据上做重建监督"
+       },
+       {
+        "label": "diffusion-GAN",
+        "detail": "样本混合 + 教师引导条件增强，提升真实感与解耦"
+       }
+      ],
+      "edges": [
+       {
+        "from": 0,
+        "to": 2,
+        "label": "内容特征"
+       },
+       {
+        "from": 1,
+        "to": 2,
+        "label": "说话人条件"
+       },
+       {
+        "from": 2,
+        "to": 3,
+        "label": "一步生成"
+       },
+       {
+        "from": 4,
+        "to": 2,
+        "label": "蒸馏监督"
+       },
+       {
+        "from": 5,
+        "to": 2,
+        "label": "重建监督"
+       },
+       {
+        "from": 6,
+        "to": 2,
+        "label": "对抗与解耦监督"
+       }
+      ]
+     },
+     "alt": "架构图：轻量内容编码器与说话人条件输入一步 mean-flow 转换模块并输出波形；训练侧由转换蒸馏、真实数据重建、diffusion-GAN 三条虚线监督共同训练该模块。"
+    },
+    "concepts": [
+     {
+      "name": "平均速度场一步生成 Mean Flow One-Step Generation",
+      "readable": "mean flow 不学每一步的瞬时速度，而是直接学从时刻 t 到终点 1 的平均速度 u(x_t,t)；推理时用起点加一次平均速度就得到结果，所以只需一次前向。",
+      "analogy": "像打车：普通扩散每到一个路口都要重新问一次导航（下一步往哪开），mean flow 直接问「从这里到终点整段路平均往哪开」，一次踩到底就到。",
+      "analogyBreaksDown": "现实里路况固定，所以「平均方向」是个常数；生成任务里平均速度依赖当前所在位置 x_t 和时间区间，位置一变平均方向就变，所以仍要一个网络去预测它，一步近似在分布复杂时会变糙。",
+      "mechanism": "把瞬时速度场沿时间积分得到平均速度场，再用恒等式把它写成数据对差 x_1-x_0 在 x_t 下的条件期望，于是平均速度可以直接用回归目标训练，不需要逐步展开轨迹；代价是要额外估计与瞬时速度/时间导数相关的项，换来的是单次前向推理。",
+      "visual": "横轴为时间 t（0 → 1），纵轴为状态 x。若干灰色细曲线表示从同一 x_0 出发的不同采样轨迹，一条加粗彩色直线表示平均位移 x_1 - x_0，线端标注「一次前向」。",
+      "prerequisites": [
+       "flow matching / 连续归一化流（CNF）基础",
+       "扩散模型的速度场参数化与条件期望写法",
+       "回归损失与蒙特卡洛估计"
+      ],
+      "selfTest": [
+       "一步 mean flow 采样与 DDIM 少步采样在计算图和步数上的根本差别是什么？",
+       "写出平均速度场 u(x_t,t) 与瞬时速度 v 的积分关系，以及它与 E[x_1-x_0|x_t] 的恒等式。",
+       "为什么 t=0 处的一步近似在目标分布复杂时误差最大？"
+      ],
+      "formula": "u(x_t,t)=\\mathbb{E}[x_1-x_0\\mid x_t],\\quad x_1\\approx x_0+u(x_0,0)"
+     },
+     {
+      "name": "转换蒸馏加扩散GAN联合训练 Conversion Distillation with Diffusion-GAN",
+      "readable": "学生系统（新编码器 + 新转换模块）一边模仿教师 MeanVoiceFlow 的转换输出，一边重建真实语音，再用 diffusion-GAN 的判别器逼真，并用样本混合与教师引导条件增强稳住训练。",
+      "analogy": "像学徒同时跟两位老师加一位评委：一位老师（MeanVoiceFlow）演示成品动作，另一位（真实录音）纠正基本功，评委（GAN 判别器）只挑刺「像不像真人」。",
+      "analogyBreaksDown": "评委只给真伪分数，不指出错在哪，所以对抗训练容易不稳定；而且学生容量有限时会把教师的错误一起学过来，蒸馏误差会叠加，不能只靠模仿。",
+      "mechanism": "用转换蒸馏获得教师的一步转换能力，用真实数据重建把学生拉回真实数据分布，diffusion-GAN 在生成过程上加对抗损失提升真实感；样本混合扩大训练覆盖，教师引导的条件增强提供更干净的条件输入以改善内容-说话人解耦。",
+      "visual": "中心是学生模型方块，三条不同粗细/虚实的箭头指向它：一条来自 MeanVoiceFlow 方块（蒸馏），一条来自真实音频圆角框（重建），一条来自判别器方块（对抗）；判别器两侧用双向箭头标注真/假样本流。",
+      "prerequisites": [
+       "知识蒸馏（教师-学生、软目标）",
+       "GAN 对抗训练与判别器目标",
+       "条件增强 / 数据增强",
+       "语音转换中的内容与说话人解耦"
+      ],
+      "selfTest": [
+       "为什么在蒸馏之外还要保留真实数据重建这一路监督？",
+       "样本混合（sample mixing）与教师引导条件增强分别试图缓解什么问题？",
+       "只保留 GAN 对抗损失、去掉蒸馏会发生什么？"
+      ],
+      "formula": "\\mathcal{L}=\\mathcal{L}_{distill}+\\lambda_{rec}\\mathcal{L}_{rec}+\\lambda_{adv}\\mathcal{L}_{adv}"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-meanflow-onestep",
+      "name": "平均速度场恒等式与一步采样（Mean Flow Identity and One-Step Sampling）",
+      "category": "posttraining",
+      "glyph": "𝔼",
+      "tags": [
+       "flow-matching",
+       "one-step",
+       "voice-conversion"
+      ],
+      "latex": "u(x_t, t) = \\mathbb{E}\\!\\left[\\, x_1 - x_0 \\mid x_t \\,\\right], \\qquad x_1 \\approx x_0 + u(x_0, 0)",
+      "html": "<code>u(x_t, t) = E[ x_1 - x_0 | x_t ],  x_1 ≈ x_0 + u(x_0, 0)</code>",
+      "symbols": [
+       [
+        "x_0",
+        "起点状态（可理解为源语音的内容/声学表示或噪声起点），形状 [B, D] 或 [B, T, D]"
+       ],
+       [
+        "x_1",
+        "终点状态（目标说话人语音表示），与 x_0 同形状"
+       ],
+       [
+        "x_t",
+        "t ∈ [0,1] 处的插值状态，常用线性路径 x_t = (1-t)x_0 + t x_1"
+       ],
+       [
+        "u(x_t, t)",
+        "从 t 到 1 的平均速度场，由网络预测，形状同 x"
+       ],
+       [
+        "𝔼[· | x_t]",
+        "在给定 x_t 的条件下对所有数据对 (x_0, x_1) 求期望"
+       ]
+      ],
+      "derivation": [
+       "flow matching 用连续归一化流把先验推向数据，轨迹由瞬时速度 v = dx/dt 决定，但采样需要多步数值积分。",
+       "为了少步生成，定义从 t 到终点 1 的平均速度 u(x_t,t)，它等于该区间上瞬时速度的平均（对时间做积分再除以 1-t）。",
+       "把 u 的定义代入轨迹表达式可得到恒等式 u(x_t,t) = E[x_1 - x_0 | x_t]，于是平均速度能直接用数据对回归训练，无需展开中间步。",
+       "推理时取 t = 0，用 x_1 ≈ x_0 + u(x_0, 0) 完成一步生成；训练中还需估计与瞬时速度/时间导数相关的项来正确约束 u（本文具体做法摘要未给出）。"
+      ],
+      "analogy": "问路而不是自己走：不问每个路口该怎么拐（瞬时速度），而是问「从这儿到终点整体朝哪走」（平均速度），一次就能抵达。",
+      "pitfalls": [
+       "把 u(x_t,t) 当成瞬时速度 v(x_t,t) 使用，导致采样步数与公式不匹配。",
+       "忘记 u 是 t→1 区间上的平均量，t=0 处的一步近似在目标分布复杂时误差最大。",
+       "误以为一步生成一定比多步质量差：本文报告感知质量反而更高，但评测设置需回原文确认。",
+       "混淆 x_0 与 x_1 的角色（源语音/噪声起点 vs 目标说话人语音），导致重建与蒸馏损失的方向写反。"
+      ],
+      "code": "import torch\nimport torch.nn as nn\n\nclass MeanFlowNet(nn.Module):\n    \"\"\"预测平均速度场 u(x_t, t)，输出与输入同形状。\"\"\"\n    def __init__(self, dim=64, hidden=128):\n        super().__init__()\n        self.net = nn.Sequential(\n            nn.Linear(dim + 1, hidden), nn.SiLU(),\n            nn.Linear(hidden, hidden), nn.SiLU(),\n            nn.Linear(hidden, dim),\n        )\n\n    def forward(self, x_t, t):                 # x_t: [B, D], t: [B] in [0, 1]\n        return self.net(torch.cat([x_t, t[:, None]], dim=-1))\n\ndef mean_flow_loss(model, x0, x1):\n    \"\"\"回归 u(x_t, t) -> x_1 - x_0 的蒙特卡洛估计。\"\"\"\n    t = torch.rand(x0.size(0), device=x0.device)\n    x_t = (1 - t)[:, None] * x0 + t[:, None] * x1\n    target = x1 - x0\n    return ((model(x_t, t) - target) ** 2).mean()\n\n@torch.no_grad()\ndef one_step_sample(model, x0):\n    \"\"\"一步采样：x_1 ~= x_0 + u(x_0, 0)。\"\"\"\n    t0 = torch.zeros(x0.size(0), device=x0.device)\n    return x0 + model(x0, t0)\n\nif __name__ == \"__main__\":\n    dim, B = 64, 8\n    model = MeanFlowNet(dim)\n    x0, x1 = torch.randn(B, dim), torch.randn(B, dim)\n    loss = mean_flow_loss(model, x0, x1)\n    out = one_step_sample(model, x0)\n    print(loss.item(), out.shape)",
+      "sources": [
+       {
+        "title": "MeanVoiceFlow2: Joint Optimization of Mean Flow and Content Encoder for Fast One-Step Zero-Shot Voice Conversion",
+        "url": "https://arxiv.org/abs/2609.40087v1"
+       },
+       {
+        "title": "MeanVoiceFlow2 audio samples",
+        "url": "https://www.kecl.ntt.co.jp/people/kaneko.takuhiro/projects/meanvoiceflow2/"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "flow-matching 类语音转换方法因高音质与强说话人相似度而受到关注。",
+      "MeanVoiceFlow 属于一步模型，优势是推理高效。",
+      "MeanVoiceFlow 依赖计算量大的内容编码器，这是其瓶颈。",
+      "MeanVoiceFlow2 联合优化 flow-based 转换模块与计算高效的内容编码器。",
+      "训练包含两路：用 MeanVoiceFlow 做转换蒸馏、以及在真实数据上做重建。",
+      "进一步引入 diffusion-GAN 训练，含样本混合与教师引导的条件增强，用于提升真实感与解耦。",
+      "零样本 VC 实验中 MeanVoiceFlow2 感知质量更高、推理约快 9 倍，说话人相似度与 MeanVoiceFlow 相当。",
+      "摘要给出的音频样例页为 kecl.ntt.co.jp 下的项目页。"
+     ],
+     "uncertain": [
+      "本文转换蒸馏损失（conversion distillation）的确切形式需看原文；本条目只写了通用的「蒸馏 + 重建 + 对抗」加权形式。",
+      "平均速度场恒等式 u(x_t,t)=E[x_1-x_0|x_t] 与一步采样 x_1≈x_0+u(x_0,0) 取自 mean flow 领域的标准表述，本文是否原样采用、以及训练时如何估计额外项需看原文。",
+      "约 9 倍加速的测试硬件、批大小、是否计入内容编码器开销，摘要未说明。",
+      "sample mixing 与 teacher-guided conditioning augmentation 的具体实现细节摘要未给出。",
+      "「计算高效的内容编码器」的具体结构与参数量/计算量指标摘要未给出。",
+      "diffusion-GAN 是在哪一步（生成过程还是去噪过程）施加对抗损失、判别器结构如何，摘要未说明。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "c116aff0dfdf69ae",
+   "title": "QATFactory: A Versatile, Deployment-Aligned Framework for Quantization-aware Training and Distillation of LLMs",
+   "category": "posttraining",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39223v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39223v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG"
+   ],
+   "publishedAt": "2026-09-29T20:00:35+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 63.0,
+   "summary": "Large language model (LLM) inference is increasingly moving toward lower precision to realize the throughput of hardware accelerators, but aggressive post-training quantization (PTQ) can degrade model quality. We present QATFactory, an open-source framework for deployment-aligned quantization-aware distillation (QAD) and reinforcement learning (QARL). QATFactory simulates deployment-time quantization while performing matrix multiplications in BF16, allowing models to adapt to quantization noise without requiring training hardware that natively supports the target format; for example, it supports NVFP4 training on H100 GPUs, which lack FP4 Tensor Cores. The framework supports NVFP4, MXFP4, and llama.cpp's Q4_K format; dense and mixture-of-experts models; and both full-parameter and LoRA-based training. It exports checkpoints directly to vLLM and llama.cpp without an additional lossy conversion step or added inference overhead. With QATFactory, we conduct extensive experiments on models ranging from 8B to 230B parameters and evaluate exported checkpoints in production inference engines. Across models and formats, QAD consistently improves deployed-model quality over strong PTQ baselines. On Qwen3.5-9B, QAD achieves average benchmark accuracies of 68.9% under NVFP4 and 66.0% under MXFP4, outperforming the best PTQ results of 65.4% and 56.4%, respectively. Through our experiments, we found that although both FP4 formats quantize weights and activations at deployment, the best training strategy is format-dependent: NVFP4 generally performs better when only weights are quantized during training, whereas MXFP4 benefits from quantizing both weights and activations. At a fixed training token budget, training on fewer 32K sequences improves average accuracy by 1.9 points over tra",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "c116aff0dfdf69ae",
+    "tldr": "在 BF16 中模拟部署量化：无需 FP4 硬件即可训练 NVFP4 模型，并直接导出到 vLLM。",
+    "keyPoints": [
+     "以 BF16 矩阵乘配合量化误差模拟，摆脱对 FP4 硬件的依赖",
+     "覆盖 NVFP4、MXFP4 与 llama.cpp 的 Q4_K",
+     "支持稠密与 MoE 模型、全参与 LoRA 训练",
+     "导出即用，无需额外有损转换或推理开销",
+     "Qwen3.5-9B 上 NVFP4 68.9%、MXFP4 66.0%"
+    ],
+    "why": "工程岗最常问「怎么把大模型压到能上线」；这篇给出可复现的量化感知蒸馏框架，还有格式相关的反直觉结论。",
+    "difficulty": "medium",
+    "tags": [
+     "posttraining",
+     "quantization",
+     "qat",
+     "distillation",
+     "inference"
+    ],
+    "entities": [
+     "QATFactory",
+     "NVFP4",
+     "MXFP4",
+     "Q4_K",
+     "vLLM",
+     "Qwen3.5-9B"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "QATFactory 的量化感知蒸馏",
+     "caption": "前向在 BF16 里算，量化误差以模拟方式注入，导出时无需再转换",
+     "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='从 BF16 前向、量化模拟、QAD 训练到直接导出推理引擎的四步流程'><rect x='12.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='61.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>BF16 前向</text><text x='61.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>矩阵乘</text><rect x='131.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='180.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>量化模拟</text><text x='180.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>FP4 / Q4_K</text><rect x='250.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='299.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>QAD 训练</text><text x='299.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>全参或 LoRA</text><rect x='369.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='418.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>直接导出</text><text x='418.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>vLLM / llama</text><line x1='111.0' y1='100.0' x2='124.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='131.0,100.0 124.0,103.6 124.0,96.4' fill='var(--line-1)'/><line x1='230.0' y1='100.0' x2='243.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='250.0,100.0 243.0,103.6 243.0,96.4' fill='var(--line-1)'/><line x1='349.0' y1='100.0' x2='362.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='369.0,100.0 362.0,103.6 362.0,96.4' fill='var(--line-1)'/><text x='359.0' y='90.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>无有损转换</text></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "BF16 前向",
+        "detail": "矩阵乘"
+       },
+       {
+        "label": "量化模拟",
+        "detail": "FP4 / Q4_K"
+       },
+       {
+        "label": "QAD 训练",
+        "detail": "全参或 LoRA"
+       },
+       {
+        "label": "直接导出",
+        "detail": "vLLM / llama"
+       }
+      ],
+      "edges": [
+       {
+        "from": 0,
+        "to": 1,
+        "label": ""
+       },
+       {
+        "from": 1,
+        "to": 2,
+        "label": ""
+       },
+       {
+        "from": 2,
+        "to": 3,
+        "label": "无有损转换"
+       }
+      ]
+     },
+     "alt": "从 BF16 前向、量化模拟、QAD 训练到直接导出推理引擎的四步流程"
+    },
+    "concepts": [
+     {
+      "name": "Deployment-aligned Quantization Simulation（部署对齐的量化模拟）",
+      "readable": "训练时矩阵乘仍在 BF16 里做，但权重和激活先按部署格式量化再反量化，让模型提前适应量化噪声，而不要求训练卡原生支持该格式。",
+      "analogy": "像考前就用真正的答题卡模拟填涂，而不是平时随便写、进考场才发现格子对不上。",
+      "analogyBreaksDown": "模拟的是量化误差的数值效应，不等于真实内核的算子融合与内存访问行为，导出后性能仍可能不同。",
+      "mechanism": "在计算图里插入量化-反量化节点，前向用高精度累加，反向对量化算子用直通估计器传梯度，从而在不支持 FP4 的卡上训练 FP4 模型。",
+      "visual": "一条数轴：连续权重点被吸附到最近的 FP4 格点，旁边用短箭头标出被舍入掉的残差。",
+      "prerequisites": [
+       "数值格式与量化基础",
+       "直通估计器 STE",
+       "LoRA 与全参微调"
+      ],
+      "selfTest": [
+       "为什么 BF16 矩阵乘也能训练 NVFP4 模型？",
+       "量化模拟与训练后量化 PTQ 的区别？",
+       "STE 在反向做了什么样的近似？"
+      ],
+      "formula": "\\hat{W}=\\Delta\\cdot\\mathrm{clip}\\!\\left(\\mathrm{round}(W/\\Delta)\\right)"
+     },
+     {
+      "name": "Format-dependent Training Recipe（格式相关的训练配方）",
+      "readable": "NVFP4 与 MXFP4 在部署时都量化权重和激活，但训练时最优策略不同：NVFP4 只量化权重更好，MXFP4 需要权重与激活一起量化。",
+      "analogy": "像两把刻度不同的秤：一把只需你知道毛重，另一把对皮重也敏感，配平方式自然不一样。",
+      "analogyBreaksDown": "这是实验观察到的经验规律，换模型规模、数据或校准方案后未必成立。",
+      "mechanism": "两种格式的缩放因子粒度与可表示范围不同，激活量化引入的噪声量级随之不同，于是改变了「要不要在训练时量化激活」的最优选择。",
+      "visual": "两组并列柱状图，每组三根：PTQ 基线、只量化权重、权重加激活一起量化。",
+      "prerequisites": [
+       "FP4 格式与缩放因子",
+       "量化粒度（per-tensor / per-block）"
+      ],
+      "selfTest": [
+       "两种 FP4 格式的训练策略差异是什么？",
+       "为什么激活量化会改变结论？",
+       "换模型后能直接照搬这套配方吗？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-fp4-block-quantization",
+      "name": "分块伪量化与直通梯度（Block-wise Fake Quantization）",
+      "category": "posttraining",
+      "latex": "\\Delta_b=\\frac{\\max_{w\\in\\mathcal{B}_b}|w|}{q_{\\max}},\\qquad \\hat{w}=\\Delta_b\\cdot\\mathrm{clip}\\!\\left(\\mathrm{round}\\!\\left(\\frac{w}{\\Delta_b}\\right),-q_{\\max},q_{\\max}\\right),\\qquad \\frac{\\partial\\hat{w}}{\\partial w}\\approx 1",
+      "symbols": [
+       [
+        "\\mathcal{B}_b",
+        "第 b 个量化块（如 16 或 32 个元素）"
+       ],
+       [
+        "q_{\\max}",
+        "目标格式可表示的最大幅值"
+       ],
+       [
+        "\\Delta_b",
+        "该块的缩放因子"
+       ],
+       [
+        "\\hat{w}",
+        "反量化后的权重（前向实际使用）"
+       ],
+       [
+        "\\approx 1",
+        "反向用直通估计器，把 round/clip 当恒等映射"
+       ]
+      ],
+      "derivation": [
+       "按块取最大绝对值，定出该块能表示的最大幅值对应的缩放因子 Δ_b。",
+       "把权重除以 Δ_b 后四舍五入到整数格点，得到低位宽表示。",
+       "裁剪到目标格式范围，再乘回 Δ_b 得到反量化权重。",
+       "反向传播时对 round 与 clip 采用直通估计器，让梯度近似无损地穿过去。"
+      ],
+      "analogy": "像用有限档位的台阶去近似一条连续曲线，台阶高度由这一段的最大值决定。",
+      "pitfalls": [
+       "块越大，离群值越容易主导 Δ，其它元素分辨率被牺牲。",
+       "只量化权重与同时量化激活的噪声量级不同，不能用同一配方。",
+       "反量化后必须保持高精度累加，否则误差会在矩阵乘里被放大。"
+      ],
+      "code": "import torch\n\ndef fake_quant_blockwise(w, q_max=6.0, block=32):\n    # NVFP4 的 E2M1 可表示范围约为 [-6, 6]\n    shape = w.shape\n    wb = w.reshape(-1, block)\n    delta = wb.abs().amax(dim=1, keepdim=True).clamp(min=1e-8) / q_max\n    q = torch.round(wb / delta).clamp(-q_max, q_max)\n    dq = (q * delta).reshape(shape)\n    # straight-through estimator: 前向用量化值, 反向梯度直通\n    return w + (dq - w).detach()\n",
+      "sources": [
+       {
+        "title": "QATFactory: A Versatile, Deployment-Aligned Framework for Quantization-aware Training and Distillation of LLMs",
+        "url": "https://arxiv.org/abs/2609.39223v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "QATFactory 在 BF16 中执行矩阵乘，同时模拟部署时量化，因而可在缺少 FP4 张量核心的 H100 上做 NVFP4 训练",
+      "支持 NVFP4、MXFP4 与 llama.cpp 的 Q4_K，稠密与 MoE，全参与 LoRA",
+      "检查点可直接导出到 vLLM 与 llama.cpp，无额外有损转换或推理开销",
+      "实验覆盖 8B 到 230B 模型，并在生产推理引擎中评估导出模型",
+      "Qwen3.5-9B 上 QAD 在 NVFP4 得 68.9%、MXFP4 得 66.0%，高于最佳 PTQ 的 65.4% 与 56.4%",
+      "最佳训练策略与格式有关：NVFP4 偏向只量化权重，MXFP4 偏向同时量化权重与激活"
+     ],
+     "uncertain": [
+      "摘要末尾被截断，「更少 32K 序列训练提升 1.9 分」的完整对照实验需查原文",
+      "QARL（量化感知强化学习）部分的具体结果摘要未提及",
+      "伪量化公式是通用分块 QDQ 形式的重构，块大小与格式细节以原文为准"
+     ]
+    }
+   }
+  },
+  {
+   "id": "171b76b97d2612ff",
+   "title": "Label-free steering: Compressing test-time reinforcement learning into bias-only subspaces",
+   "category": "rl",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.18587",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.18587",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.18587",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-28T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 50.2,
+   "summary": "Test-time reinforcement learning (TTRL) enables models to improve their reasoning without relying on labeled training data, but existing approaches typically optimize a large fraction of the model parameters. This raises a natural question: can effective test-time adaptation emerge when both the reward signal and the optimization space are severely restricted? We answer this question with label-free bias-only TTRL, which uses majority-vote pseudolabels as rewards and optimizes only ~100K bias parameters while keeping the pretrained backbone frozen. On MATH-500, our approach reaches 76.67% accuracy with Qwen2.5-7B, slightly exceeding our own labeled bias-steering reproduction while optimizing 76,000x fewer parameters than full-parameter TTRL. The same training procedure improves performance across vision-language and audio reasoning tasks, including MathVista, AI2D, LogicVista, and MMAU. We further show that the learned steering vectors transfer to 4,500 held-out MATH problems, indicating that the adaptation is not limited to the problems used during test-time optimization. Finally, we analyze why this highly restricted adaptation can work, showing that majority-vote reliability improves with rollout consensus and that bias subspaces with greater accessible gradient energy exhibit stronger downstream trainability. These results demonstrate that substantial test-time adaptation can emerge from optimizing a tiny bias-only subspace using entirely label-free rewards.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "171b76b97d2612ff",
+    "tldr": "只调 10 万个 bias 参数、用多数投票当奖励，Qwen2.5-7B 在 MATH-500 达 76.67%。",
+    "keyPoints": [
+     "测试时强化学习以往要优化大部分模型参数",
+     "冻结主干，只优化约 100K 的 bias 参数",
+     "奖励来自多数投票伪标签，完全不需要标签",
+     "MATH-500 上超过自家有标签的 bias 微调复现",
+     "可迁移到 4500 道留出题，并扩展到视觉与音频推理"
+    ],
+    "why": "面试常问「测试时算力该花在哪」；这篇给出极端受限条件下的有效配方，也说明了伪标签奖励何时可信。",
+    "difficulty": "medium",
+    "tags": [
+     "rl",
+     "test-time-adaptation",
+     "bias-tuning",
+     "pseudo-label",
+     "reasoning"
+    ],
+    "entities": [
+     "TTRL",
+     "Qwen2.5-7B",
+     "MATH-500",
+     "majority vote",
+     "MathVista",
+     "MMAU"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "无标签的 bias-only 测试时强化",
+     "caption": "同一题多次采样投票得到伪标签奖励，只在极小的 bias 子空间上更新",
+     "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='从无标签问题、多次采样、多数投票到只更新 bias 参数的四步流程'><rect x='12.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='61.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>无标签题</text><text x='61.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>MATH-500</text><rect x='131.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='180.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>多次采样</text><text x='180.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>rollout</text><rect x='250.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='299.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>多数投票</text><text x='299.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>伪标签奖励</text><rect x='369.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='418.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>只更新 bias</text><text x='418.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>约 100K 参数</text><line x1='111.0' y1='100.0' x2='124.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='131.0,100.0 124.0,103.6 124.0,96.4' fill='var(--line-1)'/><line x1='230.0' y1='100.0' x2='243.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='250.0,100.0 243.0,103.6 243.0,96.4' fill='var(--line-1)'/><line x1='349.0' y1='100.0' x2='362.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='369.0,100.0 362.0,103.6 362.0,96.4' fill='var(--line-1)'/><text x='359.0' y='90.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>策略优化</text></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "无标签题",
+        "detail": "MATH-500"
+       },
+       {
+        "label": "多次采样",
+        "detail": "rollout"
+       },
+       {
+        "label": "多数投票",
+        "detail": "伪标签奖励"
+       },
+       {
+        "label": "只更新 bias",
+        "detail": "约 100K 参数"
+       }
+      ],
+      "edges": [
+       {
+        "from": 0,
+        "to": 1,
+        "label": ""
+       },
+       {
+        "from": 1,
+        "to": 2,
+        "label": ""
+       },
+       {
+        "from": 2,
+        "to": 3,
+        "label": "策略优化"
+       }
+      ]
+     },
+     "alt": "从无标签问题、多次采样、多数投票到只更新 bias 参数的四步流程"
+    },
+    "concepts": [
+     {
+      "name": "Bias-only Subspace Tuning（只调偏置子空间）",
+      "readable": "把可训练参数限制在各层的 bias 项（约 10 万个），主干权重全部冻结，用极小的优化空间换取测试时的稳定适应。",
+      "analogy": "像不改造整台机器，只微调所有的对零旋钮来改变输出。",
+      "analogyBreaksDown": "偏置只能整体平移激活，表达不了需要重新组合特征的任务；任务若要求新的特征方向，这个子空间就不够用。",
+      "mechanism": "冻结主干只训 bias，等价于在激活空间上学一组可加性的平移/缩放（steering vector），参数极少、几乎不会灾难性遗忘。",
+      "visual": "每层画成一条水平线，线上只有一个小滑块（bias）可以移动，权重方块都是灰色锁定的。",
+      "prerequisites": [
+       "参数高效微调（LoRA 等）",
+       "测试时适应",
+       "梯度子空间直觉"
+      ],
+      "selfTest": [
+       "bias-only 与 LoRA 的可训练空间差别在哪？",
+       "为什么参数量能少好几个数量级？",
+       "什么类型的任务上它会失效？"
+      ],
+      "formula": "\\theta'=\\theta+\\Delta,\\qquad \\Delta\\in\\{\\text{bias terms only}\\},\\ \\ |\\Delta|\\approx 10^{5}"
+     },
+     {
+      "name": "Majority-vote Pseudo-label Reward（多数投票伪标签奖励）",
+      "readable": "对同一道题采样多条推理链，把出现次数最多的答案当成伪标签，用它构造奖励信号，不需要任何人工标注。",
+      "analogy": "像一群学生独立做题后对答案，票数最多的那个当标准答案，再用它互相批改。",
+      "analogyBreaksDown": "题目太难时多数票本身就错，奖励会把模型往错误方向推：一致性高不等于正确。",
+      "mechanism": "采样 rollout、抽取最终答案、按票数取众数作为伪标签，再用「是否与伪标签一致」构造 0/1 奖励，只在 bias 子空间上做策略优化。",
+      "visual": "一题下面画 8 条推理链，末尾答案聚成三堆，最大那堆着色标为「伪标签」。",
+      "prerequisites": [
+       "RLVR / RLHF 基础",
+       "自一致性采样",
+       "伪标签与噪声奖励"
+      ],
+      "selfTest": [
+       "伪标签奖励的噪声来自哪里？",
+       "为什么投票一致性会提升可靠性？",
+       "多数票犯错时会发生什么？"
+      ],
+      "formula": "\\hat{y}(x)=\\arg\\max_{a}\\textstyle\\sum_{i=1}^{K}\\mathbb{1}[\\mathrm{Ans}(y_i)=a]"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-majority-vote-pseudolabel",
+      "name": "多数投票伪标签奖励（Majority-vote Pseudo-label Reward）",
+      "category": "rl",
+      "latex": "\\hat{y}(x)=\\arg\\max_{a}\\sum_{i=1}^{K}\\mathbb{1}\\big[\\mathrm{Ans}(y_i)=a\\big],\\qquad r_i=\\mathbb{1}\\big[\\mathrm{Ans}(y_i)=\\hat{y}(x)\\big],\\qquad \\nabla_\\Delta J=\\mathbb{E}\\big[r_i\\,\\nabla_\\Delta\\log\\pi_\\Delta(y_i\\mid x)\\big]",
+      "symbols": [
+       [
+        "x",
+        "测试时的问题"
+       ],
+       [
+        "K",
+        "每题采样的推理链条数"
+       ],
+       [
+        "y_i",
+        "第 i 条采样推理链"
+       ],
+       [
+        "\\mathrm{Ans}(\\cdot)",
+        "从推理链抽取最终答案"
+       ],
+       [
+        "\\hat{y}(x)",
+        "多数投票得到的伪标签"
+       ],
+       [
+        "r_i",
+        "第 i 条链的 0/1 奖励"
+       ],
+       [
+        "\\Delta",
+        "只包含 bias 的参数增量"
+       ]
+      ],
+      "derivation": [
+       "对同一问题采样 K 条推理链，各自抽取最终答案。",
+       "统计每个答案的票数，取众数作为伪标签 ŷ。",
+       "把「答案与伪标签一致」定义为奖励 1，否则 0，完全不需要人工标签。",
+       "在 bias-only 子空间上做策略梯度更新，主干参数保持冻结。"
+      ],
+      "analogy": "像无标准答案的竞赛用「群体投票」当参考答案，再按是否与参考答案一致给分。",
+      "pitfalls": [
+       "K 太小时众数不稳定，奖励噪声会主导更新。",
+       "伪标签本身可能全票错误，需要一致性筛选或置信度门槛。",
+       "只在 bias 空间优化，限制了模型能修正的错误类型。"
+      ],
+      "code": "import torch\nfrom collections import Counter\n\ndef majority_reward(answers):\n    # answers: list[str] 同一题 K 条链抽取出的答案\n    label, _ = Counter(answers).most_common(1)[0]\n    return [1.0 if a == label else 0.0 for a in answers], label\n\n\ndef bias_only_params(model):\n    # 只把 bias 交给优化器, 主干冻结\n    for n, p in model.named_parameters():\n        p.requires_grad = n.endswith(\"bias\")\n    return [p for p in model.parameters() if p.requires_grad]\n\n\ndef reinforce_step(model, batch, rewards, optimizer, logps):\n    # logps: (K,) 每条链的对数概率之和; rewards: (K,)\n    adv = torch.tensor(rewards) - sum(rewards) / len(rewards)\n    loss = -(adv * logps).mean()\n    optimizer.zero_grad(); loss.backward(); optimizer.step()\n    return loss.item()\n",
+      "sources": [
+       {
+        "title": "Label-free steering: Compressing test-time reinforcement learning into bias-only subspaces",
+        "url": "https://huggingface.co/papers/2609.18587"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "方法冻结预训练主干，只优化约 100K 个 bias 参数",
+      "奖励来自多数投票伪标签，完全不使用标签",
+      "Qwen2.5-7B 在 MATH-500 上达到 76.67%，略高于作者自己的有标签 bias steering 复现",
+      "相比全参 TTRL 优化参数少约 76,000 倍",
+      "训练得到的 steering 向量迁移到 4,500 道留出的 MATH 题",
+      "同一流程也提升了 MathVista、AI2D、LogicVista、MMAU"
+     ],
+     "uncertain": [
+      "「76,000 倍」的分母口径（是否包含 embedding、是否按可训练参数量计算）需查原文",
+      "本条目来源是 Hugging Face papers 页面，未标注会议/期刊",
+      "bias 子空间可及梯度能量的度量方式摘要未给，公式为通用策略梯度形式的重构"
+     ]
+    }
+   }
+  }
+ ]
+}

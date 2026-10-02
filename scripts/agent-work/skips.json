@@ -1,0 +1,257 @@
+{
+ "generatedBy": "agent_work_prep.py",
+ "date": "2026-10-02",
+ "reason": "分类器的方向类关键词用子串命中，会把法学/教育学/精神病学/天体物理等论文放进 multimodal/rl/foundation 的深读配额；另有一批求职吐槽与 URL 为占位的 inbox 条目。这些条目仍留在卡片库可搜索、参与去重，只是不占用深度解析名额。",
+ "skipped": [
+  {
+   "id": "2cb5ec505adcdc16",
+   "title": "Future of AI in English Language Education: Trends and Predictions",
+   "category": "multimodal",
+   "channel": "s2",
+   "depthScore": 76.34,
+   "reason": "教育学政策论文，不是多模态方法",
+   "evidence": "categoryHits 命中 multimodal 关键词；摘要谈英语教育与 AI 政策",
+   "keptInCorpus": true
+  },
+  {
+   "id": "e1a60ff5bcdd74ad",
+   "title": "Beyond human readers: designing domain-specific language notebooks for AI-assisted code generation",
+   "category": "multimodal",
+   "channel": "s2",
+   "depthScore": 76.34,
+   "reason": "教育技术论文，与方法无关",
+   "evidence": "摘要谈 domain-specific language notebooks 教学",
+   "keptInCorpus": true
+  },
+  {
+   "id": "e3c2e19e8960c634",
+   "title": "AI Applicability in Law: Opportunities,Limitations, and Governance in a Hybrid Legal Ecosystem",
+   "category": "multimodal",
+   "channel": "s2",
+   "depthScore": 76.34,
+   "reason": "法学治理白皮书，不是强化学习",
+   "evidence": "categoryHits [\"ppo\"]，子串命中 Opportunities",
+   "keptInCorpus": true
+  },
+  {
+   "id": "2459123f398960a0",
+   "title": "Where WiFi Sensing Fails:A Reproducibility Study of CSI-IMU Substitution for Human Activity Recognition",
+   "category": "multimodal",
+   "channel": "s2",
+   "depthScore": 74.94,
+   "reason": "无线感知可复现研究，非 AI 方法",
+   "evidence": "WiFi CSI-IMU 人体活动识别",
+   "keptInCorpus": true
+  },
+  {
+   "id": "a97194c18ca5df10",
+   "title": "Algorithmic Justice and Responsible AI Journalism: A Comparative Communication Policy Perspective in East Asia",
+   "category": "paper",
+   "channel": "s2",
+   "depthScore": 74.81,
+   "reason": "传播学政策论文，与目标方向无关",
+   "evidence": "摘要为 AI 新闻伦理比较研究",
+   "keptInCorpus": true
+  },
+  {
+   "id": "56c25a19aad550c4",
+   "title": "DeepFeature: LLM-Empowered Context-aware Feature Generation for Wearable Biosignals",
+   "category": "paper",
+   "channel": "s2",
+   "depthScore": 72.34,
+   "reason": "可穿戴生物信号特征工程，方向外",
+   "evidence": "LLM 只作为特征生成器，非多模态/后训练方法",
+   "keptInCorpus": true
+  },
+  {
+   "id": "f321317c5c6a3438",
+   "title": "AccLock: Unlocking Identity with Heartbeat Using In-Ear Accelerometers",
+   "category": "paper",
+   "channel": "s2",
+   "depthScore": 72.34,
+   "reason": "生物识别（心跳身份认证），方向外",
+   "evidence": "耳内加速度计身份解锁",
+   "keptInCorpus": true
+  },
+  {
+   "id": "7d02e98128d5425f",
+   "title": "BEYOND SATISFACTION: PREDICTORS AND CORRELATES OF MARITAL HEALTH",
+   "category": "paper",
+   "channel": "s2",
+   "depthScore": 71.66,
+   "reason": "心理学量表研究，非 AI 方法",
+   "evidence": "婚姻健康预测因子",
+   "keptInCorpus": true
+  },
+  {
+   "id": "3e53cf5051d66ad6",
+   "title": "A comprehensive simulation framework for multi-modal kilonova observations from all-sky surveys",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "depthScore": 69.43,
+   "reason": "天体物理仿真，仅子串命中多模态",
+   "evidence": "kilonova all-sky surveys",
+   "keptInCorpus": true
+  },
+  {
+   "id": "6cf8ef4124506a57",
+   "title": "A Dynamic Generalized Kalman Consensus Filter for Switching Sensor Networks",
+   "category": "paper",
+   "channel": "arxiv",
+   "depthScore": 68.0,
+   "reason": "控制理论（卡尔曼一致性滤波），非学习方法",
+   "evidence": "切换传感器网络滤波",
+   "keptInCorpus": true
+  },
+  {
+   "id": "1b7e3c30acf2c3dc",
+   "title": "Low Overhead IMU Assisted Predictive Beam Management for Multiband LEO Direct to Device Links",
+   "category": "paper",
+   "channel": "arxiv",
+   "depthScore": 67.82,
+   "reason": "通信波束管理，非 AI 方法",
+   "evidence": "LEO 直连终端链路",
+   "keptInCorpus": true
+  },
+  {
+   "id": "7a6ec1f53a0bfa09",
+   "title": "Big data and psychiatry: advances, constraints and future directions.",
+   "category": "foundation",
+   "channel": "s2",
+   "depthScore": 65.95,
+   "reason": "精神病学综述，与目标方向无关",
+   "evidence": "big data and psychiatry",
+   "keptInCorpus": true
+  },
+  {
+   "id": "87e3a2859a767275",
+   "title": "Moore, Escher, Penrose: A Conformal Golden Braid",
+   "category": "generative",
+   "channel": "arxiv",
+   "depthScore": 65.26,
+   "reason": "数学/艺术结构论文，非深度学习",
+   "evidence": "Conformal golden braid",
+   "keptInCorpus": true
+  },
+  {
+   "id": "ec70af7a045b9f22",
+   "title": "AXIAL: Attention-based eXplainability for Interpretable Alzheimer’s Localized diagnosis using 2D CNNs on 3D MRI brain scans",
+   "category": "foundation",
+   "channel": "s2",
+   "depthScore": 64.05,
+   "reason": "医学影像可解释性，方向外",
+   "evidence": "Alzheimer 定位诊断",
+   "keptInCorpus": true
+  },
+  {
+   "id": "8a60bc7ca8f1e1b9",
+   "title": "dromara/Omega-AI - Omega-AI is a Java-based deep learning framework that helps you quickly build neural networks for inference and training. Its engine supports automatic differentiation, multithreading, and GPU acceleration with CUDA and cuDNN.",
+   "category": "engineering",
+   "channel": "github",
+   "depthScore": 55.54,
+   "reason": "Java 深度学习框架仓库，与多模态/后训练/世界模型方向无关",
+   "evidence": "Omega-AI，226 字简介",
+   "keptInCorpus": true
+  },
+  {
+   "id": "92c09201f9fa3e53",
+   "title": "spiceai/spiceai - Add a real-time analytics node to your operational database. Spice is a portable, accelerated SQL query, search, and LLM-inference engine in Rust for data-grounded AI apps and agents.",
+   "category": "engineering",
+   "channel": "github",
+   "depthScore": 53.87,
+   "reason": "实时分析数据库仓库，非 AI 模型或训练框架",
+   "evidence": "spiceai，183 字简介",
+   "keptInCorpus": true
+  },
+  {
+   "id": "0be84424ddbe168c",
+   "title": "9月秋招个人总结",
+   "category": "coding",
+   "channel": "nowcoder",
+   "depthScore": 51.38,
+   "reason": "秋招个人总结，属求职吐槽（career-vent）",
+   "evidence": "摘要为投递/面试数量与情绪，无可结构化知识",
+   "keptInCorpus": true
+  },
+  {
+   "id": "6869cced09ad15da",
+   "title": "9月21日字节tiktok社交一面",
+   "category": "coding",
+   "channel": "nowcoder",
+   "depthScore": 47.32,
+   "reason": "秒挂复盘情绪帖，无技术内容",
+   "evidence": "摘要主体是挂经情绪",
+   "keptInCorpus": true
+  },
+  {
+   "id": "6e85217f7aeabd04",
+   "title": "快手 Feed 团队二面（25min）",
+   "category": "coding",
+   "channel": "nowcoder",
+   "depthScore": 47.32,
+   "reason": "面试情绪帖，无技术内容",
+   "evidence": "摘要主体是面试体验吐槽",
+   "keptInCorpus": true
+  },
+  {
+   "id": "386e53cdfcfe880e",
+   "title": "面经：腾讯混元多模态一面",
+   "category": "coding",
+   "channel": "inbox",
+   "depthScore": 45.28,
+   "reason": "inbox 占位条目：URL 为 nowcoder.com/discuss/xxx，摘要为站点模板文字",
+   "evidence": "无可用原文，任何解析都会变成编造；需人工导入真实面经",
+   "keptInCorpus": true
+  },
+  {
+   "id": "ed3acbe06568ac16",
+   "title": "【干货预警-中行面经汇总】中国银行信息科技岗面经汇总（总行信息科技岗、中行软开）",
+   "category": "coding",
+   "channel": "nowcoder",
+   "depthScore": 43.67,
+   "reason": "银行校招观察+面经汇总，吐槽为主",
+   "evidence": "摘要为缩招观察",
+   "keptInCorpus": true
+  },
+  {
+   "id": "07e0024fa4e3d622",
+   "title": "游戏AI-强化学习算法研究员",
+   "category": "rl",
+   "channel": "jobs_tencent",
+   "depthScore": 39.76,
+   "reason": "岗位帖被归到 rl：按岗位信息处理，不做方法深读",
+   "evidence": "游戏AI-强化学习算法研究员，jobs_tencent 渠道",
+   "keptInCorpus": true
+  },
+  {
+   "id": "b09e5bcd3bcd6d99",
+   "title": "字节跳动 多模态算法实习生（Seed）",
+   "category": "job",
+   "channel": "inbox",
+   "depthScore": 30.68,
+   "reason": "inbox 占位条目：applyUrl 为 jobs.bytedance.com/xxx，薪资/名额无法核实",
+   "evidence": "疑似人工模板而非真实抓取；需人工确认后导入岗位库",
+   "keptInCorpus": true
+  },
+  {
+   "id": "38a5c854ac8c0e6f",
+   "title": "招聘岗位确实在收缩",
+   "category": "job",
+   "channel": "nowcoder",
+   "depthScore": 26.18,
+   "reason": "行业情绪讨论，不是岗位信息",
+   "evidence": "摘要谈招聘岗位收缩",
+   "keptInCorpus": true
+  },
+  {
+   "id": "7db5e99d71d98229",
+   "title": "金9结束了 我的秋招还好吗？",
+   "category": "job",
+   "channel": "nowcoder",
+   "depthScore": 26.11,
+   "reason": "秋招复盘情绪帖，不是岗位信息",
+   "evidence": "摘要谈个人秋招经历",
+   "keptInCorpus": true
+  }
+ ]
+}

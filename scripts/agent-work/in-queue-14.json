@@ -1,0 +1,105 @@
+{
+ "batchId": "queue-14",
+ "mode": "full",
+ "items": [
+  {
+   "id": "dc788b2e9083e5d5",
+   "title": "Training LLM Judges from Language Feedback via Position-Selective Self-Distillation",
+   "category": "posttraining",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.38792",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.38792",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.38792",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-30T08:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 62.3,
+   "summary": "We study training LLM judges from natural language feedback, especially for subjective tasks where the verdict depends strongly on which evaluation criteria the judge invokes and how it weighs them. The dominant approach, outcome-supervised RL (e.g., GRPO), credits every token in the rollout with a single scalar determined only by the accuracy of the final verdict, providing no separate credit at the criterion-choice tokens and ignoring the rich language feedback (e.g., preference rationales) that naturally accompanies preference labels. Self-Distillation (SD) is one natural way to use this language feedback: the same model, conditioned on this feedback, acts as a teacher providing dense, position-level supervision. However, not all positions carry equally useful signal. Using the per-position entropy shift between teacher and student, we identify two regimes: context sharpening, where the teacher concentrates probability on a particular feedback-aligned criterion expression, and context spreading, where the teacher distributes probability across multiple feedback-aligned alternatives. We interpret these patterns as follows: sharpening encourages memorization of a particular criterion expression, whereas spreading promotes semantic understanding by preserving these alternatives. Motivated by this asymmetry, we introduce position masking based on the entropy shift that retains the lower tail of the entropy-shift distribution. Experiments show that masking higher-entropy-shift positions improves out-of-distribution generalization over naive SD. The resulting self-distilled judges outperform judges trained with outcome-supervised RL by 2-9 percentage points on the evaluated subjective subcategories, while remaining competitive on objective ones.",
+   "depthScore": 68.03
+  },
+  {
+   "id": "605a94e5b0dde801",
+   "title": "Code to Control: Synthesizing Parameterized Reactive Controllers",
+   "category": "rl",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.38733v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.38733v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.AI",
+    "cs.LG"
+   ],
+   "publishedAt": "2026-09-29T13:15:23+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 62.3,
+   "summary": "Recent LLM-based approaches to control either invoke a language model to select actions or synthesize world models that require planning at every decision, introducing latency that can limit real-time use. We introduce Code to Control, an approach that synthesizes Python controllers which execute directly as policies. Code to Control separates program structure from parameters. An LLM synthesizes the controller structure, while derivative-free search fits its parameters for continuous control using feedback from the environment. Once learned, the resulting controllers require neither LLM inference nor planning at decision time, enabling real-time gameplay and, under our timing protocol, faster action selection than a PPO policy. Across a suite of Atari games, Flappy Bird, and MuJoCo tasks, Code to Control outperforms planning-based program synthesis methods, remains competitive with deep reinforcement learning while using fewer environment interactions, transfers across substantial changes in environment dynamics, and scales to complex locomotion tasks.",
+   "depthScore": 72.99
+  },
+  {
+   "id": "ba42ae2763a28039",
+   "title": "SPHERE: Adaptive VR Indoor Scene Generation via LLM-Enhanced Spatial Preference Learning and Human-in-the-Loop RL",
+   "category": "rl",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.02023v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.02023v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.AI",
+    "cs.AI",
+    "cs.HC"
+   ],
+   "publishedAt": "2026-10-02T00:43:27+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 59.3,
+   "summary": "While Large Language Models (LLMs) advance 3D indoor scene synthesis, current pipelines fail to retain user-specific preferences across sessions, making immersive authoring a repetitive and physically fatiguing process. We present SPHERE, an adaptive VR generation framework that transforms isolated synthesis into continuous human-AI co-creation. SPHERE extracts persistent spatial preferences from natural multimodal interactions (speech and controller edits). To ensure geometric resilience against spatial distortions, it abstracts these raw edits into hierarchical constraints modeling both local functional and global topological contexts. Furthermore, a human-in-the-loop reinforcement learning mechanism dynamically updates retrieval policies based on the user's final edited scenes. A mixed-design user study ($N=42$) and an offline ablation demonstrate that SPHERE significantly reduces corrective edits and physical demand, preventing bias toward shallow object-level traits to yield geometrically resilient, profile-aligned layouts. Ultimately, SPHERE demonstrates how capturing demonstrated spatial logic enables controlled spatial adaptation, establishing a reliable, governed human-AI collaboration framework for immersive authoring. Project page and source code will be available at: https://github.com/hyeonmin11/SPHERE",
+   "depthScore": 71.7
+  },
+  {
+   "id": "6ab3ece3ad8a35bc",
+   "title": "Selection-Based Structured Reasoning: Toward Efficient Multimodal Search Agents",
+   "category": "rl",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2610.01892v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2610.01892v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG",
+    "cs.LG",
+    "cs.AI"
+   ],
+   "publishedAt": "2026-10-01T23:42:14+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 59.2,
+   "summary": "Multimodal agents commonly generate free-form reasoning before each action. For small models, limited model capacity can result in lengthy reasoning that provides little useful guidance for action generation while incurring substantial inference cost. To address this challenge, we introduce Selection-based Structured Reasoning (SSR), a framework that reformulates reasoning as selection instead of open-ended generation. SSR represents recurring high-level reasoning as pre-specified, reusable natural-language candidates. At each turn, the model selects from these reasoning candidates based on their likelihoods given the current context, without requiring an auxiliary task head. Using pre-specified reasoning traces enables parallel scoring, where teacher-forced prefilling computes token likelihoods concurrently within and across candidates using a shared context KV cache. We evaluate SSR on seven multimodal search benchmarks using 2B and 4B models. Across multiple reinforcement learning objectives and supervised fine-tuning, SSR delivers significant efficiency gains without sacrificing task performance. SSR achieves an average success rate competitive with leading search agents of the same scale, while reducing per-turn reasoning latency by over 90% and total per-question model inference latency by 28-54%. Project page: https://zfy0314.github.io/ssr-webpage/.",
+   "depthScore": 71.65
+  }
+ ]
+}

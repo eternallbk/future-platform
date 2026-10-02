@@ -1,0 +1,671 @@
+{
+  "batchId": "queue-04",
+  "entries": [
+    {
+      "id": "0b3e16ecf4f67dcb",
+      "tldr": "33 章中文 Agentic RL 教程：从概念到 GRPO 实战，并附三方判别模型实证工程。",
+      "keyPoints": [
+        "33 章中文教程，面向零基础读者。",
+        "从概念讲到 GRPO 实战，含 TRL 最小可跑示例。",
+        "26–33 章是一套可运行的三方判别模型实证工程。",
+        "三方为 encoder、LLM-LoRA 与规则基线。",
+        "第 25 章讨论 Jev / TypeSafe System One 与 RL 的能力边界。"
+      ],
+      "why": "中文且自带可跑代码的 Agentic RL 入口不多；它同时覆盖 RL 训练与判别模型选型，都是面试常考块。",
+      "difficulty": "medium",
+      "tags": [
+        "agentic-rl",
+        "grpo",
+        "chinese-tutorial",
+        "discriminative-model",
+        "benchmark",
+        "calibration"
+      ],
+      "entities": [
+        "GRPO",
+        "TRL",
+        "encoder",
+        "LLM-LoRA",
+        "Jev",
+        "TypeSafe System One"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "教程四段学习路径",
+        "caption": "先建直觉，再跑通训练回路，最后用评测工程和边界讨论收口。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='教程四段学习路径：概念与RL基础、GRPO与TRL示例、三方判别模型工程、能力边界讨论'><rect x='40' y='16' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>1 概念与 RL 基础</text><text x='424' y='40' font-size='13' text-anchor='end' fill='currentColor'>轨迹与奖励的直觉</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='40' y='70' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>2 GRPO 实战</text><text x='424' y='94' font-size='13' text-anchor='end' fill='currentColor'>含 TRL 最小示例</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='40' y='124' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>3 判别模型工程</text><text x='424' y='148' font-size='13' text-anchor='end' fill='currentColor'>encoder vs LLM-LoRA</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='40' y='178' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>4 能力边界</text><text x='424' y='202' font-size='13' text-anchor='end' fill='currentColor'>Jev 与 RL 之争</text></svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {"label": "概念与 RL 基础", "detail": "先建立轨迹与奖励的直觉"},
+            {"label": "GRPO 实战", "detail": "含 TRL 最小可跑示例"},
+            {"label": "判别模型工程", "detail": "encoder vs LLM-LoRA vs 规则基线（26–33 章）"},
+            {"label": "能力边界", "detail": "第 25 章讨论 Jev / TypeSafe System One 与 RL"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "前置"},
+            {"from": 1, "to": 2, "label": "转入评测"},
+            {"from": 2, "to": 3, "label": "反思适用性"}
+          ]
+        },
+        "alt": "四个纵向方块依次为概念与 RL 基础、GRPO 实战、判别模型工程、能力边界，箭头自上而下串联。"
+      },
+      "concepts": [
+        {
+          "name": "Agentic RL（智能体强化学习）",
+          "readable": "把语言模型当成会多步行动的策略，用强化学习按最终成败给整条轨迹打分，优化的是「怎么一步步做任务」，而不只是下一个词。教程用 33 章从概念讲到 GRPO 实战。",
+          "analogy": "像教练带选手打完整场比赛后复盘：不是每一拍都纠正，而是看最终比分，把导致赢球的整段决策序列一起加强。",
+          "analogyBreaksDown": "比赛的胜负信号明确，而 Agent 的奖励常来自规则或模型打分，噪声大且可能被奖励黑客攻击；比赛规则固定，Agent 面对的环境与工具接口却会变，同一套策略不一定迁移。",
+          "mechanism": "关键设计选择是把「环境交互 + 奖励」变成可批量采样的轨迹数据：策略模型生成多步动作，环境返回观测与奖励，再用 GRPO 这类策略优化方法更新（具体损失形式摘要未给出）。教程用 TRL 最小示例把这条链路跑通，降低上手门槛。",
+          "visual": "画一条横向轨迹带：左侧是策略模型，中间是若干「动作—环境观测—奖励」的交替方块，右侧是最终奖励；下方用一条回传箭头表示按整条轨迹更新策略，再用颜色深浅表示各步对奖励的贡献（信用分配）。",
+          "prerequisites": [
+            "Python 与 PyTorch 基础",
+            "策略梯度 / PPO 的初级概念",
+            "LLM 微调与推理的基本流程"
+          ],
+          "selfTest": [
+            "Agentic RL 的优化对象是单步输出还是整条轨迹？为什么？",
+            "为什么奖励稀疏、延迟会给训练带来困难？",
+            "它和「指令微调 + 工具调用」有什么本质区别？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "三方判别模型对照工程（Three-Way Discriminative Benchmark）",
+          "readable": "同一份判别任务上，把 encoder 分类器、LLM 加 LoRA 微调、以及规则基线放进同一评测流程，用同一批数据与指标对比，避免各跑各的、口径不一。教程第 26–33 章给的就是这套可运行工程。",
+          "analogy": "像三个人用同一份试卷、同一套评分标准考试：一个死记规则的、一个专门刷题的、一个通用大模型临时微调，只有口径一致，分数才可比。",
+          "analogyBreaksDown": "考试能保证所有人都做同一道题，而三类模型的输入长度、显存预算与推理成本天生不同，同一批数据下仍难做到真正的同条件；规则基线甚至不需要训练，训练成本这一维无法用同一张表公平体现。",
+          "mechanism": "关键设计选择是固定数据划分与评测指标，只替换判别头：encoder 接分类头、LLM-LoRA 走指令微调、规则基线用手工特征。这样模型之间的差异才能归因到建模路线，而不是评测脚本的变化。",
+          "visual": "画一张三列对比表：行是「准确率类指标 / 训练成本 / 推理延迟 / 可解释性」，列是 encoder、LLM-LoRA、规则基线；每个格子用颜色深浅表示优劣，再单独标出哪些格子在本摘要里没有数据。",
+          "prerequisites": [
+            "文本分类 / 判别任务的基本流程",
+            "LoRA 等参数高效微调方法",
+            "如何设计公平的对照实验"
+          ],
+          "selfTest": [
+            "为什么三方对照比「LLM 对规则基线」两方对照更有信息量？",
+            "如果只统一数据但不统一指标，会引入什么偏差？",
+            "规则基线在什么情况下反而可能胜出？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "教程共 33 章，面向中文零基础读者。",
+          "内容从概念讲到 GRPO 实战，并含 TRL 最小可跑示例。",
+          "第 26–33 章是一套可运行的三方判别模型实证工程。",
+          "三方为 encoder、LLM-LoRA 与规则基线。",
+          "第 25 章讨论 Jev / TypeSafe System One 与 RL 的能力边界。"
+        ],
+        "uncertain": [
+          "各方实验的具体指标与结论方向（谁更好、差距多少）摘要未给出，待核实。",
+          "GRPO 的具体损失形式与 TRL 示例的依赖版本未在摘要中出现，本条只作通用背景描述。",
+          "33 章目录结构以及代码是否开箱可跑，仅凭仓库自述，待实际克隆验证。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "33 章中文教程：从零学智能体强化学习，直到跑通 GRPO 示例。"},
+          {"level": "入门", "text": "教程按章节递进：先讲智能体与强化学习的基本概念，再讲 GRPO 这类策略优化方法，并给出 TRL 的最小可跑示例；第 26–33 章转入一套判别模型实证工程，把 encoder、LLM-LoRA 和规则基线放在同一评测里比较。"},
+          {"level": "进阶", "text": "价值在于两条线的组合：训练线（概念→GRPO→TRL 可跑示例）让人知道智能体策略怎么用奖励更新；评测线（encoder vs LLM-LoRA vs 规则基线）回答「判别任务到底要不要上大模型」。零基础读者可以先跑通示例再回头补理论，避免一开始卡在 RL 数学上。"},
+          {"level": "专家", "text": "从工程视角看，这类教程的可信度取决于三点：三方对照是否固定了数据划分与指标（否则结论不可比）、TRL 示例是否给出可复现的依赖与显存预算、第 25 章对能力边界的论断是否有实验支撑。摘要只说明这些内容存在，没有给任何数值结论，因此阅读时要严格区分「教程讲了什么」与「教程证明了什么」。"}
+        ],
+        "socratic": [
+          {"q": "如果不做三方对照，只拿 LLM-LoRA 和某个规则基线比，会漏掉什么？", "a": "会漏掉中间选项：encoder 分类器在固定标签、短文本的判别任务上往往成本最低，没有它就无法回答「是否值得上大模型」这个问题。"},
+          {"q": "为什么把「能力边界」单独成章，而不是塞进 GRPO 章节？", "a": "因为知道 RL 不能做什么，比知道怎么调 GRPO 更能防止误用：奖励是否可靠、任务是否可验证，决定了方法适不适用。"}
+        ],
+        "mechanism": "它的设计目标是降低入门门槛，而不是提出新算法：把智能体 RL 拆成概念、算法、可跑示例三层，让人先获得一次成功的训练回路；再用一套判别模型工程展示「同一任务下不同建模路线」的取舍。这样安排理论与工程互为验证，代价是每一层的深度都被压缩，真正前沿的算法细节需要另找论文。",
+        "boundary": "教程是二手整理，不是论文；摘要没有给任何实验数值或消融，因此不能用它作为「GRPO 优于 X」的证据。三方判别工程只覆盖判别式任务（固定标签），不覆盖生成与多步决策本身；第 25 章的能力边界讨论也只是作者观点，需回到一手论文核对。",
+        "analogyBoundary": "「教练复盘比赛」的类比忽略了信用分配的对象：比赛里每个动作的责任相对清楚，而 LLM 轨迹里一次工具调用出错可能源于上游的格式错误，奖励稀疏且延迟；类比也没体现 LLM 的动作空间是离散文本、不可微这一事实。",
+        "misconceptions": [
+          "把 Agentic RL 等同于「微调 + 工具调用」，以为不涉及策略优化。",
+          "看到「零基础教程」就以为内容浅，忽略第 26–33 章是完整评测工程。",
+          "把教程里的 GRPO 示例当成生产级实现，忽略数据与奖励设计才是难点。"
+        ],
+        "ownAnalysis": "（推断）第 25 章把 Jev / TypeSafe System One 与 RL 并列讨论，说明作者关心「不是所有任务都该用 RL 或生成式建模」，这与本批另一条决策式模型实证的方向一致。可疑处：仓库类卡片的摘要只有自述，缺少章节清单与实验设置，「可运行」目前只能视为作者声明；建议克隆后先跑最小示例，再核对三方工程的评测口径。",
+        "officialNotes": [
+          {"position": "仓库自述：这是一份 33 章的 Agentic RL 中文零基础教程，含 GRPO 实战与 TRL 最小可跑示例，第 26–33 章附一套可运行的三方判别模型实证工程。", "source": "https://github.com/cookiespiggy/agentic-rl"}
+        ],
+        "interviewAnswer": "如果被问到 Agentic RL 怎么入门，我会说：先把智能体轨迹当成一条带延迟奖励的序列决策问题，理解策略梯度和 GRPO 这类组内相对优势的思想，然后用 TRL 最小示例跑通一次训练回路，确认奖励与数据管线没问题；接着做一次判别任务的建模选型实测，把 encoder、LoRA 微调和规则基线放在同一评测下比较；最后讨论 RL 的能力边界——哪些任务奖励可靠、哪些不可验证，不该硬套 RL。",
+        "studyPath": {
+          "prerequisites": [
+            "Python 与 PyTorch 基础",
+            "LLM 微调与推理的基本流程",
+            "概率与策略梯度的初级概念"
+          ],
+          "nextSteps": [
+            "读 GRPO / PPO 原论文与 TRL 文档",
+            "复现三方判别工程并记录指标口径",
+            "挑一个可验证任务自建奖励函数"
+          ]
+        }
+      }
+    },
+    {
+      "id": "f92d0f5913e59e39",
+      "tldr": "SGLang：面向 LLM 与多模态模型的高性能推理服务框架，GitHub 开源。",
+      "keyPoints": [
+        "定位：LLM 与多模态模型的高性能服务框架。",
+        "在 GitHub 开源，采集层标注代码可获取。",
+        "标签覆盖 attention、cuda、blackwell 等方向。",
+        "标签含 deepseek、glm、gpt-oss、diffusion。",
+        "采集层相关度 84.8，为本批四条最高。"
+      ],
+      "why": "服务框架是推理工程岗必修课；看懂「高性能」背后的吞吐—延迟权衡，才能做部署选型与压测。",
+      "difficulty": "medium",
+      "tags": [
+        "inference",
+        "cuda",
+        "attention",
+        "blackwell",
+        "diffusion",
+        "deepseek"
+      ],
+      "entities": [
+        "SGLang",
+        "DeepSeek",
+        "GLM",
+        "gpt-oss"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "SGLang 的定位分层",
+        "caption": "本图只呈现摘要与标签给出的范围，不代表具体调度实现。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='SGLang 定位分层：模型层、服务层、负载线索、硬件线索'><rect x='40' y='16' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>模型层：LLM 与多模态</text><text x='424' y='40' font-size='13' text-anchor='end' fill='currentColor'>摘要的定位对象</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='40' y='70' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>服务层：SGLang</text><text x='424' y='94' font-size='13' text-anchor='end' fill='currentColor'>高性能服务框架</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='40' y='124' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>负载线索：标签</text><text x='424' y='148' font-size='13' text-anchor='end' fill='currentColor'>deepseek / glm / gpt-oss</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='40' y='178' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>硬件线索：标签</text><text x='424' y='202' font-size='13' text-anchor='end' fill='currentColor'>cuda / blackwell / attention</text></svg>",
+        "spec": {
+          "type": "architecture",
+          "nodes": [
+            {"label": "模型层", "detail": "大语言模型与多模态模型（摘要原文）"},
+            {"label": "服务层", "detail": "SGLang 高性能服务框架，GitHub 开源"},
+            {"label": "负载线索", "detail": "标签指向 deepseek / glm / gpt-oss / diffusion"},
+            {"label": "硬件线索", "detail": "标签指向 cuda / blackwell / attention"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "被服务"},
+            {"from": 1, "to": 2, "label": "承载"},
+            {"from": 2, "to": 3, "label": "落到硬件"}
+          ]
+        },
+        "alt": "四层结构自上而下：模型层（LLM 与多模态）、服务层（SGLang）、标签给出的负载线索、标签给出的硬件线索。"
+      },
+      "concepts": [
+        {
+          "name": "推理服务框架（Inference Serving Framework）",
+          "readable": "模型训练完之后，真正对外提供服务的那一层软件。它决定请求怎么排队、怎么合并成批、KV 缓存怎么复用、显存怎么分配，从而决定同一个模型能扛多少并发、延迟多少。",
+          "analogy": "像写字楼的电梯调度系统：电梯（GPU）就那几部，调度算法决定高峰期大家等多久；调度不改变你要去的楼层，也就是不改变模型输出。",
+          "analogyBreaksDown": "电梯乘客彼此独立且需求可预测，而 LLM 请求的长度与耗时差异极大——一个长上下文请求可能占用几十倍时间，调度更像「每单体积随机的货运」；另外服务框架要管显存这个硬上限，电梯类比里没有对应物。",
+          "mechanism": "关键设计选择是「批处理 vs 延迟」的权衡：把多路请求拼批能提高 GPU 利用率（吞吐），但先到的请求必须等待凑批（尾延迟上升）。摘要未说明 SGLang 采用何种策略，这里只描述所有服务框架共有的取舍。",
+          "visual": "画一张双轴图：横轴是并发请求数，左纵轴是每秒生成 token 数（吞吐），右纵轴是 P99 延迟；同一框架画两条曲线，再叠加不同批处理窗口大小下的若干组点，展示窗口越大吞吐越高、P99 越差。",
+          "prerequisites": [
+            "Transformer 前向计算过程",
+            "KV 缓存是什么",
+            "吞吐、延迟与尾延迟的定义"
+          ],
+          "selfTest": [
+            "为什么不批处理时 GPU 利用率低？",
+            "首 token 延迟与每 token 延迟分别受什么影响？",
+            "长上下文请求为什么会拉低并发能力？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "多模态服务负载（Multimodal Serving Workload）",
+          "readable": "服务框架要同时承载两类负载：视觉编码器对图像或视频做一次较重的编码，语言模型再自回归解码。两者算力与显存特征不同，混在一起会带来纯文本场景没有的调度麻烦。",
+          "analogy": "像一个厨房同时接「现炒的菜」和「提前炖好的汤」：出锅时间不同、灶台占用方式不同，硬排在同一条流水线上就会互相堵。",
+          "analogyBreaksDown": "厨房里菜品可以分窗口排队互不干扰，而多模态请求在 GPU 上往往共享同一份显存池，图像编码产生的显存峰值会直接挤掉并发的文本请求，这种耦合在厨房类比里不存在。",
+          "mechanism": "关键取舍是编码与解码要不要分池调度：图像编码适合大 batch、次数少，解码是长尾的小步推进。摘要没有给出 SGLang 的任何实现细节，因此这里只指出问题的存在，不声称它的解法。",
+          "visual": "画一条时间轴：上方是图像编码（短而高的算力块），下方是逐 token 解码（长而低的小块），用颜色区分；再把两类任务分别串行调度与混合调度画成上下两条时间轴，直观看出 GPU 空转发生在哪里。",
+          "prerequisites": [
+            "视觉编码器（ViT）基本结构",
+            "自回归解码流程",
+            "批处理与显存占用的关系"
+          ],
+          "selfTest": [
+            "多模态请求为什么比纯文本更容易打乱批处理？",
+            "为什么图像编码适合大 batch 而解码不适合？",
+            "显存峰值最可能出现在哪一步，为什么？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "SGLang 的定位是面向大语言模型与多模态模型的高性能服务框架（摘要原文）。",
+          "入口为 GitHub 仓库，采集层标注代码可获取。",
+          "标签覆盖 attention、cuda、blackwell、diffusion、deepseek、glm、gpt-oss、inference。",
+          "采集层相关度 84.8、深度分 60.25，相关度为本批四条最高。"
+        ],
+        "uncertain": [
+          "摘要未给吞吐、延迟、显存等任何性能数字，「高性能」的宣称待查仓库文档与 benchmark。",
+          "支持的硬件后端、模型清单与部署方式均未在摘要中出现，待核实。",
+          "（推断）连续批处理、KV 缓存复用、前缀缓存等常见机制未出现在摘要里，本条只作通用背景描述。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "SGLang 是一个跑大模型和多模态模型的高性能服务框架。"},
+          {"level": "入门", "text": "它的角色是「推理服务员」：模型权重已经训练好，SGLang 负责把用户请求高效地送到 GPU 上算完再返回。摘要只给出这一定位——高性能、支持 LLM 与多模态模型，并放在 GitHub 开源；具体调度与缓存设计需要看仓库文档。"},
+          {"level": "进阶", "text": "从工程角度，服务框架的价值在于把「单次前向」变成「多路请求共享一次前向」：常见手段包括连续批处理、KV 缓存复用与算子优化，但摘要完全没有提这些机制，本条的相关描述属于通用背景。标签里的 attention、cuda、blackwell 指向底层算子与硬件优化方向，deepseek、glm、gpt-oss、diffusion 指向它宣称覆盖的模型族。"},
+          {"level": "专家", "text": "评估一个服务框架要看四条曲线：吞吐随并发的变化、首 token 与总延迟的分布、长上下文下的显存占用、前缀复用率对成本的影响。摘要只告诉你 SGLang 定位在这条赛道上，没有任何曲线数据，因此面试中引用它时应说「它是主流开源服务框架之一」，而不是断言它某项指标领先。"}
+        ],
+        "socratic": [
+          {"q": "为什么不能只看「高性能」这句话就选型？", "a": "因为吞吐与延迟是两条轴：批处理拉高吞吐会推高单请求延迟，在线对话与离线批推的最优工作点完全不同，必须看具体曲线。"},
+          {"q": "多模态支持会给服务框架带来什么额外负担？", "a": "视觉编码器与自回归解码的计算特性不同，输入长度和显存峰值差异大，统一服务要处理两种负载的调度与显存碎片，这是纯文本框架没有的问题。"}
+        ],
+        "mechanism": "服务框架之所以必须存在，是因为单请求推理会把 GPU 算力浪费在等待上：算力远超访存带宽能喂饱的量，只有把多路请求拼成批次、复用已有 KV 缓存，才能把硬件吃满。摘要没有描述 SGLang 的具体做法，所以这里只能回答「为什么需要服务框架」这个通用问题，而不是它的实现。",
+        "boundary": "本条边界很清楚：摘要只有一句话，没有模型清单、没有 benchmark、没有版本与硬件要求，因此支撑不了任何选型结论。另外「高性能」通常有前提——特定硬件、特定模型、特定序列长度下测得，跨场景未必成立，必须自行复现。",
+        "analogyBoundary": "「餐厅服务员」的类比只讲了分工，没讲代价：真实服务里批处理会把不同请求绑在同一次前向，先到的请求要等后到的凑批，于是吞吐提升换来了尾延迟；类比也掩盖了 KV 缓存占显存、长上下文请求会挤掉并发这一关键约束。",
+        "misconceptions": [
+          "把服务框架当成推理加速库，以为它会改模型权重或改变输出质量。",
+          "看到「支持多模态」就以为文本与视觉负载可以无差别共用同一套调度。",
+          "把「高性能」当作跨硬件、跨模型的普适结论。"
+        ],
+        "ownAnalysis": "（推断）从标签组合（blackwell、cuda、attention）看，这个仓库紧跟新硬件与注意力内核优化；标签里同时出现 deepseek、glm、gpt-oss、diffusion，说明它把「新模型发布即能服务」当作卖点，这在工程岗面试里是可展开的运维视角。可疑处：作为流水线卡片，本条摘要信息量几乎为零，任何深入结论都必须回到 README 与 benchmark 页面核实。",
+        "officialNotes": [
+          {"position": "仓库自述：SGLang is a high-performance serving framework for large language models and multimodal models.", "source": "https://github.com/sgl-project/sglang"}
+        ],
+        "interviewAnswer": "我会这样介绍 SGLang：它是开源的高性能推理服务框架，目标是把 LLM 和多模态模型的请求高效地摊到 GPU 上。选型时我不看「高性能」这种形容词，而是自己压测四条曲线——吞吐随并发、首 token 与尾延迟、长上下文显存、前缀缓存命中率，再和同赛道框架在相同硬件与模型上对比。它对新模型与新硬件的跟进速度，也是工程上很实际的加分项。",
+        "studyPath": {
+          "prerequisites": [
+            "Transformer 推理与前向计算",
+            "KV 缓存与批处理概念",
+            "CUDA 与显存的基本常识"
+          ],
+          "nextSteps": [
+            "读 SGLang 仓库文档与相关论文",
+            "在同一硬件上与其他服务框架对比",
+            "压测并画出吞吐—延迟曲线"
+          ]
+        }
+      }
+    },
+    {
+      "id": "205120feb76f0e57",
+      "tldr": "在 Amazon 多域推荐重排上实测 Jev：效果接近基线，延迟增长比逐点 Qwen 平缓。",
+      "keyPoints": [
+        "LLM 重排存在推荐质量与服务效率的权衡。",
+        "Jev 被 TypeSafe AI 描述为 System One 模型。",
+        "对比推荐专用模型与逐点、列表式 Qwen 重排器。",
+        "覆盖多个 Amazon Reviews 域与多种候选集规模。",
+        "Jev 延迟增长更平缓，但绝对值仍显著高于推荐专用模型。"
+      ],
+      "why": "推荐重排的「质量—延迟」折中是工程岗必答题；这篇给出了决策式模型相对 LLM 重排器的实测坐标。",
+      "difficulty": "medium",
+      "tags": [
+        "recommendation",
+        "reranking",
+        "latency",
+        "decision-model",
+        "llm"
+      ],
+      "entities": [
+        "Jev",
+        "TypeSafe AI",
+        "System One Model",
+        "Qwen",
+        "Amazon Reviews"
+      ],
+      "diagram": {
+        "kind": "matrix",
+        "title": "Jev 与基线的质量—延迟对照",
+        "caption": "记住排序：效果接近、延迟斜率更平缓，但绝对值仍高于专用模型。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Jev 与三类基线的效果与延迟趋势对照表'><text x='40' y='34' font-size='13' text-anchor='start' fill='currentColor' font-weight='bold'>方法</text><text x='220' y='34' font-size='13' text-anchor='start' fill='currentColor' font-weight='bold'>效果</text><text x='340' y='34' font-size='13' text-anchor='start' fill='currentColor' font-weight='bold'>延迟趋势</text><line x1='40' y1='44' x2='450' y2='44' stroke='var(--line-1)' stroke-width='1.2'/><text x='40' y='76' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>Jev</text><text x='220' y='76' font-size='13' text-anchor='start' fill='currentColor'>相对基线较强</text><text x='340' y='76' font-size='13' text-anchor='start' fill='currentColor'>增长最平缓</text><line x1='40' y1='92' x2='450' y2='92' stroke='var(--line-1)' stroke-width='1'/><text x='40' y='120' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>逐点 Qwen</text><text x='220' y='120' font-size='13' text-anchor='start' fill='currentColor'>作为对照</text><text x='340' y='120' font-size='13' text-anchor='start' fill='currentColor'>增长最快</text><line x1='40' y1='136' x2='450' y2='136' stroke='var(--line-1)' stroke-width='1'/><text x='40' y='164' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>列表式 Qwen</text><text x='220' y='164' font-size='13' text-anchor='start' fill='currentColor'>作为对照</text><text x='340' y='164' font-size='13' text-anchor='start' fill='currentColor'>摘要未单列</text><line x1='40' y1='180' x2='450' y2='180' stroke='var(--line-1)' stroke-width='1'/><text x='40' y='208' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>推荐专用模型</text><text x='220' y='208' font-size='13' text-anchor='start' fill='currentColor'>作为对照</text><text x='340' y='208' font-size='13' text-anchor='start' fill='currentColor'>整体最低</text></svg>",
+        "spec": {
+          "type": "matrix",
+          "nodes": [
+            {"label": "Jev（决策式模型）", "detail": "效果相对所测基线保持较强；延迟随候选集增长明显更平缓；绝对延迟仍显著高于推荐专用模型"},
+            {"label": "逐点 Qwen 重排器", "detail": "作为对照基线；延迟随候选集增长最陡"},
+            {"label": "列表式 Qwen 重排器", "detail": "摘要列为对照，但未单独给出其延迟结论"},
+            {"label": "推荐专用模型", "detail": "观测服务延迟显著低于 Jev，可作效率参照下限"}
+          ],
+          "edges": []
+        },
+        "alt": "一张三列对照表：列为方法、效果、延迟趋势；行为 Jev、逐点 Qwen、列表式 Qwen、推荐专用模型。"
+      },
+      "concepts": [
+        {
+          "name": "决策式模型 / System One 模型（Decision-Oriented Model）",
+          "readable": "重排的本质是「在预先给定的候选集合里选一个」。决策式模型直接把整件事当成一次结构化选择来建模，而不是先给每个候选打分，也不是让 LLM 逐 token 生成一段排序文本。",
+          "analogy": "像点菜：决策式模型是熟练服务员看你一眼直接报出「就这个」；逐点打分是拿计算器把每道菜算一遍分；列表式生成是把菜单从头念到尾。",
+          "analogyBreaksDown": "服务员的选择基于个人经验，错了没法回溯原因；模型的「一次决策」内部仍有可分析的特征与概率。而且论文只测了推荐重排这一种结构化任务，换到多步规划等其它结构化输出空间未必同样有效。",
+          "mechanism": "关键设计选择是把输出空间限制成候选集合上的选择，因此推理步数不必与候选数成正比；这换来「延迟随候选集增长更平缓」。代价是灵活性——不能自由生成候选集合之外的内容，也不能顺带给出开放式解释。",
+          "visual": "画三根等长的横向流程条对比同一候选集大小 K：逐点式是 K 个小打分块横向排开；列表式是一条很长的生成块；决策式是一个很短的决策块。用块的面积表示总计算量，直观看出谁随 K 增长最快。",
+          "prerequisites": [
+            "重排（reranking）在推荐链路中的位置",
+            "LLM 推理的生成步数与延迟关系",
+            "NDCG 等排序指标"
+          ],
+          "selfTest": [
+            "为什么「结构化选择」可以比「逐点打分」更省时间？",
+            "决策式模型相比逐点打分牺牲了什么能力？",
+            "候选集很小时，延迟优势还明显吗？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "逐点与列表式重排（Pointwise vs Listwise Reranking）",
+          "readable": "逐点：把「用户 + 一个候选」分别送进模型打分，候选有多少个就调用多少次；列表式：把整个候选列表一次性送进模型，让它输出整体排序。前者调用次数随候选集线性增长，后者一次调用但要处理长输入。",
+          "analogy": "逐点像一件件试衣服、一件件问店员好不好看；列表式像把所有衣服摊在桌上，让造型师一次给出搭配顺序。",
+          "analogyBreaksDown": "试衣服的判断彼此独立，而逐点重排的多次打分共享同一份用户偏好，理论上可以复用计算（如共享前缀或缓存）；论文是否复用、怎么复用摘要没有交代，所以「线性增长」只是对朴素实现的描述。",
+          "mechanism": "关键取舍在「调用次数 × 单次成本」：逐点实现简单、容易并行，但每个候选都要跑一次带用户历史的模型前向，成本随候选数线性上升；列表式一次看到全部候选，能做候选间比较，代价是输入变长、受上下文长度限制，也更容易被位置偏置影响。",
+          "visual": "画两条延迟曲线：横轴是候选集大小 K，纵轴是观测延迟；逐点曲线斜率大，列表式更平，决策式在相同偏置下最平。纵轴只画相对趋势并在角上标注「示意」，不标具体毫秒数。",
+          "prerequisites": [
+            "推荐系统召回—粗排—精排—重排链路",
+            "LLM 批推理与上下文长度限制",
+            "排序指标 NDCG / MRR"
+          ],
+          "selfTest": [
+            "候选集从 10 扩到 100，逐点重排的调用次数怎么变？",
+            "列表式重排的瓶颈通常是什么？",
+            "为什么延迟曲线的斜率比单点延迟数字更有信息量？"
+          ],
+          "formula": "T_{\\text{pointwise}}(K) \\approx K \\cdot t_{\\text{score}}"
+        },
+        {
+          "name": "质量—延迟运行区间（Quality–Latency Operating Regime）",
+          "readable": "不是简单说「A 比 B 好」，而是说每种方法在不同候选集规模与不同业务域下，落在「效果—延迟」平面上的哪一块区域。同一模型在小候选集可能又快又好，在大候选集就未必。",
+          "analogy": "像选交通工具：市内两公里自行车最快，跨城就是高铁；没有绝对最优，只有在你这段路程上的最优。",
+          "analogyBreaksDown": "交通工具有明确的里程阈值，而推荐重排的边界取决于候选集规模、域的分布与线上硬件，同一模型换一个域就可能换一个区间；线上还有吞吐与成本约束，不是单请求延迟一个数能概括的。",
+          "mechanism": "关键设计选择是同时报告效果与观测延迟，并扫描候选集大小与多个 Amazon 域：只报效果会掩盖部署代价，只报延迟会掩盖质量损失，两者一起才构成可选的运行区间，也才能解释为什么没有一个方法全面胜出。",
+          "visual": "画一张散点图：横轴是观测服务延迟（越小越好），纵轴是推荐效果指标（越高越好），每种模型画成一条随候选集大小移动的曲线，点的大小表示候选集规模；用阴影标出「高效果—低延迟」的理想区域。",
+          "prerequisites": [
+            "推荐系统离线指标与线上延迟的关系",
+            "重排任务的定义",
+            "延迟与吞吐的权衡概念"
+          ],
+          "selfTest": [
+            "为什么单看平均延迟不足以判断能否上线？",
+            "候选集大小变化时，各方法的相对位置会怎么变？",
+            "「各自处于不同运行区间」对选型意味着什么？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-pointwise-latency-scaling",
+          "name": "逐点重排的线性延迟增长（Pointwise Reranking Latency Scaling）",
+          "category": "engineering",
+          "latex": "T_{\\text{pt}}(K) = K \\cdot t_{\\text{score}} + t_{\\text{base}} \\approx O(K)",
+          "symbols": [
+            ["K", "候选集大小，即重排要处理的候选个数"],
+            ["t_score", "对单个候选做一次带用户历史的前向打分耗时"],
+            ["t_base", "单次请求的固定开销（调度、序列化、网络往返）"],
+            ["T_pt", "逐点重排的观测服务延迟"]
+          ],
+          "derivation": [
+            "第 1 步：逐点重排把「给一个候选打分」当成独立问题，要排出 K 个候选的顺序就得做 K 次打分决策。",
+            "第 2 步：每次打分都要把用户历史与该候选拼成输入过一次模型，单次耗时近似为常数 t_score，于是总延迟是 K 项之和。",
+            "第 3 步：再加上与 K 无关的固定开销 t_base，得到 T_pt(K)=K·t_score+t_base，即在 K 上呈线性（O(K)）。",
+            "第 4 步：以候选集大小为自变量扫描即可得到延迟曲线——摘要指出逐点 Qwen 重排器的延迟增长明显更陡，而决策式模型 Jev 的曲线更平缓（具体形式需核对原文）。"
+          ],
+          "analogy": "像一个个称水果：要报总重，就得把每个水果都放上秤称一次，水果越多称的次数越多；有经验的摊主把整筐端上大秤，称的次数与水果个数无关。",
+          "pitfalls": [
+            "把线性增长当成物理定律：批处理、并行打分与前缀缓存都能压低单次有效成本，线性只在朴素实现下成立。",
+            "忽略 t_base：候选集很小时固定开销占主导，此时逐点未必更慢。",
+            "用平均延迟代替 P99：调用次数增长对尾延迟的放大远大于对均值的放大。"
+          ],
+          "code": "def pt_latency(K, t_score=0.02, t_base=0.05):\n    \"\"\"逐点重排的线性延迟模型：K 个候选各打分一次。\"\"\"\n    return K * t_score + t_base\n\n\nfor K in (10, 50, 100, 500):\n    print(K, round(pt_latency(K), 3))",
+          "sources": [
+            {"title": "Decision-Oriented Recommendation Reranking: An Empirical Study of Jev", "url": "https://huggingface.co/papers/2609.40241"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "论文把推荐重排表述为「在预定义候选集中做结构化选择」。",
+          "Jev 被 TypeSafe AI 描述为 System One Model。",
+          "实验对比了推荐专用模型，以及逐点与列表式 Qwen 重排器。",
+          "评测覆盖多个 Amazon Reviews 域与多种候选集规模。",
+          "结果显示 Jev 的推荐效果相对所测基线保持较强，且延迟增长比逐点 Qwen 重排器更平缓。",
+          "Jev 的观测服务延迟仍显著高于推荐专用模型。",
+          "作者据此认为决策式模型处于一个独立的质量—延迟运行区间。"
+        ],
+        "uncertain": [
+          "所有具体数值（延迟毫秒数、效果指标绝对值与提升幅度）摘要均未给出，待核实。",
+          "列表式 Qwen 重排器的延迟与效果结论摘要未单独列出。",
+          "Jev 的模型规模、推理硬件与是否开放权重未知。",
+          "公式 f-pointwise-latency-scaling 是按摘要重建的通用形式，需核对原文。",
+          "采集层标注 codeAvailable=false，是否存在公开实现待核实。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "在 Amazon 多域推荐重排上实测 Jev：效果接近基线，延迟涨得比逐点 Qwen 慢。"},
+          {"level": "入门", "text": "LLM 做推荐重排效果好但推理贵。论文把重排看成「从给定候选里做一次结构化选择」，改用决策式模型 Jev（TypeSafe AI 称其为 System One Model），在多个 Amazon 域与多种候选集规模下，与推荐专用模型和逐点、列表式 Qwen 重排器对比效果与实测延迟。"},
+          {"level": "进阶", "text": "结论分三层：效果上 Jev 相对所测基线保持较强；延迟上它随候选集增长明显比逐点 Qwen 重排器平缓，但仍远高于推荐专用模型；因此它落在一条独立的质量—延迟曲线上——不是全面更优，而是在中大规模候选集下换了一种性价比。这个视角比「LLM 重排能不能用」更可操作：先确定自己的候选集规模，再选区间。"},
+          {"level": "专家", "text": "对外部效度要谨慎：Amazon Reviews 是公开离线数据，延迟是观测到的服务延迟而非严格受控的硬件基准；候选集大小由作者人为扫描，线上候选分布与延迟目标（P99 而非均值）未必相同。另一个关键问题是决策式模型的可训练性与可解释性——如果它不能像 LLM 那样吃偏好数据继续迭代，长期空间就受限，而摘要没有讨论训练方式。它真正的贡献是把「结构化选择」当成一个建模类别提出来。"}
+        ],
+        "socratic": [
+          {"q": "为什么用「候选集大小」作为扫描变量，而不是只报一个平均延迟？", "a": "因为不同方法的延迟随候选集增长的斜率不同：单点数字区分不了「小集合快、大集合崩」和「一直平稳」，而线上候选规模随业务变化极大。"},
+          {"q": "如果只比较效果，会得出什么错误结论？", "a": "会误以为 LLM 重排可以无条件替换推荐专用模型，忽略它的服务延迟高出一个量级，在延迟敏感场景根本不能上线。"}
+        ],
+        "mechanism": "推荐重排的本质是从固定候选集里排出顺序，输出空间离散且有界。逐点模型把它拆成 K 个独立打分，调用次数随候选数增长；LLM 列表式把它变成一次长生成，受上下文长度限制。决策式模型直接在候选集合上建模一次选择，把调用次数与候选数解耦，所以延迟增长更平缓——代价是放弃自由生成，而且绝对延迟仍高于为推荐任务专门优化的模型。",
+        "boundary": "适用条件是「候选集合预先给定且有限」的结构化排序任务；如果任务需要生成新物品、需要开放式解释，或候选集极大（如百万级），该结论未必成立。论文只覆盖 Amazon Reviews 域，延迟是观测值，换硬件、换流量模型后排序可能变化；效果指标的具体数值也不在摘要里。",
+        "analogyBoundary": "「服务员一眼报出推荐菜」的类比掩盖了可验证性：餐厅里对错最终由顾客反馈确认，而重排的有效性要用离线指标（如 NDCG）和线上 A/B 衡量，决策式模型内部的一次选择过程不像逐步生成那样容易归因。",
+        "misconceptions": [
+          "以为 Jev 全面优于 LLM 重排器——摘要说的是延迟增长更平缓，且绝对值仍显著更高。",
+          "把「System One 模型」当营销词，忽略它其实是一个建模主张：在结构化候选集上直接做选择。",
+          "用单点延迟数字比较方法，忽略曲线斜率在不同候选规模下会反转排序。"
+        ],
+        "ownAnalysis": "（推断）这篇与同批 Agentic RL 教程第 25 章在观点上互相呼应：不是所有任务都该用生成式或 RL 建模，结构化选择类任务可能更适合判别式、决策式模型。可疑处有三：延迟是观测值而非受控基准；没有给出效果指标的具体数值，无法判断「保持较强」离最强差多少；摘要也没说明 Jev 能否用偏好数据微调。",
+        "officialNotes": [
+          {"position": "论文摘要口径：Jev 由 TypeSafe AI 描述为 System One Model；在多个 Amazon Reviews 域与候选集规模下，其推荐效果相对所测基线保持较强，延迟增长比逐点 Qwen 重排器更平缓，但观测延迟仍显著高于推荐专用模型。", "source": "https://huggingface.co/papers/2609.40241"}
+        ],
+        "interviewAnswer": "如果面试聊推荐重排，我会说：LLM 重排的瓶颈往往不是效果而是延迟曲线。论文把重排定义成结构化选择，用决策式模型 Jev 做了受控对比：效果相对基线保持较强，延迟随候选集增长比逐点 Qwen 重排器平缓得多，但仍显著高于推荐专用模型，所以它是一个独立的运行区间。选型时我会先看候选集规模与延迟 SLA，再决定用专用模型、决策式模型还是 LLM 重排。",
+        "studyPath": {
+          "prerequisites": [
+            "推荐系统召回—排序链路",
+            "LLM 推理延迟的构成（首 token、每 token）",
+            "排序离线指标 NDCG / MRR"
+          ],
+          "nextSteps": [
+            "读论文原文核对延迟数值与评测协议",
+            "复现逐点与列表式重排的延迟曲线",
+            "调研决策式、判别式模型在排序任务上的其他工作"
+          ]
+        }
+      }
+    },
+    {
+      "id": "4151aaf2fefa6d1c",
+      "tldr": "受控实验拆解 LoopLM：循环利于超出训练视野的推理、却伤知识，并提出历史状态注入。",
+      "keyPoints": [
+        "LoopLM 靠参数共享增加计算深度，不增参数量。",
+        "循环能提升超出训练视野的推理，但损害知识表现。",
+        "更难的推理样本并未稳定获得更多收益。",
+        "非循环输出层提升了对欠循环的鲁棒性。",
+        "通道级历史状态注入加时间步条件更稳、更省。"
+      ],
+      "why": "循环与推理时算力扩展是当下的热点；这篇给出「何时有用、放在哪、怎么条件化」的可操作设计准则。",
+      "difficulty": "hard",
+      "tags": [
+        "loop-lm",
+        "recurrence",
+        "inference-compute",
+        "reasoning",
+        "knowledge",
+        "architecture"
+      ],
+      "entities": [
+        "LoopLM",
+        "history-state injection",
+        "channel-wise history-state injection",
+        "timestep conditioning",
+        "initial-state injection",
+        "under-unrolling"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "循环何时有用：三条线索",
+        "caption": "预算决定收益方向，结构决定鲁棒性，条件化决定深度变化时的稳定性。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='LoopLM 设计线索：预算、结构分配、条件化方式'><rect x='40' y='16' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>预算：训练视野内</text><text x='424' y='40' font-size='13' text-anchor='end' fill='currentColor'>循环收益有限</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='40' y='70' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>预算：超出训练视野</text><text x='424' y='94' font-size='13' text-anchor='end' fill='currentColor'>推理升、知识降</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='40' y='124' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>结构：层与迭代分配</text><text x='424' y='148' font-size='13' text-anchor='end' fill='currentColor'>非循环输出层更鲁棒</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='40' y='178' width='400' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>条件化：历史状态注入</text><text x='424' y='202' font-size='13' text-anchor='end' fill='currentColor'>通道级历史 + 时间步</text></svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {"label": "预算：训练视野内", "detail": "在训练时用过的循环深度附近，额外循环收益有限"},
+            {"label": "预算：超出训练视野", "detail": "推理提升、知识表现下降；更难样本并未稳定获益更多"},
+            {"label": "结构：层与迭代分配", "detail": "有效深度不足以预测表现；非循环输出层抗欠循环"},
+            {"label": "条件化：状态注入", "detail": "initial-state 鲁棒性有限，通道级历史状态 + 时间步条件更好"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "加长循环"},
+            {"from": 1, "to": 2, "label": "追因结构"},
+            {"from": 2, "to": 3, "label": "再稳条件化"}
+          ]
+        },
+        "alt": "四个纵向步骤：训练视野内的预算、超出训练视野的预算、层与迭代的结构分配、历史状态注入的条件化。"
+      },
+      "concepts": [
+        {
+          "name": "循环语言模型（Looped Language Model, LoopLM）",
+          "readable": "同一组参数被反复使用多次，把「层数」换成「循环次数」来加深计算。这样不增加参数量就能在推理时投入更多算力，代价是每多循环一次就多一次前向。",
+          "analogy": "像同一道工序反复过机器：机器（参数）不增加，但每过一遍材料被加工得更细；想更精细就多过几遍，产能自然下降。",
+          "analogyBreaksDown": "工厂里反复加工一般单调变好，而论文发现循环对推理有帮助、却会损害知识表现——同一组参数反复使用会让表示偏离预训练分布，这种「越练越差」的分化在加工类比里没有对应物。",
+          "mechanism": "关键设计选择是参数共享：所有循环共用同一套权重，用循环次数控制计算深度。它解决的是「不增参数量地扩展推理算力」，但摘要明确指出有效深度并不能单独预测表现，说明收益取决于层与循环如何分配，而不是简单堆循环次数。",
+          "visual": "画一条横向时间轴：输入 → [共享块 ×N 循环] → 输出，标注 N 可调；旁边并排三条曲线（知识任务、推理任务、超出训练视野的推理），横轴循环次数、纵轴性能，展示知识随 N 上升而下降、推理在超出训练视野的部分上升。",
+          "prerequisites": [
+            "Transformer 层与前向计算",
+            "参数共享 / 权重绑定",
+            "推理时计算扩展的基本概念"
+          ],
+          "selfTest": [
+            "LoopLM 靠什么增加计算深度，代价是什么？",
+            "为什么「不增参数」不等于「不增成本」？",
+            "循环次数超过训练时用过的范围，会发生什么？"
+          ],
+          "formula": "h^{(k+1)} = f_{\\theta}(h^{(k)}),\\quad \\theta \\text{ 在所有循环间共享}"
+        },
+        {
+          "name": "历史状态注入（History-State Injection）",
+          "readable": "常规做法只把最初的输入表示注入每一轮循环；论文改成把此前所有循环的隐状态摘要一起送进去，并额外给出当前是第几轮的时间步条件。这样模型能「记得自己循环了几次、之前算到哪」，在循环深度变化时更稳。",
+          "analogy": "像反复修改同一份草稿：只看原始提纲改容易在原地打转；把前面每一版的修改痕迹都留在桌上，再标上「这是第几稿」，每轮才知道该往哪儿改。",
+          "analogyBreaksDown": "改稿时旧版本可以随便翻，而模型的隐状态维度固定，历史必须被压缩成摘要（如按通道聚合），信息必然有损；论文也没说明超长循环下摘要如何避免饱和，类比掩盖了这个压缩瓶颈。",
+          "mechanism": "关键设计选择是注入「历史」而不是「初始状态」，并且按通道（channel-wise）聚合，再外加以时间步条件：这让同一套参数在推理预算变化（欠循环或过循环）时表现更稳，同时成本很低——摘要称其在延长循环时更好地保住知识表现。",
+          "visual": "画循环块的示意图：每一轮除了当前隐状态，还从上方拉入一条来自前面各轮的聚合向量（用渐变色表示不同通道），并附一个时间步编码的方块；左侧对比画出只有初始状态注入的老方案。",
+          "prerequisites": [
+            "循环 / 权重复用的前向结构",
+            "RNN 类状态传递的直觉",
+            "位置编码与时间步编码"
+          ],
+          "selfTest": [
+            "initial-state injection 的问题是什么？",
+            "history-state injection 额外引入了哪些信息？",
+            "为什么说它是「低成本」的改动？"
+          ],
+          "formula": "s^{(k)} = \\mathrm{Agg}_{\\text{ch}}\\left(h^{(0)},\\dots,h^{(k)}\\right)"
+        },
+        {
+          "name": "有效深度（Effective Depth）",
+          "readable": "模型实际起作用的计算深度，而不是名义上的层数或循环次数。论文的关键提醒是：有效深度本身不足以预测循环是否带来收益——同样的有效深度，层与循环怎么分配，结果会不同。",
+          "analogy": "像一个团队的实际产出深度：不是人头数（参数量），也不是开的会议轮数（循环次数），而是信息真正被处理的层数；但光看总会议时长，仍猜不出方案好不好。",
+          "analogyBreaksDown": "团队产出可以事后复盘，而有效深度通常要用探针或表征相似度间接估计，本身带测量误差；把它当自变量预测性能，等于用一个有噪声的代理指标下结论，论文正是在说这个代理不够用。",
+          "mechanism": "关键设计选择是把「深度来源」拆成两类——不同层的堆叠与同一层的重复——分别研究：只有这样才能解释为什么某些推理预算下非循环输出层更鲁棒，以及输入层与输出层的最优位置为什么随推理预算变化。",
+          "visual": "画一张二维热力图：横轴是循环迭代次数，纵轴是参与循环的层数，格子颜色代表性能；若同一「等效深度」对角线上颜色不一致，就直观证明了有效深度不足以决定表现。",
+          "prerequisites": [
+            "网络深度与表示能力的关系",
+            "残差流与隐状态的概念",
+            "消融实验的设计方法"
+          ],
+          "selfTest": [
+            "为什么有效深度相同的两种配置表现会不同？",
+            "论文用它反驳了什么简单假设？",
+            "你会怎么测量有效深度？"
+          ],
+          "formula": "D_{\\text{eff}} = L_{\\text{recurrent}} \\times K"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-history-state-injection",
+          "name": "历史状态注入的循环更新（Recurrence with History-State Injection）",
+          "category": "foundation",
+          "latex": "h^{(k+1)} = f_{\\theta}\\!\\left(h^{(k)},\\ \\mathrm{Agg}_{\\text{ch}}\\!\\left(h^{(0)},\\dots,h^{(k)}\\right),\\ c_k\\right)",
+          "symbols": [
+            ["h^{(k)}", "第 k 次循环后的隐状态"],
+            ["f_θ", "所有循环共享的同一组参数（参数共享是 LoopLM 的核心）"],
+            ["Agg_ch", "按通道对历史隐状态做聚合，即 channel-wise history-state injection"],
+            ["c_k", "第 k 步的时间步条件（timestep conditioning）"],
+            ["K", "推理时的循环次数，决定投入的算力"]
+          ],
+          "derivation": [
+            "第 1 步：LoopLM 用参数共享换取计算深度，递归写作 h^{(k+1)}=f_θ(h^{(k)})，θ 在所有循环间共享。",
+            "第 2 步：常规做法只把初始状态 h^{(0)} 注入每一轮（initial-state injection），摘要指出它对循环深度的变化鲁棒性有限。",
+            "第 3 步：改为注入历史——把 h^{(0)}…h^{(k)} 聚合成摘要 s^{(k)} 一起送入，模型因此知道自己循环到第几步、此前算出了什么。",
+            "第 4 步：再加入时间步条件 c_k，并按通道维度聚合；摘要称这一组合成本低且更有效：延长循环时更好地保住知识，并改善不同推理预算下的鲁棒性。"
+          ],
+          "analogy": "像做菜时不断尝味：只看最初配方没法知道已经加了几勺盐；把每次尝到的味道记下来，并清楚现在是第几次调味，才不会越调越咸。",
+          "pitfalls": [
+            "把「不增参数」理解成「不加成本」：每多一轮循环就多一次前向，算力与延迟都上升。",
+            "把历史状态与 KV 缓存混淆：前者是循环轴上的隐状态聚合，属架构设计；后者是注意力键值缓存，属实现层优化。",
+            "忽略时间步条件：没有它，模型无法区分欠循环与过循环，深度变化时行为会漂移。"
+          ],
+          "code": "import torch\n\n\ndef looped_step(block, hist_proj, t_emb, h, k):\n    \"\"\"h: [B,T,D] 当前隐状态; k: 第几轮循环。\"\"\"\n    s = hist_proj(torch.cat([h, h], dim=-1))    # 通道级历史状态摘要（示意）\n    c = t_emb(torch.tensor(k)).view(1, 1, -1)   # timestep 条件\n    return block(h + s + c)                     # 共享参数的循环块",
+          "sources": [
+            {"title": "What Makes Recurrence Effective in Looped Language Models?", "url": "https://huggingface.co/papers/2609.36636"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "LoopLM 通过参数共享增加计算深度，在不增加参数的前提下扩展推理计算。",
+          "评测覆盖低于、等于与超出训练视野的推理预算，任务含知识与推理。",
+          "循环可以提升超出训练视野的推理表现，但会损害知识表现。",
+          "更难的推理样本并未稳定获得更多收益。",
+          "表现取决于不同层与循环迭代如何分配，有效深度本身不足以预测行为。",
+          "非循环输出层提升了对欠循环（under-unrolling）的鲁棒性，输入与输出层的最优位置随推理预算变化。",
+          "常规 initial-state 注入对循环深度变化的鲁棒性有限，论文提出 history-state 注入。",
+          "通道级历史状态注入配合时间步条件被视为低成本且更有效的设计。"
+        ],
+        "uncertain": [
+          "实验规模、数据集名称与全部数值均未在摘要中出现，待核实。",
+          "history-state 的具体聚合方式（聚合哪些量、沿哪个轴）细节未知。",
+          "「有效深度」在该论文中的度量方式摘要未定义。",
+          "公式 f-history-state-injection 为按摘要重建的通用形式，需核对原文。",
+          "采集层标注 codeAvailable=false，暂无公开实现可用于复现。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "把同一层反复用几遍来加深计算：推理会变好、知识会变差，作者给出更稳的注入方式。"},
+          {"level": "入门", "text": "LoopLM 不增加参数，而是让同一组权重循环多次来换取更深的计算，从而在推理时投入更多算力。论文用受控实验回答三个问题：什么时候循环有用、循环该加在哪里、条件化怎么做才稳；结论是循环能提升超出训练视野的推理，却损害知识表现，他们因此提出历史状态注入。"},
+          {"level": "进阶", "text": "三个发现值得记住：第一，收益有方向性——推理任务（尤其超出训练视野的部分）受益，知识任务反而退化；第二，结构位置很重要——非循环输出层让模型对欠循环更鲁棒，输入与输出层的最优位置随推理预算变化，说明只看有效深度预测不了表现；第三，条件化方式决定鲁棒性——只注入初始状态在深度变化时会漂移，改成注入按通道聚合的历史状态并加时间步条件，既便宜又更稳。"},
+          {"level": "专家", "text": "从方法论看，这篇的价值在于把「循环 / 推理时计算」从一个笼统的放大器拆成三个可实验的维度：预算（相对训练视野的位置）、结构（哪些层循环、输入输出层放哪）、条件化（注入什么状态）。它同时给出负结果——更难的推理样本并不会稳定获益，这提醒我们推理时计算不是万能药。局限也明显：摘要没给任务、规模与数值，无法判断结论在更大模型或长链推理上是否成立；「低成本」的相对说法也缺少成本口径。"}
+        ],
+        "socratic": [
+          {"q": "如果不区分知识任务与推理任务，会得出什么错误结论？", "a": "会把两类任务平均起来看，得到「循环大致无害」或「循环略有益」的模糊结论，掩盖掉推理上升、知识下降这种方向相反的效果。"},
+          {"q": "为什么「不增参数」的推理时算力扩展仍要谨慎使用？", "a": "因为每轮循环都是完整前向，延迟与算力随循环次数线性增长；而摘要显示收益并不普遍，知识还会退化，所以要先确认任务类型与预算再决定循环几次。"},
+          {"q": "为什么作者要专门研究条件化，也就是怎么把状态注入循环？", "a": "因为推理时循环次数可变，同一套参数要在欠循环与过循环下都工作；只注入初始状态会让模型在深度变化时行为漂移，历史状态加时间步条件才是对可变深度的补偿。"}
+        ],
+        "mechanism": "循环之所以可能有用，是因为把同一组参数反复应用等于在不加参数的情况下增加串行计算步数，理论上能完成更多步的中间推理；但它同时把表示推离预训练分布，于是知识类任务受损。论文的设计回应是：把「循环几次、加在哪层」当成显式研究的变量，并用历史状态加时间步条件让模型对推理预算的变化保持鲁棒，而不是依赖固定深度假设。",
+        "boundary": "适用前提是任务能从更多串行计算中获益（如多步推理），且推理预算可控；对事实知识密集型任务，延长循环可能反而变差。摘要没有给出模型规模、训练数据与任务清单，所以「超出训练视野仍能提升推理」的外推范围未知；历史状态注入的收益也只是相对该论文自己的基线而言。",
+        "analogyBoundary": "「同一道工序反复过机器」的类比假设每遍都单调变好，而论文观察到知识表现随循环退化——重复使用同一组参数会造成分布漂移；类比也没有体现推理算力随循环次数线性增加的实际成本与延迟约束。",
+        "misconceptions": [
+          "把 LoopLM 当成省参数量的大模型：它省的是参数，不省算力与延迟。",
+          "以为循环越多越好：摘要明确说更难推理样本并不稳定获益，知识还会退化。",
+          "把「有效深度」当作性能预测指标：论文说它单独不足以预测行为。"
+        ],
+        "ownAnalysis": "（推断）这篇与主流「推理时计算扩展」路线（更多采样、更长思维链）是互补的：它把额外算力放在权重共享的循环轴上，而不是放在 token 生成上，于是在固定参数量下换取深度。可疑处：受控实验通常规模有限，摘要未给模型大小与任务，无法判断结论是否随规模迁移；「低成本、更有效」也缺少与直接加深网络等替代方案的成本对照。",
+        "officialNotes": [
+          {"position": "论文摘要口径：循环在超出训练视野时可提升推理，但会损害知识表现；有效深度不足以预测行为；作者提出 channel-wise history-state injection 配合 timestep conditioning，称其低成本且更有效。", "source": "https://huggingface.co/papers/2609.36636"}
+        ],
+        "interviewAnswer": "问到循环与推理时计算，我会说：LoopLM 用参数共享换计算深度，不增参数但每轮循环都要一次完整前向。论文的受控实验显示收益是有方向的——超出训练视野的推理会提升，知识表现却下降，而且更难的样本不一定获益更多；结构上非循环输出层对欠循环更鲁棒；条件化上只注入初始状态不够，改成按通道注入历史状态并加时间步条件更稳。所以我会先看任务类型和延迟预算，再决定循环几次。",
+        "studyPath": {
+          "prerequisites": [
+            "Transformer 结构与残差流",
+            "参数共享 / 权重绑定",
+            "推理时计算扩展的基本概念"
+          ],
+          "nextSteps": [
+            "读原文核对任务、模型规模与数值",
+            "对比循环扩展与直接加深网络的收益与成本",
+            "在自建任务上做循环次数与层放置的消融"
+          ]
+        }
+      }
+    }
+  ]
+}

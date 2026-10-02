@@ -1,0 +1,936 @@
+{
+  "batchId": "queue-06",
+  "entries": [
+    {
+      "id": "567c7131b3a62afc",
+      "tldr": "综述把高效注意力统一看成模型内部上下文记忆，提出五维分析视角，并重建 14 个模型谱系的架构采纳。",
+      "keyPoints": [
+        "自注意力访问细粒度但 prefill 二次成本、KV Cache 随长度增长。",
+        "覆盖显式记忆压缩、稀疏访问、循环状态、结构化状态动力学与异构组合。",
+        "提出五维透镜：记忆表示、记忆更新、访问、读出与集成。",
+        "依据 59 条发布级记录（14 个谱系、11 个开源权重端点）重建采纳。",
+        "提出有状态多维记忆路由假设：Sparse Write/Read 跨时间、深度与粒度组织记忆。"
+      ],
+      "why": "注意力与序列建模是 foundation 岗必考的取舍题；五维透镜可直接当架构面试的分析框架，也能用在长上下文推理与显存优化论证里。",
+      "difficulty": "medium",
+      "tags": [
+        "attention",
+        "long-context",
+        "kv-cache",
+        "sparse-attention",
+        "linear-attention",
+        "survey"
+      ],
+      "entities": [
+        "self-attention",
+        "key-value cache",
+        "explicit-memory compression",
+        "sparse access",
+        "recurrent state",
+        "structured state dynamics",
+        "Sparse Write",
+        "Sparse Read",
+        "stateful multidimensional memory-routing hypothesis"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "注意力即内部记忆五维透镜",
+        "caption": "一句话记住：把各种高效注意力统一看成模型内部的上下文记忆，沿五个维度逐层提问。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='高效注意力的记忆五维透镜：记忆表示、记忆更新、访问、读出、集成'><rect x='56' y='10' width='368' height='32' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='31' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>① 记忆表示</text><text x='408' y='31' font-size='13' text-anchor='end' fill='currentColor'>被记住了什么</text><line x1='240' y1='43' x2='240' y2='50' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,54 236,49 244,49' fill='var(--line-1)'/><rect x='56' y='54' width='368' height='32' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='75' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>② 记忆更新</text><text x='408' y='75' font-size='13' text-anchor='end' fill='currentColor'>它如何随时间变化</text><line x1='240' y1='87' x2='240' y2='94' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,98 236,93 244,93' fill='var(--line-1)'/><rect x='56' y='98' width='368' height='32' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='119' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>③ 记忆访问</text><text x='408' y='119' font-size='13' text-anchor='end' fill='currentColor'>哪些位置可被选中</text><line x1='240' y1='131' x2='240' y2='138' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,142 236,137 244,137' fill='var(--line-1)'/><rect x='56' y='142' width='368' height='32' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='163' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>④ 读出 Readout</text><text x='408' y='163' font-size='13' text-anchor='end' fill='currentColor'>选中之后怎么读</text><line x1='240' y1='175' x2='240' y2='182' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,186 236,181 244,181' fill='var(--line-1)'/><rect x='56' y='186' width='368' height='32' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='207' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>⑤ 集成 Integration</text><text x='408' y='207' font-size='13' text-anchor='end' fill='currentColor'>读出如何组成输出</text></svg>",
+        "alt": "记忆五维透镜的竖直流程：记忆表示（被记住什么）到记忆更新、记忆访问、读出，最后集成成模型输出。"
+      },
+      "concepts": [
+        {
+          "name": "模型内部上下文记忆 Model-Internal Contextual Memory",
+          "readable": "把 Attention、稀疏访问、循环状态等看成同一件事：模型在内部维护的一份上下文记忆。区别只在记什么、怎么改、哪些能被 query 选中、读出来后如何汇成输出。",
+          "analogy": "像办公室的文件系统：有人把全部文件摊在桌上（全局注意力），有人把文件归档浓缩成一个本子（线性/循环状态），有人只按关键词抽几张（稀疏访问）。",
+          "analogyBreaksDown": "文件系统里内容与索引分离、可被外部审计；模型的记忆、索引与读出共用同一组权重，没有独立的「文件」实体，也无法直接读出某条记忆对应的语义单元。",
+          "mechanism": "用固定的五个提问维度替代某一种计算模型，让接口完全不同的显式记忆压缩与循环状态方法可以并列比较；正因如此才发现二者接口不同但控制的记忆功能已日益重叠。",
+          "visual": "画一个方法族 × 维度的矩阵：行是显式记忆、稀疏访问、循环状态、结构化状态、异构组合，列是表示/更新/访问/读出/集成，格子填接口形式，颜色深浅表示该维度被改造的激进程度。",
+          "prerequisites": [
+            "Transformer 自注意力与前馈层结构",
+            "KV Cache 与 prefill/decode 的区别",
+            "线性注意力的状态递推形式"
+          ],
+          "selfTest": [
+            "五维透镜的五个维度分别是什么？",
+            "为什么要单独保留「集成」这一维，它和「读出」的区别在哪？",
+            "用五维透镜描述循环状态方法：它的记忆表示与记忆更新各是什么？"
+          ],
+          "formula": "\\mathrm{Attn}(Q,K,V)=\\mathrm{softmax}\\!\\left(\\frac{QK^{\\top}}{\\sqrt{d}}\\right)V"
+        },
+        {
+          "name": "深度维度的记忆分工 Depth-Wise Memory Composition",
+          "readable": "异构架构不再只用一种注意力，而是让不同层承担不同记忆功能：有的层做压缩，有的层做稀疏选择，还可能把选中的记忆与路由产物跨层传给后面的层。",
+          "analogy": "像流水线上不同工位：前段做粗筛和打包，中段做精挑，后段把前段留下的便签一并带上桌再决策。",
+          "analogyBreaksDown": "流水线工位由工程师显式分工、可随时替换或关闭；这里的「分工」是架构设计与训练共同涌现的，层间通过残差与跨层复用强耦合，无法单独关闭某层记忆功能做干净消融。",
+          "mechanism": "把互补的记忆处理分散到不同表示阶段，深度就从「重复同一算子」变成构造与管理上下文记忆的一个维度，同时保留少量全局注意力作为直接访问完整历史的兜底。",
+          "visual": "画一条从下到上的深度轴，每层一个方块，颜色代表机制类型（全局/线性/稀疏），箭头表示跨层重用的记忆与路由产物；右侧并排画每层的计算或显存占比曲线。",
+          "prerequisites": [
+            "混合注意力架构（线性 + 全局）",
+            "层次化表示的基本直觉"
+          ],
+          "selfTest": [
+            "为什么异构架构要在深度上分工，而不是每层都用同一种机制？",
+            "跨层复用一般传递哪些东西？",
+            "深度成为记忆管理维度后，架构设计的问题从什么变成了什么？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-attention-cost-kv-cache",
+          "name": "自注意力 prefill 二次成本与 KV Cache 线性增长 (Quadratic Prefill Cost and KV Cache Growth)",
+          "category": "foundation",
+          "latex": "\\mathrm{Cost}_{\\text{prefill}}=O(n^{2}d),\\qquad \\mathrm{KV\\ Cache}=O(n\\,d\\,L)",
+          "symbols": [
+            ["n", "上下文 token 数"],
+            ["d", "单头维度或隐藏维度（量级近似）"],
+            ["L", "Transformer 层数"],
+            ["O(n^2 d)", "注意力矩阵带来的单层 prefill 计算量"],
+            ["O(n d L)", "需要缓存的历史键值总量"]
+          ],
+          "derivation": [
+            "第 1 步：每个 query 都要与全部 n 个 key 打分，得到 n×n 的注意力矩阵，单层成本 O(n^2 d)。",
+            "第 2 步：decode 时每步只算一个新 query，但必须读到此前所有 key/value，因此 KV Cache 随上下文长度线性增长，全模型共 O(n d L)。",
+            "第 3 步：综述把这两项成本当作所有高效注意力改造的出发点：要么压缩记忆表示，要么减少可访问项，要么用循环状态替代显式缓存。"
+          ],
+          "analogy": "像开会：全员互相对话（prefill）的对话次数随人数平方增长，而每个人随身带的会议记录（KV Cache）随会议时长线性变厚。",
+          "pitfalls": [
+            "把 prefill 的 O(n²) 与 decode 单步的 O(n) 混为一谈，面试里容易被追问。",
+            "KV Cache 是显存与带宽瓶颈而非算力瓶颈，长上下文推理的主要约束常在这里。"
+          ],
+          "code": "def attn_cost(n, d, L, bytes_per=2):\n    prefill = 2 * n * n * d * L            # 前向 FLOPs 量级\n    kv_cache = 2 * n * d * L * bytes_per   # 假定 K/V 各一份\n    return prefill, kv_cache\n",
+          "sources": [
+            {
+              "title": "The Evolution of Attention in Large Language Models: Mechanisms, Trade-offs, and Emerging Trends",
+              "url": "https://arxiv.org/abs/2609.39661"
+            }
+          ]
+        },
+        {
+          "id": "f-sparse-read-write",
+          "name": "稀疏写 / 稀疏读的上下文访问 (Sparse Write and Sparse Read)",
+          "category": "foundation",
+          "latex": "\\mathcal{S}(q)=\\mathrm{TopK}_{i}\\;s(q,k_{i}),\\qquad o=\\sum_{i\\in\\mathcal{S}(q)}\\alpha_{i}v_{i},\\;\\;\\alpha_{i}=\\frac{\\exp(q^{\\top}k_{i}/\\sqrt{d})}{\\sum_{j\\in\\mathcal{S}(q)}\\exp(q^{\\top}k_{j}/\\sqrt{d})}",
+          "symbols": [
+            ["q", "当前 query 向量"],
+            ["k_i, v_i", "第 i 个历史位置的键与值"],
+            ["s(·)", "打分函数，例如点积"],
+            ["S(q)", "被该 query 选中的可访问子集"],
+            ["α_i", "仅在选中子集内归一化的注意力权重"]
+          ],
+          "derivation": [
+            "第 1 步：全局注意力对所有历史位置打分并归一化，n 越大成本越高。",
+            "第 2 步：Sparse Read 先用打分函数选出 Top-K 子集 S(q)，只在该子集内做 softmax，用稀疏换取更低的读成本。",
+            "第 3 步：Sparse Write 决定哪些内容值得写进记忆，写与读协同决定「维护什么」与「每次 query 谁参与计算」。"
+          ],
+          "analogy": "图书馆不会把全部藏书搬到桌上：Sparse Write 决定哪些书值得入库编目，Sparse Read 决定这次问题只取哪几本。",
+          "pitfalls": [
+            "把稀疏注意力理解成「丢弃历史」：完整历史通常仍保留，只是参与计算的位置受限。",
+            "Top-K 硬选择不可微，若不做直通估计或辅助损失，训练容易不稳定。",
+            "子集内重新归一化会改变输出尺度，与保留原始未归一化权重是两种不同设定。"
+          ],
+          "code": "import torch\n\ndef sparse_read(q, k, v, topk=64):\n    s = q @ k.transpose(-1, -2) / k.shape[-1] ** 0.5\n    idx = s.topk(topk, dim=-1).indices\n    mask = torch.zeros_like(s, dtype=torch.bool).scatter_(-1, idx, True)\n    w = torch.softmax(s.masked_fill(~mask, float('-inf')), dim=-1)\n    return w @ v\n",
+          "sources": [
+            {
+              "title": "The Evolution of Attention in Large Language Models: Mechanisms, Trade-offs, and Emerging Trends",
+              "url": "https://huggingface.co/papers/2609.39661"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "自注意力让 LLM 以 query 相关的方式细粒度访问上下文，但 prefill 成本是二次的、KV Cache 随上下文长度增长。",
+          "综述用记忆表示、记忆更新、访问、读出、集成五个维度组织高效注意力研究。",
+          "作者依据 59 条发布级记录、14 个主要模型谱系与 11 个高表现开源权重端点重建机制与架构采纳。",
+          "显式记忆与循环状态方法接口不同，但控制的记忆功能日益重叠；异构架构开始在深度方向协调互补的记忆处理。",
+          "作者提出有状态多维记忆路由假设：持久记忆按时间范围、网络深度、基质类型与表示粒度组织，由协同的 Sparse Write 与 Sparse Read 决定维持什么、谁参与每次 query。"
+        ],
+        "uncertain": [
+          "公式为按摘要重建的通用形式（二次 prefill 成本、KV Cache 规模、Top-K 稀疏读），需核对原文具体写法。",
+          "59 条发布级记录具体覆盖了哪些模型与版本，摘要未列出。",
+          "「架构采纳」的统计口径（人工判读还是解析配置文件）摘要未说明。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "把各种高效注意力统一看成模型内部的上下文记忆，用五个维度去比较它们。"
+          },
+          {
+            "level": "入门",
+            "text": "自注意力能按 query 精确取用上下文，代价是 prefill 计算随长度平方增长、KV Cache 随长度变长。近年研究分成显式记忆压缩、稀疏访问、循环状态、结构化状态动力学与异构组合几条路线。综述把它们统一描述成「模型内部的上下文记忆」，这样接口不同的方法也能横向比较。"
+          },
+          {
+            "level": "进阶",
+            "text": "核心工具是五维透镜：记忆表示（记什么）、记忆更新（怎么变）、访问（哪些可被 query 选中）、读出（选中后怎么读）、集成（读出如何组成输出）。它不预设单一计算模型，因此能把接口完全不同的方法并列。基于 59 条发布级记录，作者观察到两点：显式记忆与循环状态接口不同但功能开始重叠；异构架构开始在深度上分工，把互补的记忆处理分配到不同表示阶段，并跨层复用选中的记忆与路由产物。"
+          },
+          {
+            "level": "专家",
+            "text": "在五维透镜下，深度从「重复同一算子」变成构造与管理上下文记忆的一个维度：浅层偏压缩与粗筛，深层做精细选择并复用前层留下的记忆与路由产物，少量全局注意力仍作为直接访问完整历史的兜底。作者据此提出有状态多维记忆路由假设——持久记忆按时间范围、深度、基质类型与表示粒度组织，由协同的 Sparse Write 与 Sparse Read 决定维持什么、谁参与每次 query。它的价值是把「省了多少显存」的工程比较，换成「哪一维记忆功能由谁承担」的机制比较；代价是它是一套分析框架而非可证伪的计算模型。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "如果不把不同注意力机制统一到同一视角，会怎样？",
+            "a": "只能按各自的计算图比较，显式记忆与循环状态这类接口不同的方法会被当成两条无关路线，看不见它们在记忆功能上的重叠。"
+          },
+          {
+            "q": "为什么把「访问」和「读出」分成两个维度？",
+            "a": "「谁有资格被 query 选中」与「选中后如何组合成输出」是两个独立设计选择：稀疏读只改前者，重归一化或加权方式改后者，混在一起就无法解释成本与效果变化的来源。"
+          },
+          {
+            "q": "既然有五维视角，为什么不直接给一个统一计算模型？",
+            "a": "统一模型会把不同接口硬压成同一形式，丢掉各类方法的设计自由度；透镜只规定提问方式，重叠与差异都能被如实记录。"
+          }
+        ],
+        "mechanism": "长上下文的瓶颈不只是 FLOPs，而是「以什么形式持有历史」。全局注意力把历史原样留在 KV Cache 里、读时全量参与；线性或循环方法把历史压进固定大小状态，写时做一次压缩；稀疏方法保留完整历史但只让一部分参与计算。三者其实在回答同一组问题：记什么、怎么更新、谁可被访问、如何读出。五维透镜把这组问题固定下来，使不同接口的方法能在同一坐标系里比较，从而暴露「接口不同、功能重叠」，并解释异构架构为何要在深度上分工。",
+        "boundary": "这是分析框架而非可证伪的计算模型；摘要中「架构采纳」的证据来自 59 条发布级记录，不是受控消融，因此不能据此断言某条路线必然更优。训练目标、数据与超参差异带来的影响它也不提供解释；模型规模或任务分布变化时，五维上的分工结论可能失效。",
+        "analogyBoundary": "「办公室文件系统」把记忆当成外部可查的实体，但模型的记忆、索引与读出共用同一组权重，无法单独打开某条记忆看语义；类比还暗示存在一个中央管理员，而实际的写读路由是分布式的、由训练涌现。",
+        "misconceptions": [
+          "把高效注意力等同于「省显存」，忽略它同时改变了记忆的表示与更新方式。",
+          "认为稀疏注意力丢弃了历史，实际上完整历史仍在，只是参与计算的位置受限。",
+          "以为混合架构只是把两种注意力简单拼接，忽略深度分工与跨层复用才是关键设计。"
+        ],
+        "ownAnalysis": "这篇综述与以往按「线性/稀疏/低秩」分类算法的效率综述定位不同：它按记忆功能分类（推断：这更贴近混合架构让多机制共存的实际情况）。可疑处在证据基础——发布级配置能反映架构选择，却反映不了训练细节与消融，因此「深度成为记忆管理的维度」更像从架构演化相关性归纳出的假设，而非因果验证。五维本身也有重叠：记忆表示与记忆更新在实践中常一起改变。",
+        "officialNotes": [
+          {
+            "position": "综述口径：基于 59 条发布级记录、14 个主要模型谱系与 11 个高表现开源权重端点重建机制级发展与架构采纳，并提出有状态多维记忆路由假设。",
+            "source": "arXiv:2609.39661 摘要"
+          }
+        ],
+        "interviewAnswer": "我读这篇综述关注的是它把高效注意力统一成模型内部的上下文记忆，五个维度是记忆表示、更新、访问、读出和集成。它的价值在于让显式记忆压缩、稀疏访问、循环状态这些接口不同的路线能在同一坐标系里比较，作者据此发现两类方法功能在重叠，异构架构开始在深度上分工。我认同深度是被低估的维度——混合架构真正要设计的是每层承担哪种记忆功能，而不是挑一个注意力变体。不过它的证据是 59 条发布记录而非消融，所以更像一张有用的地图，不是结论。",
+        "studyPath": {
+          "prerequisites": [
+            "Transformer 自注意力与 KV Cache",
+            "线性注意力/状态空间模型的基本递推",
+            "长上下文推理的显存约束"
+          ],
+          "nextSteps": [
+            "读 FlashAttention、稀疏注意力等具体机制论文",
+            "按五维透镜拆解一个开源模型的层配置",
+            "学习混合注意力架构的层分配实验设计"
+          ]
+        }
+      }
+    },
+    {
+      "id": "7c9a6438bd4ebde0",
+      "tldr": "不改权重、只保留每头注意力权重最高的 token，用 NLL 增幅估计有效注意力集大小。",
+      "keyPoints": [
+        "不重训练，仅按注意力权重保留每头/层/query 的 top token，权重不变。",
+        "调选择集大小看 NLL 增幅，估计落在损失容忍度内的有效集合大小。",
+        "较小集合即可接近全注意力基线，但所需大小因模型而异。",
+        "上下文变长（预测目标不变）所需集合变大，占上下文比例却下降。",
+        "背景增加会把固定支撑事实挤出排名；重归一化可显著缩小所需集合。"
+      ],
+      "why": "「模型实际用了多少上下文」是长上下文与推理优化的核心问题；这套无训练测量方法可直接用于稀疏注意力与 KV 压缩的选型实验。",
+      "difficulty": "hard",
+      "tags": [
+        "attention",
+        "long-context",
+        "sparsity",
+        "nll",
+        "interpretability"
+      ],
+      "entities": [
+        "self-attention",
+        "negative log-likelihood",
+        "effective attention set size",
+        "attention mass",
+        "renormalization"
+      ],
+      "diagram": {
+        "kind": "curve",
+        "title": "有效注意力集大小测量示意",
+        "caption": "示意图（非实测数值）：选择集越接近全注意力，NLL 增幅越小；上下文变长时所需集合变大、占上下文比例下降。",
+        "spec": {
+          "type": "curve",
+          "nodes": [
+            {
+              "label": "集合很小",
+              "value": 10,
+              "detail": "只留极少数位置，NLL 增幅明显偏大"
+            },
+            {
+              "label": "集合中等",
+              "value": 40,
+              "detail": "NLL 增幅进入容忍区间的转折段"
+            },
+            {
+              "label": "接近全注意力",
+              "value": 80,
+              "detail": "NLL 与全注意力基线基本重合"
+            },
+            {
+              "label": "上下文变长",
+              "value": 100,
+              "detail": "同一容忍度下所需集合变大，但占上下文比例下降"
+            }
+          ]
+        },
+        "alt": "示意曲线：横轴是保留 token 的选择集大小，纵轴是相对全注意力的 NLL 增幅；集合增大时增幅下降，且上下文越长达到同一容忍度所需集合越大。"
+      },
+      "concepts": [
+        {
+          "name": "有效注意力集大小 Effective Attention Set Size",
+          "readable": "模型输出其实只依赖上下文里一小部分 token。做法是：不重训练，只保留每个头、每层、每个 query 注意力权重最高的那些 token（权重保持原值），不断改变保留数量，看 NLL 涨多少，从而量出「留住多少 token 才不掉点」。",
+          "analogy": "像做删词阅读理解：只留下你认为最关键的词，其余删掉，看还能不能答对。留得越多越稳，但你会发现其实不用留全文。",
+          "analogyBreaksDown": "删词后读者能靠语法和常识补全，而模型拿到的是被截断的注意力分布；此外「哪个词重要」是人判断的，这里是拿模型自己的注意力权重当重要性，会继承它的偏见（如位置偏好）。",
+          "mechanism": "关键在既不重训练也不改权重，只改 query 能看到哪些位置，因此测到的是推理时实际被使用的信息量，而不是微调后能恢复的信息量，避免了训练引入的混杂变量。",
+          "visual": "横轴是保留 token 数（对数刻度），纵轴是相对全注意力的 NLL 增幅；每条曲线对应一个模型，先陡降后趋平，趋平点即有效集合大小；再画一条随机选择的对照曲线，位置明显更高。",
+          "prerequisites": [
+            "注意力计算公式 softmax(QKᵀ/√d)V",
+            "语言模型的 NLL 与困惑度含义",
+            "KV Cache 与注意力掩码的实现"
+          ],
+          "selfTest": [
+            "为什么测量时必须保留原始注意力权重、不做重归一化？",
+            "如果损失容忍度 ε 调大，k* 会变大还是变小，为什么？",
+            "随机选择同样数量的 token 能达到接近的效果吗？摘要怎么说？"
+          ],
+          "formula": "\\Delta\\mathrm{NLL}(k)=\\mathrm{NLL}_{\\text{top-}k}-\\mathrm{NLL}_{\\text{full}}"
+        },
+        {
+          "name": "注意力竞争与重归一化 Attention Competition and Renormalization",
+          "readable": "上下文越长，注意力总质量要在更多 token 之间分配，固定支撑事实分到的权重被背景稀释、排名下降。把保留下来的权重重新归一化，等价于改变「选中表示如何组合」，能显著缩小需要的集合大小。",
+          "analogy": "像预算固定的会议：参会人越多，每个议题分到的时间越少；把不发言的人请出去（重归一化）就等于把时间重新分给剩下的人。",
+          "analogyBreaksDown": "会议时间显式受限，而 softmax 总质量恒为 1 只是归一化结果；重归一化不恢复丢失的信息，只改变输出尺度与相对权重，因此不能说明被挤掉的 token 本来就不重要。",
+          "mechanism": "把「选择哪些位置」（访问）与「选中后如何加权」（读出组合）解耦：重归一化在访问集合不变时也能降低所需规模，说明竞争效应有一部分来自组合方式，而不只是信息缺失。",
+          "visual": "画固定支撑事实的 token 在注意力排名中的位置随背景长度变化的折线（越来越靠后），旁边画其注意力质量的下降曲线，再叠加一条重归一化后的曲线（更低、更平）。",
+          "prerequisites": [
+            "softmax 归一化与注意力分布",
+            "注意力分数随上下文长度的统计变化"
+          ],
+          "selfTest": [
+            "上下文变长时，固定支撑事实的注意力排名与注意力质量各自怎么变？",
+            "重归一化能显著缩小所需集合，这说明了什么？",
+            "为什么论文强调「几何结构本身不能证明损失被保留」？"
+          ],
+          "formula": "\\alpha_{i}^{\\text{renorm}}=\\frac{\\alpha_{i}}{\\sum_{j\\in\\mathcal{S}}\\alpha_{j}}"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-effective-attention-set",
+          "name": "有效注意力集大小的 NLL 容忍度定义 (Effective Attention Set Size under NLL Tolerance)",
+          "category": "foundation",
+          "latex": "k^{\\star}=\\min\\left\\{\\,k:\\;\\mathrm{NLL}_{\\text{top-}k}-\\mathrm{NLL}_{\\text{full}}\\le \\epsilon \\right\\}",
+          "symbols": [
+            ["k", "每个 head/layer/query 保留的 top 注意力权重 token 数"],
+            ["NLL_full", "全注意力基线下的负对数似然"],
+            ["NLL_top-k", "只保留 top-k 位置、权重保持原值时的 NLL"],
+            ["ε", "允许的损失容忍度"],
+            ["k*", "该容忍度下的有效注意力集大小"]
+          ],
+          "derivation": [
+            "第 1 步：在不重训练的前提下，对每个 head、layer、query 取注意力权重最高的 k 个位置，并保留原始权重。",
+            "第 2 步：只让 query 看到这 k 个位置，重新计算 NLL，得到 ΔNLL(k) = NLL_top-k − NLL_full。",
+            "第 3 步：给定容忍度 ε，取满足 ΔNLL(k) ≤ ε 的最小 k 作为有效注意力集大小 k*；改变 ε 就得到整条「集合大小—损失」曲线。"
+          ],
+          "analogy": "像做摘录：只抄下最重要的 k 句话，再回答原文的问题。抄得越多越不容易错；找到「再少就开始答错」的那个 k，就是这篇材料真正需要的信息量。",
+          "pitfalls": [
+            "把有效集合大小当模型的固定属性：它依赖容忍度、任务与上下文长度。",
+            "忘了控制变量：集合变小时若同时重归一化权重，就分不清是位置少了还是权重变了导致的损失。",
+            "把「保留 top-k 后损失不变」解读成这些 token 可删除，忽略完整注意力对未选位置仍有影响。"
+          ],
+          "code": "import torch\n\ndef delta_nll(nll_fn, ids, attn_weights, k):\n    # attn_weights: [layers, heads, q_len, kv_len]\n    keep = attn_weights.topk(k, dim=-1).indices\n    mask = torch.zeros_like(attn_weights, dtype=torch.bool).scatter_(-1, keep, True)\n    return nll_fn(ids, mask) - nll_fn(ids, None)   # 仅保留 top-k，权重不变\n",
+          "sources": [
+            {
+              "title": "Retrieval Capacity of Self-Attention Under Competition",
+              "url": "https://arxiv.org/abs/2609.37879"
+            }
+          ]
+        },
+        {
+          "id": "f-renormalized-sparse-read",
+          "name": "重归一化的稀疏读出 (Renormalized Sparse Readout)",
+          "category": "foundation",
+          "latex": "o=\\sum_{i\\in\\mathcal{S}(q)}\\frac{\\exp(s_{qi})}{\\sum_{j\\in\\mathcal{S}(q)}\\exp(s_{qj})}\\,v_{i},\\qquad s_{qi}=\\frac{q^{\\top}k_{i}}{\\sqrt{d}}",
+          "symbols": [
+            ["S(q)", "被保留的 top-k 位置集合"],
+            ["s_qi", "query 与位置 i 的注意力分数"],
+            ["v_i", "位置 i 的值向量"],
+            ["o", "读出结果；不重归一化时直接使用原始权重求和"]
+          ],
+          "derivation": [
+            "第 1 步：先按注意力分数选出子集 S(q)，得到「访问」的范围。",
+            "第 2 步：若直接使用原始权重求和，总和小于 1，输出被整体缩小；重归一化把权重在子集内重新分配到 1。",
+            "第 3 步：论文报告重归一化能显著缩小达到同一损失容忍度所需的集合大小，说明所需规模既取决于选了谁，也取决于选中后如何组合。"
+          ],
+          "analogy": "像把候选人名单缩小后重新分配投票权：不做重分配时总票数变少，当选者的实际影响力被稀释。",
+          "pitfalls": [
+            "以为重归一化恢复了丢失的信息：它只改变尺度与相对占比，未选位置的信息仍然缺失。",
+            "把「重归一化后所需集合更小」解读为原始权重有错，它说明的是组合方式影响损失。",
+            "训练与推理使用不一致的归一化方式，导致分布偏移。"
+          ],
+          "code": "import torch\n\ndef sparse_readout(scores, values, k, renorm=True):\n    top = scores.topk(k, dim=-1)\n    w = torch.softmax(top.values, dim=-1) if renorm else torch.exp(top.values)\n    v = values.gather(-2, top.indices.unsqueeze(-1).expand(*top.indices.shape, values.shape[-1]))\n    return (w.unsqueeze(-1) * v).sum(-2)\n",
+          "sources": [
+            {
+              "title": "Retrieval Capacity of Self-Attention Under Competition",
+              "url": "https://huggingface.co/papers/2609.37879"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "论文在不重训练的情况下，只保留每个 head、layer、query 注意力权重最高的 token，并保持其原始权重不变。",
+          "通过改变选择集大小并测量负对数似然（NLL）的增幅，可以估计在给定损失容忍度内所需的有效注意力集大小。",
+          "较小的选择集即可让 NLL 接近全注意力基线，但所需大小因模型而异，且注意力选择显著优于随机选择。",
+          "被选中的集合呈现几何结构，但仅有几何可分性并不能证明模型损失被保留。",
+          "在预测目标不变时延长上下文会增加所需集合大小，但其占上下文的比例在测试范围内下降。",
+          "固定支撑事实的实验显示：额外背景会把该事实的 token 挤下注意力排名并减少其注意力质量；重归一化保留的权重可显著减小所需集合大小。"
+        ],
+        "uncertain": [
+          "有效集合大小的具体数值、容忍度 ε 的取值与曲线形状摘要未给出，本条目只给出定义式。",
+          "「几何结构」的具体含义（聚类、低维子空间还是各向异性）摘要未说明。",
+          "重归一化带来的集合缩小幅度，摘要未给具体数值。",
+          "条件性理论模型的具体形式摘要未给出，因此未写成公式。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "模型其实只用上下文里少部分 token；论文给出不改权重就能测出用多少的方法。"
+          },
+          {
+            "level": "入门",
+            "text": "做法很直接：保留每个头、每层、每个 query 注意力权重最高的若干 token（权重不改），其余位置不让看，测 NLL 涨了多少。不断改变保留数量，就能找到「损失还在容忍范围内」的最小集合大小。结果显示小集合就足以接近全注意力基线，注意力选择远好于随机选择，但不同模型需要的规模不一样。"
+          },
+          {
+            "level": "进阶",
+            "text": "论文把这套测量用于几个问题：上下文变长而预测目标不变时，所需集合变大，但它占上下文的比例下降；在固定一个支撑事实的设定下，加入背景会把该事实的 token 挤出排名并降低其注意力质量；把保留下来的权重重新归一化可显著减小所需集合，说明所需规模既取决于选了哪些位置，也取决于选中表示如何组合。作者还用条件性理论模型解释：竞争与注意力质量保留，可以在没有更多可检索信息的情况下制造出更大的集合需求。"
+          },
+          {
+            "level": "专家",
+            "text": "这项工作的价值在测量而非新架构：它不训练、不改权重，只改 query 能看到哪些位置，因此测到的是推理时实际被用到的信息量，避开了微调引入的混杂。它也划清了两个常被混淆的问题——「谁被选中」（访问）与「选中后怎么加权」（读出组合）。论文同时给出负面结论：选中集合呈现几何结构，但仅凭几何可分性不能保证模型损失被保留，也就是「注意力高的 token 在表示空间聚成一簇」不足以推出可以安全稀疏化。适用边界是测量依赖容忍度与任务，k* 不是模型常数。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么一定要「不重训练」，微调一下不是更公平吗？",
+            "a": "一旦微调，模型会重新分配注意力去补偿被移除的位置，测到的就变成「训练后能恢复多少」，而不是「推理时本来用了多少信息」。"
+          },
+          {
+            "q": "为什么实验要同时报告「所需集合变大」和「占上下文比例下降」？",
+            "a": "两者方向相反，正好说明集合变大不是因为可检索信息变多，而是注意力质量被更多背景稀释，存在竞争效应。"
+          },
+          {
+            "q": "换成随机选择同样数量的 token，为什么不够？",
+            "a": "随机选择丢掉了注意力权重里的信息，摘要明确指出注意力选择显著优于随机选择，因此随机基线只能证明「有冗余」，不能定位到具体使用了哪些位置。"
+          }
+        ],
+        "mechanism": "为什么必须「不重训练、只改可见位置」？因为一旦微调，模型会重新分配注意力去补偿被移除的位置，「推理时本来用了多少」就无法测量。同样重要的是保留原始权重：若同时重归一化，访问集合与读出组合两个变量一起变化，无法归因。论文正是靠这个受控设置，才能把「上下文变长导致所需集合变大」归因到注意力竞争，而不是归因到任务变难或信息变多。",
+        "boundary": "结论依赖损失容忍度、具体模型与任务：摘要明确说所需集合大小因模型而异，比例下降也只出现在测试范围内的上下文长度上，不能外推到任意长度。几何结构的解释力有限——论文明确指出几何可分性本身不能证明损失被保留。此外测量只针对注意力选择，不涉及训练动态与生成质量。",
+        "analogyBoundary": "「删词做阅读理解」会让人以为重要性是客观的人类标注；这里的重要性由模型自己的注意力权重给出，因而继承模型偏见（如首尾偏好）。类比也没有体现「保留权重是否重归一化」这一关键变量，而它恰恰显著影响结果。",
+        "misconceptions": [
+          "以为注意力权重高的 token 就可以安全删掉：论文指出几何可分性不能保证损失被保留。",
+          "把有效集合大小当模型的固定常数，忽略它随容忍度、任务与上下文长度变化。",
+          "以为随机选同样数量的 token 也能达到相近效果，摘要明确说注意力选择明显更好。"
+        ],
+        "ownAnalysis": "（推断）这类「无损稀疏化上界」测量对工程很有用：它为 KV Cache 压缩与稀疏注意力路由提供了任务级的选型指标，而不是只看显存曲线。可疑处是把 NLL 当作唯一判据——生成质量、长程依赖与指令跟随未必与 NLL 同步。（推断）「重归一化显著缩小所需集合」还暗示此前不少稀疏注意力实现里，权重组合方式是一个被低估的变量。局限在于全部实验都建立在注意力权重这一代理指标上，缺少因果干预。",
+        "officialNotes": [
+          {
+            "position": "论文口径：较小选择集即可让 NLL 接近全注意力基线且注意力选择显著优于随机选择；上下文变长时所需集合变大而占上下文比例下降；重归一化保留权重可显著减小所需集合。",
+            "source": "arXiv:2609.37879 摘要"
+          }
+        ],
+        "interviewAnswer": "这篇论文回答的是「模型到底用了多少上下文」。做法很干净：不重训练，只在每个头、层、query 保留注意力权重最高的 k 个 token 且权重不变，测 NLL 相对全注意力的增幅，取容忍度内的最小 k 作为有效注意力集大小。有三点我印象深：小集合就接近基线且远好于随机选择；上下文变长时所需集合变大、占比下降，说明存在注意力竞争；重归一化能显著缩小所需集合，说明读出组合方式与访问范围同样重要。它的边界是 k* 依赖容忍度和任务，不是模型常数。",
+        "studyPath": {
+          "prerequisites": [
+            "注意力计算与 KV Cache 实现",
+            "NLL/困惑度与语言模型评估",
+            "注意力掩码机制"
+          ],
+          "nextSteps": [
+            "动手复现 top-k 注意力掩码实验",
+            "对比不同 KV 压缩与稀疏注意力方法的选型",
+            "读注意力竞争与 softmax 饱和相关的理论工作"
+          ]
+        }
+      }
+    },
+    {
+      "id": "04fcddde1afe9558",
+      "tldr": "一篇中文报道梳理 Attention 从分流到重组：GLM-5.3-Flash 的 45 层里 34 层用 KDA、11 层用 KPool-DSA。",
+      "keyPoints": [
+        "GLM-5.3-Flash 配置：45 层中 34 层用 Kimi 路线的 KDA 线性注意力。",
+        "同模型另外 11 层用 DeepSeek 路线的 KPool-DSA 稀疏注意力。",
+        "注意力大致分三类：全局注意力、线性注意力、稀疏注意力。",
+        "混合架构用少量全局注意力保留直访完整历史的能力，其余层降本。",
+        "报道称今年全局注意力的角色开始被稀疏注意力接替。"
+      ],
+      "why": "混合注意力已是主流架构选择；看懂全局/线性/稀疏三类机制的分工与层配比，是 foundation 与推理优化岗位的常见面试题。",
+      "difficulty": "medium",
+      "tags": [
+        "attention",
+        "linear-attention",
+        "sparse-attention",
+        "hybrid-architecture",
+        "inference-cost",
+        "glm"
+      ],
+      "entities": [
+        "GLM-5.3-Flash",
+        "KDA",
+        "KPool-DSA",
+        "Kimi",
+        "DeepSeek",
+        "Full Attention",
+        "Linear Attention",
+        "Sparse Attention"
+      ],
+      "diagram": {
+        "kind": "matrix",
+        "title": "三类注意力机制对比",
+        "caption": "一句话记住：全局/线性/稀疏是三种持有历史的方式，混合架构把它们按层分工。",
+        "spec": {
+          "type": "matrix",
+          "nodes": [
+            {
+              "label": "全局注意力 Full",
+              "detail": "直接读取完整 token 历史；信息最全，计算与 KV Cache 成本最高"
+            },
+            {
+              "label": "线性注意力 Linear",
+              "detail": "把历史压缩进更紧凑的状态；长序列成本低，状态容量有限"
+            },
+            {
+              "label": "稀疏注意力 Sparse",
+              "detail": "保留较完整历史，只选择其中一部分重要信息参与计算"
+            },
+            {
+              "label": "混合架构 Hybrid",
+              "detail": "高效注意力负责降本，少量全局注意力保留完整历史的直接访问"
+            }
+          ]
+        },
+        "alt": "三类注意力对比矩阵：全局注意力信息最全但成本最高，线性注意力把历史压缩成状态，稀疏注意力只选部分信息参与计算；混合架构把它们分工到不同层。"
+      },
+      "concepts": [
+        {
+          "name": "混合注意力架构 Hybrid Attention Architecture",
+          "readable": "不再全用同一种注意力，而是把不同机制放进同一个模型分工：大部分层用更便宜的线性或稀疏注意力降成本，少数层保留全局注意力，确保模型仍能直接访问完整历史。",
+          "analogy": "像一支球队：大部分球员负责高强度跑动与轮换（高效注意力），但保留一两个能随时看到全场的组织核心（全局注意力）。",
+          "analogyBreaksDown": "球队角色由教练显式分配、可中途换人；这里的层分工由架构设计与训练共同决定，哪一层真正承担全局职责往往要靠消融才知道，而且层间通过残差与跨层复用强耦合，不能当独立工位。",
+          "mechanism": "核心设计选择是「哪些层保留全局注意力、哪些层换成高效机制」。全局注意力成本随上下文增长，把它限制在少数层，就能在保留直访完整历史能力的同时压低平均成本，配比成为可调旋钮。",
+          "visual": "画一条 45 层的竖直层轴，每层一个方块：34 个用线性颜色、11 个用稀疏颜色，观察这 11 层是集中在某段深度还是均匀插入。",
+          "prerequisites": [
+            "Transformer 层结构与注意力计算",
+            "KV Cache 的显存开销来源",
+            "线性注意力的状态递推形式"
+          ],
+          "selfTest": [
+            "混合架构里为什么必须保留少量全局注意力层？",
+            "把配比从 34:11 改成更少全局层，会带来什么取舍？",
+            "与「只用一种高效注意力」相比，混合架构的代价是什么？"
+          ],
+          "formula": "\\mathrm{Cost}\\approx L_{\\text{eff}}\\,O(n)+L_{\\text{full}}\\,O(n^{2})"
+        },
+        {
+          "name": "线性注意力 Linear Attention",
+          "readable": "把历史压进一个固定大小的状态，每来一个新 token 就更新一次，读出时直接用当前 query 与状态相乘。这样成本不再随历史长度线性增长（报道表述：以更紧凑的状态降低长序列计算成本）。",
+          "analogy": "像把会议纪要越写越短：不再保留每句原话（完整 KV），而是把要点累积进一份摘要，需要时直接查摘要。",
+          "analogyBreaksDown": "纪要由人决定写什么，还能回头查录音；线性状态容量固定，旧信息会被后续更新覆盖或混叠，且无法回查原始 token，容量不足造成的丢失不可逆。",
+          "mechanism": "关键是用递推状态替代不断变长的 KV Cache：写与读的复杂度都只与状态大小相关，代价是容量有限、模型必须学会该把什么写进状态，这也是它与稀疏访问接口不同但功能重叠之处。",
+          "visual": "横轴是序列位置，画两条线：KV Cache 随位置线性上升，线性状态保持水平；下方画状态更新的递推箭头（S_t = γS_{t-1} + k vᵀ）。",
+          "prerequisites": [
+            "softmax 注意力的形式",
+            "RNN/状态空间模型基本概念"
+          ],
+          "selfTest": [
+            "线性注意力为什么能降低长序列成本？它牺牲了什么？",
+            "状态 S_t 的大小与什么有关，为什么不随序列长度增长？",
+            "衰减系数 γ 太小或太大分别会有什么问题？"
+          ],
+          "formula": "S_t=\\gamma_t S_{t-1}+k_t v_t^{\\top},\\quad o_t=q_t^{\\top}S_t"
+        },
+        {
+          "name": "稀疏注意力 Sparse Attention",
+          "readable": "完整历史仍然保留，但不让所有 token 都参与计算，只挑一部分重要位置参与。它降低的是「每次读多少」，不像线性注意力那样改变「历史以什么形式保存」。",
+          "analogy": "像在图书馆查资料：书都还在架上（完整历史），但你只按目录挑几本相关的翻（选中位置参与计算）。",
+          "analogyBreaksDown": "图书馆目录是外部维护且可验证的，选错只是多跑一趟；模型的选中由可学习的路由或打分决定，选错直接丢信息，而且「哪些位置重要」依赖当前 query，无法预先编好目录。",
+          "mechanism": "设计关键是选择标准（固定模式、可学习路由还是与 query 相关的打分）以及选中后如何归一化。它与线性注意力互补：一个省「读」，一个省「存」，因此混合架构常把两者放在不同层。",
+          "visual": "画一个 n×n 注意力矩阵热力图，每行只点亮少数几个格子（选中位置），其余置灰，并标注哪些层或头选得更多。",
+          "prerequisites": [
+            "注意力矩阵与 softmax 归一化",
+            "KV Cache 的读写过程"
+          ],
+          "selfTest": [
+            "稀疏注意力与线性注意力分别省的是什么？",
+            "如果对选中位置的权重重新归一化，输出会怎么变？",
+            "为什么说稀疏注意力下完整历史仍然在？"
+          ],
+          "formula": "o_t=\\sum_{i\\in\\mathcal{S}_t}\\mathrm{softmax}\\!\\left(q_t^{\\top}k_i/\\sqrt{d}\\right)v_i"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-hybrid-layer-cost",
+          "name": "混合注意力的层配比成本 (Layer-Budget Cost of Hybrid Attention)",
+          "category": "foundation",
+          "latex": "\\mathrm{Cost}\\approx L_{\\text{eff}}\\,O(n)+L_{\\text{full}}\\,O(n^{2}),\\qquad \\frac{L_{\\text{eff}}}{L}=\\frac{34}{45}",
+          "symbols": [
+            ["L", "总层数，报道中 GLM-5.3-Flash 为 45 层"],
+            ["L_eff", "采用 KDA 线性注意力的高效层数，报道为 34"],
+            ["L_full", "采用 KPool-DSA 稀疏注意力的层数，报道为 11"],
+            ["n", "上下文长度"],
+            ["O(n) / O(n²)", "高效层与全量层单层成本的量级"]
+          ],
+          "derivation": [
+            "第 1 步：全局注意力单层成本随上下文长度平方增长，线性或稀疏机制把它压到接近线性量级。",
+            "第 2 步：混合架构按层分配机制，总成本可近似写成高效层与全量层成本的加权和。",
+            "第 3 步：报道中的 GLM-5.3-Flash 取 34:11（共 45 层），即把大部分层的成本压到线性量级，只留少数层处理需要完整历史直访的部分。"
+          ],
+          "analogy": "像一家公司只留少数几间能开全员大会的会议室（全局注意力），其余会议都改成小组同步（高效注意力）：总开销随人数增长的方式被改变了。",
+          "pitfalls": [
+            "把 O(n) 当成精确成本：常数项与实现细节常主导实际收益。",
+            "以为层配比是唯一旋钮：层位置、跨层复用与训练方案同样影响效果。",
+            "直接用「线性注意力一定更快」下结论，忽略小上下文或训练阶段的开销。"
+          ],
+          "code": "def hybrid_cost(n, L_eff=34, L_full=11, c1=1.0, c2=1.0):\n    # 近似量级：高效层 ~O(n)，全量层 ~O(n^2)\n    return c1 * L_eff * n + c2 * L_full * n ** 2\n",
+          "sources": [
+            {
+              "title": "Kimi 和 DeepSeek，为什么出现在同一张模型架构图里？",
+              "url": "https://leiphone.com/category/yanxishe/S39sSkqntdgkDuJu.html"
+            }
+          ]
+        },
+        {
+          "id": "f-linear-attention-recurrence",
+          "name": "线性注意力的状态递推 (Linear Attention Recurrence)",
+          "category": "foundation",
+          "latex": "S_t=\\gamma_t S_{t-1}+k_t v_t^{\\top},\\qquad o_t=q_t^{\\top}S_t",
+          "symbols": [
+            ["S_t", "到位置 t 为止的压缩状态（记忆）"],
+            ["γ_t", "状态衰减或遗忘系数"],
+            ["k_t, v_t", "位置 t 的键与值向量"],
+            ["q_t", "位置 t 的 query"],
+            ["o_t", "读出的输出"]
+          ],
+          "derivation": [
+            "第 1 步：softmax 注意力需要保存全部历史 key/value，成本随长度增长。",
+            "第 2 步：线性注意力把历史改写成一个可递推更新的状态 S_t，每步只做一次外积累加。",
+            "第 3 步：读出时用当前 query 直接乘状态得到 o_t，写与读都只与状态大小相关，不再随序列长度线性增长。",
+            "第 4 步：代价是状态容量固定，早期信息可能被后续更新覆盖或混叠，需要模型学会该往状态里写什么。"
+          ],
+          "analogy": "像用一份不断更新的摘要代替全部逐字稿：每来一段就改写摘要（更新状态），提问时直接读摘要，而不是回去翻全部记录。",
+          "pitfalls": [
+            "把线性注意力当成无损压缩：状态容量有限，信息会被覆盖。",
+            "忽略衰减或归一化设计，导致状态数值爆炸或遗忘过快。",
+            "以为线性注意力在短上下文上必然更快，忽略核函数与实现的常数开销。"
+          ],
+          "code": "import torch\n\ndef linear_attn(q, k, v, gamma=0.99):\n    S = torch.zeros(k.shape[-1], v.shape[-1])\n    outs = []\n    for t in range(q.shape[0]):\n        S = gamma * S + torch.outer(k[t], v[t])   # 状态更新（写）\n        outs.append(q[t] @ S)                     # 读出\n    return torch.stack(outs)\n",
+          "sources": [
+            {
+              "title": "Kimi 和 DeepSeek，为什么出现在同一张模型架构图里？",
+              "url": "https://leiphone.com/category/yanxishe/S39sSkqntdgkDuJu.html"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "报道称 GLM-5.3-Flash 的项目配置文件中，45 层架构有 34 层采用 Kimi 路线的 KDA 线性注意力，另有 11 层采用 DeepSeek 路线的 KPool-DSA 稀疏注意力。",
+          "报道把常见注意力机制归为三类：全局注意力、线性注意力、稀疏注意力，并称高效注意力主要在后两类方向上继续演化。",
+          "报道指出混合注意力架构中高效注意力负责降低成本，少量全局注意力保留直接访问完整历史的机会。",
+          "报道认为今年以来混合架构中原本由全局注意力承担的角色开始被稀疏注意力接替，Attention 路线从分流走向重组。"
+        ],
+        "uncertain": [
+          "报道提到的是「GLM-5.3-Flash 项目配置文件」，该来源的具体出处、版本与可复现性未说明，需人工核实。",
+          "线性注意力与稀疏注意力的公式为按三类机制重建的通用形式，报道未给出公式。",
+          "「稀疏注意力接替全局注意力角色」是趋势判断，报道未给出定量证据或评测结果。",
+          "45 层中 11 层 KPool-DSA 的层位置与插层规律，摘要未说明。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "报道认为大模型注意力正从分流走向重组：不同机制被放进同一个模型的不同层。"
+          },
+          {
+            "level": "入门",
+            "text": "注意力要解决的是「处理当前 token 时能否在很长历史里找到有用信息」。常见做法分三类：全局注意力直接读完整历史，信息全但计算与 KV Cache 最贵；线性注意力把历史压进更紧凑的状态；稀疏注意力保留完整历史但只让一部分信息参与计算。混合架构就是让高效注意力降本，用少量全局注意力保留直访完整历史的能力。"
+          },
+          {
+            "level": "进阶",
+            "text": "报道的核心证据是一张架构图：GLM-5.3-Flash 的 45 层里，34 层用 Kimi 路线的 KDA 线性注意力，11 层用 DeepSeek 路线的 KPool-DSA 稀疏注意力——同一个模型里同时出现两条技术路线的影子。作者由此提出今年的变化：混合架构中原本由全局注意力承担的角色，开始被稀疏注意力接替。争论焦点从「选哪条路线」变成「如何在同一模型里按层分工」。"
+          },
+          {
+            "level": "专家",
+            "text": "把三类机制放在一起看，它们省的其实是不同东西：线性注意力省「存」，用固定容量状态替代不断变长的 KV Cache；稀疏注意力省「读」，历史仍完整保留但只让少数位置参与计算；全局注意力两者都不省，换来的是对完整历史的直接访问。混合架构的价值来自互补而非叠加——少数全局层兜底长程直访，其余层做压缩与选择。报道判断稀疏注意力正在接管原本属于全局注意力的角色，这对推理成本结构影响很大，因为两种机制的瓶颈（算力与显存带宽）不同。边界是报道没有给出消融或评测数字，层配比与趋势都属于架构观察。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "既然线性注意力更便宜，为什么还要保留全局注意力层？",
+            "a": "线性注意力把历史压进固定容量状态，旧信息会被覆盖、无法回查原始 token；保留少数全局层能兜住需要精确直访完整历史的情形。"
+          },
+          {
+            "q": "稀疏注意力与线性注意力省的是同一种资源吗？",
+            "a": "不是。稀疏注意力保留较完整历史、只减少每次参与计算的位置，主要省「读」；线性注意力改变历史的保存形式，主要省「存」（KV Cache）。"
+          },
+          {
+            "q": "为什么说这是「重组」而不是「分流」？",
+            "a": "分流是不同团队各选一条路线；重组是同一模型内同时使用多条路线并按层分工，评价标准从路线优劣变成层间配比与协作方式。"
+          }
+        ],
+        "mechanism": "上下文变长时，全局注意力的计算随长度平方增长、KV Cache 随长度线性变长，训练与推理都变贵。混合架构把这两类成本按层拆开：大部分层换成线性或稀疏机制，把平均成本压到接近线性；少数层保留全局注意力，确保仍有直接访问完整历史的通道。这样设计是被逼出来的——纯线性会因状态容量有限丢信息，纯全局又承担不起长上下文成本，层配比于是成了能力与成本之间的连续旋钮。",
+        "boundary": "该报道是架构观察而非受控实验：结论基于一张配置文件与路线梳理，没有给出消融、损失或推理吞吐数字，因此不能说 34:11 这一配比最优，也不能说稀疏注意力在所有场景都能替代全局注意力。配比、层位置与训练方案相互耦合决定实际效果，模型规模或任务变化时趋势判断可能不成立。",
+        "analogyBoundary": "「球队保留一两个全场组织核心」把层当成可独立换人的工位；实际层间通过残差与跨层复用强耦合，全局层与高效层的职责是训练中共同形成的，去掉某层的影响不能按位置单独推断。类比还暗示存在明确的职责划分，而实际分工往往是统计性的。",
+        "misconceptions": [
+          "把混合架构理解成两种注意力的简单拼接，忽略层位置、跨层复用与配比才是设计要点。",
+          "认为线性注意力是无损压缩：固定容量的状态会覆盖旧信息。",
+          "用「某模型用了稀疏注意力」直接推断它更强，忽略报道并未给出评测数字。"
+        ],
+        "ownAnalysis": "（推断）这篇报道值得注意的不是具体配比，而是它反映的工程共识：注意力设计从「挑机制」转向「按层分配记忆功能」，这与同期综述把深度当作记忆管理维度的说法一致。（推断）把 KDA 与 KPool-DSA 放进同一模型，说明不同团队的高效注意力模块已能在层级别互相替换，接口正在趋同。可疑处在证据：报道没交代配置文件的来源与可复现性，34:11 这类精确数字若来自未发布模型的内部配置需谨慎对待；「稀疏接替全局」也是缺少定量支撑的趋势判断。",
+        "officialNotes": [
+          {
+            "position": "媒体报道口径（非论文）：GLM-5.3-Flash 的 45 层中 34 层用 KDA 线性注意力、11 层用 KPool-DSA 稀疏注意力；高效注意力负责降本，少量全局注意力保留直访完整历史的机会，今年该角色开始被稀疏注意力接替。",
+            "source": "雷锋网报道（摘要）"
+          }
+        ],
+        "interviewAnswer": "我关注这篇报道是因为它给了一个具体例子：GLM-5.3-Flash 的 45 层里 34 层用 Kimi 路线的 KDA 线性注意力，11 层用 DeepSeek 路线的 KPool-DSA 稀疏注意力，两条路线出现在同一个模型里。我的理解是这三类机制省的东西不同：线性省 KV Cache 的「存」，稀疏省每次参与计算的「读」，全局注意力两者都不省但能直接访问完整历史；混合架构就是用少数全局层兜底、其余层压缩和选择。趋势上报道认为稀疏注意力在接管全局注意力的角色。不过报道没给评测数字，所以我会把它当架构观察而不是结论。",
+        "studyPath": {
+          "prerequisites": [
+            "Transformer 注意力计算与 KV Cache",
+            "线性注意力/状态空间模型的递推形式",
+            "稀疏注意力的选择与归一化"
+          ],
+          "nextSteps": [
+            "读 KDA、KPool-DSA 的原始技术报告",
+            "统计主流开源模型的层机制配比",
+            "按「省存 / 省读」两类给新机制归类"
+          ]
+        }
+      }
+    },
+    {
+      "id": "f8f027476fe03e67",
+      "tldr": "SemanTok 用冻结 DINO 特征做前缀语义重建，201M AR 模型追平 3.4 倍大的 VideoFlexTok。",
+      "keyPoints": [
+        "视频世界模型要 AR 预测的可扩展性，也要扩散的画质，分词器选择最关键。",
+        "灵活长度由粗到细分词：前几个粗 token 承载全局语义，后续 token 补细节。",
+        "已有灵活分词器只在解码器早期隐层加 REPA 损失，该目标从加噪输入就能部分满足。",
+        "SemanTok 把冻结 DINO 特征喂进编码器，加轻量头从每个保留前缀重建它。",
+        "201M 版本追平或超过 3.4 倍大的 VideoFlexTok；短前缀更便宜也更易预测。"
+      ],
+      "why": "视频分词器决定世界模型的语义对齐与生成保真度；前缀级语义监督是把 AR 视频生成做好的关键工程点，也是生成与后训练岗常见考点。",
+      "difficulty": "hard",
+      "tags": [
+        "video-generation",
+        "tokenizer",
+        "autoregressive",
+        "world-model",
+        "repa",
+        "dino"
+      ],
+      "entities": [
+        "SemanTok",
+        "DINO",
+        "REPA",
+        "VideoFlexTok",
+        "autoregressive",
+        "diffusion"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "SemanTok 前缀语义对齐流程",
+        "caption": "一句话记住：语义监督加在「每个 token 前缀」上，而不是解码器的早期隐层上。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='SemanTok 流程：冻结 DINO 特征进入灵活分词器，前缀重建头按 token 前缀重建语义，再交给 AR 与扩散解码'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>视频输入</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>冻结 DINO 特征</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>灵活分词器</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>由粗到细、长度可变</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>前缀重建头</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>每个前缀单独重建</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>AR 与扩散生成</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>短前缀先预测，细节后补</text></svg>",
+        "alt": "SemanTok 流程：视频经冻结 DINO 特征进入灵活分词器得到由粗到细的可变长 token，轻量前缀重建头从每个 token 前缀重建语义特征，最后交给 AR 与扩散生成，短前缀先预测、细节后补。"
+      },
+      "concepts": [
+        {
+          "name": "前缀级语义重建 Prefix-Level Semantic Reconstruction",
+          "readable": "灵活分词器的 token 是有顺序、由粗到细的：前几个 token 已是片段的全局语义。SemanTok 要求「只用前 j 个 token」就能重建冻结 DINO 特征，于是每个前缀都被逼着携带完整语义，而不是靠后续细节或加噪输入兜底。",
+          "analogy": "像要求画家分阶段交稿：只交第一笔就要能看出画的是什么（全局语义），后面每一笔只负责细化，而不允许先乱涂、最后靠整体轮廓蒙对。",
+          "analogyBreaksDown": "画画的「看得出是什么」由人评判；这里是把前缀回归到冻结 DINO 特征，语义对齐程度由特征距离度量，因此受 DINO 特征覆盖面限制，DINO 没编码的属性不会被约束。",
+          "mechanism": "把监督从「解码器早期隐层」（可从加噪输入部分满足）换成「仅由保留的 token 前缀重建语义特征」，堵住捷径，使语义对齐真正归因到 token 表示本身。",
+          "visual": "横轴是保留的 token 前缀长度 j（1 到 K），纵轴是重建特征与真实 DINO 特征的语义对齐度；画一条随 j 上升的曲线，在 j=1 处标注「已具备全局语义」，再叠加只监督早期隐层的基线曲线做对比。",
+          "prerequisites": [
+            "自回归视频生成与扩散解码器",
+            "DINO 等自监督视觉特征",
+            "tokenizer 的由粗到细设计"
+          ],
+          "selfTest": [
+            "只在解码器早期隐层加 REPA 损失，为什么监督会被捷径吸收？",
+            "为什么前缀重建头要对每个前缀长度都设损失？",
+            "目标 DINO 特征为什么必须 stop-gradient？"
+          ],
+          "formula": "\\mathcal{L}_{\\text{sem}}=\\sum_{j=1}^{K}w_{j}\\,\\big\\lVert h_{\\theta}(z_{1:j})-\\mathrm{sg}\\big(f_{\\text{DINO}}(x)\\big)\\big\\rVert_{2}^{2}"
+        },
+        {
+          "name": "灵活长度由粗到细分词器 Flexible-Length Coarse-to-Fine Tokenizer",
+          "readable": "同一段视频可以编码成不同长度的 token 序列：前面少量 token 已概括整段的全局语义，后续 token 逐步补足细节。长度可变意味着同一模型能在不同算力预算下工作，短前缀便宜、长序列更精细。",
+          "analogy": "像地图的多级缩放：先看省级轮廓就知道大致方位，再逐级放大看到街道，不必一次加载最高精度。",
+          "analogyBreaksDown": "地图各级缩放来自同一份原始数据的确定性降采样，层间可无损回溯；这里的粗 token 是学出来的有损语义摘要，后续 token 补的是细节而非从粗 token 完整还原的信息。",
+          "mechanism": "把「语义」放在序列前段、「像素细节」放在后段，使 AR 模型能用更短上下文做更可靠的预测：论文报告短前缀更便宜、生成保真度更好，像素细节被推迟到后续 token。",
+          "visual": "画一条横向 token 序列，前 2-3 个 token 用深色标注「全局语义」、后段渐浅标注「细节」；下方画两条曲线：越靠前的 token 对语义对齐贡献越大，越靠后的 token 对像素保真度贡献越大。",
+          "prerequisites": [
+            "视觉 tokenizer / VQ 基础",
+            "自回归序列建模与 teacher forcing",
+            "扩散模型采样与噪声水平"
+          ],
+          "selfTest": [
+            "由粗到细分词器为什么适合自回归视频生成？",
+            "灵活长度带来什么工程好处？",
+            "为什么短前缀的生成保真度反而更好？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-prefix-semantic-loss",
+          "name": "前缀级语义重建损失 (Prefix-Level Semantic Reconstruction Loss)",
+          "category": "generative",
+          "latex": "\\mathcal{L}_{\\text{sem}}=\\sum_{j=1}^{K}w_{j}\\big\\lVert h_{\\theta}(z_{1:j})-\\mathrm{sg}\\big(f_{\\text{DINO}}(x)\\big)\\big\\rVert_{2}^{2}",
+          "symbols": [
+            ["z_{1:j}", "前 j 个保留 token 构成的前缀"],
+            ["h_θ(·)", "轻量前缀重建头"],
+            ["f_DINO(x)", "冻结 DINO 对原视频提取的语义特征"],
+            ["sg(·)", "stop-gradient，防止语义目标被一起更新"],
+            ["w_j", "不同前缀长度的权重"],
+            ["K", "前缀长度上界"]
+          ],
+          "derivation": [
+            "第 1 步：灵活分词器的第 j 个前缀本就应携带片段全局语义，但已有做法只在解码器早期隐层上加 REPA 损失。",
+            "第 2 步：问题在于该隐层的目标可以从加噪输入（noised input）部分满足，监督被捷径吸收，语义对齐不一定归因到 token。",
+            "第 3 步：改为对每个保留 token 前缀单独设轻量重建头，要求它仅凭 z_{1:j} 重建冻结 DINO 特征，堵住捷径。",
+            "第 4 步：于是所有前缀长度上都有语义约束，AR 模型每多预测一个 token 都在语义上有可检的收益。"
+          ],
+          "analogy": "像老师检查笔记：不许学生靠课本原文（加噪输入）蒙答，而是要求「只拿前几行笔记」就复述出整堂课的主旨，这样每一行笔记都必须真的写要点。",
+          "pitfalls": [
+            "把 REPA 损失直接搬到 token 前缀上却不冻结目标特征：目标随训练漂移，对齐度失去意义。",
+            "忘记 stop-gradient：重建头会把 DINO 特征一起拉走，测量的是自洽而不是语义对齐。",
+            "只在最后一个前缀上加损失，等于没有约束粗 token 的语义。"
+          ],
+          "code": "import torch\n\ndef prefix_semantic_loss(head, tokens, dino_feat, weights=None):\n    # tokens: [B, K, D]，逐前缀重建语义特征\n    feats = torch.stack([head(tokens[:, :j + 1]) for j in range(tokens.shape[1])], 1)\n    target = dino_feat.detach()                      # stop-gradient\n    loss = ((feats - target.unsqueeze(1)) ** 2).mean(-1)\n    if weights is not None:\n        loss = loss * weights\n    return loss.mean()\n",
+          "sources": [
+            {
+              "title": "SemanTok: Predictable Semantic Tokens for Efficient Autoregressive Video Generation",
+              "url": "https://arxiv.org/abs/2610.00686v1"
+            }
+          ]
+        },
+        {
+          "id": "f-noise-level-alignment",
+          "name": "各噪声水平下的语义对齐 (Semantic Alignment across Noise Levels)",
+          "category": "generative",
+          "latex": "\\mathrm{Align}(t)=\\mathrm{sim}\\!\\Big(\\mathcal{D}_{\\text{sem}}\\big(z_{1:K},\\epsilon_{t}\\big),\\;\\mathrm{sg}\\big(f_{\\text{DINO}}(x)\\big)\\Big),\\qquad t\\in\\{t_{\\text{pure}},t_{\\text{mid}},t_{\\text{low}}\\}",
+          "symbols": [
+            ["t", "扩散噪声水平，越大越接近纯噪声"],
+            ["ε_t", "该噪声水平下的加噪输入"],
+            ["z_{1:K}", "保留的 token 前缀"],
+            ["D_sem", "解码器一侧的语义读出"],
+            ["sim(·,·)", "对齐度度量，例如余弦相似度或探针精度"]
+          ],
+          "derivation": [
+            "第 1 步：扩散式解码器在不同噪声水平下工作，纯噪声时几乎没有像素线索，语义只能来自 token。",
+            "第 2 步：因此「每个噪声水平上语义对齐都不掉」是检验 token 是否真携带语义的强条件。",
+            "第 3 步：论文报告 SemanTok 在包括纯噪声在内的每个噪声水平上都给解码器更高的语义对齐，说明语义不是靠加噪输入泄漏出来的。"
+          ],
+          "analogy": "像给乐手一份乐谱：哪怕演奏厅还很吵（高噪声），只要谱子写清主旋律，他就能奏对调子；若只有听到的片段（加噪输入），一开始必然跑调。",
+          "pitfalls": [
+            "把语义对齐当成生成质量：两者相关但不等价，摘要分别报告了重建与生成表现。",
+            "对齐度量的具体形式摘要未说明，不能当成既定定义使用。",
+            "只在低噪声水平测对齐，会掩盖语义来自像素线索而非 token 的可能。"
+          ],
+          "code": "import torch, torch.nn.functional as F\n\ndef align_at_noise(decode_sem, dinofeat, z, eps_t):\n    pred = decode_sem(z, eps_t)                    # 给定噪声水平的语义读出\n    return F.cosine_similarity(pred, dinofeat.detach(), dim=-1).mean()\n",
+          "sources": [
+            {
+              "title": "SemanTok: Predictable Semantic Tokens for Efficient Autoregressive Video Generation",
+              "url": "https://arxiv.org/abs/2610.00686v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "SemanTok 是把冻结 DINO 特征喂入编码器、并加轻量头从每个保留 token 前缀重建这些特征的灵活视频分词器。",
+          "已有灵活分词器只在解码器早期隐层上加表示对齐（REPA）损失，而该目标可以被解码器从加噪输入部分满足。",
+          "201M 的 SemanTok AR 模型追平或超过体积为它 3.4 倍的 VideoFlexTok AR 模型，更大的 SemanTok AR 模型保真度进一步提升。",
+          "SemanTok 在分布外类别上保持语义对齐，并在包括纯噪声在内的每个噪声水平上给解码器更高的语义对齐。",
+          "短 token 前缀更便宜、更易预测且生成保真度更好，像素细节被推迟到后续 token。"
+        ],
+        "uncertain": [
+          "前缀重建头的具体结构、前缀长度取值与权重 w_j 的形式摘要未说明；本条目公式为按摘要重建的通用形式，需核对原文。",
+          "「匹配或超过 3.4 倍大的 VideoFlexTok」所用评测指标与模型规模清单，摘要未列出。",
+          "语义对齐的具体度量方式与「更高」的幅度，摘要未给数值。",
+          "重建与生成分别采用什么基准与协议，摘要未说明。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "让视频分词器的每个 token 前缀都能重建 DINO 语义特征，AR 生成又省又清晰。"
+          },
+          {
+            "level": "入门",
+            "text": "视频世界模型同时想要自回归预测的可扩展性和扩散模型的画质，分词器选得好不好决定两者能发挥多少。灵活长度的由粗到细分词器很合适：前几个粗 token 就带整段视频的全局语义，后面的 token 再补细节。问题在于已有灵活分词器只在解码器早期隐层上加语义对齐（REPA）损失，而这个目标解码器靠自己的加噪输入就能部分满足，监督被浪费了。"
+          },
+          {
+            "level": "进阶",
+            "text": "SemanTok 把冻结 DINO 特征喂进编码器，再加一批轻量头，要求它们「只用某个保留 token 前缀」就能重建这些特征。这样语义监督真正落在 token 上而不是解码器隐层上，粗 token 也被迫携带全局语义。结果是各个 AR 模型规模上语义对齐与保真度都提升：201M 的 SemanTok AR 模型追平甚至超过 3.4 倍大的 VideoFlexTok，更大的模型继续变好；分布外类别上语义对齐保持，而且在包括纯噪声在内的每个噪声水平上解码器都拿到更高的语义对齐。"
+          },
+          {
+            "level": "专家",
+            "text": "更值得学的是方法论：REPA 这类「对齐解码器早期隐层特征」的监督存在捷径——解码器可以从 noised input 读出目标信息，于是损失降了但语义没有真正进入 token。SemanTok 用「仅凭前缀解码」切断捷径，并用 stop-gradient 冻结目标特征，使测量的是 token 的语义含量。这与由粗到细的分词假设天然契合：如果前几个 token 真是全局语义，它们就该能单独预测出 DINO 特征。工程含义是短前缀更便宜、更易预测、生成保真度更好，像素细节被推迟到后续 token，即不同算力预算下可用同一模型的不同前缀长度工作。边界是语义对齐由 DINO 特征定义，DINO 没编码的属性不会被约束。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么只在解码器早期隐层加 REPA 损失可能失效？",
+            "a": "解码器能从自己的加噪输入里部分读出目标信息，损失下降不一定说明 token 学到了语义，监督被捷径吸收。"
+          },
+          {
+            "q": "为什么用冻结 DINO 特征而不是生成模型自己的特征当目标？",
+            "a": "自监督视觉特征的语义结构稳定且不随训练漂移；用自身特征当目标会让「对齐」变成自洽，无法衡量语义是否真的进入 token。"
+          },
+          {
+            "q": "短 token 前缀为什么反而生成保真度更好？",
+            "a": "短前缀的预测任务更简单、更易学准，语义先被确定；像素细节推迟到后续 token，避免早期预测错误累积影响全局。"
+          }
+        ],
+        "mechanism": "自回归视频生成要求「下一个 token 可预测」，扩散解码器要求「token 里有足够语义与细节」。灵活分词器把语义放在前段、细节放在后段来同时满足两者，但若语义监督只加在解码器隐层上，解码器可以靠加噪输入满足目标，token 本身没被逼着携带语义。SemanTok 的关键是换监督位置：让每个保留前缀单独重建冻结 DINO 特征，使语义约束精确落在 token 表示上，并用 stop-gradient 固定目标，从训练时就保证了「前缀可预测语义」这一结构。",
+        "boundary": "语义对齐的判据是冻结 DINO 特征，因此只约束 DINO 编码到的属性；对精细像素、运动一致性等 DINO 不敏感的性质没有直接保证。方法依赖由粗到细分词器这一前提，对非灵活长度或单层 tokenizer 不适用。摘要也未说明前缀重建头与权重配置，复现需核对原文。",
+        "analogyBoundary": "「分阶段交稿的画家」暗示第一笔就能被人类看懂且不可作弊；这里的前缀重建是回归到 DINO 特征，能被「看懂」多少取决于该特征空间覆盖了什么，高维回归损失小也不等于语义可读。类比还没体现 stop-gradient 这个防止目标漂移的关键设计。",
+        "misconceptions": [
+          "以为把 REPA 损失从隐层挪到 token 前缀只是换位置，实际上它切断了加噪输入这条捷径。",
+          "认为语义对齐提升就等于画质提升：摘要分别报告语义对齐与视频保真度，是不同指标。",
+          "忽略 DINO 特征是被冻结的目标；若让目标一起训练，语义对齐就变成自洽。"
+        ],
+        "ownAnalysis": "（推断）这篇工作可以看成 REPA 在视频分词器上的「监督位置修正」：同一条思路（用自监督视觉特征做对齐）挂在不同位置效果差别巨大，提示做生成模型后训练时，监督信号的挂载点与捷径分析往往比损失形式更重要。（推断）前缀级监督还让不同 token 预算下的生成质量变得可控，对推理算力调度有直接价值。可疑处是摘要报告的比较集中在 VideoFlexTok 与 3.4 倍规模这一组，缺少更广的 tokenizer 基线与数据规模消融；语义对齐的度量方式也未给出，难以判断「更高」的幅度是否显著。",
+        "officialNotes": [
+          {
+            "position": "论文口径：SemanTok 把冻结 DINO 特征喂入编码器并加轻量前缀重建头，在包括纯噪声在内的每个噪声水平上给解码器更高语义对齐；201M 版本匹配或超过 3.4 倍大的 VideoFlexTok。",
+            "source": "arXiv:2610.00686v1 摘要"
+          }
+        ],
+        "interviewAnswer": "SemanTok 解决的是灵活视频分词器的监督挂载点问题。已有灵活分词器只在解码器早期隐层加 REPA 损失，但解码器能从加噪输入里部分满足这个目标，语义监督被捷径吸收。SemanTok 把冻结 DINO 特征喂进编码器，再用轻量头要求仅凭每个保留 token 前缀就能重建这些特征，监督真正落在 token 上。效果是各规模都提升：201M 的 AR 模型追平甚至超过 3.4 倍大的 VideoFlexTok，OOD 类别上语义对齐保持，纯噪声下解码器拿到的语义对齐也更高；短前缀更便宜、更易预测、保真度更好，细节交给后续 token。",
+        "studyPath": {
+          "prerequisites": [
+            "自回归视频生成与扩散解码器",
+            "REPA 类表示对齐损失",
+            "DINO 等自监督视觉特征",
+            "视觉 tokenizer / VQ 基础"
+          ],
+          "nextSteps": [
+            "读 REPA 与 VideoFlexTok 原文做对比",
+            "复现前缀重建头并测不同前缀长度的语义探针",
+            "把这套「监督挂载点」思路迁到图像或多模态生成任务"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,462 @@
+{
+  "batchId": "queue-14",
+  "entries": [
+    {
+      "id": "dc788b2e9083e5d5",
+      "tldr": "用教师-学生的逐位置熵变挑监督位置，自蒸馏评委在主观任务上比 GRPO 高 2–9 分。",
+      "keyPoints": [
+        "GRPO 类结果监督 RL 只按最终判定对错给标量信用。",
+        "自蒸馏让同一模型带反馈当教师，给出逐位置稠密监督。",
+        "教师-学生逐位置熵变可分语境锐化与语境扩散两态。",
+        "只保留熵变分布下尾做位置掩码，OOD 泛化优于朴素 SD。",
+        "主观子类比结果监督 RL 高 2–9 个百分点，客观子类持平。"
+      ],
+      "why": "评委训练是后训练与偏好对齐岗的核心；把语言反馈变成逐位置信用，比只看最终对错更能体现方法设计能力。",
+      "difficulty": "hard",
+      "tags": ["posttraining", "llm-judge", "self-distillation", "grpo", "rlhf"],
+      "entities": ["GRPO", "Self-Distillation", "LLM judges", "position masking", "outcome-supervised RL"],
+      "diagram": {
+        "kind": "flow",
+        "title": "位置选择性自蒸馏流程",
+        "caption": "记住这条链：语言反馈当教师，逐位置熵变筛位置，只蒸馏低熵变处。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='四步竖排流程图：语言反馈输入、教师学生逐位置熵变、保留低熵变位置掩码、自蒸馏评委模型'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>语言反馈+偏好标签</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>含评分理由</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>逐位置熵变</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>锐化/扩散两态</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>位置掩码:留低熵变</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>丢掉高熵变位</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>自蒸馏评委模型</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>OOD 更稳</text></svg>",
+        "alt": "四步竖排流程图：语言反馈与偏好标签进入，计算教师与学生逐位置熵变，用位置掩码保留低熵变位置，训练出自蒸馏评委模型。"
+      },
+      "concepts": [
+        {
+          "name": "位置选择性自蒸馏 (Position-Selective Self-Distillation)",
+          "readable": "自蒸馏让学生模型带着反馈当教师，对每个 token 位置给出稠密监督；但并非每个位置都有用。该方法先用教师与学生在每个位置的熵差筛出值得学的位置，只在这些位置施加蒸馏，避免把老师的记忆式措辞硬灌给学生。",
+          "analogy": "老师逐字批改你的作文，但只在真正影响论证的句子旁写批注；对只是措辞习惯的地方不置一词。全篇都抄批注的人只会模仿口吻，学会挑重点的人才提升判断力。",
+          "analogyBreaksDown": "批改类比里「是否影响论证」由人来判断，这里却用熵差这一统计量来代理；熵差低也可能是该位置本来就没什么信息（标点、套话），掩码会连带丢掉这些位置。这通常无害，但不等于自动找到了因果关键位置。",
+          "mechanism": "用教师（同模型加反馈条件）与学生分布在同一位置的熵差，把位置分成锐化（老师更集中，倾向记忆某个标准表述）与扩散（老师把概率摊给多个反馈一致的备选，倾向语义理解）两态；只保留低熵变位置做蒸馏，等于主动丢掉记忆型监督。",
+          "visual": "横轴为 token 位置，纵轴为该位置的教师-学生熵差；把分布画成直方图并标出下尾阈值线，线下位置标绿（保留），线上标灰（掩码）。旁边并排画学生微调后同一位置的熵差，用来检查学生是否只学走了低熵变区。",
+          "prerequisites": ["知识蒸馏/自蒸馏的教师-学生分布对齐", "GRPO 等结果监督 RL 的信用分配", "token 级熵与 KL 的定义"],
+          "selfTest": ["为什么按最终判定对错给标量信用的 GRPO 区分不了「选对评价标准」与「蒙对结论」？", "位置掩码保留的是熵变分布的哪一侧，作者给出的解释是什么？", "低熵变位置一定比高熵变位置更重要吗？为什么？"],
+          "formula": "\\Delta H_t = H(p^{T}_t) - H(p^{S}_t)"
+        },
+        {
+          "name": "语境锐化与语境扩散 (Context Sharpening vs Spreading)",
+          "readable": "用同一位置教师与学生的熵差可以把监督位置分成两态：锐化是老师把概率压在某个与反馈一致的标准表述上；扩散是老师把概率分给多个与反馈一致的备选表述。前者像背句式，后者更像理解语义。",
+          "analogy": "老师教你怎么说「这回答跑题了」：一种是只让你背这一句评语，另一种是让你明白「跑题、答偏、离题」都算同一件事。背一句的人换个说法就失灵，理解一组备选的人才稳。",
+          "analogyBreaksDown": "语言上的多个备选并不保证都对：概率摊开也可能只是模型不确定，若备选里混入错误表述，保留扩散位置等于把噪声当语义学；而且熵差只反映概率形状，不反映内容对错。",
+          "mechanism": "把「该学什么位置」变成可操作的掩码规则：锐化位置保留会让学生复述判据措辞，扩散位置保留则维持多个反馈对齐的备选。摘要据此只保留熵变分布的下尾位置，让监督偏向语义而非记忆，从而在分布外样本上更稳。",
+          "visual": "并排两组柱状分布：左侧概率集中在一根柱（锐化），右侧摊在三根同义柱（扩散）；下方是同一条熵差直方图，用竖线标出被保留的下尾区间，颜色区分保留与掩码位置。",
+          "prerequisites": ["token 级概率分布与熵", "自蒸馏的教师-学生设定", "分布外泛化的基本概念"],
+          "selfTest": ["锐化与扩散在概率分布形状上分别是什么样？", "为什么本文认为扩散位置更值得保留？", "熵差更低是否等价于该位置因果上更关键？"],
+          "formula": "\\Delta H_t = H(p^{S}_t) - H(p^{T}_t)"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-entropy-shift-mask",
+          "name": "位置熵变与掩码阈值 (Per-Position Entropy Shift Mask)",
+          "category": "posttraining",
+          "latex": "\\Delta H_t = H\\big(p^{T}_t\\big) - H\\big(p^{S}_t\\big),\\quad m_t = \\mathbb{1}\\big[\\Delta H_t \\le \\tau_q\\big],\\quad \\tau_q = Q_q\\big(\\{\\Delta H_t\\}_{t=1}^{T}\\big)",
+          "symbols": [["t", "rollout 中的 token 位置"], ["p^T_t", "带语言反馈条件的教师（同一模型）在第 t 位的分布"], ["p^S_t", "学生/当前模型在第 t 位的分布"], ["ΔH_t", "该位置的熵变，正负号约定依原文"], ["q", "保留比例（下尾分位）"], ["m_t", "掩码，1 表示该位置参与蒸馏"]],
+          "derivation": [
+            "动机：自蒸馏用语言反馈当教师能给出逐位置稠密监督，但逐位置信号质量不均，全位置等权会把教师的措辞偏好一起蒸给学生。",
+            "用逐位置熵变度量教师相对学生把概率重新集中的程度：ΔH_t = H(p^T_t) − H(p^S_t)。",
+            "把全体 ΔH_t 排序取 q 分位得阈值 τ_q，只保留 ΔH_t ≤ τ_q 的下尾位置，即掩掉高熵变位置。",
+            "摘要口径：掩掉高熵变位置后，分布外泛化优于朴素自蒸馏；最终评委在主观子类上比结果监督 RL 高 2–9 个百分点。"
+          ],
+          "analogy": "像筛老师的批注：先按「你和老师用词的差距」把批注排序，差距特别大的往往是在纠正老师的个人措辞习惯，只留差距小、真正针对论证的批注。",
+          "pitfalls": ["把熵变正负号记反：ΔH 定义为教师减学生还是学生减教师，决定「下尾」对应锐化还是扩散，摘要未明说。", "按全局分位做掩码会让不同长度序列的保留比例不同，按序列内归一化更稳。", "熵是分布集中度的代理：低熵不等于重要，高熵不等于噪声，掩码只是启发式而非因果筛选。"],
+          "code": "import torch\nimport torch.nn.functional as F\n\n\ndef entropy(logits, dim=-1):\n    logp = F.log_softmax(logits, dim=dim)\n    return -(logp.exp() * logp).sum(dim=dim)              # per-position\n\ndH = entropy(teacher_logits) - entropy(student_logits)     # 逐位置熵变\nmask = (dH <= torch.quantile(dH.float(), q)).float()       # 只留下尾",
+          "sources": [{"title": "Training LLM Judges from Language Feedback via Position-Selective Self-Distillation", "url": "https://arxiv.org/abs/2609.38792"}]
+        },
+        {
+          "id": "f-masked-self-distill",
+          "name": "掩码自蒸馏目标 (Masked Self-Distillation Objective)",
+          "category": "posttraining",
+          "latex": "\\mathcal{L}_{\\mathrm{PSD}}(\\theta) = -\\frac{\\sum_{t=1}^{T} m_t \\sum_{v} p^{T}(v \\mid x, f)\\,\\log p^{S}_{\\theta}(v \\mid x_{<t})}{\\sum_{t=1}^{T} m_t}",
+          "symbols": [["x", "输入：待评判内容与任务说明"], ["f", "自然语言反馈/偏好理由"], ["p^T(v|x,f)", "以反馈为条件的教师分布"], ["p^S_θ", "被训练的学生评委模型"], ["m_t", "来自熵变的位置掩码"], ["L_PSD", "位置选择性自蒸馏损失"]],
+          "derivation": [
+            "朴素自蒸馏在全部位置上对齐教师分布，等价于把教师所有措辞偏好都当作监督目标。",
+            "引入掩码 m_t，只在低熵变位置对齐教师分布，把高熵变位置（被解释为记忆型表达）排除在损失之外。",
+            "用 Σm_t 归一化，避免掩码数量随序列长度变化而改变有效学习率。",
+            "与结果监督 RL 相比，信用直接落在「调用哪条评价标准」的判据 token 上，而不是被序列级标量平摊。"
+          ], 
+          "analogy": "教练只在你真正做错的动作上用力纠正，别处的动作差异不纠正，免得连你的个人风格一起改掉。",
+          "pitfalls": ["只保留低熵变位置会缩小有效监督量，需要配合学习率与训练步数，否则容易欠拟合。", "教师与学生同源时熵变会随训练缩小，分位阈值需要重算，否则掩码比例会漂移。", "与结果监督 RL 混用时要说清信用来源，避免最终判定奖励被重复计入。"],
+          "code": "logp_t = F.log_softmax(teacher_logits, dim=-1)   # 教师分布\nlogp_s = F.log_softmax(student_logits, dim=-1)   # 学生分布\nkl = (logp_t.exp() * (logp_t - logp_s)).sum(-1)  # 逐位置 KL\nloss = (mask * kl).sum() / mask.sum().clamp(min=1.0)",
+          "sources": [{"title": "Training LLM Judges from Language Feedback via Position-Selective Self-Distillation", "url": "https://arxiv.org/abs/2609.38792"}]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要把结果监督 RL（如 GRPO）描述为只依据最终判定准确率给整段 rollout 一个标量信用，忽略随偏好标签出现的语言反馈。",
+          "作者用教师与学生的逐位置熵变区分出语境锐化与语境扩散两种模式，并把锐化解释为记忆某种判据表达、扩散解释为保留多个反馈一致的备选。",
+          "方法做基于熵变的位置掩码、保留熵变分布的下尾位置，实验显示掩掉高熵变位置可提升分布外泛化，优于朴素自蒸馏。",
+          "最终自蒸馏评委在评估的主观子类上比结果监督 RL 高 2–9 个百分点，在客观子类上保持竞争力。"
+        ],
+        "uncertain": [
+          "熵变的符号约定（教师减学生还是相反）与「下尾」的确切语义，摘要未给公式，待核实。",
+          "掩码保留比例、分位阈值、教师与学生模型规模、是否需要多轮迭代，摘要均未说明。",
+          "2–9 个百分点覆盖哪些子类、是否有方差或显著性检验，摘要未给。",
+          "两个公式均为按摘要重建的通用形式，需核对原文。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "让模型只学老师批注里真正重要的位置，当评委更准。"},
+          {"level": "入门", "text": "训练 LLM 评委时，GRPO 这类只看最终判定对错的 RL 把整段输出共用一个分数，无法区分「选对了评价标准」和「碰巧判对」。自蒸馏改成让同一个模型带着偏好理由当教师、逐位置给出稠密监督；本文再用教师与学生在每个位置的熵差筛位置，只保留低熵变位置做蒸馏。"},
+          {"level": "进阶", "text": "关键取舍在「学哪些位置」。作者用逐位置熵变把监督分成两态：锐化位置老师把概率压在某个与反馈一致的标准表述上，保留它等于让学生背措辞；扩散位置老师把概率分给多个反馈一致的备选，保留它才保住语义。于是不对称地做位置掩码，只留熵变分布的下尾。这样训练出的评委在主观子类比结果监督 RL 高 2–9 个百分点，客观子类不掉，分布外泛化也优于朴素自蒸馏。"},
+          {"level": "专家", "text": "放进方法谱系：结果监督 RL 的信用只在序列级、语言反馈被丢弃；朴素自蒸馏用反馈做稠密监督但全位置等权，会把教师的记忆性措辞一并蒸进去。位置掩码相当于给蒸馏加了一个按熵差排序的课程——低熵变表示教师只做轻微调整，高熵变表示教师概率结构大幅重排，作者把后者解释为记忆某个判据表达并主动掩掉，换来语义理解与 OOD 稳健。适用边界是任务必须能拿到自然语言反馈且判据可枚举；判据唯一的客观任务收益会变小，摘要也观察到客观子类只是持平。"}
+        ],
+        "socratic": [
+          {"q": "如果不做位置掩码、所有位置都做蒸馏会怎样？", "a": "高熵变位置上的监督多为教师对某个判据措辞的偏好，学生学到的是复述特定表达；摘要报告这样训练出的朴素自蒸馏分布外泛化更差。"},
+          {"q": "为什么不用 GRPO 直接给判据选择更多奖励？", "a": "结果监督只有最终判定对错这一个标量，rollout 里所有 token 共享它，信用无法定位到「选了哪条判据」的 token，语言反馈里的理由也在 RL 里被丢掉了。"},
+          {"q": "只留低熵变位置，监督会不会太少？", "a": "会缩小有效监督量，所以要用分位阈值控制保留比例并配合训练步数；摘要未给具体比例，需核对原文。"}
+        ],
+        "mechanism": "必须这样设计，根子在信用分配的粒度不匹配：主观评判对错取决于「调用了哪条标准、怎么加权」，这是少数判据 token 上的离散选择，而 GRPO 的序列级标量把信用平摊到全部 token，梯度被大量与判据无关的位置稀释。语言反馈恰好携带「为什么这样判」的信息，自蒸馏把它变成逐位置分布监督，等于把稀疏序列奖励细化成稠密信用；再用熵变筛掉记忆型位置，避免把「复述教师措辞」当成「学会判据」。",
+        "boundary": "适用于有自然语言反馈或偏好理由的主观评判任务。判据唯一的客观任务收益有限，摘要里客观子类只是持平。教师与学生同源时熵变随训练缩小，阈值需重算。若反馈本身写的是措辞偏好而非判据，掩码只能减少损害、无法纠正。此外摘要未给掩码比例、模型规模与显著性，2–9 个百分点需回原文确认实验设置。",
+        "analogyBoundary": "「只抄重点批注」的类比默认重点可由熵差识别，但熵是分布集中度的代理，不等于因果重要性：某些高熵变位置可能正是判据在多样化表达，掩掉就丢掉了泛化所需的多样性；某些低熵变位置也可能只是套话。类比还忽略了教师与学生同源带来的一致性偏差。",
+        "misconceptions": [
+          "以为 GRPO 效果差是奖励设计问题；真正的问题是序列级标量无法给判据 token 单独信用。",
+          "把「熵变高」等同于「该位置重要」；本文恰恰掩掉高熵变位置，并把它们解释为记忆型监督。",
+          "认为自蒸馏需要更大的外部教师；这里教师与学生是同一个模型，只是多接了语言反馈条件。"
+        ],
+        "ownAnalysis": "（推断）这套做法本质是用同一模型的反馈条件前向近似出「过程奖励」，与 process reward model 的动机一致，但省掉了单独训练奖励模型的成本。可疑处在正负号与「下尾」的定义：摘要只说保留熵变分布的下尾，没写 ΔH 是教师减学生还是反过来，读者很容易把「保留下尾」误读成保留高熵变位置，必须核对原文公式。（推断）2–9 个百分点很可能是跨子类别的最小/最大值区间，而非置信区间。",
+        "officialNotes": [
+          {"position": "论文称掩掉高熵变位置提升分布外泛化，最终自蒸馏评委在主观子类上比结果监督 RL 高 2–9 个百分点，客观子类保持竞争力。", "source": "arxiv 摘要（https://arxiv.org/abs/2609.38792）"}
+        ],
+        "interviewAnswer": "我读的这篇做 LLM 评委训练。出发点是：主观评判里「你按哪条标准判」比「判成什么」更关键，但 GRPO 这类结果监督 RL 只给最终对错一个标量，rollout 里所有 token 共享这份信用，判据选择的 token 拿不到独立梯度，语言反馈里的偏好理由也被浪费。作者的做法是自蒸馏：同一个模型带反馈当教师，给出逐位置稠密监督；再用教师与学生的逐位置熵变区分「背措辞」的锐化与「懂语义」的扩散，只保留低熵变位置做掩码蒸馏。结果在主观子类比结果监督 RL 高 2–9 个百分点，OOD 泛化更好，客观子类持平。",
+        "studyPath": {
+          "prerequisites": ["知识蒸馏与自蒸馏的教师-学生分布对齐", "GRPO/策略梯度与信用分配", "token 级熵、KL 与温度采样"],
+          "nextSteps": ["固定掩码比例做消融，验证收益是否来自位置选择", "对比 DPO/PPO 等偏好优化在评委训练上的表现", "读过程奖励模型相关工作，比较信用粒度的差异"]
+        }
+      }
+    },
+    {
+      "id": "605a94e5b0dde801",
+      "tldr": "LLM 只写控制器结构，参数交给无导数搜索拟合，得到零推理延迟的 Python 策略。",
+      "keyPoints": [
+        "已有 LLM 控制要么每步问模型，要么每步规划世界模型，延迟高。",
+        "Code to Control 直接合成可当策略执行的 Python 控制器。",
+        "结构由 LLM 合成，连续参数由无导数搜索用环境反馈拟合。",
+        "学好后决策时无需 LLM 推理或规划，动作选择快于 PPO。",
+        "在 Atari、Flappy Bird、MuJoCo 上优于规划式程序合成且交互更少。"
+      ],
+      "why": "控制/具身方向面试常问「LLM 如何进实时闭环」；结构-参数分离给出了一条不牺牲延迟的工程路线。",
+      "difficulty": "medium",
+      "tags": ["rl", "program-synthesis", "control", "derivative-free", "llm-agent"],
+      "entities": ["Code to Control", "Atari", "Flappy Bird", "MuJoCo", "PPO"],
+      "diagram": {
+        "kind": "flow",
+        "title": "Code to Control 流程",
+        "caption": "结构给 LLM、参数给搜索，部署时只剩一段 Python 程序。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='四步竖排流程图：任务与环境反馈、LLM 合成控制器结构、无导数搜索拟合参数、纯 Python 策略零延迟决策'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>任务与环境反馈</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>观察+回报</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>LLM 合成控制器结构</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>只定结构</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>无导数搜索拟合参数</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>连续参数</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>纯 Python 策略</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>决策零延迟</text></svg>",
+        "alt": "四步竖排流程图：任务与环境反馈进入，LLM 合成控制器结构，无导数搜索拟合连续参数，最终得到决策零延迟的纯 Python 策略。"
+      },
+      "concepts": [
+        {
+          "name": "结构-参数分离的控制器合成 (Structure-Parameter Separation)",
+          "readable": "把控制器拆成两部分：离散的程序结构（条件、分支、动作映射）由 LLM 用代码先验生成；连续的数值参数（阈值、增益）由无导数搜索按环境回报拟合。产物是一段纯 Python 策略，部署时不需要模型推理或规划。",
+          "analogy": "像盖房子：建筑师（LLM）定户型和结构，施工队（搜索）现场量尺寸、反复试到合适。结构定好后尺寸可以局部调，但结构选错就救不回来。",
+          "analogyBreaksDown": "实际盖房的尺寸试错几乎免费，这里的每轮试错都要真跑环境、消耗交互预算且有噪声；另外程序结构选错时参数搜索只能失败返回，类比里缺少这种「结构锁死」的代价。",
+          "mechanism": "解决的是两类搜索空间不匹配：结构是离散代码空间、梯度穿不过去，适合用 LLM 代码先验一次采样；参数是低维连续空间，但可微性常被 if/else 打断，适合无导数搜索。分离后既不必每步调用 LLM，也不必端到端 RL 穿过不可微分支，决策期开销变成一次程序求值。",
+          "visual": "两条泳道：上泳道是 LLM 采样出的程序骨架（if/else 框图，常数位留空）；下泳道是无导数搜索在这些空位上迭代（横轴迭代次数，纵轴回报曲线，多组随机扰动取平均）。收敛后两泳道汇成一段 Python 函数框图直连环境。",
+          "prerequisites": ["策略梯度/强化学习基础", "无导数优化（随机搜索、进化策略）的直觉", "Python 控制流与程序合成概念"],
+          "selfTest": ["为什么要用无导数搜索而不是对控制器做梯度下降？", "部署时为什么不需要 LLM 推理？", "这种结构-参数分离在什么情况下会失效？"],
+          "formula": "\\theta^{\\star} = \\arg\\max_{\\theta} \\mathbb{E}_{\\tau \\sim \\pi_{\\text{struct}}(\\theta)}\\left[ R(\\tau) \\right]"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-derivative-free-controller-fit",
+          "name": "无导数控制器参数搜索 (Derivative-Free Parameter Search)",
+          "category": "rl",
+          "latex": "\\theta_{k+1} = \\theta_k + \\alpha\\,\\frac{1}{n}\\sum_{i=1}^{n} R\\big(\\pi_{\\theta_k + \\sigma \\epsilon_i}\\big)\\,\\epsilon_i,\\quad \\epsilon_i \\sim \\mathcal{N}(0, I)",
+          "symbols": [["θ", "控制器参数：阈值、增益、条件常数等连续量"], ["π_θ", "LLM 给出的 Python 控制器结构 + 参数 θ 构成的策略"], ["R(·)", "从环境反馈得到的情节回报"], ["ε_i", "第 i 个随机扰动方向"], ["σ", "扰动尺度"], ["α", "搜索步长"]],
+          "derivation": [
+            "LLM 固定程序结构，只把可调常数暴露成 θ，控制问题就从代码合成变成低维黑盒优化。",
+            "控制律含 if/else 与离散动作，不可微，梯度无法穿过，于是改用有限差分/进化策略来估计梯度。",
+            "对若干随机方向 θ+σε_i 各跑一次环境取回报 R，用回报加权的扰动方向平均作为梯度估计。",
+            "按该估计迭代更新 θ；收敛后冻结参数，部署时直接执行 Python 控制器，不再需要 LLM 推理或每步规划。"
+          ],
+          "analogy": "像调热水器旋钮：不知道内部水温公式，就小幅度左右各转一点、看哪边更舒服，再按更舒服的方向继续拧。",
+          "pitfalls": ["摘要只写 derivative-free search，未指明是进化策略、CMA-ES 还是随机搜索，不要断言算法名。", "回报噪声大时单方向估计方差高，需要多次采样或固定随机种子才能稳定。", "参数化空间若含大量分支条件，搜索维度随程序复杂度上升，必须限制可调参数数量。"],
+          "code": "import numpy as np\n\n\ndef es_fit(rollout, theta0, sigma=0.1, alpha=0.05, n=8, iters=50):\n    theta = np.array(theta0, dtype=float)\n    for _ in range(iters):\n        eps = np.random.randn(n, theta.size)\n        R = np.array([rollout(theta + sigma * e) for e in eps])   # 环境反馈\n        theta += alpha * (((R - R.mean()) / (R.std() + 1e-8))[:, None] * eps).mean(0)\n    return theta",
+          "sources": [{"title": "Code to Control: Synthesizing Parameterized Reactive Controllers", "url": "https://arxiv.org/abs/2609.38733v1"}]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要指出 LLM 控制的常见路线——让语言模型选动作，或合成需要每步规划的世界模型——会引入限制实时使用的延迟。",
+          "Code to Control 把程序结构与参数分离：LLM 合成控制器结构，无导数搜索用环境反馈拟合连续控制参数。",
+          "学好的控制器在决策时既不需要 LLM 推理也不需要规划，在其计时协议下动作选择快于 PPO 策略。",
+          "在 Atari、Flappy Bird 与 MuJoCo 上，它优于基于规划的程序合成方法，与深度 RL 竞争力相当且环境交互更少，并能迁移到动力学显著变化的环境、扩展到复杂运动任务。"
+        ],
+        "uncertain": [
+          "无导数搜索的具体算法（随机搜索/进化策略/CMA-ES）、可调参数维度与每任务交互次数，摘要未给。",
+          "「动作选择快于 PPO」是作者自定计时协议下的结论，具体延迟数值与硬件未给。",
+          "公式为按摘要重建的通用进化策略形式，需核对原文。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "让 LLM 写控制程序、用搜索调好参数，之后决策不再需要模型。"},
+          {"level": "入门", "text": "用 LLM 做控制有两条老路：每步让模型选动作，或让模型学世界模型再每步规划，两者决策时都要跑前向，实时性差。Code to Control 把结构与参数拆开：LLM 只写控制器程序的结构（条件、分支、动作映射），连续参数由无导数搜索用环境反馈拟合；学好后得到一段纯 Python 策略，决策时既不需要 LLM 也不需要规划。"},
+          {"level": "进阶", "text": "关键设计选择是「谁负责什么」：程序结构是离散、需要先验的部分，交给 LLM 用代码先验一次生成；连续参数是低维、可试错的部分，交给无导数搜索，既不需要可微控制律也不需要环境梯度。这样避免了每步规划的延迟，也避开了端到端 RL 的高样本代价。在 Atari、Flappy Bird 与 MuJoCo 上它优于规划式程序合成，和深度 RL 竞争力相当但环境交互更少，并能迁移到动力学有较大改变的环境、扩展到复杂运动任务。"},
+          {"level": "专家", "text": "放进谱系比较：LLM-as-policy 的决策成本是每步一次语言模型前向；world-model+planning 是每步一次规划搜索；Code to Control 把成本一次性付在训练期（LLM 合成 + 无导数搜索），部署时只剩程序求值，所以论文报告其计时协议下动作选择快于 PPO 策略。相比让 LLM 直接写完整程序，它不要求模型一次写对数值，参数由搜索保证。边界在于可调参数维度必须受控、控制律要能被「结构+常数」表达，且摘要未给搜索算法与交互预算的具体数字。"}
+        ],
+        "socratic": [
+          {"q": "为什么不让 LLM 把控制器连同参数一次写全？", "a": "数值参数要靠环境反馈反复试错才能定，LLM 先验给不出精确增益或阈值；把参数交给无导数搜索可以直接优化回报，避免模型在数值上臆造。"},
+          {"q": "为什么强调 derivative-free，而不是直接强化学习学策略？", "a": "控制器结构里有 if/else 等不可微成分，梯度难以穿过；无导数搜索只要能调用环境、拿到回报即可，且参数维度低，摘要也强调其环境交互更少。"},
+          {"q": "决策时不调用 LLM，会不会损失适应性？", "a": "适应性来自结构中的条件分支与拟合好的参数；摘要称它能迁移到动力学大幅变化的环境，但迁移范围仍受程序结构表达力限制。"}
+        ],
+        "mechanism": "必须把结构与参数分开，是因为二者的最优搜索方式不同：结构在离散代码空间里，适合用 LLM 的代码先验一次采样；参数在低维连续空间里，适合用无导数搜索按回报直接优化。若把两者耦合——让 LLM 一次输出完整程序——数值只能靠先验猜，误差无法被环境反馈纠正；若用端到端 RL 学整个策略，则要穿过不可微的条件分支，样本代价高。分离之后产物是一段可执行程序，部署路径上没有语言模型也没有规划器，延迟问题从算法层面消失。",
+        "boundary": "前提是控制律能被「程序结构 + 少量连续参数」表达，且参数维度低到无导数搜索可承受。若任务需要长时程记忆或复杂感知，程序结构可能表达不了。摘要只在 Atari、Flappy Bird、MuJoCo 上验证，真实机器人与安全约束未涉及；「快于 PPO」是在作者自定的计时协议下测得的，换硬件或实现会变。",
+        "analogyBoundary": "「建筑师定结构、施工队调尺寸」的类比忽略了搜索成本：工程里调尺寸几乎免费，而这里每试一组参数都要真跑环境、消耗交互预算，回报还带噪声。另外程序结构一旦选错，参数怎么调都救不回来，类比里没有这种「结构锁死」的风险。",
+        "misconceptions": [
+          "以为它是 LLM 控制器、只是推理更快；实际部署产物是纯 Python 程序，决策时没有 LLM 参与。",
+          "把它的优势说成「用 RL 替代 PPO」；它用的是无导数参数搜索，优化对象是低维连续参数而非完整策略网络。",
+          "宣称它全面超过深度 RL；摘要是与深度 RL 竞争力相当且交互更少，且结论限于这些基准。"
+        ],
+        "ownAnalysis": "（推断）这条路与程序合成加进化搜索同源，新意在把 LLM 的代码先验与无导数参数拟合拼接起来，让两类搜索各自待在自己擅长的空间里。可疑处在措辞：摘要用的是 competitive with deep RL 而不是全面超过，且「比 PPO 快」是在自定计时协议下、主要因为决策期没有神经网络前向，不能读成控制质量领先。摘要没给无导数搜索算法、参数数量与每任务交互次数，因此「fewer environment interactions」的幅度无法判断。",
+        "officialNotes": [
+          {"position": "论文称 Code to Control 把程序结构与参数分离，部署时不需要 LLM 推理或规划；在 Atari/Flappy Bird/MuJoCo 上优于规划式程序合成，与深度 RL 竞争力相当且环境交互更少，并可迁移到动力学大幅变化的环境。", "source": "arxiv 摘要（https://arxiv.org/abs/2609.38733v1）"}
+        ],
+        "interviewAnswer": "我关注的这篇 Code to Control 解决的是 LLM 进实时闭环的延迟问题。以往两条路都不理想：LLM-as-policy 每步都要一次模型前向，world-model 路线每步都要规划，决策成本都压在推理期。它的做法是把控制器拆成结构和参数：LLM 只负责写程序结构，比如条件分支和动作映射；连续参数交给无导数搜索，用环境反馈拟合。因为结构和参数的最优搜索方式本就不同，这样拆分既绕开了不可微的 if/else，也省掉了端到端 RL 的样本开销。学完之后部署的是一段纯 Python 控制器，决策时不需要 LLM 也不需要规划，论文报告在其计时协议下动作选择快于 PPO，并在 Atari、Flappy Bird、MuJoCo 上优于规划式程序合成、与深度 RL 竞争力相当。",
+        "studyPath": {
+          "prerequisites": ["强化学习与策略梯度基础", "无导数优化（随机搜索、进化策略）", "程序合成与代码生成模型"],
+          "nextSteps": ["复现时固定 LLM 采样次数，只消融参数搜索预算", "对比 CMA-ES 与随机搜索在参数拟合上的效率", "探索把安全约束写进程序结构以保证可验证性"]
+        }
+      }
+    },
+    {
+      "id": "ba42ae2763a28039",
+      "tldr": "SPHERE 把语音与手柄编辑抽成层级空间约束，用人在环 RL 更新检索，N=42 研究显示修正大减。",
+      "keyPoints": [
+        "现有 3D 场景合成管线跨会话不留用户偏好，编辑重复且费力。",
+        "SPHERE 从语音与手柄编辑中抽取可持久化的空间偏好。",
+        "原始编辑被抽象成局部功能+全局拓扑的层级约束以抗形变。",
+        "人在环 RL 用用户最终修改后的场景动态更新检索策略。",
+        "N=42 用户研究与离线消融显示修正编辑与体力需求显著下降。"
+      ],
+      "why": "空间偏好与人在环闭环是 VR/具身交互岗的热点；「把编辑当奖励」也是隐式偏好对齐的通用范式。",
+      "difficulty": "medium",
+      "tags": ["rl", "human-in-the-loop", "scene-generation", "vr", "llm"],
+      "entities": ["SPHERE", "LLM", "human-in-the-loop reinforcement learning", "VR indoor scene synthesis"],
+      "diagram": {
+        "kind": "flow",
+        "title": "SPHERE 自适应生成闭环",
+        "caption": "交互→层级约束→检索生成→用户编辑→策略更新，偏好跨会话留存。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='四步竖排流程图：语音与手柄编辑、层级空间约束抽象、人在环强化学习更新检索策略、生成布局再被编辑'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>语音 + 手柄编辑</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>自然交互</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>层级空间约束抽象</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>局部+全局</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>人在环 RL 更新检索</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>按最终场景</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>生成布局再被编辑</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>偏好留存</text></svg>",
+        "alt": "四步竖排流程图：语音与手柄编辑输入，抽象成层级空间约束，人在环强化学习按最终场景更新检索策略，再生成布局进入下一轮编辑。"
+      },
+      "concepts": [
+        {
+          "name": "层级空间约束抽象 (Hierarchical Spatial Constraint Abstraction)",
+          "readable": "把用户原始编辑（挪动、放置、语音说明）抽象成两层约束：局部功能约束描述某区域要满足什么用途（能坐、有采光），全局拓扑约束描述区域之间的关系（动线、连通、分区）。这样偏好不再绑死在具体物体位置上，空间形变后仍然成立。",
+          "analogy": "搬进新房时你记住的不是「沙发在第三个插座左边」，而是「客厅要能围坐看电视、进门不撞到人」。前者换房就作废，后者还能指导重新布置。",
+          "analogyBreaksDown": "生活里功能与关系也会随结构改变（开放厨房与独立厨房的功能约束不同），并非拓扑不变；而且「能坐」「有采光」这类功能约束如何形式化、由谁定义，摘要没有交代。",
+          "mechanism": "针对的是偏好表示的可迁移性：若把编辑存成物体级属性，模型会拟合浅层特征，且房间几何一变就失效。两层约束把「用户为什么这样改」写成功能与拓扑上的条件，生成端只需满足约束，因此对空间扰动更稳，也避免偏向浅层物体属性。",
+          "visual": "左图是用户编辑前后的房间平面（箭头表示挪动），右图把它压成两层：下层是若干功能区域圆（标「坐」「采光」「通行」），上层是区域之间的连线图（动线/连通）；原始编辑用虚线指到它被抽象成的约束节点。",
+          "prerequisites": ["场景图与约束满足的基本概念", "3D 室内场景合成常见管线", "偏好建模与检索基础"],
+          "selfTest": ["把偏好存成「物体-位置」记录会有什么问题？", "局部功能约束与全局拓扑约束各解决什么？", "层级抽象最可能在什么情况下丢失信息？"],
+          "formula": ""
+        },
+        {
+          "name": "人在环强化学习 (Human-in-the-Loop RL)",
+          "readable": "系统生成场景后由用户编辑，用户最终留下的场景被当作反馈信号，用来更新系统的检索策略；每轮会话都更新一次，隐性偏好被逐步沉淀进策略，下一轮需要用户做的修正越来越少。",
+          "analogy": "常去的理发师：第一次剪完你还要修半天，他记住了你最后满意的样子，下次直接按那个结果起步，需要现场纠正的地方越来越少。",
+          "analogyBreaksDown": "理发师的记忆是一次性观察，而这里的奖励要经过策略梯度估计，样本噪声大；用户最终妥协的样子可能只是「懒得再改」，把它当偏好真值会学到错误信号，摘要也未说明是否过滤这类噪声。",
+          "mechanism": "解决偏好无法跨会话保留的问题：与其要求用户显式配置 profile，不如把「最终被接受的场景」当隐式奖励，用策略梯度更新检索策略。奖励越贴近用户最终场景，检索结果越符合个人偏好，修正编辑与体力需求随之下降。",
+          "visual": "画一条闭环：用户交互→生成场景→用户编辑→最终场景→（与生成场景的差异当奖励）→策略梯度更新检索策略→回到生成。旁边画一条随会话数下降的「修正编辑量」曲线，表示偏好正在累积。",
+          "prerequisites": ["策略梯度/REINFORCE 基础", "隐式反馈与偏好学习", "检索增强生成的基本流程"],
+          "selfTest": ["依据摘要，奖励信号来自哪里？", "为什么不让用户直接填写偏好 profile？", "把最终场景当成偏好真值有哪些风险？"],
+          "formula": "\\nabla_\\theta J = \\mathbb{E}\\left[\\sum_t \\nabla_\\theta \\log \\pi_\\theta(a_t|s_t)\\, R(S_{\\text{final}})\\right]"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-hitl-retrieval-policy",
+          "name": "人在环检索策略更新 (Human-in-the-Loop Retrieval Policy Update)",
+          "category": "rl",
+          "latex": "\\nabla_\\theta J(\\theta) = \\mathbb{E}\\left[\\sum_{t} \\nabla_\\theta \\log \\pi_\\theta(a_t \\mid s_t)\\, R\\big(S_{\\text{final}}\\big)\\right],\\quad R = -d\\big(S_{\\text{gen}}, S_{\\text{final}}\\big)",
+          "symbols": [["π_θ(a_t|s_t)", "检索策略：在状态 s_t 下选择素材/布局动作 a_t"], ["S_gen", "系统生成的初始场景"], ["S_final", "用户编辑后的最终场景"], ["d(·,·)", "场景差异，代理用户还要做的修正量"], ["R", "由最终场景构造的回报"], ["θ", "策略参数，被人在环 RL 动态更新"]],
+          "derivation": [
+            "问题：现有管线不保留跨会话偏好，用户每次都要重复修改，说明反馈没有被写回系统。",
+            "把「用户最终留下的场景」当作隐式偏好信号：最终场景与生成场景差异越小，说明策略越贴合该用户。",
+            "用策略梯度更新检索策略，使高回报（修正少）的检索动作概率上升，把稀疏的人工编辑转成训练信号。",
+            "生成端由抽象出的局部功能与全局拓扑约束保证几何韧性，避免奖励只强化浅层物体属性。"
+          ],
+          "analogy": "像装修师第一次按自己审美摆家具，业主每挪一件都在打分；下次开工前先回想被挪过哪些，逐步改掉自己的默认习惯。",
+          "pitfalls": ["把用户编辑当成唯一真值会放大疲劳与误操作噪声，摘要未说明是否做过滤。", "只用物体级差异当奖励会强化浅层属性，而摘要明确说要避免偏向这类特征。", "探索过激会让每轮都需要大量修改，与「减少修正编辑」的目标自相矛盾。"],
+          "code": "import torch\n\n\ndef hitl_step(policy, opt, scene_state):\n    logps, _ = rollout_retrieval(policy, scene_state)     # 采样一条检索轨迹\n    S_gen = render(scene_state)\n    S_final = user_edit(S_gen)                            # 用户最终留下的场景\n    reward = -scene_distance(S_gen, S_final)              # 修正越少回报越高\n    loss = -(torch.stack(logps).sum() * reward)\n    opt.zero_grad(); loss.backward(); opt.step()",
+          "sources": [{"title": "SPHERE: Adaptive VR Indoor Scene Generation via LLM-Enhanced Spatial Preference Learning and Human-in-the-Loop RL", "url": "https://arxiv.org/abs/2610.02023v1"}]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要称当前 3D 室内场景合成管线无法跨会话保留用户特定偏好，使沉浸式创作重复且体力负担大。",
+          "SPHERE 从语音与手柄编辑等多模态自然交互中抽取持久空间偏好，并把原始编辑抽象成兼顾局部功能与全局拓扑上下文的层级约束，以获得对空间形变的几何韧性。",
+          "系统用人在环强化学习机制、依据用户最终编辑后的场景动态更新检索策略。",
+          "N=42 的混合设计用户研究与离线消融显示 SPHERE 显著减少修正编辑与体力需求，并避免偏向浅层物体级特征，产出几何韧性强、与 profile 对齐的布局。"
+        ],
+        "uncertain": [
+          "人在环 RL 的奖励具体形式、更新频率、是否过滤误操作，摘要均未说明。",
+          "N=42 的分组方式、效应量与统计检验，以及「显著」的具体幅度，摘要未给。",
+          "层级约束的层数、形式化方式（约束求解器还是损失项）与检索策略的结构，摘要未提。",
+          "公式为按摘要重建的通用策略梯度形式，需核对原文。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "把语音和手柄操作变成可留存的空间偏好，下次不必再改一遍。"},
+          {"level": "入门", "text": "现有 3D 室内场景生成每次会话都从零开始，不记得用户上次改过什么，于是反复搬家具、很累。SPHERE 把语音指令和手柄编辑当作偏好来源，抽出可复用的空间偏好，再抽象成层级约束（局部功能加全局拓扑），让方案在空间形变下也不崩；之后用人在环强化学习，按用户最终编辑后的场景反过来更新检索策略。N=42 的用户研究加离线消融显示，修正编辑和体力需求显著下降。"},
+          {"level": "进阶", "text": "关键设计选择是「不要把偏好存成物体级特征」。若只记「他喜欢把沙发放窗边」，换个房间形状就失效，模型还会偏向浅层的物体属性。SPHERE 把编辑抽象成两层约束：局部功能约束（这一带要能坐、要有采光）与全局拓扑约束（动线、连通、分区），于是偏好对空间扰动有韧性。闭环的奖励来自用户最终修改后的场景，用人在环 RL 更新检索策略，使结果逐步对齐该用户。"},
+          {"level": "专家", "text": "与既有工作对比：传统管线把 LLM 当一次性生成器，偏好无状态；SPHERE 把它改造成有状态的共创作循环——交互（语音/手柄）→偏好抽取→层级约束→检索与生成→用户编辑→策略更新。层级约束的作用是重建「用户为什么这样改」的空间逻辑，而不是记录改动了哪些物体，摘要特别强调这能避免偏向浅层物体特征并带来几何韧性。评估是 N=42 混合设计用户研究加离线消融，指标落在修正编辑量与体力需求上。边界在于偏好抽取依赖语音与手柄编辑的质量，多人协同与长期漂移未覆盖。"}
+        ],
+        "socratic": [
+          {"q": "为什么不直接记住用户改动了哪些物体？", "a": "物体级记录对空间变化很脆：房间尺寸或布局一变，同样的物体位置就不再满足原意；还会让模型学到浅层物体属性，摘要明确说要避免这种偏置。"},
+          {"q": "人在环 RL 的奖励从哪里来？", "a": "来自用户最终编辑后的场景：把「用户还需要再改多少」当作信号更新检索策略，使后续检索更贴近该用户偏好；摘要未给出奖励的具体计算式。"},
+          {"q": "既然有 LLM，为什么还需要学一个检索策略？", "a": "LLM 负责生成与理解，但「该给这个用户取哪些素材与布局先验」是策略问题，需要按历史结果反复更新；摘要正是用人在环 RL 动态更新检索策略。"}
+        ],
+        "mechanism": "必须这样做，是因为「用户偏好」在场景生成里是隐式的、跨会话的，而且不能被物体清单表达。只把编辑记成物体属性，等于把偏好绑死在某个具体几何上，任何重排都会失效，还会诱导模型拟合浅层特征。抽象成局部功能与全局拓扑两层约束，等于记录用户的空间逻辑而不是空间结果；再用最终编辑场景当奖励更新检索策略，闭环地把每次会话的隐性偏好沉淀进策略，从而减少下一轮的修正编辑。",
+        "boundary": "适用于单人、以语音与手柄编辑为交互方式的 VR 室内场景创作。若用户偏好本身不稳定（开放式探索），或多人共享同一场景，把最终场景当偏好真值会把噪声当信号。摘要未报告长期漂移、跨用户混淆与不同硬件下的表现，N=42 也属于中小规模用户研究，结论泛化需谨慎。",
+        "analogyBoundary": "「装修师记住业主习惯」的类比成立在偏好可稳定提炼的前提上；实际用户的最终编辑可能含误操作、疲劳妥协或临时灵感，这些不是偏好。人还可能在客厅与书房有不同标准，单一 profile 会过度统一化，类比里没有这种多上下文冲突。",
+        "misconceptions": [
+          "以为 SPHERE 只是把语音指令接到生成器上；核心是跨会话保留的偏好抽象与人在环策略更新。",
+          "把最终编辑场景当作无噪声偏好标签；误操作与妥协同样会被当成奖励，摘要未说明过滤机制。",
+          "认为层级约束只是为了让场景更整齐；它的目的是让偏好对空间形变有韧性并抑制浅层物体偏置。"
+        ],
+        "ownAnalysis": "（推断）把偏好建模成「局部功能 + 全局拓扑」两层，与场景图/层次化约束的思路一致，好处是把零散编辑聚合成可复用的规划约束；用最终场景做奖励则近似隐式反馈版的偏好对齐，代价是对噪声敏感。（推断）摘要里的「显著降低」是相对基线的主观与行为指标，未给效应量与统计检验，N=42 的混合设计用户研究需要看原文的组内/组间分配。可疑处：项目页与源码虽被承诺公开，摘要阶段无法核对实现细节。",
+        "officialNotes": [
+          {"position": "论文称 SPHERE 从语音与手柄编辑抽取持久空间偏好、抽象为层级约束，并用人在环强化学习更新检索策略；N=42 混合设计用户研究与离线消融显示修正编辑与体力需求显著降低。", "source": "arxiv 摘要（https://arxiv.org/abs/2610.02023v1）"}
+        ],
+        "interviewAnswer": "我读的是 SPHERE，一个 VR 室内场景自适应生成框架。它要解决的问题很实际：现有管线每次会话都不记得用户的偏好，用户每轮都要重复搬家具，很累。SPHERE 把语音和手柄编辑这些自然交互当作偏好来源，但关键是不把偏好存成物体位置，而是抽象成两层约束——局部功能约束和全局拓扑约束，这样房间形状变了偏好依然成立，也避免模型去拟合浅层物体属性。之后它用人在环强化学习，把用户最终编辑后的场景当反馈来更新检索策略，让下一轮生成的布局更贴近这个人。评估是 N=42 的混合设计用户研究加离线消融，报告修正编辑和体力需求显著下降。",
+        "studyPath": {
+          "prerequisites": ["3D 场景合成与场景图基础", "强化学习策略梯度", "人机交互中的用户研究方法"],
+          "nextSteps": ["复现时固定约束抽象方式，只消融人在环更新", "对比显式偏好问卷与隐式编辑反馈的样本效率", "研究多人共享场景下的偏好冲突与治理"]
+        }
+      }
+    },
+    {
+      "id": "6ab3ece3ad8a35bc",
+      "tldr": "SSR 把推理改成从预设候选里选，并行打分让每轮推理延迟降 90% 以上，效果不降。",
+      "keyPoints": [
+        "多模态智能体每步先自由生成推理，小模型上收益低但很贵。",
+        "SSR 把推理重构成从预设可复用自然语言候选里做选择。",
+        "按上下文似然选候选，不需要额外的任务头。",
+        "教师强制预填加共享 KV 缓存让候选内与候选间并行打分。",
+        "7 个基准、2B/4B 上每轮推理延迟降 90%+、整题降 28–54%，成功率不降。"
+      ],
+      "why": "智能体的推理开销是落地瓶颈；把生成换成受限选择是通用提效范式，面试常考延迟与效果的权衡。",
+      "difficulty": "medium",
+      "tags": ["agent", "multimodal", "reasoning", "efficiency", "reinforcement-learning"],
+      "entities": ["SSR", "multimodal search agents", "2B", "4B", "KV cache"],
+      "diagram": {
+        "kind": "flow",
+        "title": "SSR 选择式推理流程",
+        "caption": "推理不自由生成，而是从预设候选里按似然挑一条，一次预填并行打分。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='四步竖排流程图：当前上下文与问题、预设可复用推理候选集、共享 KV 缓存的并行似然打分、选中推理生成动作'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>当前上下文与问题</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>多模态</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>预设推理候选集</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>可复用</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>并行似然打分</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>共享 KV 缓存</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>选中推理生成动作</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>一次前向</text></svg>",
+        "alt": "四步竖排流程图：当前多模态上下文与问题，预设可复用推理候选集，共享 KV 缓存的并行似然打分，选中一条推理后生成动作。"
+      },
+      "concepts": [
+        {
+          "name": "选择式结构化推理 (Selection-based Structured Reasoning)",
+          "readable": "把「每步先自由写一段推理」改成「从预先写好的推理候选里选一条」。候选是可复用的自然语言句子集合，每轮用当前上下文给候选打分，取最高分的那条当本轮推理，再生成动作；打分直接用模型对候选 token 的似然，不需要额外任务头。",
+          "analogy": "要先想一步再行动时，一种是现场即兴写一段思路，另一种是手里有一叠「常见思路卡」，扫一眼挑最贴切的那张。卡片虽少，但挑卡比现写快得多，也不容易跑题。",
+          "analogyBreaksDown": "思路卡需要有人预先写好，写卡的成本与覆盖面在类比里被忽略；真实问题可能需要几张卡组合，而选择式框架每轮只选一条，拼不出菜单之外的新推理。",
+          "mechanism": "关键设计是把推理空间从无界生成压成有限候选集，从而能用 teacher-forced 预填一次算出所有候选的 token 似然。选择因此变成一次比较而不是逐 token 解码；牺牲的是推理自由度，换来的是并行性与 KV 缓存复用，对小模型尤其划算。",
+          "visual": "左边是自由生成的时间条：每多一个推理 token 就多一格，长度越长成本越高；右边是候选矩阵：每行一条候选、每列一个 token，整块一次性预填打分，共享同一份上下文 KV，最后只有一行被高亮选中。",
+          "prerequisites": ["自回归语言模型的似然与预填（prefill）", "KV 缓存的工作原理", "ReAct 式智能体的推理-行动循环"],
+          "selfTest": ["为什么说 SSR 不需要辅助任务头？", "候选固定为什么能带来并行打分？", "候选集的设计如何限制方法的效果上限？"],
+          "formula": "c^{\\star} = \\arg\\max_{c \\in \\mathcal{C}} \\sum_t \\log p_\\theta(c_t \\mid x, c_{<t})"
+        },
+        {
+          "name": "并行候选打分 (Parallel Candidate Scoring)",
+          "readable": "因为所有候选都预先给定，可以把共享上下文和全部候选拼在一次前向里做 teacher forcing，利用同一份上下文 KV 缓存同时算出候选内部与候选之间的 token 似然。打分从逐条串行变成一次并行计算，每轮延迟大幅下降。",
+          "analogy": "做选择题时不是把每个选项单独念一遍再想，而是一眼看完整张卷子；题干（共享上下文）只需要读一次。",
+          "analogyBreaksDown": "一眼看完的代价是「卷子越长越占桌面」：把大量候选塞进一次前向会显著增加显存与计算，候选数增长后预填开销上升，收益并非无条件；真实硬件并行度也有限，未必随候选数线性加速。",
+          "mechanism": "共享上下文只算一次 KV 缓存，候选之间的打分互不依赖，因此可以批量并行。这解决了自由生成必须逐 token 解码、成本随推理长度线性增长的问题，每轮推理延迟被压到近似「一次预填 + 一次比较」；摘要报告每轮降 90% 以上，整题模型推理延迟降 28–54%。",
+          "visual": "画一条时间轴：上排串行方案里 N 条候选一条接一条占据时间轴，且每条都要重复读上下文；下排并行方案先是一块粗块（共享上下文预填一次），紧接一排小方块同时开始。右端标出总耗时差异。",
+          "prerequisites": ["Transformer 前向与批处理", "KV 缓存复用", "延迟与吞吐的基本权衡"],
+          "selfTest": ["并行打分共享的是哪部分计算？", "候选集变大后延迟会怎么变化？", "为什么每轮降 90% 不等于整题降 90%？"],
+          "formula": "T_{\\text{SSR}} = t_{\\text{prefill}}\\Big(|x| + \\sum_{c} |c|\\Big) + t_{\\text{select}}"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-candidate-selection-likelihood",
+          "name": "候选推理似然选择 (Likelihood-Based Candidate Selection)",
+          "category": "agent",
+          "latex": "c^{\\star} = \\arg\\max_{c \\in \\mathcal{C}} \\frac{1}{|c|^{\\alpha}} \\sum_{t=1}^{|c|} \\log p_\\theta\\big(c_t \\mid x, c_{<t}\\big)",
+          "symbols": [["C", "预设的可复用推理候选集合"], ["c", "一条候选推理文本"], ["x", "当前上下文：图像/历史/问题与共享前缀"], ["p_θ", "策略模型本身，不需要额外的任务头"], ["α", "长度归一化指数，α=0 表示不做长度加权"], ["c*", "本轮被选中的推理"]],
+          "derivation": [
+            "自由生成的推理在小模型上又长又缺乏指导性，但每一步仍要逐 token 解码，成本随推理长度线性增长。",
+            "把推理动作空间换成有限候选集 C：候选是预置的、可复用的自然语言推理句，覆盖常见高层思路。",
+            "对每个候选做 teacher forcing，用语言模型自身的对数似然求和（可按长度归一化）作为得分，取最大者，无需训练额外打分头。",
+            "因候选固定，所有得分可在一次预填中并行算出，选择退化为一次数值比较；摘要报告在 7 个多模态搜索基准、2B/4B 模型上成功率与同规模领先智能体相当。"
+          ],
+          "analogy": "点餐时不再让服务员即兴描述今天的菜，而是给你一张固定菜单，你一眼扫过去挑最合口味的那道；菜单短，但都是厨房真做得出来的。",
+          "pitfalls": ["候选集是预设的，覆盖面直接决定上限：没写进菜单的推理永远选不出来。", "长度归一化指数 α 不当时会偏向短候选，可能牺牲需要长推理的题目。", "似然排序与最终任务奖励不是同一目标，RL 微调后排序会漂移，需要重新评估候选。"],
+          "code": "import torch\nimport torch.nn.functional as F\n\n\ndef score_candidates(logits, cand_ids, ctx_len, alpha=0.5):\n    # 一次预填：共享上下文 + 全部候选拼接，logits 形状 [1, ctx_len + L, V]\n    logp = F.log_softmax(logits, dim=-1)\n    total = sum(logp[0, ctx_len - 1 + i, tok].item() for i, tok in enumerate(cand_ids))\n    return total / max(len(cand_ids), 1) ** alpha",
+          "sources": [{"title": "Selection-Based Structured Reasoning: Toward Efficient Multimodal Search Agents", "url": "https://arxiv.org/abs/2610.01892v1"}]
+        },
+        {
+          "id": "f-parallel-candidate-scoring",
+          "name": "并行候选打分与延迟分解 (Parallel Candidate Scoring Latency)",
+          "category": "agent",
+          "latex": "T_{\\text{turn}}^{\\text{gen}} = |r|\\,t_{\\text{dec}}, \\qquad T_{\\text{turn}}^{\\text{SSR}} = t_{\\text{prefill}}\\Big(|x| + \\sum_{c}|c|\\Big) + t_{\\text{select}}",
+          "symbols": [["|r|", "自由生成推理的 token 数"], ["t_dec", "单步自回归解码时间"], ["t_prefill", "预填（可并行）的单 token 时间"], ["|x|", "共享上下文长度"], ["Σ|c|", "所有候选的 token 总数"], ["t_select", "选择开销，近似常数"]],
+          "derivation": [
+            "自由生成的每轮成本与推理长度成正比：推理越长，逐 token 解码越慢。",
+            "SSR 把生成换成一次预填，候选之间互不依赖，可并行前向并共享同一份上下文 KV 缓存。",
+            "选择只做一次比较，成本近似常数，因此每轮延迟不再随推理长度增长——这正是「每轮推理延迟降 90% 以上」的来源。",
+            "但整题还包含动作生成、检索调用等不可压缩开销，所以摘要报告的总模型推理延迟只降 28–54%，两个数字不能混用。"
+          ],
+          "analogy": "像查表与现场推导：查表把推导结果一次性印好，用时只需翻页；现场推导每一步都得重算。",
+          "pitfalls": ["把「每轮推理延迟降 90%」误读成「整题延迟降 90%」；摘要给的整题降幅是 28–54%。", "预填 batch 变大后显存与计算量上升，实际并行度受硬件限制。", "候选集变大后预填成本随之上升，效率收益不是无条件的。"],
+          "code": "def latency_compare(n_reason_tok, t_dec, t_prefill_per_tok, ctx_tok, cand_tok, t_select):\n    t_gen = n_reason_tok * t_dec                       # 自由生成：随推理长度线性\n    t_ssr = (ctx_tok + cand_tok) * t_prefill_per_tok + t_select\n    return t_gen, t_ssr, 1 - t_ssr / t_gen             # 每轮延迟降幅",
+          "sources": [{"title": "Selection-Based Structured Reasoning: Toward Efficient Multimodal Search Agents", "url": "https://arxiv.org/abs/2610.01892v1"}]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要指出多模态智能体常在每次动作前生成自由推理，小模型容量有限时会写出对动作指导很少的冗长推理，同时带来可观推理成本。",
+          "SSR 把重复出现的高层推理表示成预置、可复用的自然语言候选，每轮依据当前上下文下的似然从候选中选择，不需要辅助任务头。",
+          "预置推理轨迹使 teacher-forced 预填能在共享上下文 KV 缓存下，同时计算候选内部与候选之间的 token 似然，即并行打分。",
+          "在 7 个多模态搜索基准、2B 与 4B 模型上，跨多种 RL 目标与监督微调，SSR 在成功率与同规模领先搜索智能体相当的同时，把每轮推理延迟降低 90% 以上、整题模型推理延迟降低 28–54%。"
+        ],
+        "uncertain": [
+          "候选集的规模、来源（人工编写还是模型生成）以及是否做过候选数量/内容的消融，摘要未说明。",
+          "「每轮推理延迟」与「整题模型推理延迟」的测量口径、硬件与基线实现在摘要中未给。",
+          "两个公式均为按摘要重建的似然选择与延迟分解形式，需核对原文。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "推理不再自由生成，而是从预设候选里挑一条，快一个数量级。"},
+          {"level": "入门", "text": "多模态智能体习惯在每次动作前先写一段推理，但小模型写出的推理往往又长又没用，还拖慢速度。SSR 把推理从自由生成改成从候选里选：预先写好多条可复用的大白话推理候选，每一步模型按当前上下文给这些候选打分、选最高的一条，不需要额外的任务头，打分直接用语言模型自身的似然。因为候选固定，可以一次预填并行打分，每轮推理延迟降 90% 以上。"},
+          {"level": "进阶", "text": "关键在于把开放生成换成受限选择，并用这个限制换取并行性：候选文本预置好后，把上下文与所有候选拼在一起做一次 teacher-forced 预填，共享同一份上下文 KV 缓存，就能同时算出候选内部与候选之间的 token 似然，选择变成一次比较而非逐 token 解码。作者在 7 个多模态搜索基准、2B 与 4B 模型上验证，跨多种 RL 目标与监督微调都拿到效率收益，成功率与同规模领先搜索智能体相当，每轮推理延迟降 90% 以上、整题模型推理延迟降 28–54%。"},
+          {"level": "专家", "text": "谱系对比：自由推理（ReAct 式）的每轮成本随推理长度线性增长，而小模型容量不足时这段推理对动作的指导价值很低；把推理换成固定候选，等于用受限动作空间换取 KV 缓存复用与并行打分，成本变成一次预填。代价是候选集要事先预设，覆盖不到的情形选不出来，而且候选是自然语言而非可组合计划，复杂多跳任务可能超出其表达力。摘要报告整题只降 28–54%，说明还有动作生成与检索调用等不可压缩部分，不要读成端到端十倍提速。"}
+        ],
+        "socratic": [
+          {"q": "为什么不让模型直接输出一个分布再取 argmax？", "a": "SSR 的选择就是按候选文本的似然取 argmax，但它不需要额外任务头：直接用语言模型对候选 token 的对数概率当分数，因此能复用同一个模型与 KV 缓存。"},
+          {"q": "候选集是人预设的，为什么反而更高效？", "a": "固定候选可以在一次 teacher-forced 预填里并行打分、共享上下文 KV 缓存；自由生成必须逐 token 解码，成本随推理长度增长，而小模型里这段生成常无益于动作。"},
+          {"q": "这个效率提升是普遍结论还是特例？", "a": "摘要在 7 个基准、2B/4B 模型、多种 RL 目标与 SFT 下都观察到收益，但每轮降幅是 90% 以上、整题只有 28–54%，说明端到端还有别的开销。"}
+        ],
+        "mechanism": "必须这样设计，是因为小模型上的自由推理是一段「高成本、低信息」的生成：容量有限时它既不能可靠规划，又必须逐 token 解码，拖慢每一步。把推理空间预先限定为可复用的自然语言候选，就把生成问题变成判别问题；判别可以直接用语言模型自身的似然，既不需要新任务头，也不需要额外数据训练打分器。更关键的是候选固定后所有打分能共享同一份上下文 KV 缓存并并行计算，延迟从「与推理长度成正比」变成「一次预填加一次比较」——效率来自结构约束，而不是近似。",
+        "boundary": "前提是任务的高层推理可以枚举成有限候选：若推理需要组合新的中间步骤（多跳检索、工具编排），候选覆盖不足会把性能上限锁死。摘要只在多模态搜索的 7 个基准与 2B/4B 规模上验证，更大模型与开放式任务未必同样受益；「降 90%」指的是每轮推理延迟，整题只降 28–54%，且不同硬件下预填的并行效率不同。",
+        "analogyBoundary": "「看菜单点菜」的类比假设菜品固定且总能命中需求；真实搜索任务里正确推理可能是菜单上若干条的拼接或全新组合，选择式框架给不出来。另外菜单需要人预先编写，写菜单的成本在类比里被忽略，而这恰是该方法主要的工程投入。",
+        "misconceptions": [
+          "以为 SSR 训练了一个新的候选打分器；它直接用模型对候选 token 的似然打分，不需要辅助任务头。",
+          "把「每轮推理延迟降 90%」当成端到端提速 90%；摘要给的整题模型推理延迟降幅是 28–54%。",
+          "认为选择式推理会损害效果；摘要在 7 个基准上报告成功率与同规模领先智能体相当，效率收益不以性能为代价。"
+        ],
+        "ownAnalysis": "（推断）这本质上是把连续动作空间离散化为自然语言「技能库」，与 options/skill library 的动机一致，只是技能换成了可直接用似然打分的文本候选；并行打分能成立的关键是共享 KV 缓存，这也是它区别于分类器式 router 的地方——router 需要额外参数，SSR 复用同一个模型。可疑处：候选集规模、由谁编写、覆盖多少高频思路、是否做过候选消融，摘要都没说，而这直接决定方法上限。（推断）延迟收益依赖预填能成批执行，显存与 kernel 效率会决定实际加速比。",
+        "officialNotes": [
+          {"position": "论文称 SSR 把推理重构为从预设可复用候选中做选择、无需辅助任务头，并用 teacher-forced 预填与共享上下文 KV 缓存实现并行打分；在 7 个多模态搜索基准上每轮推理延迟降低 90% 以上、整题模型推理延迟降低 28–54%，成功率与同规模领先搜索智能体相当。", "source": "arxiv 摘要（https://arxiv.org/abs/2610.01892v1）"}
+        ],
+        "interviewAnswer": "我读的这篇 SSR 针对多模态搜索智能体的推理开销。现状是每步动作前都要先生成一段自由推理，但小模型容量有限，写出来的推理又长又没指导性，还拖慢每一步。SSR 把推理从生成改成选择：预先准备一批可复用的高层推理候选，每轮按当前上下文算每条候选的 token 似然，取最高分的当推理再出动作，不需要额外打分头。因为候选固定，可以把共享上下文和全部候选拼在一次 teacher-forced 预填里并行打分、共用 KV 缓存，每轮推理延迟降 90% 以上，整题模型推理延迟降 28–54%。在 7 个多模态搜索基准、2B/4B 模型上跨多种 RL 目标和 SFT 都拿到效率收益，成功率与同规模领先智能体相当。",
+        "studyPath": {
+          "prerequisites": ["自回归语言模型的似然与 KV 缓存", "多模态搜索/工具调用智能体流程", "强化学习与监督微调基础"],
+          "nextSteps": ["复现时固定候选集，只消融候选规模与长度归一化", "对比自由生成推理的 token 预算与成功率曲线", "研究候选集的自动挖掘与持续扩充方法"]
+        }
+      }
+    }
+  ]
+}

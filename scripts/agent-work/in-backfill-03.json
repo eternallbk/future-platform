@@ -1,0 +1,1718 @@
+{
+ "batchId": "backfill-03",
+ "mode": "backfill",
+ "items": [
+  {
+   "id": "efb9313dbc043c12",
+   "title": "CoVisco: Codec-Native Vision Encoder with Native Token Compression for Unified Image-Video Understanding",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39924v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39924v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV",
+    "cs.AI"
+   ],
+   "publishedAt": "2026-09-30T03:12:10+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 63.7,
+   "summary": "Vision-language models face a fundamental scaling bottleneck: the number of visual tokens grows with both temporal duration and spatial resolution, making long-video understanding expensive for the vision encoder and the language model. Existing methods often compress visual tokens after dense encoding, creating a mismatch between the representation used during training and the compact interface required at deployment. We present CoVisco, a codec-native vision encoder with native token compression for unified image-video understanding. By combining codec-native input support with segmented attention, CoVisco can encode long visual inputs in a single forward pass without forming dense patch-to-patch interactions across all frames. Each temporal segment is equipped with learnable abstract tokens that learn a compact segment-level representation, while fine-grained patch tokens remain available throughout the encoder. Alternating intra-segment and abstract-communication layers preserve video-level context through the abstract-token channel. A lightweight selector further exposes either abstract tokens alone or abstract tokens augmented with a runtime-selected subset of patch tokens, yielding a compact visual interface that reduces the visual context and prefill burden of downstream MLLMs while retaining fine-grained evidence when needed. Pretrained with contrastive objectives on 565M image--text pairs and 6.4M videos, CoVisco shows competitive performance on video-oriented embedding and multimodal understanding benchmarks. In the evaluated four-segment, 64-frame setting, abstract-only inference uses only 400 visual tokens while achieving video-understanding performance close to, and on some benchmarks exceeding, OneVision-Encoder. Selected patch tokens further improve fine",
+   "missing": [
+    "diagram",
+    "formulas",
+    "teaching"
+   ],
+   "backfillWeight": 6.0,
+   "existingEnrichment": {
+    "id": "efb9313dbc043c12",
+    "tldr": "编码器内部就压缩视觉 token：4 段 64 帧只用 400 个 token。",
+    "keyPoints": [
+     "视觉 token 随分辨率与时长增长，是长视频理解的主要成本。",
+     "常见做法先密集编码再压缩，训练与部署的表示不一致。",
+     "CoVisco 用分段注意力 + 可学习抽象 token，一次前向编码长视频。",
+     "选择器可按需只输出抽象 token，或追加少量 patch token。"
+    ],
+    "why": "视觉 token 预算直接决定长视频 MLLM 的显存与 prefill 成本，是多模态工程岗的高频取舍题。",
+    "difficulty": "hard",
+    "tags": [
+     "multimodal",
+     "vision-encoder",
+     "token-compression",
+     "long-video",
+     "mllm"
+    ],
+    "entities": [
+     "CoVisco",
+     "OneVision-Encoder",
+     "segmented attention",
+     "abstract tokens",
+     "MLLM"
+    ],
+    "concepts": [
+     {
+      "name": "原生 token 压缩 Native Token Compression",
+      "readable": "主流做法是先把视频密集编码成大量 patch token，然后在编码器之后压缩；训练用密集表示、部署用压缩表示，两者不一致。CoVisco 把压缩放进编码器内部：每个时间片段配一组可学习的抽象 token 来承载片段级表示，细粒度 patch token 在编码器内部始终可用，层间交替做段内注意力与抽象 token 通信，最后按需只暴露抽象 token 或抽象 token + 运行时选出的少量 patch token。",
+      "analogy": "像开会记录：传统做法先把每个人每句话都逐字记下（密集 token），散会后再摘要；CoVisco 是边开会边产出纪要（抽象 token），需要核对细节时可以回查原始发言（patch token）。",
+      "visual": "画一条时间轴切成 4 段，每段里画一簇小圆点表示 patch token，段中心画一个大圆表示抽象 token。段内小圆点之间用浅色细线相连（段内注意力），跨段只连大圆（抽象通信）。右端画一个选择器开关：档位 A 只输出 4 个大圆，档位 B 输出大圆 + 少量被选中的小圆点。",
+      "formula": ""
+     }
+    ],
+    "formulas": [],
+    "selfCheck": {
+     "claims": [
+      "预训练使用 565M 图文对与 6.4M 视频，采用对比目标。",
+      "在四段、64 帧设置下，纯抽象 token 推理只用 400 个视觉 token，在部分基准上超过 OneVision-Encoder。",
+      "抽象 token 只做片段级表示，patch token 在编码器内部全程保留。"
+     ],
+     "uncertain": [
+      "「competitive performance」对应的具体基准与数值，摘要未给出。",
+      "抽象 token 的段数是固定四段还是可配置，摘要未说明。",
+      "「学习型 selector」的监督信号来源未说明。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "29301e2028e2267d",
+   "title": "MCD: Causal Distillation of Multimodal In-Context Learning in Large Vision-Language Models",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39920v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39920v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV",
+    "cs.CL"
+   ],
+   "publishedAt": "2026-09-30T03:10:44+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 69.7,
+   "summary": "Large vision-language models (LVLMs) exhibit strong multimodal in-context learning (ICL) capabilities, yet this ability degrades substantially as model size decreases. Knowledge distillation offers a natural way to bridge this gap, but existing methods primarily align output distributions or hidden representations directly. Such alignment teaches the student what the teacher predicts without revealing which evidence in the complex context causally supports that prediction. Consequently, a student can imitate the teacher's answer while continuing to rely on language priors, prompt structure, or other spurious cues. To address this limitation, we introduce Multimodal Causal Distillation (MCD), a distillation framework that transfers how a strong teacher uses multimodal evidence during ICL. MCD uses structure-preserving token interventions to identify and verify causal evidence, then transfers how the teacher responds when that evidence is retained or removed. This design connects distillation to the causal patterns by which the model uses contextual evidence during multimodal ICL. Experiments across three LVLM families and seven benchmarks show that MCD improves student performance by 7.23 points on average and outperforms vanilla distillation by 4.68 points, while further analyses confirm the generalizability of these gains.",
+   "missing": [
+    "diagram",
+    "teaching"
+   ],
+   "backfillWeight": 5.0,
+   "existingEnrichment": {
+    "id": "29301e2028e2267d",
+    "tldr": "把教师「用了哪段多模态证据」蒸馏给学生，学生平均涨 7.23 分。",
+    "keyPoints": [
+     "现有蒸馏只对齐输出分布或隐层，学生可能靠语言先验蒙对。",
+     "MCD 用保持结构的 token 干预，保留/移除证据来识别因果证据。",
+     "蒸馏目标是学生对证据变化的响应模式，而非单点答案。",
+     "七个基准上平均提升 7.23 分，超朴素蒸馏 4.68 分。"
+    ],
+    "why": "「只会答对」的蒸馏留不住证据依赖；因果干预视角可直接用于多模态对齐与蒸馏岗的面试论述。",
+    "difficulty": "hard",
+    "tags": [
+     "distillation",
+     "multimodal",
+     "icl",
+     "causal-inference"
+    ],
+    "entities": [
+     "MCD",
+     "LVLM",
+     "multimodal in-context learning",
+     "knowledge distillation"
+    ],
+    "concepts": [
+     {
+      "name": "因果证据蒸馏 Causal Evidence Distillation",
+      "readable": "传统蒸馏只让学生模仿老师的最终输出，学生可能靠语言先验或 prompt 结构蒙对。MCD 先做保持结构的 token 干预：把上下文里的某段证据保留或移除，看老师的输出分布怎么变，从而识别「哪段证据真正决定了答案」，再让学生模仿这种随证据变化的响应模式。",
+      "analogy": "老师讲题时不只给答案，还会说「把这句话划掉答案就变了，所以它是关键条件」。只抄答案的学生换个数就错；学过「划掉哪句会变」的学生才真正掌握了推理链。",
+      "visual": "横轴放上下文中的候选证据片段，纵轴放「移除该片段后教师输出分布的 KL 变化」，做成从高到低的条形图：红色条=被判定为因果证据的片段，灰色条=无关片段。旁边并排画学生模型的同款条形图，MCD 的目标是让两张图的形状一致，而不是只让最终答案一致。",
+      "formula": "\\mathrm{CE}(e \\mid x) = D_{\\mathrm{KL}}\\left( p_T(y \\mid x) \\,\\|\\, p_T(y \\mid x_{\\setminus e}) \\right)"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-causal-distill",
+      "name": "因果证据蒸馏的干预效应 (Causal Intervention Effect for Distillation)",
+      "category": "multimodal",
+      "glyph": "Σ",
+      "tags": [
+       "distillation",
+       "causal",
+       "multimodal",
+       "kl"
+      ],
+      "latex": "\\mathrm{CE}(e \\mid x) = D_{\\mathrm{KL}}\\left( p_T(y \\mid x) \\,\\|\\, p_T(y \\mid x_{\\setminus e}) \\right)",
+      "html": "<code>CE(e | x) = D_KL( p_T(y | x) ‖ p_T(y | x∖e) )</code>",
+      "symbols": [
+       [
+        "x",
+        "多模态上下文（图像/视频 + 文本 prompt）"
+       ],
+       [
+        "e",
+        "被干预的候选证据 token 片段"
+       ],
+       [
+        "x∖e",
+        "保持结构、只移除证据 e 后的上下文"
+       ],
+       [
+        "p_T",
+        "教师 LVLM 的输出分布"
+       ],
+       [
+        "D_KL",
+        "两个输出分布的 KL 散度，衡量证据 e 的因果影响大小"
+       ]
+      ],
+      "derivation": [
+       "只对齐 p_T(y|x) 会让学生学到「和老师一样的答案」，但学不到「老师依赖了哪段上下文证据」。",
+       "做保持结构的干预：保留或移除某段证据 e，得到 x 与 x∖e 两个输入，避免破坏长度/位置等混淆因素。",
+       "教师在这两个输入上输出分布的 KL 散度，就是 e 对结论的因果影响大小——MCD 用它识别并验证因果证据。",
+       "蒸馏目标从匹配单点输出，改为让学生在「证据保留/移除」两种情况下重现教师的响应模式。"
+      ],
+      "analogy": "像调音师找关键旋钮：把某个旋钮拧一下，如果声音大变，说明它关键。只记住「最终音色」的人学不会调音；记住「拧哪个会变」的人才掌握了这台设备。",
+      "pitfalls": [
+       "把 KL 变化直接等同于因果：高相关但非因果的片段被移除也会改变输出，必须靠保持结构的干预控制混淆。",
+       "干预若不保持上下文结构，学生学到的其实是「输入被破坏」而不是「证据被移除」。",
+       "证据分组粒度选错会把证据切碎，因果效应被稀释，甚至被文本连贯性变化掩盖。"
+      ],
+      "code": "import torch\nimport torch.nn.functional as F\n\n\ndef causal_effect(teacher_logits_full, teacher_logits_masked, tau=1.0):\n    \"\"\"x=完整上下文, x_minus_e=移除证据后（保持 token 结构）。\"\"\"\n    p_full = F.softmax(teacher_logits_full / tau, dim=-1)\n    p_masked = F.softmax(teacher_logits_masked / tau, dim=-1)\n    return F.kl_div(p_masked.log(), p_full, reduction='batchmean')\n\n\n# 蒸馏：让学生重现教师的「证据效应」，而不只是复述答案\nloss = F.kl_div(student_masked_logp, teacher_full_prob, reduction='batchmean') \\\n     + lam * F.mse_loss(student_effect, teacher_effect.detach())\n",
+      "sources": [
+       {
+        "title": "MCD: Causal Distillation of Multimodal In-Context Learning in Large Vision-Language Models",
+        "url": "https://arxiv.org/abs/2609.39920v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "MCD 在三个 LVLM 家族、七个基准上平均提升 7.23 分，比朴素蒸馏高 4.68 分。",
+      "MCD 使用保持结构的 token 干预来识别并验证因果证据，并迁移教师在证据保留/移除下的响应。",
+      "论文指出仅对齐输出分布或隐层会让学生继续依赖语言先验、prompt 结构等虚假线索。"
+     ],
+     "uncertain": [
+      "干预的具体粒度（token 级还是片段级）与聚类方式，摘要未说明。",
+      "7.23 分是哪些基准、何种指标的平均，摘要未列出。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "324ee823fef4dbb4",
+   "title": "From Given to Gathered Evidence: Agentic Learning for Longitudinal Medical Reasoning",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39566v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39566v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV"
+   ],
+   "publishedAt": "2026-09-30T00:01:45+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 63.4,
+   "summary": "Foundation models can serve as clinical agents through tool-use harnesses. However, conventional medical benchmarks assess reasoning over preselected evidence rather than the ability to seek it across clinical records and longitudinal imaging. We propose CASE: a series of role-specific Clinical Agents for Seeking Evidence, together with a tool-use harness and an agentic post-training framework for compact vision-language policy models. We further introduce a longitudinal multimodal benchmark built on UK Biobank, comprising 50,401 clinical questions derived from real-world ICD-10-coded diagnoses of 4,739 participants. Each question links to a patient-specific environment containing clinical context and multi-sequence MRI from baseline and follow-up visits, where agents autonomously select which visits, organs, modalities, slices, and specialist tools to inspect and compare. Supervised fine-tuning transfers evidence-seeking workflows from 14,734 frontier-model interaction trajectories, followed by agentic reinforcement learning on the learner's own environment interactions. Privileged on-policy self-distillation and rubric-based LLM feedback refine evidence-to-conclusion reasoning without prescribing tool sequences. Experiments show that CASE moves beyond question-answer imitation toward transferable investigation policies, strengthening evidence-grounded longitudinal reasoning. Under matched evaluation conditions, our Qwen3-VL-8B based agent achieves over 16% and 10% relative improvements in answer accuracy over GPT-5.4 and Claude Opus 4.8. Code will be available at https://github.com/VinyehShaw/CASE.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "324ee823fef4dbb4",
+    "tldr": "CASE：用 Agentic 后训练让紧凑视觉语言模型自主搜寻纵向医学证据，超越 GPT-5.4。",
+    "keyPoints": [
+     "CASE 是角色化的临床证据搜寻 Agent，配套工具调用框架与后训练流程。",
+     "基准含 4,739 名参与者、50,401 道 ICD-10 派生题",
+     "每题绑定患者专属环境，含临床上下文与基线/随访多序列 MRI。",
+     "先用 14,734 条前沿模型交互轨迹做 SFT，再做 agentic 强化学习。",
+     "比 GPT-5.4 高逾 16%、比 Claude Opus 4.8 高 10%。"
+    ],
+    "why": "对 Agent 与后训练求职者直接相关：展示工具调用 harness、SFT→Agentic RL→自蒸馏链路与纵向多模态基准设计。",
+    "difficulty": "hard",
+    "tags": [
+     "agent",
+     "vision-language",
+     "post-training",
+     "rl",
+     "medical-reasoning",
+     "benchmark"
+    ],
+    "entities": [
+     "CASE",
+     "UK Biobank",
+     "Qwen3-VL-8B",
+     "GPT-5.4",
+     "Claude Opus 4.8"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "CASE 证据搜寻与后训练流程",
+     "caption": "从 UK Biobank 派生题目并搭建患者环境，再经 SFT 与 agentic RL，最后与 GPT-5.4、Claude Opus 4.8 对比。",
+     "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1000 430\" role=\"img\" aria-label=\"CASE 流程图：纵向基准到患者环境，再到 SFT 与 agentic RL，最后进入评估\"><text x=\"500\" y=\"46\" text-anchor=\"middle\" font-size=\"18\" fill=\"var(--fg-1)\">CASE：从纵向基准到证据搜寻策略</text><text x=\"500\" y=\"76\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">UK Biobank 派生题目 → 患者环境检索 → SFT → Agentic RL → 对比评估</text><rect x=\"20\" y=\"130\" width=\"168\" height=\"150\" rx=\"10\" fill=\"none\" stroke=\"var(--line-1)\" stroke-width=\"2\"/><text x=\"104\" y=\"168\" text-anchor=\"middle\" font-size=\"15\" fill=\"var(--fg-1)\">纵向基准</text><text x=\"104\" y=\"200\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">UK Biobank</text><text x=\"104\" y=\"224\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">4,739 人</text><text x=\"104\" y=\"248\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">50,401 题</text><rect x=\"218\" y=\"130\" width=\"168\" height=\"150\" rx=\"10\" fill=\"none\" stroke=\"var(--line-1)\" stroke-width=\"2\"/><text x=\"302\" y=\"168\" text-anchor=\"middle\" font-size=\"15\" fill=\"var(--fg-1)\">患者环境</text><text x=\"302\" y=\"200\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">临床上下文</text><text x=\"302\" y=\"224\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">基线 + 随访</text><text x=\"302\" y=\"248\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">多序列 MRI</text><rect x=\"416\" y=\"130\" width=\"168\" height=\"150\" rx=\"10\" fill=\"none\" stroke=\"var(--line-1)\" stroke-width=\"2\"/><text x=\"500\" y=\"168\" text-anchor=\"middle\" font-size=\"15\" fill=\"var(--fg-1)\">SFT 迁移</text><text x=\"500\" y=\"200\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">14,734 条</text><text x=\"500\" y=\"224\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">前沿模型交互</text><text x=\"500\" y=\"248\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">轨迹</text><rect x=\"614\" y=\"130\" width=\"168\" height=\"150\" rx=\"10\" fill=\"none\" stroke=\"var(--line-1)\" stroke-width=\"2\"/><text x=\"698\" y=\"168\" text-anchor=\"middle\" font-size=\"15\" fill=\"var(--fg-1)\">Agentic RL</text><text x=\"698\" y=\"200\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">在自身环境</text><text x=\"698\" y=\"224\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">交互上强化</text><rect x=\"812\" y=\"130\" width=\"168\" height=\"150\" rx=\"10\" fill=\"none\" stroke=\"var(--line-1)\" stroke-width=\"2\"/><text x=\"896\" y=\"168\" text-anchor=\"middle\" font-size=\"15\" fill=\"var(--fg-1)\">评估</text><text x=\"896\" y=\"200\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">自蒸馏 + rubric</text><text x=\"896\" y=\"224\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">超越 GPT-5.4</text><line x1=\"190\" y1=\"205\" x2=\"212\" y2=\"205\" stroke=\"var(--accent)\" stroke-width=\"2\"/><path d=\"M218,205 L208,200 L208,210 Z\" fill=\"var(--accent)\"/><line x1=\"388\" y1=\"205\" x2=\"410\" y2=\"205\" stroke=\"var(--accent)\" stroke-width=\"2\"/><path d=\"M416,205 L406,200 L406,210 Z\" fill=\"var(--accent)\"/><line x1=\"586\" y1=\"205\" x2=\"608\" y2=\"205\" stroke=\"var(--accent)\" stroke-width=\"2\"/><path d=\"M614,205 L604,200 L604,210 Z\" fill=\"var(--accent)\"/><line x1=\"784\" y1=\"205\" x2=\"806\" y2=\"205\" stroke=\"var(--accent)\" stroke-width=\"2\"/><path d=\"M812,205 L802,200 L802,210 Z\" fill=\"var(--accent)\"/><text x=\"203\" y=\"196\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--accent)\">1</text><text x=\"401\" y=\"196\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--accent)\">2</text><text x=\"599\" y=\"196\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--accent)\">3</text><text x=\"797\" y=\"196\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--accent)\">4</text><text x=\"500\" y=\"340\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">① 逐题实例化　② 证据搜寻任务　③ 策略初始化　④ 匹配条件评估</text><text x=\"500\" y=\"382\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">依据采集摘要整理，具体算法与奖励设计摘要未公开</text></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "纵向基准",
+        "detail": "UK Biobank：4,739 人、50,401 道 ICD-10 派生题"
+       },
+       {
+        "label": "患者环境",
+        "detail": "临床上下文与基线/随访多序列 MRI"
+       },
+       {
+        "label": "SFT 迁移",
+        "detail": "14,734 条前沿模型交互轨迹"
+       },
+       {
+        "label": "Agentic RL",
+        "detail": "在学习者自身环境交互上做强化学习"
+       },
+       {
+        "label": "评估",
+        "detail": "on-policy 自蒸馏 + rubric 反馈，对比 GPT-5.4 与 Claude Opus 4.8"
+       }
+      ],
+      "edges": [
+       {
+        "from": "纵向基准",
+        "to": "患者环境",
+        "label": "逐题实例化"
+       },
+       {
+        "from": "患者环境",
+        "to": "SFT 迁移",
+        "label": "证据搜寻任务"
+       },
+       {
+        "from": "SFT 迁移",
+        "to": "Agentic RL",
+        "label": "策略初始化"
+       },
+       {
+        "from": "Agentic RL",
+        "to": "评估",
+        "label": "匹配条件评估"
+       }
+      ]
+     },
+     "alt": "流程图：纵向基准 → 患者环境 → SFT 迁移 → Agentic RL → 评估，五段串联"
+    },
+    "concepts": [
+     {
+      "name": "证据搜寻型评测（given evidence 对 gathered evidence）",
+      "readable": "常规医学基准先把证据挑好再让模型答题；这条改成把患者的完整病历与多次影像交给模型，由它自己决定看哪次随访、哪个器官、哪种模态、哪些切片。",
+      "analogy": "旧考法是老师替你翻到参考书某一页再出题；新考法是只给你图书馆钥匙，连该查哪本书都要自己判断。",
+      "analogyBreaksDown": "图书馆有唯一正确的索引与书目，而医学证据没有唯一正确的检索路径，同一结论可以由不同访次和模态组合支撑，所以不能像查目录那样比对轨迹对错。",
+      "mechanism": "每题实例化为一个患者环境，包含临床上下文与基线、随访的多序列 MRI；Agent 通过工具在访次、器官、模态、切片四个层次上自主检索与比较，评测目标是可迁移的搜寻策略，而不只是给定证据下的问答准确率。",
+      "visual": "左列给定证据基准：证据 → 问题 → 答案 的一字长蛇；右列证据搜寻基准：以问题为根的检索树，第一层访次、第二层器官、第三层模态、第四层切片，只有部分叶子能拼出答案。",
+      "prerequisites": [
+       "多模态大模型基础",
+       "工具调用与 Agent 循环",
+       "MRI 多序列等影像模态概念"
+      ],
+      "selfTest": [
+       "给定证据基准与证据搜寻基准在模型输入上的关键差别是什么？",
+       "本例中 Agent 需要在哪些维度上自主做选择？",
+       "为什么只报告最终答案准确率，无法说明模型是否学会了选证据？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "Agentic 后训练三段式：SFT → Agentic RL → on-policy 自蒸馏",
+      "readable": "先从前沿模型的 14,734 条交互轨迹里学会怎么找证据，再让模型在自己的环境交互上用强化学习改进，最后用带特权信息的 on-policy 自蒸馏和 rubric 反馈打磨证据到结论的推理。",
+      "analogy": "像培养住院医师：先跟台看上级医生怎么做，再自己独立管病人并按结果被评价，最后上级只在你自己写下的诊疗思路上逐句点评。",
+      "analogyBreaksDown": "上级点评可以随时打断并解释理由，而蒸馏只是分布对齐，不会告诉模型某一步为什么更好；而且训练时的特权信息在独立执业时并不存在。",
+      "mechanism": "SFT 阶段用 14,734 条前沿模型交互轨迹迁移证据搜寻工作流；RL 阶段在模型自己与环境交互产生的轨迹上优化策略；特权 on-policy 自蒸馏与 rubric LLM 反馈进一步约束证据到结论的推理，且不规定固定工具序列。",
+      "visual": "三段管道依次串联：轨迹 SFT（14,734 条）→ 环境内 RL 采样与组内优势更新 → 在学生自采轨迹上对带特权信息的教师做逐 token KL。",
+      "prerequisites": [
+       "监督微调 SFT",
+       "策略梯度与组内相对优势",
+       "知识蒸馏与 KL 散度"
+      ],
+      "selfTest": [
+       "为什么 RL 阶段必须在模型自己采样的轨迹上做，而不是继续用前沿模型轨迹？",
+       "on-policy 自蒸馏里的特权信息在推理阶段能否使用？",
+       "rubric 反馈与答案正确性同时作为奖励时，可能出现什么副作用？"
+      ],
+      "formula": "\\mathcal{L}_{\\mathrm{distill}}(\\theta)=\\mathbb{E}_{q}\\,\\mathbb{E}_{o\\sim\\pi_\\theta}\\Big[\\frac{1}{|o|}\\sum_{t=1}^{|o|}\\mathrm{KL}\\big(p_{\\mathrm{priv}}(\\cdot\\mid q,o_{<t},c_{\\mathrm{priv}})\\,\\|\\,p_\\theta(\\cdot\\mid q,o_{<t})\\big)\\Big]"
+     },
+     {
+      "name": "纵向多模态基准的构建（UK Biobank 派生）",
+      "readable": "题目不是人工编写的，而是从 4,739 名参与者的真实 ICD-10 诊断码派生出的 50,401 道临床问题，每题都挂在一个患者专属环境上，含基线与随访的多次影像。",
+      "analogy": "像用真实病历库自动出题：答案早就写在病史里，出题人只负责把病历切成问题和环境。",
+      "analogyBreaksDown": "病历里的诊断码并不等于推理链，诊断成立不代表模型的检索路径与临床医生一致；题量大也不能说明临床难度分布合理。",
+      "mechanism": "以 UK Biobank 参与者的 ICD-10 编码诊断为锚点生成临床问题；为每题构建包含临床上下文与基线、随访多序列 MRI 的患者环境；Agent 在其中自主选择访次、器官、模态、切片与专科工具，再输出答案。",
+      "visual": "一条纵向时间轴：基线访次与随访访次各挂若干 MRI 序列；时间轴上方是从 ICD-10 诊断派生的问题列表，箭头指向对应访次的影像。",
+      "prerequisites": [
+       "ICD-10 医学编码常识",
+       "纵向队列数据概念",
+       "多模态数据集设计"
+      ],
+      "selfTest": [
+       "这道基准的题目来源是什么，而不是由谁手写？",
+       "每个问题对应的环境里包含哪两类信息？",
+       "用 ICD-10 诊断派生问题，可能引入哪类偏差？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-case-agentic-rl",
+      "name": "Agentic RL 的组内相对优势裁剪目标",
+      "category": "agent",
+      "glyph": "∇",
+      "tags": [
+       "agent",
+       "rl",
+       "policy-gradient"
+      ],
+      "latex": "\\mathcal{L}_{\\mathrm{RL}}(\\theta)=-\\mathbb{E}_{q\\sim\\mathcal{D}}\\Big[\\frac{1}{G}\\sum_{i=1}^{G}\\frac{1}{|o_i|}\\sum_{t=1}^{|o_i|}\\min\\big(\\rho_{i,t}\\hat{A}_i,\\ \\mathrm{clip}(\\rho_{i,t},1-\\epsilon,1+\\epsilon)\\hat{A}_i\\big)\\Big]+\\beta\\,\\mathrm{KL}(\\pi_\\theta\\,\\|\\,\\pi_{\\mathrm{ref}})",
+      "html": "<code>L_RL(θ) = −E_q[ (1/G) Σ_i (1/|o_i|) Σ_t min(ρ_{i,t}·Â_i, clip(ρ_{i,t}, 1−ε, 1+ε)·Â_i) ] + β·KL(π_θ ‖ π_ref)</code>",
+      "symbols": [
+       [
+        "ρ_{i,t}",
+        "新旧策略在第 i 条轨迹第 t 步的似然比 π_θ/π_old"
+       ],
+       [
+        "Â_i",
+        "第 i 条轨迹的组内相对优势 (R_i − 组均值)/(组标准差 + δ)"
+       ],
+       [
+        "G",
+        "同一问题在环境中采样的轨迹条数"
+       ],
+       [
+        "ε",
+        "似然比的裁剪范围"
+       ],
+       [
+        "β",
+        "KL 惩罚系数"
+       ],
+       [
+        "R_i",
+        "第 i 条轨迹的回报，可含答案正确性与 rubric 反馈分"
+       ]
+      ],
+      "derivation": [
+       "把临床问答写成策略 π_θ 在患者环境里采样工具调用与结论轨迹 o 的过程。",
+       "对同一问题采样 G 条轨迹，按答案正确性与 rubric 分数得到回报 R_i。",
+       "用组内均值与标准差把 R_i 归一化为相对优势 Â_i，省掉额外的价值网络基线。",
+       "用似然比 ρ 构造裁剪代理目标，并加 KL 项把策略约束在参考策略附近。",
+       "最小化 L_RL 即最大化该目标；on-policy 蒸馏项可作为额外加权项并入同一损失。"
+      ],
+      "analogy": "同一个病例让同一位医生独立看 G 次，谁比同伴的平均表现好就奖励谁，而不看绝对分数；这样就不需要另请一位专门打分的老师网络。",
+      "pitfalls": [
+       "整组全对或全错时组内标准差接近 0，优势会被放大，需要加 δ 或丢弃该组",
+       "长度归一化的方式会明显改变长轨迹与短轨迹的相对权重",
+       "KL 约束的参考策略通常是冻结的 SFT 起点，不要与当前策略混淆",
+       "把 rubric 分数与正确性不加权直接相加，可能让模型学会讨好评分器"
+      ],
+      "code": "import torch\n\n\ndef group_relative_advantage(rewards: torch.Tensor, delta: float = 1e-4) -> torch.Tensor:\n    # rewards: [G]，同一问题下 G 条轨迹的回报（正确性 + rubric 分数）\n    return (rewards - rewards.mean()) / (rewards.std() + delta)\n\n\ndef agentic_rl_loss(logp_new, logp_old, rewards, eps=0.2, beta=0.01, logp_ref=None):\n    adv = group_relative_advantage(rewards).unsqueeze(-1)      # [G, 1]\n    ratio = torch.exp(logp_new - logp_old)                     # [G, T]\n    unclipped = ratio * adv\n    clipped = ratio.clamp(1 - eps, 1 + eps) * adv\n    pg = -torch.min(unclipped, clipped).mean()\n    if logp_ref is None:\n        return pg\n    kl = (logp_new - logp_ref).mean()                          # 单样本 KL 估计\n    return pg + beta * kl",
+      "sources": [
+       {
+        "title": "From Given to Gathered Evidence: Agentic Learning for Longitudinal Medical Reasoning",
+        "url": "https://arxiv.org/abs/2609.39566v1"
+       }
+      ]
+     },
+     {
+      "id": "f-case-onpolicy-distill",
+      "name": "特权 on-policy 自蒸馏目标",
+      "category": "posttraining",
+      "glyph": "→",
+      "tags": [
+       "distillation",
+       "on-policy",
+       "post-training"
+      ],
+      "latex": "\\mathcal{L}_{\\mathrm{distill}}(\\theta)=\\mathbb{E}_{q\\sim\\mathcal{D}}\\,\\mathbb{E}_{o\\sim\\pi_\\theta(\\cdot\\mid q)}\\Big[\\frac{1}{|o|}\\sum_{t=1}^{|o|}\\mathrm{KL}\\big(p_{\\mathrm{priv}}(\\cdot\\mid q,o_{<t},c_{\\mathrm{priv}})\\,\\|\\,p_\\theta(\\cdot\\mid q,o_{<t})\\big)\\Big]",
+      "html": "<code>L_distill(θ) = E_q E_{o~π_θ}[ (1/|o|) Σ_t KL( p_priv(·|q, o_&lt;t, c_priv) ‖ p_θ(·|q, o_&lt;t) ) ]</code>",
+      "symbols": [
+       [
+        "o ∼ π_θ",
+        "轨迹由学生策略自己在环境中产生，保证 on-policy"
+       ],
+       [
+        "p_priv",
+        "可见特权信息 c_priv 的教师分布"
+       ],
+       [
+        "c_priv",
+        "特权信息，例如标准答案或前沿模型的额外推理"
+       ],
+       [
+        "p_θ",
+        "学生策略的下一 token 分布"
+       ],
+       [
+        "KL",
+        "前向 KL，让学生覆盖教师的高概率模式"
+       ]
+      ],
+      "derivation": [
+       "学生先在患者环境中自主采样轨迹 o，使训练分布与部署分布一致。",
+       "教师在同一前缀上额外访问特权信息，给出更可靠的下一 token 分布。",
+       "在学生的这些前缀上最小化教师与学生的逐 token 前向 KL。",
+       "把该损失与 RL 目标加权相加，既保留探索到的策略，又吸收教师的证据到结论推理。"
+      ],
+      "analogy": "学生先自己写一遍解题步骤，老师拿着答案只在他写下的每一步上纠正下一步该怎么想，而不是直接给一份标准解答让他背。",
+      "pitfalls": [
+       "轨迹必须来自学生自己的分布，用教师轨迹就退化成普通 SFT",
+       "前向 KL 倾向于覆盖教师的多峰模式，反向 KL 会收敛到单峰，两者行为不同",
+       "特权信息只能在训练期使用，推理时泄漏即为作弊",
+       "与 RL 损失加权时系数需调节，蒸馏权重过大将压制 RL 的探索"
+      ],
+      "code": "import torch\nimport torch.nn.functional as F\n\n\ndef on_policy_distill_loss(logits_student, logits_teacher, mask):\n    # logits_*: [B, T, V]；轨迹 token 由学生策略自身采样得到\n    log_p_s = F.log_softmax(logits_student, dim=-1)\n    p_t = F.softmax(logits_teacher, dim=-1)                    # 教师可见特权信息\n    kl = (p_t * (torch.log(p_t + 1e-9) - log_p_s)).sum(dim=-1)  # [B, T]\n    return (kl * mask).sum() / mask.sum().clamp_min(1.0)",
+      "sources": [
+       {
+        "title": "From Given to Gathered Evidence: Agentic Learning for Longitudinal Medical Reasoning",
+        "url": "https://arxiv.org/abs/2609.39566v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "CASE 是一系列角色化的临床证据搜寻 Agent，配套工具调用框架与面向紧凑视觉语言策略模型的 agentic 后训练框架。",
+      "作者指出常规医学基准评估的是对预先选定证据的推理，而非跨病历与纵向影像搜寻证据的能力。",
+      "基准建在 UK Biobank 上，含 4,739 名参与者的 50,401 道临床问题，问题由真实 ICD-10 编码诊断派生。",
+      "每题对应一个患者专属环境，含临床上下文与基线和随访访次的多序列 MRI，Agent 自主选择访次、器官、模态、切片与专科工具。",
+      "训练先用 14,734 条前沿模型交互轨迹做监督微调，再在学习者自身环境交互上做 agentic 强化学习。",
+      "用特权 on-policy 自蒸馏与基于 rubric 的 LLM 反馈改进证据到结论的推理，且不规定工具序列。",
+      "在匹配评估条件下，基于 Qwen3-VL-8B 的 agent 相对 GPT-5.4 与 Claude Opus 4.8 的答案准确率提升超过 16% 与 10%。",
+      "摘要说明代码将发布于 https://github.com/VinyehShaw/CASE 。"
+     ],
+     "uncertain": [
+      "摘要未给出具体强化学习算法、奖励构成与超参；formulas 中两条式子只是此类 agentic RL 与 on-policy 自蒸馏的通用形式，非论文原式。",
+      "50,401 道题与 4,739 名参与者如何划分训练/验证/测试，摘要未说明。",
+      "超过 16% 与 10% 的相对提升对应的具体评测集、基线与统计口径，摘要未说明。",
+      "匹配评估条件的具体含义（模型规模、工具预算、采样次数）摘要未展开。",
+      "代码在采集时标注为 will be available，是否已实际开源需人工核实。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "35bd80f6f875b3e6",
+   "title": "Ranking-Aware Prompt Optimization for Multimodal Clinical Diagnosis",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.40361v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.40361v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG",
+    "cs.CL",
+    "cs.CV"
+   ],
+   "publishedAt": "2026-09-30T05:59:56+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 56.0,
+   "summary": "Multimodal large language models (MLLMs) are rapidly advancing clinical diagnosis, yet their adaptation pipelines remain anchored to accuracy-based objectives. Clinical data are heavily class-imbalanced: a constant-majority predictor can score above 90% accuracy while being clinically useless. We therefore evaluate and optimize for AUROC, a threshold-free score that ranks positives above negatives and is invariant to class balance. We focus on prompt optimization in MLLMs. Reflective methods such as GEPA use a binary scores matrix with one row per evaluation instance and one column per candidate prompt; cells record per-instance correctness, so the column average is accuracy and drives candidate selection. We introduce pair-level Pareto prompt evolution (Ranking-PE), which replaces each correctness row with a pairwise-ordering row over (positive, negative) instance pairs: the cell is 1 if the candidate scores the positive higher than the paired negative. The column average then equals empirical AUROC (by the Wilcoxon-Mann-Whitney identity). We apply this swap at all three layers the prompt evolution search reads from - the scores matrix that decides Pareto dominance, the per-example feedback to the reflection LM, and final candidate selection - at no extra model calls and with no surrogate loss. Across three diseases on MIMIC, accuracy-based prompt evolution can degrade ranking; Ranking-PE reverses this, beating the accuracy-based recipe by +5.8 AUROC pp on fine-tuned Qwen3-VL-8B and +16.2 pp on MedGemma-4B. Ablations examine each design component and show that a medical-grade visual backbone - via vision-encoder-tuned SFT or medical pretraining - is a prerequisite that prompt search cannot replace - our recipe extends reflective prompt evolution from text-only data to",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "35bd80f6f875b3e6",
+    "tldr": "把提示优化评分矩阵的行从「实例正确性」换成「正负样本对排序」，列均值即 AUROC，多模态临床诊断上反超准确率配方。",
+    "keyPoints": [
+     "临床数据严重类别不平衡，恒输出多数的模型准确率可超 90% 却无临床价值",
+     "改用 AUROC：无阈值、只看正样本是否排在负样本前、对类别比例不变",
+     "GEPA 等反思式方法用二值正确性矩阵，列均值即 accuracy 并选候选",
+     "Ranking-PE 把每行换成 (正,负) 样本对，格记正样本是否得分更高",
+     "该替换用在 Pareto、反思反馈、最终选择三层，且不增加模型调用"
+    ],
+    "why": "多模态临床/长尾场景里 accuracy 会骗人；面试常问「不平衡数据为什么看 AUROC」「怎么把指标写进优化目标」，这篇给了可复述的答案。",
+    "difficulty": "medium",
+    "tags": [
+     "prompt-optimization",
+     "auroc",
+     "class-imbalance",
+     "multimodal-llm",
+     "evaluation-metric",
+     "pareto-optimization"
+    ],
+    "entities": [
+     "Ranking-PE",
+     "GEPA",
+     "MLLM",
+     "AUROC",
+     "MIMIC",
+     "Qwen3-VL-8B",
+     "MedGemma-4B",
+     "Wilcoxon-Mann-Whitney"
+    ],
+    "diagram": {
+     "kind": "matrix",
+     "title": "准确率矩阵 vs 排序矩阵",
+     "caption": "只把矩阵的行从「实例」换成「正负样本对」，列均值就从 Accuracy 变成 AUROC，而 Pareto 候选选择就发生在这些列均值上。",
+     "svg": "<svg viewBox='0 0 640 280' xmlns='http://www.w3.org/2000/svg'><text x='16' y='24' font-size='14' font-weight='bold' fill='currentColor'>accuracy-based 评分矩阵</text><text x='16' y='44' font-size='13' fill='currentColor'>行=评估实例，格=对该候选是否正确</text><rect x='16' y='58' width='250' height='120' fill='none' stroke='var(--line-1)'/><line x1='16' y1='98' x2='266' y2='98' stroke='var(--line-1)'/><line x1='16' y1='138' x2='266' y2='138' stroke='var(--line-1)'/><line x1='98' y1='58' x2='98' y2='178' stroke='var(--line-1)'/><line x1='182' y1='58' x2='182' y2='178' stroke='var(--line-1)'/><text x='42' y='83' font-size='13' fill='currentColor'>i1</text><text x='42' y='123' font-size='13' fill='currentColor'>i2</text><text x='42' y='163' font-size='13' fill='currentColor'>i3</text><text x='129' y='83' font-size='13' fill='currentColor'>1</text><text x='213' y='83' font-size='13' fill='currentColor'>0</text><text x='129' y='123' font-size='13' fill='currentColor'>0</text><text x='213' y='123' font-size='13' fill='currentColor'>1</text><text x='129' y='163' font-size='13' fill='currentColor'>1</text><text x='213' y='163' font-size='13' fill='currentColor'>1</text><text x='116' y='196' font-size='13' fill='currentColor'>p1</text><text x='200' y='196' font-size='13' fill='currentColor'>p2</text><text x='16' y='218' font-size='13' font-weight='bold' fill='var(--accent)'>列均值 = Accuracy</text><line x1='284' y1='116' x2='336' y2='116' stroke='var(--line-1)'/><polygon points='336,110 348,116 336,122' fill='currentColor'/><text x='286' y='106' font-size='13' fill='currentColor'>按行换</text><text x='374' y='24' font-size='14' font-weight='bold' fill='currentColor'>Ranking-PE 评分矩阵</text><text x='374' y='44' font-size='13' fill='currentColor'>行=正负样本对，格=正样本是否排更高</text><rect x='374' y='58' width='250' height='120' fill='none' stroke='var(--line-1)'/><line x1='374' y1='98' x2='624' y2='98' stroke='var(--line-1)'/><line x1='374' y1='138' x2='624' y2='138' stroke='var(--line-1)'/><line x1='456' y1='58' x2='456' y2='178' stroke='var(--line-1)'/><line x1='540' y1='58' x2='540' y2='178' stroke='var(--line-1)'/><text x='390' y='83' font-size='13' fill='currentColor'>p1</text><text x='390' y='123' font-size='13' fill='currentColor'>p2</text><text x='390' y='163' font-size='13' fill='currentColor'>p3</text><text x='487' y='83' font-size='13' fill='currentColor'>1</text><text x='571' y='83' font-size='13' fill='currentColor'>0</text><text x='487' y='123' font-size='13' fill='currentColor'>1</text><text x='571' y='123' font-size='13' fill='currentColor'>1</text><text x='487' y='163' font-size='13' fill='currentColor'>0</text><text x='571' y='163' font-size='13' fill='currentColor'>1</text><text x='474' y='196' font-size='13' fill='currentColor'>c1</text><text x='558' y='196' font-size='13' fill='currentColor'>c2</text><text x='374' y='218' font-size='13' font-weight='bold' fill='var(--accent)'>列均值 = 经验 AUROC（WMW 恒等式）</text><text x='16' y='242' font-size='13' fill='currentColor'>替换三层：Pareto 支配判定 / 反思 LM 的逐例反馈 / 最终候选选择（不增加模型调用）</text><text x='16' y='264' font-size='13' fill='currentColor'>Pareto 选择就发生在两张矩阵上，分数口径变了，被选中的候选也变了</text></svg>",
+     "spec": {
+      "type": "matrix",
+      "nodes": [
+       {
+        "label": "accuracy-based 评分矩阵（左）",
+        "detail": "行=评估实例 i1..i3；列=候选提示 p1,p2；格=该实例上是否正确（0/1）；列均值 = Accuracy，直接驱动候选选择"
+       },
+       {
+        "label": "Ranking-PE 评分矩阵（右）",
+        "detail": "行=正负样本对 (pos,neg)；列=候选提示 c1,c2；格=候选是否把正样本排得比配对的负样本更高（0/1）；列均值 = 经验 AUROC"
+       },
+       {
+        "label": "替换层级 1：Pareto 支配判定",
+        "detail": "决定 Pareto dominance 的分数矩阵本身换成 pairwise-ordering 行"
+       },
+       {
+        "label": "替换层级 2：反思反馈",
+        "detail": "喂给 reflection LM 的 per-example feedback 也换成对级排序信息"
+       },
+       {
+        "label": "替换层级 3：最终候选选择",
+        "detail": "final candidate selection 用 AUROC 口径而非 accuracy 口径"
+       },
+       {
+        "label": "收益",
+        "detail": "三项替换不增加模型调用、不需要 surrogate loss；MIMIC 三病种上 fine-tuned Qwen3-VL-8B +5.8 AUROC pp、MedGemma-4B +16.2 pp"
+       }
+      ],
+      "edges": [
+       {
+        "from": 0,
+        "to": 1,
+        "label": "把每个正确性行换成 (正,负) 对排序行"
+       },
+       {
+        "from": 1,
+        "to": 2,
+        "label": "列均值 = 经验 AUROC（Wilcoxon-Mann-Whitney 恒等式），据以判 Pareto 支配"
+       },
+       {
+        "from": 1,
+        "to": 3,
+        "label": "同一套排序口径喂给反思 LM 作逐例反馈"
+       },
+       {
+        "from": 1,
+        "to": 4,
+        "label": "同一套排序口径做最终候选选择"
+       },
+       {
+        "from": 2,
+        "to": 5,
+        "label": "三层同口径 -> 选出真正会排序的候选，且不增加模型调用"
+       }
+      ]
+     },
+     "alt": "左右两张评分矩阵对比图：左边 accuracy-based 矩阵行是评估实例、格是预测正确与否、列均值写 Accuracy；右边 Ranking-PE 矩阵行是正负样本对、格是正样本是否被排得更高、列均值写经验 AUROC；下方标注被替换的三层（Pareto 支配判定、反思反馈、最终候选选择）与 MIMIC 上的 AUROC 提升。"
+    },
+    "concepts": [
+     {
+      "name": "排序感知的提示进化 Ranking-Aware Prompt Evolution (Ranking-PE)",
+      "readable": "原本的提示自动进化是按「答对几道题」挑候选提示；它改成按「该给高分的正样本有没有被排在负样本前面」来挑，且这个改动贯穿搜索的每一步。",
+      "analogy": "像选班干部：以前只数「答对几道题」（题目简单时谁都能拿高分），现在改成两两 PK 的擂台赛——把每个病人和另一个病人配成一对，看模型是否给真阳性更高的分，谁的擂台胜率高谁当选。",
+      "analogyBreaksDown": "擂台类比只在两类、分数可比的场景成立；真实临床是多疾病、多亚型、多模态输入，配成对的两个样本可能来自不同分布（不同医院/模态缺失），此时「排序更高」不必然等于临床意义上更可靠，AUROC 也仍是阈值无关的整体量。",
+      "mechanism": "关键设计是「换行不换机制」：把评分矩阵的行从「实例是否答对」换成「(正,负) 对里正样本是否得分更高」，列均值就从 accuracy 变成经验 AUROC；同一口径用于 Pareto 支配、反思反馈与最终选择，不额外调模型、不加代理损失。",
+      "visual": "画一个共享列轴的双栏热力图：横轴都是候选提示（左 p1,p2…；右 c1,c2…），纵轴左边是实例 i1..in、右边是样本对 (pos,neg)；格子用 currentColor 深浅表示 0/1。两栏各在底部画一条柱状/折线，左标 Accuracy、右标 AUROC，中间用粗箭头连起来表示「换行」这一步。",
+      "prerequisites": [
+       "AUROC / ROC 曲线的含义",
+       "类别不平衡下 accuracy 失效的原因",
+       "提示优化与反思式搜索（如 GEPA）的基本流程",
+       "Pareto 支配与多目标选择的基本概念"
+      ],
+      "selfTest": [
+       "为什么把行从实例换成 (正,负) 对之后，列均值就等于 AUROC？",
+       "Ranking-PE 替换的是哪三层？为什么说它没有增加模型调用？",
+       "如果临床数据 95% 是阴性，一个恒输出阴性的模型 accuracy 和 AUROC 各是多少？"
+      ],
+      "formula": "\\mathrm{AUROC} = \\frac{1}{|\\mathcal{P}||\\mathcal{N}|}\\sum_{i \\in \\mathcal{P}}\\sum_{j \\in \\mathcal{N}} \\mathbb{1}[s_i > s_j]"
+     },
+     {
+      "name": "Wilcoxon-Mann-Whitney 恒等式 Wilcoxon-Mann-Whitney Identity",
+      "readable": "不用扫所有阈值画 ROC 再算面积：把所有 (正,负) 样本对拿来比大小，正样本得分更高的比例，就等于 AUROC 的无偏估计。",
+      "analogy": "像高考排名：与其先划一条分数线再看多少人上线（阈值一变结论就变），不如把所有考生两两比较，看正类考生的名次压制了多大比例的负类考生。",
+      "analogyBreaksDown": "它把 AUROC 化简成「成对比较的平均」，代价是丢掉了分数校准信息且计算量按正负样本数乘积增长；当分数大量打平（tie）时「更高」的判定需要约定 0.5 计分，否则等式不成立，而摘要并没有交代这篇论文如何处理 tie。",
+      "mechanism": "价值在于把「阈值无关的排序指标」变成「逐格可平均的矩阵运算」：每格是单个 (正,负) 对的 0/1 结果，列均值天然就是 AUROC，于是同一矩阵既能算指标，又直接充当 Pareto 支配与候选选择的评分，把排序指标塞进既有提示进化流水线。",
+      "visual": "左侧画两条打分分布（正类、负类）叠加，用竖线表示所有可能的阈值；右侧画一个大矩阵/散点格，行是正样本、列是负样本，格色深浅表示「正样本是否得分更高」，再在底部用箭头把「格子的平均值」指到 AUROC 数值上。",
+      "prerequisites": [
+       "ROC 曲线与 AUC 的定义",
+       "指示函数与期望",
+       "tie / 并列得分对排序指标的常见处理"
+      ],
+      "selfTest": [
+       "WMW 恒等式里每个格子统计的是什么量？",
+       "为什么 AUROC 对正负样本比例不敏感，accuracy 却敏感？",
+       "AUROC = 0.5 代表模型有什么性质？"
+      ],
+      "formula": "\\mathrm{AUROC} = \\frac{U}{n_+ n_-},\\quad U = \\sum_{i \\in \\mathcal{P}}\\sum_{j \\in \\mathcal{N}} \\mathbb{1}[s_i > s_j]"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-pairwise-auroc-matrix",
+      "name": "成对排序矩阵与经验 AUROC（Pairwise-Ordering Matrix and Empirical AUROC）",
+      "category": "multimodal",
+      "glyph": "≻",
+      "tags": [
+       "auroc",
+       "pairwise-ranking",
+       "wilcoxon-mann-whitney",
+       "class-imbalance"
+      ],
+      "latex": "M_{k,(i,j)} = \\mathbb{1}\\left[s_k(x_i^{+}) > s_k(x_j^{-})\\right],\\quad i \\in \\mathcal{P},\\; j \\in \\mathcal{N}",
+      "html": "<code>AUROC_k = (1/(|P|*|N|)) * sum_{i in P} sum_{j in N} 1[s_k(x_i^+) > s_k(x_j^-)]</code>",
+      "symbols": [
+       [
+        "k",
+        "候选提示的编号（矩阵的列索引），每个候选对应一列"
+       ],
+       [
+        "i, j",
+        "正样本索引与负样本索引，一个 (i,j) 就是一个评估行（pair）"
+       ],
+       [
+        "P, N",
+        "正样本集合与负样本集合，大小分别为 |P|、|N|（摘要未给具体数值）"
+       ],
+       [
+        "s_k(x)",
+        "候选提示 k 让 MLLM 对输入 x 输出的分数（排序用的标量），摘要未说明是否做了归一化"
+       ],
+       [
+        "\\mathbb{1}[·]",
+        "指示函数，括号内条件成立取 1、否则取 0（tie 的处理摘要未说明）"
+       ],
+       [
+        "M_{k,(i,j)}",
+        "排名感知评分矩阵的第 (i,j) 行、第 k 列元素，取值 0/1"
+       ],
+       [
+        "\\mathrm{AUROC}_k",
+        "候选 k 的经验 AUROC，等于第 k 列的平均值，量纲为概率∈[0,1]"
+       ]
+      ],
+      "derivation": [
+       "问题：临床数据严重类别不平衡，accuracy 驱动的提示进化会把「猜多数类」的候选选出来，而这种模型在临床上无用。",
+       "换指标：AUROC 无阈值、只要求把正样本排在负样本之前，并且对类别比例不变，正是想要的排序口径。",
+       "换数据组织：把评分矩阵的每一行从「一个实例是否答对」改成「一个 (正,负) 实例对里正样本是否得分更高」，格值记为 0/1。",
+       "得结论：对这样的 0/1 行取列均值，恰好等于「正样本得分高于配对负样本」的比例，也就是经验 AUROC（Wilcoxon-Mann-Whitney / Mann-Whitney U 统计量的均值形式）。",
+       "接回搜索：这个列均值同时充当 Pareto 支配判据、反思 LM 的逐例反馈口径与最终候选选择口径，因此不需要额外的模型调用或代理损失。"
+      ],
+      "analogy": "像用两两对局取代「答对题数」来排选手名次：不管题目难易与人数比例，只看每一场对局里谁赢，胜率就是实力排名。",
+      "pitfalls": [
+       "把「列均值」当成普通平均就丢掉了关键：它之所以是 AUROC，前提是行已经换成 (正,负) 对，直接对实例正确率矩阵按对分组取均值，与真正的 pairwise 矩阵并不等价。",
+       "tie 的处理：指示函数只给 1/0，分数打平时标准做法按 0.5 计分，否则经验 AUROC 会系统性偏低；论文如何定义 tie 需要核实原文。",
+       "计算与采样成本：配对数 |P|×|N| 随数据量平方增长，工程上通常固定负样本采样量或分批做无偏估计，但摘要未说明具体实现。",
+       "AUROC 只衡量排序、不衡量校准：AUROC 高不代表概率可信，用它的阈值直接做临床决策仍需要另行校准。"
+      ],
+      "code": "import torch\n\ndef ranking_aware_scores(logits, labels):\n    \"\"\"logits/labels: [n_instances]; 返回每个候选一列的排序矩阵与列均值(AUROC)。\n    这里演示单候选的情形，与摘要的 Wilcoxon-Mann-Whitney 恒等式一致。\"\"\"\n    pos = logits[labels == 1]\n    neg = logits[labels == 0]\n    # 成对排序矩阵 M[i, j] = 1[pos_i 得分 > neg_j 得分]\n    M = (pos[:, None] > neg[None, :]).float()\n    # 列均值即经验 AUROC\n    empirical_auroc = M.mean().item()\n    # 等价的向量化写法：U / (n_pos * n_neg)\n    u_statistic = M.sum().item()\n    assert abs(empirical_auroc - u_statistic / (pos.numel() * neg.numel())) < 1e-6\n    return M, empirical_auroc\n\nif __name__ == \"__main__\":\n    logits = torch.tensor([2.0, 0.1, 0.3, -1.0, 1.5, 3.0])  # 模型打分（第 3 个正样本分数偏低）\n    labels = torch.tensor([1, 0, 1, 0, 0, 1])              # 正负标签\n    M, auroc = ranking_aware_scores(logits, labels)\n    print(M)\n    print(\"empirical AUROC =\", round(auroc, 4), \"| shape:\", tuple(M.shape))",
+      "sources": [
+       {
+        "title": "Ranking-Aware Prompt Optimization for Multimodal Clinical Diagnosis",
+        "url": "https://arxiv.org/abs/2609.40361v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "MLLM 的适配流程仍以 accuracy 类目标为主（adaptation pipelines remain anchored to accuracy-based objectives）。",
+      "临床数据严重类别不平衡，恒输出多数的预测器准确率可超过 90% 但临床无用。",
+      "论文主张评估与优化 AUROC：无阈值、把正样本排在负样本之前、对类别平衡不变。",
+      "GEPA 等反思式方法用二值评分矩阵：一行一个评估实例、一列一个候选提示，格记录逐实例正确性，列均值即 accuracy 并驱动候选选择。",
+      "Ranking-PE 把每个正确性行替换为 (正,负) 实例对上的 pairwise-ordering 行，格值为 1 表示候选给正样本打分高于配对的负样本。",
+      "该列均值等于经验 AUROC，依据是 Wilcoxon-Mann-Whitney 恒等式。",
+      "该替换应用在提示进化搜索读取的三个层面：决定 Pareto 支配的评分矩阵、给反思 LM 的逐例反馈、最终候选选择。",
+      "替换不增加模型调用、不使用 surrogate loss。",
+      "在 MIMIC 的三个疾病上，accuracy 驱动的提示进化可能损害排序，Ranking-PE 扭转了这一点：相比 accuracy 配方，fine-tuned Qwen3-VL-8B 上 +5.8 AUROC pp、MedGemma-4B 上 +16.2 pp。",
+      "消融表明医学级视觉骨干（vision-encoder-tuned SFT 或医学预训练）是提示搜索无法替代的前提。",
+      "该配方把反思式提示进化从纯文本数据扩展到多模态临床诊断。"
+     ],
+     "uncertain": [
+      "摘要只说格值记「1 if the candidate scores the positive higher than the paired negative」，未交代分数打平（tie）时如何计分；标准做法是按 0.5，本文变体的精确形式需看原文。",
+      "正负样本对如何构造、是否全配对或采样、每个实例参与多少对，摘要未说明。",
+      "候选提示的 scalar score s_k(x) 的具体来源（是 logit、是生成真/假的对数概率、还是别的打分口径）摘要未说明。",
+      "「+5.8 / +16.2 AUROC pp」在不同病种/配置下的分布与方差、baseline 数值本身，摘要未给出。",
+      "三层替换各自的消融增量（哪一层贡献最大）摘要只提到做了消融，未给数字。",
+      "「no extra model calls」的具体含义（是沿用同一批 rollout，还是另有复用方式）需看原文正文确认。",
+      "AUROC 作为搜索目标是不可微的 0/1 计数，摘要明确说没有 surrogate loss，因此具体搜索动力学（只靠 Pareto/离散选择）需看原文。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "4de3fbdcfdb43eff",
+   "title": "Multimodal Flow: Unified Flow Modeling of Language and Vision in Embedding Spaces",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.40362v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.40362v1",
+     "name": "arxiv"
+    },
+    {
+     "url": "https://huggingface.co/papers/2609.40362",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.40362",
+     "name": "canonical"
+    }
+   ],
+   "tags": [
+    "cs.CV"
+   ],
+   "publishedAt": "2026-09-30T05:59:57+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 62.0,
+   "summary": "We present Multimodal Flow, a fully continuous generative model of language and vision. Most unified multimodal models either model both language and quantized images as discrete tokens or combine discrete language prediction with continuous image generation. The former introduces a visual quantization bottleneck. The latter requires modality-dependent objectives and sampling procedures. Fully continuous modeling avoids these trade-offs and enables a shared generative process, but remains underexplored for multimodal pretraining. Multimodal Flow introduces a unified continuous architecture that integrates multimodal continuous representations with a shared chunk-causal flow backbone. It organizes text blocks and images as ordered continuous hyperchunks, preserving textual token order and visual spatial structure. The backbone learns a single vector field over these hyperchunks through Flow Matching. Joint attention enables cross-modal interaction, while modality-specific feed-forward networks process each modality. The model predicts multiple target chunks in parallel during training and generates hyperchunks sequentially at inference. We instantiate MF-1 and pretrain it on multimodal data. Across 0.6B, 1.2B, and 1.6B scales, continued pretraining consistently improves multimodal modeling. With only 150B pretraining tokens, MF-1 achieves an average score of 82.8 across GenEval and DPG-Bench and 75.3 across VQAv2, MMBench, and POPE, remaining competitive with unified models trained on substantially more data. Under matched data, optimization, and parameter budgets, Multimodal Flow further outperforms representative hybrid and discrete models. These results establish continuous chunk-based embedding flow modeling as a new fully continuous paradigm for unified multimodal m",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "4de3fbdcfdb43eff",
+    "tldr": "语言与图像都切成连续块，用同一个流匹配向量场统一生成，150B token 即接近更大数据量的统一模型。",
+    "keyPoints": [
+     "不做视觉量化，语言与图像都留在连续嵌入空间",
+     "文本块与图像块拼成有序 hyperchunk，保留各自结构",
+     "共享 chunk-causal flow 主干，联合注意力做跨模态交互",
+     "模态各用独立 FFN，训练并行预测多个目标块",
+     "MF-1 在 GenEval 与三项视觉问答上分别为 82.8 / 75.3"
+    ],
+    "why": "统一多模态生成主流是离散 token 与混合目标两条路；这篇给出全连续第三条路，直接关系到你做统一理解生成模型的架构选型。",
+    "difficulty": "hard",
+    "tags": [
+     "multimodal",
+     "flow-matching",
+     "unified-model",
+     "generative",
+     "continuous"
+    ],
+    "entities": [
+     "Multimodal Flow",
+     "MF-1",
+     "Flow Matching",
+     "hyperchunk",
+     "GenEval",
+     "DPG-Bench"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "hyperchunk 统一连续建模",
+     "caption": "把文本与图像都切成连续块，按序拼好后由同一个向量场生成",
+     "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='文本与图像分别切块并拼成有序 hyperchunk，再交给共享 flow 主干'><rect x='12.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='61.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>文本</text><text x='61.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>连续嵌入</text><rect x='131.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='180.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>图像</text><text x='180.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>连续嵌入</text><rect x='250.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='299.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>hyperchunk</text><text x='299.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>有序拼接</text><rect x='369.0' y='67.0' width='99.0' height='66.0' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='418.5' y='97.0' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>共享 flow 主干</text><text x='418.5' y='115.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>单一向量场</text><line x1='111.0' y1='100.0' x2='243.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='250.0,100.0 243.0,103.6 243.0,96.4' fill='var(--line-1)'/><text x='180.5' y='90.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>分块</text><line x1='230.0' y1='100.0' x2='243.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='250.0,100.0 243.0,103.6 243.0,96.4' fill='var(--line-1)'/><text x='240.0' y='90.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>分块</text><line x1='349.0' y1='100.0' x2='362.0' y2='100.0' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='369.0,100.0 362.0,103.6 362.0,96.4' fill='var(--line-1)'/><text x='359.0' y='90.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>Flow Matching</text></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "文本",
+        "detail": "连续嵌入"
+       },
+       {
+        "label": "图像",
+        "detail": "连续嵌入"
+       },
+       {
+        "label": "hyperchunk",
+        "detail": "有序拼接"
+       },
+       {
+        "label": "共享 flow 主干",
+        "detail": "单一向量场"
+       }
+      ],
+      "edges": [
+       {
+        "from": 0,
+        "to": 2,
+        "label": "分块"
+       },
+       {
+        "from": 1,
+        "to": 2,
+        "label": "分块"
+       },
+       {
+        "from": 2,
+        "to": 3,
+        "label": "Flow Matching"
+       }
+      ]
+     },
+     "alt": "文本与图像分别切块并拼成有序 hyperchunk，再交给共享 flow 主干"
+    },
+    "concepts": [
+     {
+      "name": "Hyperchunk（超块）",
+      "readable": "把一段文本 token 和一块图像 patch 都看成连续块，按阅读顺序排成一条序列；模型只需要对一种输入建模，不用为每种模态换目标函数。",
+      "analogy": "像把一段话和它的配图装进同一个「文档块」里按顺序排好，模型只处理一种输入，不再分两套流水线。",
+      "analogyBreaksDown": "文本是一维离散顺序、图像是二维空间结构；压进同一种块之后，图像的空间归纳偏置必须靠额外位置编码补回来。",
+      "mechanism": "文本块保持 token 顺序、图像块保持空间排布，按序拼成 hyperchunk；主干对整条块序列学一个向量场，模态差异交给各自的 FFN 承担。",
+      "visual": "横轴是 hyperchunk 序号，每块用色带表示模态（蓝=文本、橙=图像），块内小格表示 token/patch 数。",
+      "prerequisites": [
+       "Flow Matching 基础",
+       "多模态位置编码",
+       "因果注意力"
+      ],
+      "selfTest": [
+       "hyperchunk 与普通 token 序列的区别在哪？",
+       "为什么不需要先量化图像？",
+       "模态各自独立的 FFN 起什么作用？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "Chunk-causal Flow Matching（块因果流匹配）",
+      "readable": "训练时对同一序列并行预测多个目标块，推理时一次生成一个块并把它接回上下文，同时拿到训练并行性与推理因果性。",
+      "analogy": "像背课文：练习时允许你同时默写后面几段，考试时却只能一段接一段往下写。",
+      "analogyBreaksDown": "训练时各目标块彼此独立假设，推理时却依赖已生成的块，两者之间的差距就是暴露偏差。",
+      "mechanism": "对连续块施加块级因果掩码：块内可双向、跨块只能看前文；训练用 Flow Matching 回归多个目标块的向量场，推理按块自回归展开。",
+      "visual": "画一个三角因果掩码矩阵：块内是实心小方格，跨块右上三角留空表示不可见。",
+      "prerequisites": [
+       "连续归一化流 / Flow Matching",
+       "自回归生成",
+       "因果掩码"
+      ],
+      "selfTest": [
+       "块级因果与 token 级因果的差别？",
+       "为什么训练时可以并行预测多个块？",
+       "推理时单个块内部是双向还是单向？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-hyperchunk-flow-loss",
+      "name": "超块流匹配目标（Hyperchunk Flow Matching）",
+      "category": "multimodal",
+      "latex": "\\mathcal{L}(\\theta)=\\mathbb{E}_{t,\\,x_0,x_1}\\Big\\|v_\\theta\\big(x_t,t\\mid \\mathrm{ctx}\\big)-\\big(x_1-x_0\\big)\\Big\\|^2,\\qquad x_t=(1-t)\\,x_0+t\\,x_1",
+      "symbols": [
+       [
+        "t",
+        "流时间，采样自 [0,1]"
+       ],
+       [
+        "x_0",
+        "源噪声超块"
+       ],
+       [
+        "x_1",
+        "目标超块（真实文本/图像嵌入）"
+       ],
+       [
+        "x_t",
+        "线性插值得到的中间状态"
+       ],
+       [
+        "v_\\theta",
+        "网络学到的向量场"
+       ],
+       [
+        "\\mathrm{ctx}",
+        "块级因果可见的前序超块"
+       ]
+      ],
+      "derivation": [
+       "在噪声 x_0 与真实目标超块 x_1 之间做线性插值，得到中间状态 x_t。",
+       "条件流匹配的目标速度场就是直线方向 x_1 - x_0，回归它等价于最小化传输代价。",
+       "只对块级因果可见的前序超块条件化，保证训练与推理的可见性一致。",
+       "对多个目标块并行回归，梯度平均后等价于在整条块序列上学一个共享向量场。"
+      ],
+      "analogy": "像给每个超块画一条从噪声到目标的直线，模型只需要学「往哪个方向走、走多快」。",
+      "pitfalls": [
+       "t 的采样分布偏斜会让困难时间段欠训练。",
+       "块内双向而跨块因果，掩码写错就会泄漏未来信息，指标虚高。",
+       "不同模态的连续表征尺度不同，损失会被尺度大的模态主导。"
+      ],
+      "code": "import torch\n\ndef flow_matching_loss(v_net, x1, ctx, t=None):\n    # x1: (B,L,d) 目标超块序列; ctx: 前序超块(因果可见)\n    b = x1.shape[0]\n    if t is None:\n        t = torch.rand(b, 1, 1)\n    x0 = torch.randn_like(x1)                 # 源噪声\n    xt = (1 - t) * x0 + t * x1                # 线性插值路径\n    target = x1 - x0                          # 直线速度场\n    pred = v_net(xt, t.squeeze(-1), ctx)      # 条件于前序块\n    return ((pred - target) ** 2).mean()\n",
+      "sources": [
+       {
+        "title": "Multimodal Flow: Unified Flow Modeling of Language and Vision in Embedding Spaces",
+        "url": "https://arxiv.org/abs/2609.40362v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "语言与图像都建模为连续表征，不做视觉量化",
+      "文本块与图像块组织为有序连续 hyperchunk",
+      "主干是共享的 chunk-causal flow，靠联合注意力做跨模态交互",
+      "MF-1 在 0.6B/1.2B/1.6B 三档继续预训练均有提升",
+      "150B token 下 GenEval 平均 82.8、DPG-Bench 相关指标 75.3 组合"
+     ],
+     "uncertain": [
+      "损失函数的精确写法（是否含模态权重、时间采样分布）摘要未给，此处按条件流匹配通用形式重构",
+      "「平均分 82.8 / 75.3」的基准组合方式（哪些指标取平均）需查原文表格",
+      "推理时单块内部是否双向，摘要只说「hyperchunks sequentially」，未细说块内注意力"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ce4c4e04726b1248",
+   "title": "Leveraging vision language models for digit recognition on digital measuring devices: a comparative analysis",
+   "category": "multimodal",
+   "channel": "s2",
+   "url": "https://doi.org/10.11591/eei.v15i5.11769",
+   "sources": [
+    {
+     "url": "https://doi.org/10.11591/eei.v15i5.11769",
+     "name": "s2"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-10-01T00:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": true,
+   "codeAvailable": false,
+   "relevanceScore": 70.1,
+   "summary": "Large language models (LLMs) with multimodal input capability have been demonstrated in various applications. Vision language models (VLMs), which were developed from LLMs, can process and learn both visual and textual data simultaneously, enabling them to generate descriptive text from images. This study explores the use of several VLM models for the seven-segment digit recognition of a digital measuring device compared with other baseline optical character recognition (OCR) methods, such as Tesseract OCR, EasyOCR, PaddleOCR, KerasOCR, and YOLO11, with or without the integration of you only look once 11 (YOLO11) for LCD screen cropping. The results showed that the Gemini model outperformed conventional OCR methods and other VLM models with an average per-digit-recognition (PDR) accuracy of 98.10% (?=0.36%) and full sequence reading (FSR) accuracy of 93.85% (?=1.29%). The performance evaluation across the distance variation also demonstrates high accuracy for the VLM result with stable results. Simultaneously, YOLO11 exhibits degradation at longer distances due to difficulty in detecting small decimal digits, whereas the traditional OCR method yields inconsistent results. This study showed promising results for the further development, improvement, and deployment of VLM models in the automatic seven-segment digit recognition task on the edge device.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "ce4c4e04726b1248",
+    "tldr": "VLM 对比多类 OCR/YOLO11 识别七段数字：Gemini 逐位 98.10%、整串 93.85%，远距更稳。",
+    "keyPoints": [
+     "任务：数码表七段数字识别，VLM 对比传统 OCR。",
+     "基线有 Tesseract、EasyOCR、PaddleOCR 等 OCR。",
+     "YOLO11 既作 OCR 基线，也用于裁剪 LCD 屏。",
+     "Gemini 最优：PDR 98.10%、FSR 93.85%。",
+     "变距离下 VLM 稳定；YOLO11 远距离难检小数字。"
+    ],
+    "why": "对多模态求职者：可复用的 VLM 对传统 OCR 评测范式（裁剪前置、逐位与整串双指标、变距离鲁棒性），可作边缘读数项目；与后训练/RL/世界模型主线弱相关。",
+    "difficulty": "medium",
+    "tags": [
+     "vlm",
+     "ocr",
+     "digit-recognition",
+     "seven-segment",
+     "edge-deployment",
+     "benchmark"
+    ],
+    "entities": [
+     "Gemini",
+     "YOLO11",
+     "Tesseract OCR",
+     "EasyOCR",
+     "PaddleOCR",
+     "KerasOCR"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "VLM 对 OCR 的数码表读数流程",
+     "caption": "从数码表照片到逐位/整串双指标评估的对比流程，YOLO11 既作可选裁剪器也是基线之一。",
+     "svg": "<svg viewBox=\"0 0 960 400\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"VLM 与 OCR 数码表读数对比流程\"><text x=\"480\" y=\"44\" text-anchor=\"middle\" font-size=\"18\" fill=\"currentColor\">数码表七段数字识别：VLM 与 OCR 对比流程</text><rect x=\"30\" y=\"150\" width=\"152\" height=\"96\" rx=\"10\" fill=\"none\" stroke=\"var(--line-1)\"/><text x=\"106\" y=\"190\" text-anchor=\"middle\" font-size=\"15\" fill=\"currentColor\">图像采集</text><text x=\"106\" y=\"216\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">七段显示照片</text><rect x=\"214\" y=\"150\" width=\"152\" height=\"96\" rx=\"10\" fill=\"none\" stroke=\"var(--line-1)\"/><text x=\"290\" y=\"190\" text-anchor=\"middle\" font-size=\"15\" fill=\"currentColor\">LCD 裁剪</text><text x=\"290\" y=\"216\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">YOLO11 可选</text><rect x=\"398\" y=\"150\" width=\"152\" height=\"96\" rx=\"10\" fill=\"none\" stroke=\"var(--accent)\"/><text x=\"474\" y=\"190\" text-anchor=\"middle\" font-size=\"15\" fill=\"currentColor\">识别器</text><text x=\"474\" y=\"216\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">VLM 与多种 OCR</text><rect x=\"582\" y=\"150\" width=\"152\" height=\"96\" rx=\"10\" fill=\"none\" stroke=\"var(--line-1)\"/><text x=\"658\" y=\"190\" text-anchor=\"middle\" font-size=\"15\" fill=\"currentColor\">指标评估</text><text x=\"658\" y=\"216\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">PDR 与 FSR</text><rect x=\"766\" y=\"150\" width=\"152\" height=\"96\" rx=\"10\" fill=\"none\" stroke=\"var(--line-1)\"/><text x=\"842\" y=\"190\" text-anchor=\"middle\" font-size=\"15\" fill=\"currentColor\">距离对比</text><text x=\"842\" y=\"216\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">VLM 更稳</text><line x1=\"182\" y1=\"198\" x2=\"204\" y2=\"198\" stroke=\"var(--line-1)\"/><polygon points=\"204,192 214,198 204,204\" fill=\"var(--line-1)\"/><line x1=\"366\" y1=\"198\" x2=\"388\" y2=\"198\" stroke=\"var(--line-1)\"/><polygon points=\"388,192 398,198 388,204\" fill=\"var(--line-1)\"/><line x1=\"550\" y1=\"198\" x2=\"572\" y2=\"198\" stroke=\"var(--line-1)\"/><polygon points=\"572,192 582,198 572,204\" fill=\"var(--line-1)\"/><line x1=\"734\" y1=\"198\" x2=\"756\" y2=\"198\" stroke=\"var(--line-1)\"/><polygon points=\"756,192 766,198 756,204\" fill=\"var(--line-1)\"/><path d=\"M106,246 V290 H474 V246\" fill=\"none\" stroke=\"var(--line-1)\"/><polygon points=\"468,258 474,246 480,258\" fill=\"var(--line-1)\"/><text x=\"290\" y=\"284\" text-anchor=\"middle\" font-size=\"13\" fill=\"var(--fg-1)\">不裁剪：照片直接送入识别器</text><text x=\"480\" y=\"352\" text-anchor=\"middle\" font-size=\"14\" fill=\"var(--accent)\">Gemini 最优：PDR 98.10%、FSR 93.85%；YOLO11 远距离因小数字难检而降级</text></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "图像采集",
+        "detail": "数码测量设备七段显示的照片"
+       },
+       {
+        "label": "LCD 裁剪",
+        "detail": "可选用 YOLO11 裁出屏幕区域"
+       },
+       {
+        "label": "识别器",
+        "detail": "VLM（Gemini 等）与 Tesseract/EasyOCR/PaddleOCR/KerasOCR/YOLO11"
+       },
+       {
+        "label": "指标评估",
+        "detail": "逐位识别准确率 PDR 与整串读数准确率 FSR"
+       },
+       {
+        "label": "距离对比",
+        "detail": "不同拍摄距离下重测鲁棒性"
+       }
+      ],
+      "edges": [
+       {
+        "from": "图像采集",
+        "to": "LCD 裁剪",
+        "label": "先裁屏"
+       },
+       {
+        "from": "LCD 裁剪",
+        "to": "识别器",
+        "label": "裁剪后输入"
+       },
+       {
+        "from": "图像采集",
+        "to": "识别器",
+        "label": "不裁剪直接识别"
+       },
+       {
+        "from": "识别器",
+        "to": "指标评估",
+        "label": "与真值逐位比对"
+       },
+       {
+        "from": "指标评估",
+        "to": "距离对比",
+        "label": "变距离重测"
+       }
+      ]
+     },
+     "alt": "五步流程：图像采集、可选 YOLO11 裁剪 LCD、VLM 与多种 OCR 识别、按 PDR/FSR 评估、再在不同距离下对比。"
+    },
+    "concepts": [
+     {
+      "name": "VLM 直接读数码表",
+      "readable": "让能同时看图与文字的视觉语言模型直接读数码表屏幕照片并输出读数，再与 Tesseract 等传统 OCR、YOLO11 检测方案比准确率。本文中 Gemini 最好：逐位 98.10%、整串 93.85%。",
+      "analogy": "像请一个识字又懂上下文的人看照片念数字，而不是用只会切字形模板的老式扫描仪。",
+      "analogyBreaksDown": "人看仪表会结合量程、单位与小数点位置推断，而摘要只给出识别准确率，没有证据表明 VLM 真做了这类物理理解；闭源模型还可能见过类似图片。",
+      "mechanism": "图像（可先用 YOLO11 裁出 LCD 区域）送入 VLM，模型以自回归方式生成读数文本；传统路线先做字符分割或检测，再逐字模板匹配或小模型分类。评估用逐位准确率 PDR 与整串正确率 FSR，并在不同拍摄距离下重复。",
+      "visual": "画一条从左到右的横条：照片 → [YOLO11 裁 LCD]（虚线支路：不裁）→ 识别器（Gemini / Tesseract / EasyOCR / PaddleOCR / KerasOCR / YOLO11）→ 输出读数 → 与真值逐位比对，每位标绿勾或红叉，底部汇总 PDR 与 FSR。",
+      "prerequisites": [
+       "多模态模型/VLM 的基本调用方式",
+       "七段数码管显示与小数的书写约定",
+       "目标检测（YOLO11）与 OCR 的基本概念",
+       "逐位准确率与整串正确率两个指标的含义"
+      ],
+      "selfTest": [
+       "为什么同一模型的 FSR 一般不会高于 PDR？",
+       "先用 YOLO11 裁出 LCD 屏，可能带来哪两类不同的收益或损失？",
+       "仅凭摘要，能否判断 VLM 的优势来自物理理解而非图像先验？为什么？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "检测-裁剪-识别流水线",
+      "readable": "把任务拆成先定位屏幕、再读数字两级：YOLO11 负责在整张照片里框出 LCD 区域并裁掉背景，识别器只处理裁剪后的小图；论文同时报告带裁剪与不带裁剪两种设置。",
+      "analogy": "像先拿剪刀把报纸上那一小块表格剪下来，再拿放大镜看，而不是对着整版报纸找数字。",
+      "analogyBreaksDown": "裁剪不是免费的：框错或框漏会直接抹掉读数，远距离下小数点这类小目标最容易被检测漏掉，而端到端 VLM 反而可能保留全局信息。",
+      "mechanism": "检测器对输入图像回归 LCD 屏边框，按边框裁剪并（可能）缩放到识别器输入尺寸，识别结果与真值比对。是否裁剪构成一个消融维度，用于分离检测误差与识别误差。",
+      "visual": "并排两列：左列完整照片→裁出小图→读数；右列完整照片直接→读数。两列下方各挂一条随距离变化的准确率折线，观察裁剪版在远距离是否掉得更快。",
+      "prerequisites": [
+       "目标检测的边框回归与 IoU 概念",
+       "图像裁剪与缩放对输入分辨率的影响",
+       "消融实验（ablation）的基本思路"
+      ],
+      "selfTest": [
+       "带裁剪与不带裁剪两种设置分别把误差归因到哪一环？",
+       "为什么远距离拍摄时裁剪环节可能成为瓶颈？",
+       "如果裁剪框偏了一点，PDR 与 FSR 哪个先崩？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "PDR 与 FSR 双指标",
+      "readable": "PDR 是逐位识别准确率，按每位数字是否读对再平均；FSR 是整串读数准确率，只有整条读数完全正确才算对。前者衡量单字能力，后者衡量这条读数能不能直接使用。",
+      "analogy": "像默写电话号码：PDR 是逐位算对的百分比，FSR 是整串号码一字不差写对的百分比。",
+      "analogyBreaksDown": "默写时位数由人自己决定，而仪表读数要先确定位数：小数点、前导零和前导符号算不算一位，会直接改变分母，摘要未说明这套约定。",
+      "mechanism": "对第 i 张图，比较预测读数与真值读数得到正确位数 c_i 与真实位数 L_i；PDR 取 c_i/L_i 的均值，FSR 取指示函数 1[c_i=L_i] 的均值。变距离实验在各距离子集上分别统计。",
+      "visual": "上方一行真值 1 2 . 3 4，下方一行预测 1 2 . 3 5，逐位画竖线比对；右边两个进度条：PDR 条按比例填充，FSR 条要么全满要么全空，直观显示 FSR 更严格。",
+      "prerequisites": [
+       "准确率与平均的基本计算",
+       "指示函数（条件成立取 1）的含义",
+       "标准误与标准差在多次重复实验中的区别"
+      ],
+      "selfTest": [
+       "五位数读数只错一位时，该图的 PDR 与 FSR 各是多少？",
+       "两个模型 PDR 相同，FSR 可能差很多吗？举一个位数分布不同造成的例子。",
+       "只报告全部测试样本的平均指标，会掩盖哪一类风险？"
+      ],
+      "formula": "\\mathrm{PDR}=\\frac{1}{N}\\sum_{i=1}^{N}\\frac{c_i}{L_i},\\qquad \\mathrm{FSR}=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}\\!\\left[c_i=L_i\\right]"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-pdr-fsr-metrics",
+      "name": "逐位准确率 PDR 与整串读数准确率 FSR",
+      "category": "multimodal",
+      "glyph": "Σ",
+      "tags": [
+       "multimodal",
+       "evaluation",
+       "ocr",
+       "metric"
+      ],
+      "latex": "\\mathrm{PDR}=\\frac{1}{N}\\sum_{i=1}^{N}\\frac{c_i}{L_i},\\qquad \\mathrm{FSR}=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}\\!\\left[c_i=L_i\\right]",
+      "html": "<code>PDR = mean(c_i / L_i) ; FSR = mean(c_i == L_i)</code>",
+      "symbols": [
+       [
+        "N",
+        "参与评测的表图数量"
+       ],
+       [
+        "L_i",
+        "第 i 张图的真值读数位数（分母）"
+       ],
+       [
+        "c_i",
+        "第 i 张图中被读对的位数"
+       ],
+       [
+        "c_i/L_i",
+        "第 i 张图的逐位正确率"
+       ],
+       [
+        "\\mathbb{1}[·]",
+        "指示函数，括号内条件成立取 1，否则取 0"
+       ],
+       [
+        "PDR",
+        "逐位识别准确率，本文 Gemini 为 98.10%"
+       ],
+       [
+        "FSR",
+        "整串读数准确率，本文 Gemini 为 93.85%"
+       ]
+      ],
+      "derivation": [
+       "每张数码表图有 L_i 位数字，识别器输出一条完整读数。",
+       "把预测读数与真值读数按位对齐，统计读对的位数 c_i。",
+       "PDR 先在单图上算比例 c_i/L_i，再对 N 张图求平均，衡量单字识别能力。",
+       "FSR 只在整条读数全对（c_i=L_i）时计 1，再求平均，衡量读数能否直接使用。",
+       "由于 FSR 的条件更严格，同一模型的 FSR 恒不高于 PDR。"
+      ],
+      "analogy": "像默写电话号码：PDR 是逐位算对的百分比，FSR 是整串号码一字不差写对的百分比；一位写错，逐位分数只掉一点，整串分数直接归零。",
+      "pitfalls": [
+       "PDR 与 FSR 不能相互替代：PDR 高不代表读数可直接使用，错一位整条即作废。",
+       "逐位对齐依赖位数约定，小数点、前导零是否计入会影响分母 L_i。",
+       "摘要中 98.10% (?=0.36%) 与 93.85% (?=1.29%) 的偏差符号在采集文本里显示为问号，是标准差还是标准误需核对原文。",
+       "只在全部距离上取平均会掩盖远距离性能下降，应按距离分层报告。"
+      ],
+      "code": "def pdr_fsr(preds, gts):\n    # preds / gts：等长的读数字符串列表，例如 ['12.34', '12.35']\n    assert all(len(p) == len(g) for p, g in zip(preds, gts))\n    n = len(gts)\n    pdr = sum(sum(pc == gc for pc, gc in zip(p, g)) / len(g)\n              for p, g in zip(preds, gts)) / n\n    fsr = sum(p == g for p, g in zip(preds, gts)) / n\n    return pdr, fsr\n\npdr, fsr = pdr_fsr(['12.34', '12.3S'], ['12.34', '12.35'])\nprint('PDR=%.4f, FSR=%.4f' % (pdr, fsr))  # PDR=0.9000, FSR=0.5000",
+      "sources": [
+       {
+        "title": "Leveraging vision language models for digit recognition on digital measuring devices: a comparative analysis",
+        "url": "https://doi.org/10.11591/eei.v15i5.11769"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "该文研究数码测量设备七段数码管的数字识别，并把若干 VLM 与其他基线 OCR 方法进行比较。",
+      "基线方法包括 Tesseract OCR、EasyOCR、PaddleOCR、KerasOCR 与 YOLO11，且可选择是否用 YOLO11 裁剪 LCD 屏。",
+      "Gemini 模型表现最好，平均逐位识别准确率 PDR 为 98.10%，整串读数准确率 FSR 为 93.85%。",
+      "在距离变化评测中 VLM 结果保持较高且稳定的准确率；YOLO11 在较远距离因难以检测小的十进制位数而性能下降；传统 OCR 结果不一致。",
+      "作者认为该结果表明 VLM 在边缘设备上做自动七段数字识别具有进一步开发与部署的前景。"
+     ],
+     "uncertain": [
+      "摘要中 98.10% (?=0.36%) 与 93.85% (?=1.29%) 的偏差符号在采集文本中显示为问号，无法确认是标准差还是标准误，需核对原文。",
+      "摘要未说明具体比较了哪些 VLM 型号、是否做微调、测试集规模与拍摄条件，结论的泛化范围无法判断。",
+      "边缘设备部署目前只是作者的展望，摘要未给出端侧延迟、显存占用或功耗数据。",
+      "YOLO11 在本文中既作为 OCR 基线又作为 LCD 裁剪器，两种角色如何区分需查原文确认。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "f192b93c4998b755",
+   "title": "Learning Where to Look: Anatomical Grounding and Guided Attention for Cardiac MRI Vision-Language Models",
+   "category": "multimodal",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39899v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39899v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.CV"
+   ],
+   "publishedAt": "2026-09-30T03:00:44+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 55.7,
+   "summary": "Cardiac magnetic resonance imaging (CMR) enables assessment of cardiac anatomy, ventricular function, and myocardial tissue characteristics. Clinicians interpret these images by identifying cardiac structures and focusing on the regions relevant to each clinical question, motivating anatomically guided vision-language models (VLMs). Yet CMR-specific supervision for anatomical localisation and clinical question answering remains limited. To address this gap, we investigate fine-grained CMR visual question answering through anatomical grounding and guided attention. We construct 128,915 anatomical-grounding and 42,799 clinical QA pairs across short-axis cine, late gadolinium enhancement, and long-axis cine. These datasets support anatomical recognition, localisation, and clinical assessment without requiring paired reports for individual training images. To help the model learn where to look, we introduce Cardiac Anatomy-Routed Attention (CARA), which selects predicted anatomical priors according to the question and guides decoder attention with learned task-specific strengths. Combining anatomical grounding pretraining with CARA yields our model, CARA-VL. Experiments demonstrate CARA-VL's strengths in clinical assessment and regional localisation across CMR imaging settings, with promising generalization to an external clinical cohort. Together, our data and method provide a practical framework for studying and advancing cardiac visual understanding in VLMs. We will release the QA data derived from public datasets upon publication.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "f192b93c4998b755",
+    "tldr": "心脏 MRI 的视觉语言模型先按问题预测该看哪个解剖结构，再用这个先验引导解码注意力，定位与临床问答一起提升。",
+    "keyPoints": [
+     "自建 12.9 万解剖定位对与 4.3 万临床问答对",
+     "覆盖短轴电影、延迟强化、长轴电影三种 CMR",
+     "CARA 按问题路由解剖先验并调制解码注意力",
+     "解剖定位预训练与 CARA 组合成 CARA-VL",
+     "在外部临床队列上显示出初步泛化"
+    ],
+    "why": "医学多模态是「领域先验 + 注意力路由」最干净的样板：先定位再回答的结构可以直接搬到工业缺陷、具身场景理解。",
+    "difficulty": "medium",
+    "tags": [
+     "multimodal",
+     "medical-vlm",
+     "grounding",
+     "attention",
+     "vlm"
+    ],
+    "entities": [
+     "CARA",
+     "CARA-VL",
+     "CMR",
+     "LGE",
+     "short-axis cine"
+    ],
+    "diagram": {
+     "kind": "architecture",
+     "title": "CARA-VL 的四段流水线",
+     "caption": "先用问题选出该看的解剖结构，再把该先验注入解码器注意力",
+     "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='CARA-VL 从问题文本、解剖路由、CARA 解码到答案与定位的四层结构'><rect x='60.0' y='20.0' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='41.6' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>问题文本</text><text x='406.0' y='41.6' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>临床提问</text><line x1='240.0' y1='53.2' x2='240.0' y2='55.2' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,62.2 236.4,55.2 243.6,55.2' fill='var(--line-1)'/><rect x='60.0' y='62.2' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='83.9' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>解剖路由</text><text x='406.0' y='83.9' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>按问题选结构</text><line x1='240.0' y1='95.5' x2='240.0' y2='97.5' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,104.5 236.4,97.5 243.6,97.5' fill='var(--line-1)'/><rect x='60.0' y='104.5' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='126.1' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>CARA 解码</text><text x='406.0' y='126.1' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>先验调制注意力</text><line x1='240.0' y1='137.8' x2='240.0' y2='139.8' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240.0,146.8 236.4,139.8 243.6,139.8' fill='var(--line-1)'/><rect x='60.0' y='146.8' width='360.0' height='33.2' rx='7' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='74.0' y='168.4' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>答案与定位</text><text x='406.0' y='168.4' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>区域 + 结论</text></svg>",
+     "spec": {
+      "type": "architecture",
+      "nodes": [
+       {
+        "label": "问题文本",
+        "detail": "临床提问"
+       },
+       {
+        "label": "解剖路由",
+        "detail": "按问题选结构"
+       },
+       {
+        "label": "CARA 解码",
+        "detail": "先验调制注意力"
+       },
+       {
+        "label": "答案与定位",
+        "detail": "区域 + 结论"
+       }
+      ]
+     },
+     "alt": "CARA-VL 从问题文本、解剖路由、CARA 解码到答案与定位的四层结构"
+    },
+    "concepts": [
+     {
+      "name": "Anatomy-Routed Attention（解剖路由注意力）",
+      "readable": "普通 VLM 让解码器自己从整张图里找重点；CARA 先用问题判断该关注哪个解剖结构，把这块结构的空间先验当成权重叠加到解码注意力上。",
+      "analogy": "像上级查房时说一句「这次重点看左心室下壁」，你直接把片子推到那个位置细看，而不是从整张片子从头找起。",
+      "analogyBreaksDown": "上级的判断基本是对的；CARA 的结构预测会出错，一旦选错结构，注意力就被锁死在错误区域，可能比自由注意力更糟。",
+      "mechanism": "先用解剖定位任务学会预测结构热图，再按问题文本路由到目标结构，作为空间先验调制解码器对视觉特征的交叉注意力；定位与问答两阶段解耦，避免互相拉扯。",
+      "visual": "横轴是解码层数，纵轴是注意力落在正确心肌节段的比例；自由注意力缓慢爬升，CARA 从第一层就明显更高且更平。",
+      "prerequisites": [
+       "Transformer 交叉注意力",
+       "视觉-语言模型基本结构",
+       "心脏 MRI 短轴/长轴切面常识"
+      ],
+      "selfTest": [
+       "CARA 与普通 cross-attention 相比多做了什么？",
+       "为什么作者要分成定位预训练与问答两步？",
+       "结构先验预测错误会带来什么后果？"
+      ],
+      "formula": "\\alpha_i=\\mathrm{softmax}\\big(s(h_q,p_i)/\\tau\\big)"
+     },
+     {
+      "name": "Anatomical Grounding Pretraining（解剖定位预训练）",
+      "readable": "先让模型学会回答「某个结构在哪」，产出结构热图；这样它天然获得空间先验，再用这些先验去支撑临床问答。",
+      "analogy": "像规培医生先练几个月的「认结构、圈位置」，练熟之后才去学答临床问题：手上有地图，再谈诊断。",
+      "analogyBreaksDown": "临床上定位准确不等于会答临床问题；预训练只提供空间先验，因果判断与临床推理仍要靠问答数据补。",
+      "mechanism": "用公开数据集派生 12.9 万条定位对，训练模型输出解剖结构热图；问答阶段复用该能力，使监督不必依赖逐图配对的临床报告。",
+      "visual": "一张心脏短轴底图，上面叠加若干半透明热斑，每个热斑对应一个解剖名；颜色越亮表示该结构定位置信度越高。",
+      "prerequisites": [
+       "关键点/热图监督",
+       "医学影像标注格式"
+      ],
+      "selfTest": [
+       "定位预训练解决了什么数据瓶颈？",
+       "为什么说它降低了对配对报告的依赖？",
+       "热图监督与分类监督的差别是什么？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-cara-anatomy-routing",
+      "name": "解剖路由注意力（Anatomy-Routed Attention）",
+      "category": "multimodal",
+      "latex": "\\alpha_i=\\frac{\\exp\\big(s(h_q,p_i)/\\tau\\big)}{\\sum_j\\exp\\big(s(h_q,p_j)/\\tau\\big)},\\qquad \\tilde{H}=\\sum_i\\alpha_i p_i,\\qquad A=\\mathrm{softmax}\\!\\left(\\frac{QK^\\top}{\\sqrt{d}}+\\lambda\\tilde{H}\\right)",
+      "symbols": [
+       [
+        "h_q",
+        "问题文本在解码器中的隐状态"
+       ],
+       [
+        "p_i",
+        "第 i 个解剖结构先验（热图或嵌入）"
+       ],
+       [
+        "s(·,·)",
+        "问题与结构的相关性打分"
+       ],
+       [
+        "\\tau",
+        "路由温度，越小选择越硬"
+       ],
+       [
+        "\\alpha_i",
+        "路由到第 i 个结构的权重"
+       ],
+       [
+        "\\tilde{H}",
+        "加权聚合后的解剖先验"
+       ],
+       [
+        "\\lambda",
+        "先验注入强度（可学习）"
+       ]
+      ],
+      "derivation": [
+       "把问题隐状态与每个候选解剖先验打分，得到「该看谁」的分数。",
+       "softmax 归一成路由权重，避免多个结构互相抢注意力。",
+       "按权重把结构先验聚合成一个空间偏置 \\tilde{H}。",
+       "把 \\tilde{H} 以强度 \\lambda 加到解码注意力的 logits 上，结构性地改变「看哪里」。"
+      ],
+      "analogy": "像给检索加一次「先限定版块再搜索」：先选对解剖版块，再在版块内做细粒度注意力。",
+      "pitfalls": [
+       "\\lambda 太大会把注意力锁死在先验上，模型失去纠错能力。",
+       "硬选择还是软加权，直接决定先验预测错误时的鲁棒性。",
+       "先验只作用于解码器，替代不了视觉编码器的表征质量。"
+      ],
+      "code": "import torch, torch.nn.functional as F\n\ndef cara_attention(q, k, v, priors, w_q, w_p, lam, tau=0.1):\n    # q: (B,1,d) 解码器当前问题隐状态; priors: (B,N,d) N 个解剖结构先验\n    score = torch.tanh(q @ w_q + priors @ w_p).sum(-1) / tau   # (B,N)\n    alpha = F.softmax(score, dim=-1)                            # 路由权重\n    hint = (alpha.unsqueeze(-1) * priors).sum(1)                # (B,d) 加权先验\n    logits = (q @ k.transpose(-1, -2)) / q.shape[-1] ** 0.5     # (B,1,T)\n    logits = logits + lam * (q @ hint.unsqueeze(-1))            # 注入空间偏置\n    return F.softmax(logits, dim=-1) @ v\n",
+      "sources": [
+       {
+        "title": "Learning Where to Look: Anatomical Grounding and Guided Attention for Cardiac MRI Vision-Language Models",
+        "url": "https://arxiv.org/abs/2609.39899v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "构建了 128,915 条解剖定位与 42,799 条临床问答数据",
+      "CARA 按问题选择解剖先验并引导解码器注意力",
+      "定位预训练加 CARA 组成 CARA-VL，在临床评估与区域定位上表现更好",
+      "在外部临床队列上显示出泛化希望"
+     ],
+     "uncertain": [
+      "路由注意力公式的精确形式（软/硬选择、注入哪一层）摘要未给，此处按方法描述重构",
+      "「promising generalization」只有定性描述，外部队列的具体指标需查原文",
+      "QA 数据声明「发表后放出」，当前无法下载核对"
+     ]
+    }
+   }
+  },
+  {
+   "id": "63e2ea5d702c742c",
+   "title": "Quantum Algorithms for Computational Fluid Dynamics",
+   "category": "paper",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39962v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39962v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "quant-ph"
+   ],
+   "publishedAt": "2026-09-30T03:30:10+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 55.7,
+   "summary": "We present a comprehensive review of quantum approaches for solving partial differential equations (PDEs) arising in computational fluid dynamics (CFD). We examine fully quantum approaches, including quantum linear system algorithms (QLSAs), ranging from the Harrow--Hassidim--Lloyd (HHL) algorithm to quantum singular value transformation (QSVT), Hamiltonian simulation, and quantum lattice Boltzmann methods (QLBMs), while emphasizing hybrid quantum--classical approaches, including quantum physics-informed neural networks (QPINNs) and amplitude-encoded variational PDE solvers. We focus on hardware-agnostic algorithms compatible with present noisy processors and emerging fault-tolerant architectures. For each framework, we analyze the mathematical formulation, algorithmic structure, and principal limitations. We also examine tensor-network (TN) representations, since CFD fields, differential operators, and geometrical information can often be encoded efficiently in low-rank form. The TN formalism bridges CFD discretizations and quantum states, operators, and circuits, enabling compact representations to be translated into tensor-programmable variational quantum algorithms (TP-VQAs). We further review benchmark problems, including Poisson, reaction, diffusion, and nonlinear model equations, and assess how well quantum algorithms capture key features of fluid dynamics. Our analysis highlights that potential quantum advantage is highly problem dependent and governed by condition number, representational complexity, state preparation, and measurement constraints. We outline capabilities, limitations, and challenges toward scalable quantum algorithms for CFD.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "63e2ea5d702c742c",
+    "tldr": "综述 CFD 的量子求解路线：QLSA、哈密顿量模拟、QLBM 与 QPINN 变分，量子优势高度依赖问题本身。",
+    "keyPoints": [
+     "综述文章，41 页 14 图 2 表，arXiv 2609.39962v1",
+     "全量子路线：QLSA（HHL 到 QSVT）、哈密顿量模拟、QLBM",
+     "混合路线含量子物理信息神经网络 QPINN 与幅度编码变分 PDE 求解器",
+     "讨论张量网络表示，把 CFD 离散化与量子态、算子、线路对应到 TP-VQA",
+     "结论：潜在量子优势受条件数、表示复杂度、态制备与测量约束支配"
+    ],
+    "why": "与多模态/后训练/世界模型/RL/Agent 主线弱相关；可迁移的只有评估习惯：判断一个加速或表示方案是否成立，先查问题条件（条件数、低秩性、读出成本）。",
+    "difficulty": "hard",
+    "tags": [
+     "quantum-computing",
+     "cfd",
+     "pde-solver",
+     "qsvt",
+     "tensor-network",
+     "review"
+    ],
+    "entities": [
+     "HHL",
+     "QSVT",
+     "QLBM",
+     "QPINN",
+     "TP-VQA",
+     "CFD"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "量子 CFD 求解流水线",
+     "caption": "综述给出的量子 CFD 路线：先用张量网络低秩表示，再制备量子态并求解，最后由测量与经典后处理收尾。",
+     "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 340\" role=\"img\" aria-label=\"量子 CFD 求解流水线\">\n  <rect x=\"0\" y=\"0\" width=\"800\" height=\"340\" fill=\"none\"/>\n  <g fill=\"none\" stroke=\"var(--line-1)\" stroke-width=\"2\">\n    <rect x=\"25\" y=\"80\" width=\"160\" height=\"110\" rx=\"12\"/>\n    <rect x=\"215\" y=\"80\" width=\"160\" height=\"110\" rx=\"12\"/>\n    <rect x=\"405\" y=\"80\" width=\"160\" height=\"110\" rx=\"12\"/>\n    <rect x=\"595\" y=\"80\" width=\"160\" height=\"110\" rx=\"12\"/>\n    <rect x=\"25\" y=\"225\" width=\"730\" height=\"85\" rx=\"12\" stroke-dasharray=\"6 5\"/>\n  </g>\n  <g fill=\"var(--fg-1)\" font-size=\"15\" font-family=\"sans-serif\" text-anchor=\"middle\">\n    <text x=\"105\" y=\"110\">张量网络编码</text>\n    <text x=\"295\" y=\"110\">量子态制备</text>\n    <text x=\"485\" y=\"110\">量子求解器</text>\n    <text x=\"675\" y=\"110\">测量与后处理</text>\n  </g>\n  <g fill=\"currentColor\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"middle\">\n    <text x=\"105\" y=\"140\">低秩 CFD 场与算子</text>\n    <text x=\"105\" y=\"162\">键维控制精度</text>\n    <text x=\"295\" y=\"140\">幅度编码右端项</text>\n    <text x=\"295\" y=\"162\">态制备是瓶颈</text>\n    <text x=\"485\" y=\"140\">HHL/QSVT、模拟</text>\n    <text x=\"485\" y=\"162\">QLBM、QPINN 变分</text>\n    <text x=\"675\" y=\"140\">读出受限</text>\n    <text x=\"675\" y=\"162\">经典流场复现</text>\n  </g>\n  <g stroke=\"currentColor\" stroke-width=\"2\" fill=\"none\">\n    <path d=\"M189 135 L205 135\"/>\n    <path d=\"M207 135 L199 131\"/>\n    <path d=\"M207 135 L199 139\"/>\n    <path d=\"M379 135 L395 135\"/>\n    <path d=\"M397 135 L389 131\"/>\n    <path d=\"M397 135 L389 139\"/>\n    <path d=\"M569 135 L585 135\"/>\n    <path d=\"M587 135 L579 131\"/>\n    <path d=\"M587 135 L579 139\"/>\n  </g>\n  <g font-family=\"sans-serif\" text-anchor=\"middle\">\n    <text x=\"390\" y=\"258\" font-size=\"14\" fill=\"var(--accent)\">量子优势并非普遍存在</text>\n    <text x=\"390\" y=\"286\" font-size=\"14\" fill=\"var(--fg-1)\">受条件数、表示复杂度、态制备与测量约束支配</text>\n  </g>\n</svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "张量网络编码",
+        "detail": "把 CFD 场、微分算子与几何信息写成低秩张量网络"
+       },
+       {
+        "label": "量子态制备",
+        "detail": "把右端项幅度编码成量子态，是主要开销之一"
+       },
+       {
+        "label": "量子求解器",
+        "detail": "QLSA（HHL 到 QSVT）、哈密顿量模拟、QLBM 或 QPINN 变分"
+       },
+       {
+        "label": "测量与后处理",
+        "detail": "测量约束限制定量读出，之后交回经典后处理"
+       }
+      ],
+      "edges": [
+       {
+        "from": "张量网络编码",
+        "to": "量子态制备",
+        "label": "低秩表示"
+       },
+       {
+        "from": "量子态制备",
+        "to": "量子求解器",
+        "label": "编码态"
+       },
+       {
+        "from": "量子求解器",
+        "to": "测量与后处理",
+        "label": "求解态"
+       }
+      ]
+     },
+     "alt": "自左向右四个方框：张量网络编码、量子态制备、量子求解器、测量与后处理，底部虚线框标注量子优势受条件数、表示复杂度、态制备与测量约束支配。"
+    },
+    "concepts": [
+     {
+      "name": "量子线性系统算法（HHL 与 QSVT）",
+      "readable": "把解线性方程组 A x = b 变成对量子态做相位估计与受控旋转：先制备右端项，再写进特征值倒数，测量成功后得到与解成正比的量子态。开销随条件数二次增长，且要求 A 稀疏、右端项态可高效制备。",
+      "analogy": "像一支合唱团一次唱出所有音高：量子态同时携带全部特征方向的权重，不用逐个迭代；但散场后你只能采样听几句，且必须先知道整支合唱团的音准范围。",
+      "analogyBreaksDown": "合唱类比对不上读出环节：量子测量每次只给一个采样结果，重建完整流场要大量重复测量，而经典求解器一次性给出整个解向量。",
+      "mechanism": "把 b 制备成量子态，用相位估计把 A 的特征值写进 ancilla，再用受控旋转实现 1/λ，随后逆相位估计；测量 ancilla 成功后主寄存器近似正比于 A^{-1} b。",
+      "visual": "横向流水线：制备右端项 → 相位估计（标注特征值）→ 受控旋转（写 1/λ）→ 逆相位估计 → 测量 ancilla，分出成功与失败两条支路。",
+      "prerequisites": [
+       "线性代数：特征值分解与条件数",
+       "量子门、量子态与受控操作",
+       "相位估计与后选择测量"
+      ],
+      "selfTest": [
+       "为什么 HHL 的复杂度对条件数 κ 是二次依赖，这会如何影响 CFD 网格细化？",
+       "HHL 输出的量子态与经典解向量 x 之间差了什么归一化因子？",
+       "若 A 是稠密的、无法高效做哈密顿量模拟，为什么不能直接套用 HHL？"
+      ],
+      "formula": "\\mathcal{O}(\\kappa^2 \\log N / \\varepsilon)"
+     },
+     {
+      "name": "CFD 场的张量网络低秩编码",
+      "readable": "如果 CFD 的场量、微分算子和几何信息能被写成分解后秩很低的张量，就能用少量参数表示它们，翻译成量子态、算子和线路，交给张量可编程变分量子算法（TP-VQA）求解。低秩是这套路线能否跑通的前提。",
+      "analogy": "像把一张大照片压成几块小拼图：图案本身有结构时，少量拼块就能还原大致画面；纯噪声图片则怎么压都压不动。",
+      "analogyBreaksDown": "拼图压缩靠的是图案结构，张量网络的低秩截断会直接丢信息；一旦流场出现强激波或湍流小尺度结构，秩迅速升高，压缩前提就失效了。",
+      "mechanism": "把离散化的场量与差分算子写成张量网络收缩形式，用键维控制精度与线路深度，再映射为参数化量子线路，构成 TP-VQA。",
+      "visual": "一张张量网络缩略图：场量节点与算子节点用细线相连，旁边标注键维 d，并配一条截断误差随 d 增大而下降的曲线。",
+      "prerequisites": [
+       "张量分解：SVD、Tucker、矩阵乘积态",
+       "PDE 有限差分或有限元离散",
+       "变分量子算法与参数化线路"
+      ],
+      "selfTest": [
+       "为什么低秩可表示性是量子 CFD 可行性的前提之一？",
+       "键维增大时，求解精度与量子线路资源分别怎么变？",
+       "哪类流场特征会让张量网络编码失效？"
+      ],
+      "formula": ""
+     },
+     {
+      "name": "量子-经典混合 PDE 求解器（QPINN 与幅度编码变分）",
+      "readable": "混合路线不要求容错量子计算机：把 PDE 残差、边界与初值条件写成损失，用带参数的量子线路当函数逼近器，靠经典优化器反复调参把残差压小；另一类是幅度编码变分求解器，把解直接编码进量子态幅度再变分优化。",
+      "analogy": "像用一排可调旋钮的模拟电路去拟合一条曲线：不追求一步解析求解，而是反复试错把偏差拧小。",
+      "analogyBreaksDown": "旋钮式拟合给不出求解精度保证，也没有 HHL 那样的复杂度陈述；含噪设备上梯度要多次测量估计，训练开销可能超过经典 PINN。",
+      "mechanism": "构造含 PDE 残差、边界条件、初值项的损失函数，线路参数由经典优化器更新；幅度编码变分求解器则把解编码进量子态幅度，直接最小化变分能量。",
+      "visual": "一个闭环：参数化量子线路 → 多次测量估计残差/损失 → 经典优化器更新参数 → 回到线路；旁注噪声水平与测量次数。",
+      "prerequisites": [
+       "PINN 的自动微分与损失构造",
+       "参数化量子线路与梯度估计",
+       "含噪中等规模量子设备的限制"
+      ],
+      "selfTest": [
+       "QPINN 与经典 PINN 的差别只在函数逼近器换成了量子线路吗？",
+       "为什么含噪设备上的梯度估计会放大测量开销？",
+       "幅度编码变分求解器把什么对象编码进量子态？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-hhl-complexity",
+      "name": "HHL 量子线性求解器的复杂度标度",
+      "category": "engineering",
+      "glyph": "κ",
+      "tags": [
+       "quantum-computing",
+       "linear-system",
+       "complexity"
+      ],
+      "latex": "\\mathcal{O}\\!\\left(\\frac{\\kappa^2 \\log N}{\\varepsilon}\\right)",
+      "html": "<code>O(κ² · log N / ε)</code>",
+      "symbols": [
+       [
+        "A",
+        "N×N 稀疏非奇异矩阵，来自 CFD 的 PDE 离散化"
+       ],
+       [
+        "b",
+        "右端项，其归一化量子态需可高效制备"
+       ],
+       [
+        "x",
+        "待求解向量，满足 A x = b"
+       ],
+       [
+        "N",
+        "线性系统的维度"
+       ],
+       [
+        "κ",
+        "A 的条件数，是复杂度的主导因子"
+       ],
+       [
+        "ε",
+        "目标精度"
+       ]
+      ],
+      "derivation": [
+       "把 CFD 离散化后的 PDE 写成线性系统 A x = b，并要求 A 稀疏、可高效做哈密顿量模拟。",
+       "把 b 归一化并制备成量子态，这一步的态制备开销在复杂度中被单独列出。",
+       "对该态做相位估计得到 A 的特征值，再用受控旋转把特征值倒数写进 ancilla 的幅度。",
+       "逆相位估计后测量 ancilla，成功后主寄存器近似正比于 A^{-1} b，读出即近似解。",
+       "整体按 O(κ² log N / ε) 计：对 N 是对数级加速，但被 κ 的二次项与 1/ε 压制。"
+      ],
+      "analogy": "像用一把会自动按特征值调音的音叉解方程：调好音之后一次覆盖所有特征方向，但你必须先摸清这把音叉的音准范围（条件数）。",
+      "pitfalls": [
+       "κ 很大时二次依赖会吃掉 log N 的收益，网格越细条件数通常越差。",
+       "稠密或无法稀疏访问的 A 不能直接套用这条复杂度。",
+       "态制备与读出常需后选择或幅度放大，实际开销容易被忽略。",
+       "输出是量子态幅度，只能采样估计，无法像经典求解器那样直接拿到完整解向量。",
+       "该标度只属于 HHL 一类 QLSA，不能推广到 QSVT、QLBM 或变分法等其他框架。"
+      ],
+      "code": "import numpy as np\n\n\ndef hhl_query_cost(N: int, kappa: float, eps: float) -> float:\n    # HHL 复杂度量级：O(kappa^2 * log N / eps)\n    return (kappa ** 2) * np.log2(N) / eps\n\n\nN, eps = 512, 1e-2\nfor kappa in (10.0, 100.0, 1000.0):\n    print(kappa, round(hhl_query_cost(N, kappa, eps), 1))\n\n# 网格越细，离散拉普拉斯算子条件数越大\nfor n in (32, 64, 128):\n    main = 2.0 * np.ones(n)\n    off = -1.0 * np.ones(n - 1)\n    A = np.diag(main) + np.diag(off, 1) + np.diag(off, -1)\n    print(n, round(float(np.linalg.cond(A)), 1))\n",
+      "sources": [
+       {
+        "title": "Quantum Algorithms for Computational Fluid Dynamics (arXiv:2609.39962v1)",
+        "url": "https://arxiv.org/abs/2609.39962v1"
+       }
+      ]
+     },
+     {
+      "id": "f-qsvt-block-encoding",
+      "name": "量子奇异值变换：用多项式作用于被块编码的矩阵",
+      "category": "foundation",
+      "glyph": "P",
+      "tags": [
+       "quantum-computing",
+       "qsvt",
+       "block-encoding"
+      ],
+      "latex": "U_{\\phi} = \\sum_{\\ell} \\phi_{\\ell}\\, U^{\\ell}",
+      "html": "<code>U_φ = Σ_ℓ φ_ℓ · U^ℓ</code>",
+      "symbols": [
+       [
+        "U",
+        "块编码算子，其定义子空间上携带待变换矩阵的奇异值"
+       ],
+       [
+        "φ_ℓ",
+        "可调相位序列，决定最终被实现的多项式"
+       ],
+       [
+        "P",
+        "目标多项式，作用于矩阵的奇异值"
+       ],
+       [
+        "σ_i",
+        "被编码矩阵的奇异值"
+       ]
+      ],
+      "derivation": [
+       "若矩阵被块编码进酉算子 U，则 U 在定义子空间上的作用相当于奇异值的旋转。",
+       "交替施加 U 与 U† 并按相位序列加权，得到形式为相位加权幂次和 U_φ。",
+       "U_φ 在定义子空间上的作用正是把每个奇异值映射为同一多项式在该点的取值。",
+       "于是求逆、滤波等操作都等价于挑选合适的多项式，而线路长度由多项式次数决定。"
+      ],
+      "analogy": "像一台可编程滤镜给矩阵的每个奇异值单独调亮度：把旋钮写成一组相位参数，就能指定该压的压、该反的反。",
+      "pitfalls": [
+       "只能实现多项式，非多项式函数必须分段近似，次数随之膨胀。",
+       "相位序列与多项式的奇偶性、实部虚部强耦合，算错会静默得到另一个多项式。",
+       "块编码线路本身常被当作给定，其制备代价可能才是主导开销。",
+       "这里只给出通用形式，本条摘要并未给出该综述所用的具体多项式或复杂度界。"
+      ],
+      "code": "import torch\n\n\ndef qsvt_polynomial(sigma: torch.Tensor, phis: torch.Tensor) -> torch.Tensor:\n    # Chebyshev 递推：T0=1, T1=sigma, T(k+1)=2*sigma*Tk - T(k-1)\n    t_prev, t_cur = torch.ones_like(sigma), sigma.clone()\n    out = phis[0] * t_prev + phis[1] * t_cur\n    for k in range(2, len(phis)):\n        t_prev, t_cur = t_cur, 2 * sigma * t_cur - t_prev\n        out = out + phis[k] * t_cur\n    return out\n\n\nsigma = torch.linspace(-1, 1, 9, dtype=torch.float64)\nphis = torch.zeros(5, dtype=torch.float64)\nphis[0], phis[2] = 1.0, -1.0\napprox = qsvt_polynomial(sigma, phis)\nexact = 1 - (2 * sigma ** 2 - 1)\nprint(torch.allclose(approx, exact))\n",
+      "sources": [
+       {
+        "title": "Quantum Algorithms for Computational Fluid Dynamics (arXiv:2609.39962v1)",
+        "url": "https://arxiv.org/abs/2609.39962v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "该条是一篇综述文章，标注为 41 页、14 图、2 表，来源 arXiv:2609.39962v1，标签 quant-ph。",
+      "综述覆盖全量子路线，包括量子线性系统算法（从 HHL 到 QSVT）、哈密顿量模拟与量子格子玻尔兹曼方法。",
+      "综述强调混合量子-经典路线，包括量子物理信息神经网络与幅度编码变分 PDE 求解器。",
+      "综述聚焦与当前含噪处理器及未来容错架构都兼容的硬件无关算法。",
+      "综述讨论了张量网络表示，认为它可把 CFD 离散化与量子态、算子、线路衔接，并导向张量可编程变分量子算法。",
+      "综述考察的基准问题包括 Poisson、反应、扩散与非线性模型方程。",
+      "综述的结论是潜在量子优势高度依赖具体问题，由条件数、表示复杂度、态制备与测量约束支配。"
+     ],
+     "uncertain": [
+      "本条摘要未给出任何具体复杂度数值或加速倍率；HHL 的 O(κ² log N / ε) 属于通用背景，本文是否采用同一记号与前提需回原文核对。",
+      "摘要未说明各框架在基准问题上的对比结果或优劣排序，无法判断作者更推荐哪条路线。",
+      "该条 codeAvailable 标记为 true，但摘要正文未提到代码仓库，代码位置需人工核实。",
+      "本条与多模态、后训练、生成式、世界模型、RL、Agent 主线无直接关系，why 中的可迁移性判断属于我的推断。",
+      "综述自称硬件无关，但摘要未说明是否给出任何在真实量子设备上的实验验证。"
+     ]
+    }
+   }
+  }
+ ]
+}

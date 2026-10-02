@@ -1,0 +1,746 @@
+{
+ "batchId": "queue-10",
+ "entries": [
+  {
+   "id": "d4fbb4ebf08ca5e3",
+   "tldr": "截图转代码填空基准：五个前沿 MLLM 都偏向照抄 UI 模式，字号扰动偏置率 80.22%、准确率仅 7.89%。",
+   "keyPoints": [
+    "从 30 个 Design2Code 网页构造出 1,440 张评测截图",
+    "任务是在重复 UI 模式里遮蔽一个元素、补出宽度或字号",
+    "卡片宽度扰动：平均偏置率 69.61%，平均准确率 23.11%",
+    "字体大小扰动：平均偏置率 80.22%，平均准确率 7.89%",
+    "噪声、更细微扰动与边界位置都会进一步提高偏置率"
+   ],
+   "why": "对做多模态与代码生成的求职者：它把「模型看得见却照抄模式」做成了可量化的失效模式，直接关系评测集设计与后训练里加推理努力是否有效。",
+   "difficulty": "medium",
+   "tags": [
+    "multimodal",
+    "benchmark",
+    "code-generation",
+    "vision-language",
+    "evaluation"
+   ],
+   "entities": [
+    "MLLM",
+    "Design2Code",
+    "Codex-5.3",
+    "Flash-3.0"
+   ],
+   "diagram": {
+    "kind": "flow",
+    "title": "模式补全偏置基准流程",
+    "caption": "重复 UI 模式里的一个局部扰动，就能把前沿 MLLM 从「读像素」拉回「抄模式」。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='模式补全偏置基准的构建与评测流程'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>30 个网页（Design2Code）</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>两类重复模式</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>扰动一个局部元素</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>遮罩宽度或字号</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>1,440 张评测截图</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>标准 + 加噪</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>五个前沿 MLLM 评测</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>偏置 69.61% / 80.22%</text>\n</svg>",
+    "alt": "竖排流程：30 个 Design2Code 网页分出卡片与文本两类重复模式，扰动一个局部元素并遮罩其宽度或字号，生成 1,440 张标准与加噪截图，交由五个前沿 MLLM 评测，卡片与字号扰动偏置率分别为 69.61% 与 80.22%。"
+   },
+   "concepts": [
+    {
+     "name": "视觉模式补全偏置 Visual Pattern-Completion Bias",
+     "readable": "补一个被遮住的 UI 数值时，模型会优先照抄周围重复元素里反复出现的那个值，而不是去读截图里被扰动后的真实像素，于是答案「看起来对、其实错」。",
+     "analogy": "填字游戏里一整列都写着「北京」，最后一格被涂掉，你多半顺手写「北京」，而不会去核实那一格其实已被改成「南京」。",
+     "analogyBreaksDown": "人做填字时会先扫一眼那格的笔画再决定，而这里的模型拿到的是完整截图与 HTML 上下文，信息并不缺失，却仍然照抄；所以它不能类比成「信息不足时的合理猜测」。",
+     "mechanism": "关键设计是让正确值与模式基线值不同：只有两者可分，才能把「真读像素」与「抄模式」在统计上区分开；扰动只改一个局部元素、其余保持一致，从而排除其他差异带来的混淆。",
+     "visual": "画一张 2×2 柱状图：横轴是扰动类型（卡片宽度 / 字号），纵轴是比例；每类给出两根柱——深色柱为偏置率（69.61% / 80.22%），浅色柱为准确率（23.11% / 7.89%），一眼看出字号那一栏偏置更极端。",
+     "prerequisites": [
+      "截图转代码（Design2Code 一类）任务的基本流程",
+      "分类评测里准确率与错误率的定义",
+      "MLLM 同时接收截图与 HTML 上下文的基本形态"
+     ],
+     "selfTest": [
+      "为什么基准必须让正确值与重复模式基线值不同？",
+      "卡片宽度与字号两类扰动的偏置率差在哪，最可能的解释是什么？",
+      "模型能指出异常元素却仍给出模式一致答案，这说明偏置发生在感知还是解码？"
+     ],
+     "formula": "\\text{BiasRate}=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}[\\hat{y}_i=y_i^{\\text{pattern}}]"
+    },
+    {
+     "name": "推理努力与视觉显著性的分离 Reasoning Effort vs Visual Saliency",
+     "readable": "摘要发现加大推理努力能降低偏置，但定性证据显示模型可以先识别出异常元素、随后仍选择模式一致的答案；偏置的严重程度主要由视觉显著性支配。",
+     "analogy": "监考老师已经用红笔圈出了那道与众不同的题，考生还是按惯例写上标准答案——看见了，但没有按看见的写。",
+     "analogyBreaksDown": "考生可能是时间不够或不敢改，模型的「覆盖」行为没有可解释的动机层；把它说成「模型故意忽略」是过度解读，摘要只给了定性证据。",
+     "mechanism": "这说明偏置不只是感知失败：即使注意力落到了异常元素上，解码仍被高频模式先验拉回去。因此单纯堆推理步数无法根治，必须降低重复上下文的先验强度，或做针对性的后训练。",
+     "visual": "画两条随「推理努力」递增的曲线：准确率缓升、偏置率缓降，但两条线始终不交叉；另标一条「已识别异常元素」的虚线，位置很高，说明识别率与最终正确率脱钩。",
+     "prerequisites": [
+      "思维链与长推理对评测结果的影响",
+      "注意力与输出解码层可分离的基本概念"
+     ],
+     "selfTest": [
+      "如果只是感知失败，加大推理努力应该会有怎样的效果？实测不符合说明什么？",
+      "为什么「识别到异常」不等于「按异常作答」？",
+      "要降低这种偏置，改输入上下文和改后训练分别能解决哪一半问题？"
+     ],
+     "formula": ""
+    }
+   ],
+   "formulas": [
+    {
+     "id": "f-pattern-completion-bias-rate",
+     "name": "模式补全偏置率与填空准确率 Pattern-Completion Bias Rate",
+     "category": "multimodal",
+     "latex": "\\text{BiasRate}=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}[\\hat{y}_i=y_i^{\\text{pattern}}],\\qquad \\text{Acc}=\\frac{1}{N}\\sum_{i=1}^{N}\\mathbb{1}[\\hat{y}_i=y_i^{\\text{true}}]",
+     "symbols": [
+      ["N", "被扰动并评测的样本数（基准共 1,440 张截图）"],
+      ["\\hat{y}_i", "模型填空给出的宽度或字号值"],
+      ["y_i^{\\text{pattern}}", "重复 UI 模式中的基线值（照抄邻元素会得到的答案）"],
+      ["y_i^{\\text{true}}", "被扰动后的真实值，只在截图里可见"],
+      ["\\mathbb{1}[\\cdot]", "指示函数，命中取 1，否则取 0"]
+     ],
+     "derivation": [
+      "第 1 步（动机）：截图转代码时重复 UI 模式让模型可以只复制邻近元素，而不必真去读像素；要量化这种「抄模式」倾向，必须让正确答案与模式答案不一致。",
+      "第 2 步（构造）：在重复模式中扰动一个局部元素（结构卡片的宽度或文本的字号），把它遮罩掉，模型必须从截图与 HTML 上下文补出该值，于是每个样本同时拥有 y^pattern 与 y^true 两个候选。",
+      "第 3 步（统计）：对 N 个样本分别统计命中模式基线（偏置率）与命中真实扰动值（准确率）；两者互补但不必然和为 1，因为模型还可能给出既非模式值也非真值的第三种答案。"
+     ],
+     "analogy": "像把一排同样写着「10 cm」的桌子里的一张偷偷改成「12 cm」再盖住：学生若直接照抄邻桌的「10 cm」，就是模式补全偏置；只有真去量那一张，才拿到准确率。",
+     "pitfalls": [
+      "把偏置率与错误率混为一谈：偏置率只统计「输出等于模式基线」，输出成第三种值时不计入分子。",
+      "误以为偏置率加准确率恒等于 1：模型还可能给出既非模式值也非真值的答案。",
+      "把卡片宽度与字号的数字直接平均，忽略两者难度不同（摘要中卡片准确率远高于字号）。"
+     ],
+     "code": "import numpy as np\n\n# pred: 模型填的宽度/字号；pat: 重复模式基线值；true: 扰动后的真实值\npred = np.array([120, 16, 120, 14, 120])\npat  = np.array([120, 120, 120, 120, 120])\ntrue = np.array([132, 120, 132, 18, 132])\n\nbias_rate = (pred == pat).mean()   # 照抄重复模式的比例\naccuracy  = (pred == true).mean()  # 真正读出扰动值的比例\nprint(bias_rate, accuracy)  # 偏置率与准确率互补，但两者之和可以小于 1\n",
+     "sources": [
+      {
+       "title": "Pattern Over Pixels: Measuring Pattern Completion Bias in Multimodal Code Generation",
+       "url": "https://doi.org/10.5281/zenodo.19341952"
+      }
+     ]
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "论文称这是首个针对视觉模式补全偏置的基准。",
+     "基准从 30 个 Design2Code 网页出发，构造了 1,440 张评测截图。",
+     "评测覆盖结构卡片与文本样式两类重复模式，并包含标准与噪声叠加条件。",
+     "五个前沿 MLLM 都强烈偏向重复基线：卡片宽度偏置率 69.61%，字号偏置率 80.22%。",
+     "对应平均准确率为 23.11% 与 7.89%；Codex-5.3 表现最好，从卡片 65.83% 掉到文本 13.89%；Flash-3.0 在文本上的偏置达到 96.11%。",
+     "噪声、更细微的扰动与边界位置会进一步提高偏置率；推理努力增加可降低偏置，但定性证据显示模型能识别出异常元素却仍给出模式一致的答案。"
+    ],
+    "uncertain": [
+     "具体评测协议（遮蔽方式、是否要求精确数值匹配）摘要未给出，需核对原文。",
+     "「偏置率」的分母口径（全部扰动样本，还是仅统计错误样本）需按原文确认。",
+     "Codex-5.3、Flash-3.0 是摘要中的模型名，是否对应公开模型版本待核实。",
+     "各模型的完整分布与置信区间摘要未给，只给了均值与个别数字。"
+    ]
+   },
+   "teaching": {
+    "progressive": [
+     {
+      "level": "一句话",
+      "text": "让 AI 照着网页截图写前端代码时，它会偷懒照抄重复的样式，而不是真去看那一处被改过的数字。"
+     },
+     {
+      "level": "入门",
+      "text": "研究者挑了 30 个网页，做出重复的卡片和文字样式，然后只改动其中一个元素的宽度或字号并把它盖住，要求模型从截图和 HTML 里补出这个值。正确答案和被重复的模式值不一样，所以「照抄」和「真读」能被分开统计。共 1,440 张截图，分标准与加噪两种条件，测了五个前沿多模态大模型。"
+     },
+     {
+      "level": "进阶",
+      "text": "结果很不乐观：卡片宽度扰动的平均偏置率是 69.61%、准确率 23.11%；字号扰动的偏置率 80.22%、准确率只有 7.89%。最好的 Codex-5.3 在卡片上准确率 65.83%，到了文本字号掉到 13.89%；Flash-3.0 在字号上的偏置率高达 96.11%。加噪声、把扰动做得更细微、把扰动放在边界位置，都会让偏置更严重。这说明重复模式是一个很强的先验，模型倾向于输出「整块地方看起来该有的样子」。"
+     },
+     {
+      "level": "专家",
+      "text": "这篇工作把多模态代码生成的一个具体失效模式量化了：偏置严重程度由视觉显著性支配，因此扰动越不显眼、噪声越大，模型越依赖重复模式先验。消融式的推理分析显示加大推理努力能降低偏置，但定性证据表明模型先定位到异常元素、随后仍以模式一致的答案覆盖它——即偏差不只出在感知，也出在解码决策。与常规截图转代码评测的区别在于，这里正确答案与上下文先验系统性冲突，所以它衡量的是模型对像素证据的忠实度而不是渲染相似度；代价是任务被简化为填单个数值，离真实端到端代码生成还有距离（推断）。"
+     }
+    ],
+    "socratic": [
+     {
+      "q": "如果不让正确答案与重复模式值不同，会怎样？",
+     "a": "那照抄邻元素也能答对，准确率会虚高，模型到底有没有读像素完全无法区分——所以基准必须制造「先验与证据冲突」。"
+     },
+     {
+      "q": "换成更简单的做法，比如只看模型最终渲染的网页像不像，为什么不够？",
+     "a": "渲染相似度会被整体版式掩盖：一个宽度或字号错了，页面看起来仍然像。填空题把误差定位到一个具体数值，才能得到客观可比的偏置率。"
+     },
+     {
+      "q": "模型已经能指出哪个元素异常，为什么还是答错？",
+     "a": "识别与生成是两段过程：注意力可以定位异常，但解码阶段的模式先验仍然占优。这说明需要干预先验强度，而不是只加推理步数。"
+     }
+    ],
+    "mechanism": "为什么必须这样设计：要测量「照抄倾向」，就必须让照抄与正确成为互斥的两个选项，所以基准的做法是扰动一个局部元素、让真实值偏离重复模式基线，再把它遮罩掉。只扰动一个元素而不是整块版式，是为了控制变量：其余元素保持重复，模型面对的差异只有那一处。截图的正确值只能从像素读出，而 HTML 上下文又提供了强烈的模式暗示，两者冲突时模型选谁，正是这个基准想测的量。",
+    "boundary": "适用边界：任务被简化成从截图填空单个宽度或字号值，不覆盖端到端代码生成中的结构、交互与语义错误；结论只针对摘要中评测的五个前沿 MLLM 与 Design2Code 来源的网页，换到移动端 UI 或设计稿风格可能有不同结果。偏置率是统计量而非因果结论，噪声条件的具体强度摘要也未给出。",
+    "analogyBoundary": "「填字游戏」的类比在信息量上不成立：人面对的是残缺输入，模型面对的是完整截图 + HTML。它更像「被要求核对却仍按惯例填」而不是「猜不出来」，因此不能把偏置解读为合理的先验补全。",
+    "misconceptions": [
+     "认为这是模型的视觉能力不足：模型能识别异常元素，问题出在解码时先验压过证据。",
+     "把偏置率当成错误率：给出第三种答案的错误样本不计入偏置率分子。",
+     "认为加大推理努力就能解决：它只降低偏置，定性证据显示覆盖行为仍然存在。"
+    ],
+    "ownAnalysis": "把这条和已知的「多模态模型依赖语言/版式先验」联系起来：重复 UI 模式相当于一个极强的上下文先验，模型在证据与先验冲突时选了先验，这与 MLLM 在计数、OCR 扰动上的失败同源（推断）。可疑之处有三：一是「偏置率」分母口径摘要未说明，直接影响数字可比性；二是只评了五个模型、来源是 30 个网页，样本规模偏小（推断）；三是 Codex-5.3、Flash-3.0 这类命名无法确认对应哪个公开版本，复现时需要核对原文。",
+    "officialNotes": [
+     {
+      "position": "论文自述为「首个视觉模式补全偏置基准」，并称重复 UI 模式会把 MLLM 推向视觉上不正确但模式一致的输出。",
+      "source": "论文摘要（Zenodo，DOI 10.5281/zenodo.19341952）"
+     }
+    ],
+    "interviewAnswer": "我关注的是 MLLM 做截图转代码时的一个具体失效模式：遇到重复的 UI 模式，模型会照抄模式而不是读像素。论文的做法很干净——扰动一个元素、把它遮住、要求填空，让「照抄」和「读像素」成为互斥选项。结果五个前沿模型都强烈偏置：字号扰动偏置率 80.22%、准确率只有 7.89%。我认为价值在于它把「看得见却写错」变成了可测的指标，也说明光加推理步数不够，因为模型能定位异常仍然覆盖它。如果落地，我会在评测集里主动加入这种先验与证据冲突的样本。",
+    "studyPath": {
+     "prerequisites": [
+      "截图转代码任务与 Design2Code 数据集的基本设定",
+      "多模态大模型的输入输出形态（图像 token + 文本）",
+      "评测指标：准确率、偏置率的定义与分母口径"
+     ],
+     "nextSteps": [
+      "读原文核对 1,440 张截图的分层构成与噪声条件强度",
+      "对比同类「先验 vs 证据冲突」基准（如计数、OCR 扰动评测）",
+      "思考后训练侧如何削弱重复模式先验（数据增广、反事实样本）"
+     ]
+    }
+   }
+  },
+  {
+   "id": "c3de96fe54995d79",
+   "tldr": "视频安全检测从二分类改成多标签，自适应 Tversky 奖励调误报/漏报惩罚，Jaccard 40.66 涨到 75.44。",
+   "keyPoints": [
+    "指出现有有害视频检测把多标签安全问题压成二分类",
+    "静态训练目标无法支持可控的精确率-召回率权衡",
+    "提出 ATPO 强化学习框架与自适应 Tversky 奖励 ATR",
+    "SafeWatch-Bench-Real 上 Jaccard 40.66 升到 75.44",
+    "ATR 能把操作点可靠地转向不同审核策略需求"
+   ],
+   "why": "对做多模态安全与后训练的求职者：多标签加可控 PR 操作点是内容审核落地的真实约束，ATR 给出了用奖励塑形替代「一个操作点重训一个模型」的思路。",
+   "difficulty": "medium",
+   "tags": [
+    "multimodal",
+    "rl",
+    "video-understanding",
+    "safety",
+    "multi-label"
+   ],
+   "entities": [
+    "ATPO",
+    "Adaptive Tversky Reward",
+    "SafeWatch-Bench",
+    "XD-Violence",
+    "VLM"
+   ],
+   "diagram": {
+    "kind": "flow",
+    "title": "ATPO 多标签安全检测流程",
+    "caption": "同一条视频输出一组不安全标签，奖励里给误报和漏报各留一个可调旋钮。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='ATPO 多标签视频安全检测与自适应 Tversky 奖励流程'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>VLM 视频理解</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>逐帧 + 文本</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>多标签安全检测</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>一条视频多个标签</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>ATR 自适应奖励</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>动态调 FP / FN 惩罚</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>可控 PR 操作点</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>Jaccard 40.66 到 75.44</text>\n</svg>",
+    "alt": "竖排流程：VLM 做视频理解，输出多标签安全检测结果，训练时用自适应 Tversky 奖励动态调整误报与漏报惩罚，最终得到可按审核策略切换的精确率-召回率操作点，SafeWatch-Bench-Real 上 Jaccard 从 40.66 升到 75.44。"
+   },
+   "concepts": [
+    {
+     "name": "自适应 Tversky 奖励 Adaptive Tversky Reward",
+     "readable": "用一个可调的 Tversky 指数当奖励：把误报和漏报的惩罚拆成两个权重，并在训练中动态拧动，从而把同一个模型推向不同的精确率-召回率操作点。",
+     "analogy": "像给保安定两档罚则：放进一个坏人罚多少、拦下一个好人罚多少。换个场景就换罚则，同一个保安能切换成严格模式或宽松模式。",
+     "analogyBreaksDown": "保安可以在部署当天随手切换罚则，而这里改的是训练奖励，操作点仍然由训练分布决定；遇到分布外的视频时，「旋钮」未必还能按预期线性生效。",
+     "mechanism": "关键设计是把 Jaccard 里被绑在一起的 FP 与 FN 权重解耦成 α、β，并让它们在训练过程中动态变化，使单一模型覆盖多种审核策略，而不必为每个操作点重训一个模型。",
+     "visual": "画一条 PR 曲线，曲线上标三个点（高精确率、平衡、高召回率）；用箭头表示调大 α 时操作点向高精确率方向滑动，调大 β 时反向滑动，说明「同一模型、不同操作点」。",
+     "prerequisites": [
+      "精确率、召回率与 PR 曲线的含义",
+      "多标签分类里 Jaccard / IoU 的定义",
+      "策略梯度或 off-policy RL 的训练流程"
+     ],
+     "selfTest": [
+      "为什么静态损失只能固定在一个操作点？",
+      "把 α 调大会让模型更怕误报还是更怕漏报？",
+      "什么情况下调奖励旋钮也救不了部署时的操作点需求？"
+     ],
+     "formula": "\\mathrm{TI}=\\frac{\\mathrm{TP}}{\\mathrm{TP}+\\alpha\\,\\mathrm{FP}+\\beta\\,\\mathrm{FN}}"
+    },
+    {
+     "name": "多标签视频安全检测 Multi-label Video Safety Detection",
+     "readable": "同一条视频可能同时含有多种不安全内容（如暴力、成人、仇恨），所以输出不是「安全/不安全」一个分数，而是一组类别标签，评测也要按集合重叠来算。",
+     "analogy": "像体检报告不是「健康/不健康」两格，而是一张多项指标的化验单，可能同时有几项超标，医生要看的是一整组异常。",
+     "analogyBreaksDown": "体检指标大多相对独立，而视频的不安全类别常共现且高度相关（同一段画面可能同时触发多个标签），所以不能简单按互相独立的维度分别处理。",
+     "mechanism": "把检测目标从二分类改成多标签集合重叠度量（如 Jaccard），奖励与评测都按集合算；这样一来「可控权衡」也不再是一个全局阈值，而是可以按不安全类别粒度来调节。",
+     "visual": "画一条视频时间轴，上面叠若干条彩色标签带（暴力/成人/仇恨），每条带在对应类别出现的时段亮起；输出是这些带的集合，而不是一个标量分数。",
+     "prerequisites": [
+      "多标签分类与二分类指标的区别",
+      "视频理解模型的基本输入输出",
+      "内容审核场景里精确率与召回率的业务含义"
+     ],
+     "selfTest": [
+      "同一条视频命中两个不安全类别时，二分类框架会丢掉什么信息？",
+      "为什么多标签场景下 Jaccard 比单纯准确率更合适？",
+      "审核策略从「宁可错杀」改成「宁可漏放」，需要改动模型还是只改操作点？"
+     ],
+     "formula": ""
+    }
+   ],
+   "formulas": [
+    {
+     "id": "f-adaptive-tversky-index",
+     "name": "自适应 Tversky 指数与奖励 Adaptive Tversky Reward",
+     "category": "rl",
+     "latex": "\\mathrm{TI}=\\frac{\\mathrm{TP}}{\\mathrm{TP}+\\alpha\\,\\mathrm{FP}+\\beta\\,\\mathrm{FN}},\\qquad r_{\\text{ATR}}=\\mathrm{TI}\\;(\\alpha,\\beta\\ \\text{随训练动态调整})",
+     "symbols": [
+      ["\\mathrm{TP}", "正确命中的不安全类别数（多标签下的真阳性集合大小）"],
+      ["\\mathrm{FP}", "误报数量，即模型报了但实际不安全的类别"],
+      ["\\mathrm{FN}", "漏报数量，即实际不安全但模型没报的类别"],
+      ["\\alpha", "误报惩罚权重：调大则更保守、精确率更高"],
+      ["\\beta", "漏报惩罚权重：调大则更激进、召回率更高"],
+      ["r_{\\text{ATR}}", "以 Tversky 指数形式给出的策略奖励"]
+     ],
+     "derivation": [
+      "第 1 步（动机）：视频审核里不同流水线对错误的容忍度不同，有的宁可错杀、有的宁可漏放；若用静态目标训练，一个模型只能固定在一个精确率-召回率操作点上。",
+      "第 2 步（从 Jaccard 到 Tversky）：Jaccard 把误报与漏报同等对待，等价于 Tversky 指数取 α=β=1；把 α、β 解耦后，训练时调权重就能把操作点推向高精确率或高召回率一侧。",
+      "第 3 步（自适应化）：ATPO 在训练过程中动态调整误报与漏报的惩罚（即自适应 Tversky 奖励），把奖励塑形与策略优化绑在一起，使同一个模型在部署时可按策略需求被「转向」到不同操作点。"
+     ],
+     "analogy": "像考试评分时把「错判为好」和「漏判为好」的扣分做成两个旋钮：老师按考场要求现场调，卷子的判法就整体偏向严格或宽松。",
+     "pitfalls": [
+      "把 Tversky 指数直接当成 Jaccard：只有 α=β=1 时才退化为 Jaccard。",
+      "以为调 α、β 能同时提升精确率与召回率：多数情况下两者此消彼长，摘要强调的正是「可控权衡」。",
+      "把多标签安全检测当成单标签二分类，忽略一条视频可同时命中多个不安全类别。"
+     ],
+     "code": "import torch\n\n# logits: 每条视频每个不安全类别的得分；target: 多标签 0/1\ndef tversky_index(logits, target, alpha=0.7, beta=0.3, thr=0.5):\n    pred = (torch.sigmoid(logits) > thr).float()\n    tp = (pred * target).sum()\n    fp = (pred * (1 - target)).sum()\n    fn = ((1 - pred) * target).sum()\n    return tp / (tp + alpha * fp + beta * fn + 1e-8)\n\n# ATR: alpha/beta 随训练推进动态变化，即可在训练中移动 PR 操作点\nalpha = 0.5 + 0.4 * (step / total_steps)   # 越训越怕误报\nreward = tversky_index(logits, target, alpha=alpha, beta=1 - alpha)\n",
+     "sources": [
+      {
+       "title": "Controllable Multi-label Video Safety Detection via Adaptive Tversky Policy Optimization",
+       "url": "https://arxiv.org/abs/2610.02019v1"
+      }
+     ]
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "论文指出现有有害视频检测系统通常把安全检测退化成二分类，忽略不安全视频的多标签性质。",
+     "论文指出现有系统依赖静态训练目标，不支持可控的精确率-召回率权衡。",
+     "论文提出 ATPO，一个面向多标签视频安全检测（Multi-VSD）的强化学习框架。",
+     "ATPO 引入自适应 Tversky 奖励 ATR，在训练中动态调整误报与漏报惩罚。",
+     "在 SafeWatch-Bench 与 XD-Violence 上实验，SafeWatch-Bench-Real 的 Jaccard Index 从 40.66 提升到 75.44。",
+     "ATR 能可靠地转向精确率-召回率操作点，支持策略需求异质的部署场景；代码与 checkpoint 已公开。"
+    ],
+    "uncertain": [
+     "ATR 的具体调度函数（α、β 如何随训练变化）摘要未给出，公式是按摘要重建的通用 Tversky 形式，需核对原文。",
+     "除 SafeWatch-Bench-Real 的 Jaccard 外，其余数据集与指标的数值摘要未列。",
+     "多标签评测除 Jaccard 外是否还报告 mAP 等指标未说明。",
+     "摘要给出的项目页链接不在本条目 sources 中，因此正文未引用该链接。"
+    ]
+   },
+   "teaching": {
+    "progressive": [
+     {
+      "level": "一句话",
+      "text": "视频审核不该只回答「安全不安全」，而该列出所有不安全类别，并且能按需要调严或调松。"
+     },
+     {
+      "level": "入门",
+      "text": "现有做法有两个毛病：一是把多标签问题压成二分类，同一条视频里暴力的和成人的内容只能给一个分数；二是训练目标固定，想要「宁可错杀」或「宁可漏放」就得重训一个模型。论文提出 ATPO，用强化学习训练多标签视频安全检测，核心是自适应 Tversky 奖励 ATR：它把误报和漏报的惩罚权重做成可调的，并在训练中动态调整。"
+     },
+     {
+      "level": "进阶",
+      "text": "ATR 的形式是 Tversky 指数：命中除以「命中加上 α 倍误报加上 β 倍漏报」。Jaccard 只是 α=β=1 的特例；把两个权重解耦并在训练中动态变化，就能把同一个模型的操作点沿 PR 曲线推移，而不必为每种审核策略重训。实验结果是在 SafeWatch-Bench-Real 上多标签 Jaccard 从 40.66 提高到 75.44，并在 XD-Violence 上做了验证，论文称 ATR 能可靠地转向不同操作点。代价是奖励权重成为新的超参，需要按业务目标设计调度策略。"
+     },
+     {
+      "level": "专家",
+      "text": "与常规做法相比，这项工作把「评测指标」和「训练奖励」统一到集合重叠度量上：多标签视频安全检测用 Jaccard 类指标衡量，而奖励也用同族的 Tversky 指数，于是调 α、β 就等于在控制模型的错误偏好——这正是「可控」的来源。相比按阈值后处理来调操作点，改奖励影响的是模型学到的决策边界本身，能在不同类别上给出更一致的权衡；相比多模型集成，它只需一份 checkpoint。边界在于：可控性来自训练分布，摘要没有给出调度函数、也没有报告分布外行为，因此「可靠转向」目前只能按摘要理解为在评测集与已有类别上成立（推断）。"
+     }
+    ],
+    "socratic": [
+     {
+      "q": "如果只用二分类目标训练会怎样？",
+      "a": "同一条视频命中多个不安全类别时，标签被压成一个标量，模型分不清哪几类越界；Jaccard 这类集合指标也无法优化，评测与训练都损失信息。"
+     },
+     {
+      "q": "为什么不能部署时只调一个阈值来改操作点，而要在奖励里做文章？",
+      "a": "调阈值是后处理，只能在同一条决策边界上滑动，类别之间的权衡无法分别控制；改奖励会影响模型学到的边界本身，才能让「宁可错杀 / 宁可漏放」真正反映到每一类的行为上。"
+     },
+     {
+      "q": "把 α 调得很大有什么副作用？",
+      "a": "模型会趋向保守：误报减少但漏报上升，大量真正有害的视频会被放过——所以在审核场景里，α、β 的调度必须和业务容忍度绑定，而不是越大越好。"
+     }
+    ],
+    "mechanism": "为什么必须这样设计：安全检测的业务需求本身就是异质的——有的渠道宁可错杀、有的宁可漏放，而错误偏好只能通过奖励体现。若奖励里误报与漏报被同等加权（Jaccard），模型只能收敛到一个折中点，部署方就只能靠后处理阈值在边界上滑动。把权重解耦成 α、β 并在训练中动态调整，等于把「错误偏好」做成训练时的自由度：同一份参数即可覆盖多个操作点，同时多标签集合度量保证了「一条视频多个标签」这件事在训练和评测里都被正确对待。",
+    "boundary": "适用边界：结论建立在 SafeWatch-Bench 与 XD-Violence 两个基准上，摘要只给出 SafeWatch-Bench-Real 的 Jaccard 数字；ATR 的调度函数未公开，无法判断「可靠转向」在分布外视频与新增类别上是否成立。奖励权重 α、β 引入敏感超参，若调度与实际审核成本不匹配，可能得到偏置严重的操作点。",
+    "analogyBoundary": "「保安罚则」的类比忽略了训练与部署的分离：罚则可以在值班当天改，而 α、β 改的是训练奖励，部署后模型行为已经固定；而且 RL 训练本身有方差，旋钮效果未必像罚则那样单调可预期。",
+    "misconceptions": [
+     "认为这只是把二分类改成多标签的工程改动：真正的新意是奖励可调、操作点可控。",
+     "把 Tversky 指数等同于 Jaccard：只有 α=β=1 时才等价。",
+     "以为提高 Jaccard 就等于精确率与召回率同时提升：多数情况下是此消彼长后的折中结果。"
+    ],
+    "ownAnalysis": "把这条和已知的 RLHF/奖励塑形联系起来：ATR 本质是给多标签安全场景定制奖励，用可调权重替代固定损失，这和控制偏好强度（如 KL 系数、偏好温度）的思路同源（推断）。可疑处有三：一是摘要只给了一个数据集的 Jaccard 数值，跨数据集泛化能力未经展开；二是「可靠转向」缺少定量证据（如 PR 曲线上的点数）；三是 α、β 的动态调度若不稳定，可能给 RL 训练带来额外方差。对于要落地审核系统的团队，我建议先复现 PR 曲线再决定调度策略。",
+    "officialNotes": [
+     {
+      "position": "论文称 ATPO 显著提升多标签性能，SafeWatch-Bench-Real 上 Jaccard 从 40.66 提升到 75.44，且 ATR 能可靠地引导精确率-召回率操作点。",
+      "source": "论文摘要（arXiv:2610.02019v1）"
+     }
+    ],
+    "interviewAnswer": "我读的是 ATPO，它解决视频安全检测的两个结构性问题：一是把多标签问题压成二分类，二是静态损失只能固定一个操作点。它的做法是用 RL 训练，奖励换成自适应 Tversky 指数——命中除以命中加 α 倍误报加 β 倍漏报，Jaccard 只是 α=β=1 的特例。把 α、β 在训练中动态调整，就等于把「宁可错杀还是宁可漏放」变成训练的自由度，同一份模型能覆盖多种审核策略。实验结果是在 SafeWatch-Bench-Real 上 Jaccard 从 40.66 提到 75.44，并在 XD-Violence 上验证。我会重点关注调度函数和 PR 曲线上的量化证据。",
+    "studyPath": {
+     "prerequisites": [
+      "精确率/召回率与 PR 曲线",
+      "多标签分类的 Jaccard / IoU 定义",
+      "策略优化（策略梯度或 off-policy actor-critic）的基本流程"
+     ],
+     "nextSteps": [
+      "读原文核对 ATR 的 α、β 调度函数与消融结果",
+      "对比按阈值后处理调操作点的做法，看可控性差异",
+      "延伸到多模态安全评测：多标签指标如何与人工审核成本挂钩"
+     ]
+    }
+   }
+  },
+  {
+   "id": "c0c691f69c83245b",
+   "tldr": "SIEVE 把遗忘样本的注意力 value 压向零、保留样本对齐冻结参考模型，选择性删除 VLM 里的个人隐私。",
+   "keyPoints": [
+    "目标是选择性忘记 PII，同时保留同一人的允许知识",
+    "难点：敏感信息与待保留信息共享视觉输入与中间表征",
+    "SIEVE 直接正则化注意力 value 表征，并控制模型输出",
+    "遗忘样本 value 压向常数 0，保留样本对齐冻结参考模型",
+    "消融显示 value 抑制与负交叉熵互补，参考对齐降低效用退化"
+   ],
+   "why": "对做多模态安全与对齐的求职者：遗忘不止能发生在权重或输出层，注意力 value 是更精细的干预点，尤其当「要删的」和「要留的」共享同一套表征时。",
+   "difficulty": "hard",
+   "tags": [
+    "multimodal",
+    "unlearning",
+    "vision-language",
+    "privacy",
+    "attention"
+   ],
+   "entities": [
+    "SIEVE",
+    "VLM",
+    "PII",
+    "attention value"
+   ],
+   "diagram": {
+    "kind": "architecture",
+    "title": "SIEVE 双向表征约束",
+    "caption": "遗忘侧把 attention value 压到零，保留侧贴着冻结参考模型走，两条约束同时上。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='SIEVE 在注意力 value 层面做遗忘与保留双向约束的架构'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>遗忘样本</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>敏感 PII</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>value 压向常数 0</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>+ 负交叉熵</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>保留样本对齐参考</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>冻结参考模型</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>选择性遗忘结果</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>保住保留效用</text>\n</svg>",
+    "alt": "竖排架构：遗忘样本走 value 压向常数零并叠加负交叉熵的路径，保留样本走与冻结参考模型对齐 value 表征的路径，两条路径共同产生选择性遗忘结果并保持保留效用。"
+   },
+   "concepts": [
+    {
+     "name": "注意力值层面的选择性遗忘 Attention-Value Suppression",
+     "readable": "不去改整份权重，而是把模型在遗忘样本上产生的 attention value 表征直接压到零，让这条信息在中间层就传不下去；同时对保留样本保持表征不变。",
+     "analogy": "像在会议录音里把某位发言人的声道单独静音，而不是把整段录音删掉：别人说的话还在，只有这个人的部分被压掉了。",
+     "analogyBreaksDown": "静音是精确的通道隔离，但 VLM 里同一个人的隐私与公开信息可能落在同一批 value 维度上，压零会连带伤到要保留的内容——所以才需要参考模型对齐来兜底。",
+     "mechanism": "关键设计是把干预点放在 attention value 而不是输出分布：只在输出层做负似然只能改答案，改不掉共享的中间表征，知识容易在别的 prompt 上被复原；压 value 则直接切断传播路径。",
+     "visual": "画一个注意力块的方框图：左侧输入 token，中间是注意力矩阵，右侧是每条 value 向量；遗忘样本的 value 条整条涂灰归零，保留样本的 value 条与「冻结参考模型」同位置的条并排对齐。",
+     "prerequisites": [
+      "Transformer 自注意力里 Q/K/V 的分工",
+      "机器遗忘（machine unlearning）的基本设定",
+      "交叉熵与负交叉熵/梯度上升的区别"
+     ],
+     "selfTest": [
+      "为什么只在输出层做遗忘不够？",
+      "把 value 压零会不会误伤保留知识，靠什么机制限制？",
+      "value 抑制和负交叉熵分别提供什么信号？"
+     ],
+     "formula": "\\mathcal{L}_{\\text{forget}}=\\sum_{x\\in\\mathcal{D}_f}\\lVert \\mathrm{AV}(x)\\rVert_2^2"
+    },
+    {
+     "name": "保留-遗忘纠缠 Retain-Forget Entanglement",
+     "readable": "要删的隐私信息和要留的公开信息常出现在同一张图、同一段激活里，所以「删干净」与「别误伤」天然冲突，评测必须同时看遗忘效果与保留效用。",
+     "analogy": "像从一锅汤里挑出盐：盐已经化开了，你不能只捞走盐而不动汤，只能换一种做法让汤里某些味道变淡。",
+     "analogyBreaksDown": "挑盐至少还有一个可分离的物理对象，而这里敏感与保留信息在表征空间里可能是高度重叠的连续方向，不存在「一把捞出」的原子操作。",
+     "mechanism": "关键设计是用冻结参考模型给保留样本提供目标：遗忘侧的压制不设上限，但保留侧必须贴着参考表征，从而把损害限制在被压制的那部分方向上。",
+     "visual": "画一张二维表征散点图：蓝点是保留样本、红点是遗忘样本，原模型里两团混在一起；目标状态里红点被移到原点、蓝点仍留在原位附近，两团分离。",
+     "prerequisites": [
+      "表征空间/embedding 的基本直觉",
+      "PII 保护与模型效用之间的权衡概念"
+     ],
+     "selfTest": [
+      "为什么「删掉这个人的所有数据」不是这个任务的正解？",
+      "如果没有参考模型对齐，保留效用会怎样变化？",
+      "评测时为什么必须同时报告遗忘指标与保留效用？"
+     ],
+     "formula": ""
+    }
+   ],
+   "formulas": [
+    {
+     "id": "f-sieve-value-suppression-loss",
+     "name": "SIEVE 注意力值抑制与参考对齐损失 Attention-Value Suppression Loss",
+     "category": "multimodal",
+     "latex": "\\mathcal{L}=\\sum_{x\\in\\mathcal{D}_f}\\lVert \\mathrm{AV}(x)\\rVert_2^2+\\lambda\\sum_{x\\in\\mathcal{D}_r}\\lVert \\mathrm{AV}(x)-\\mathrm{AV}_{\\text{ref}}(x)\\rVert_2^2+\\mathcal{L}^{\\text{forget}}_{\\text{seq}}+\\mathcal{L}^{\\text{retain}}_{\\text{seq}}+\\mathcal{L}_{\\text{NCE}}",
+     "symbols": [
+      ["\\mathrm{AV}(x)", "样本 x 在某层的注意力 value 表征（被直接干预的对象）"],
+      ["\\mathrm{AV}_{\\text{ref}}(x)", "冻结参考模型在同一位置的表征，作为保留目标"],
+      ["\\mathcal{D}_f", "遗忘样本集合（包含个人身份信息的样本）"],
+      ["\\mathcal{D}_r", "保留样本集合（同一人被允许保留的知识）"],
+      ["\\lambda", "保留侧 value 匹配的权重，控制遗忘与保留的平衡"],
+      ["\\mathcal{L}_{\\text{NCE}}", "负交叉熵项，在输出侧提供互补的遗忘信号"]
+     ],
+     "derivation": [
+      "第 1 步（动机）：VLM 会把视觉身份与个人传记信息关联起来，但隐私信息与该个体的允许知识可能共享同一张图和同一批中间表征，所以无法靠「整条样本丢掉」来遗忘。",
+      "第 2 步（遗忘侧）：直接把遗忘样本的 attention value 正则到常数零，并叠加负交叉熵与序列级遗忘监督，让该信息在中间层传不下去、在输出层也答不出来。",
+      "第 3 步（保留侧）：用冻结参考模型对齐保留样本的 value 表征，并加上序列级保留监督，把压制造成的损害限制在被删方向上；消融显示参考对齐显著降低了保留效用的退化。"
+     ],
+     "analogy": "像给一栋楼的某条线路单独断电，同时用电路图（冻结参考）核对其他线路的电压没被动过；不做第二步核对，就可能顺手把隔壁房间也断了电。",
+     "pitfalls": [
+      "只在输出层做遗忘（负似然或梯度上升）：共享的中间表征没变，知识容易在别的 prompt 下被重新问出来。",
+      "以为 value 抑制与负交叉熵是冗余的：消融显示二者提供互补的遗忘信号。",
+      "忽略「选择性」：把同一人物的全部知识一并删除，违反「保留允许知识」的任务设定。",
+      "认为保留侧对齐可以省掉：去掉参考匹配会明显加剧保留效用的退化。"
+     ],
+     "code": "import torch\n\n# av_forget / av_retain: 当前模型的注意力 value 表征；av_ref: 冻结参考模型输出\ndef sieve_loss(av_forget, av_retain, av_ref, logits_forget, targets, lam=1.0):\n    suppress = av_forget.pow(2).mean()                     # 遗忘侧：压向常数 0\n    keep     = (av_retain - av_ref.detach()).pow(2).mean() # 保留侧：对齐冻结参考\n    nce = -torch.nn.functional.cross_entropy(logits_forget, targets)  # 负交叉熵\n    return suppress + lam * keep + nce\n",
+     "sources": [
+      {
+       "title": "SIEVE: Selective attention-value Suppression for Vision-Language Models Unlearning",
+       "url": "https://arxiv.org/abs/2610.01962v1"
+      }
+     ]
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "SIEVE 面向视觉-语言模型的选择性遗忘，目标是在删除个人身份信息的同时保留同一个体被允许的知识。",
+     "论文指出该设定之所以困难，是因为敏感信息与待保留信息可能共享相同的视觉输入与中间表征。",
+     "SIEVE 直接正则化注意力 value 表征，并把遗忘样本的 attention value 抑制到常数零。",
+     "保留样本的表征通过与一个冻结参考模型匹配来保持。",
+     "上述目标与序列级的遗忘、保留监督结合，使遗忘有针对性而不过多影响保留知识。",
+     "论文称 SIEVE 在多种模型-模态设定下取得 SOTA 遗忘表现并保持有竞争力的保留效用。",
+     "消融显示 value 抑制与负交叉熵提供互补的遗忘信号，基于参考的 value 匹配显著减少效用退化。"
+    ],
+    "uncertain": [
+     "摘要未给出任何数值指标与数据集名称，「SOTA」的具体对照方法待核实。",
+     "「负交叉熵」在总损失中的权重与确切形式（−CE 还是梯度上升）需核对原文。",
+     "「多种模型-模态设定」具体包含哪些模型与模态，摘要未列。",
+     "公式为按摘要重建的通用形式，需核对原文的符号与正则位置。"
+    ]
+   },
+   "teaching": {
+    "progressive": [
+     {
+      "level": "一句话",
+      "text": "要让多模态模型忘掉某个人的隐私，又不能连他可以公开的信息一起忘掉，可以在注意力层里精确压制。"
+     },
+     {
+      "level": "入门",
+      "text": "视觉-语言模型会把长相和个人资料关联起来。任务是要删掉隐私信息，同时保留同一个人被允许知道的部分。难点在于两者可能来自同一张图片、走同一批中间表征，所以不能整条样本丢掉。SIEVE 的做法很直接：把遗忘样本的 attention value 压向常数零，并把保留下来的样本的表征对齐到一个冻结的参考模型，再配上序列级的遗忘与保留监督。"
+     },
+     {
+      "level": "进阶",
+      "text": "SIEVE 的干预点是注意力 value：对遗忘样本做 value 抑制（正则到零），再叠加负交叉熵，让敏感信息在中间层与输出层都传不出去；对保留样本则用冻结参考模型做 value 匹配，防止压制误伤共享表征。消融给出了两个关键结论：value 抑制与负交叉熵提供互补的遗忘信号，而基于参考的 value matching 显著降低保留效用的退化。论文称在多种模型-模态设定上取得 SOTA 遗忘表现，同时保留效用保持有竞争力。整体上它属于「改中间表征」而不是「只改输出」的遗忘路线。"
+     },
+     {
+      "level": "专家",
+      "text": "与常见遗忘方法对比：权重编辑/梯度上升改的是参数或输出分布，难以保证共享表征不变，容易出现「换个 prompt 又问出来」或连带损伤；只做输出层负似然则根本没动中间表示。SIEVE 把干预前移到 attention value，等于在信息通路上装阀门，再用冻结参考模型作为保留侧的锚点，把损害限制在被压制方向上——这与知识编辑、表征引导（representation steering）的思路接近，但目标是遗忘而非注入（推断）。适用边界是「敏感与允许信息共享输入」这种纠缠设定；若遗忘目标本身可与输入解耦，直接过滤样本会更简单。由于摘要未给数据集、数值与损失权重，复现前必须核对原文。"
+     }
+    ],
+    "socratic": [
+     {
+      "q": "如果不做保留侧的参考对齐会怎样？",
+     "a": "遗忘侧的压制会顺着共享表征扩散，把同一人的允许知识一起削弱；消融显示参考匹配能显著减少这种效用退化。"
+     },
+     {
+      "q": "为什么不能直接把包含隐私的样本从训练集里剔掉？",
+     "a": "剔样本只能防止「再学一遍」，无法删除模型已经学到的关联；而且同一张图里既有敏感也有允许信息，整体剔除会连允许知识一起丢。"
+     },
+     {
+      "q": "为什么干预点选 attention value，而不是最后一层输出？",
+     "a": "输出层只能改这一次的答案，中间表征不变意味着换个提问方式知识还在；压 value 是切断传播路径，遗忘更稳、也更难被重新问出来。"
+     }
+    ],
+    "mechanism": "为什么必须这样设计：当敏感信息与保留信息共享视觉输入和中间表征时，遗忘问题就变成「在共享通道上做局部减法」。这与输出层的似然修正根本不同——后者只改答案分布，模型内部仍保留可被其他 prompt 唤起的关联。SIEVE 因此把正则直接加到 attention value 上：遗忘侧压零、保留侧对齐冻结参考，前者保证通路被切断，后者保证切断范围可控；序列级监督再把两端目标落到具体生成行为上。消融显示的互补性说明，中间压制与输出压制各自覆盖了对方漏掉的信号。",
+    "boundary": "适用边界：方法是针对「隐私与被允许知识共享输入/表征」的纠缠设定；若遗忘目标能与输入干净解耦，直接数据集过滤更省事。摘要未给出数据集、指标数值与损失权重，因此「SOTA」与「有竞争力的保留效用」目前只能按论文自述理解；value 抑制强度过大会连带损伤共享方向，需要依赖 λ 与参考匹配来平衡。",
+    "analogyBoundary": "「单独静音某人的声道」的类比在维度上不成立：真实模型里不同信息常共享同一批 value 维度，压制不是通道级的精确开关，而更像把某个方向的分量整体压小，因此必然带有连带损伤，这才需要参考模型兜底。",
+    "misconceptions": [
+     "认为遗忘就是微调或梯度上升：不改中间表征的做法容易让知识在别的 prompt 下复现。",
+     "认为保留效用下降只是训练不足：共享表征的连带损伤才是主因，需靠参考对齐限制。",
+     "把「删除个人数据」理解成删除这个人相关的全部知识：任务要求保留其中被允许的部分。"
+    ],
+    "ownAnalysis": "把这条与知识编辑、表征引导（representation steering）联系起来：三者都在中间表征上做定向干预，只是目标从「注入事实」变成「压制事实」（推断）。可疑处有三：一是摘要没有给出任何数据集与数值，SOTA 缺少可比证据；二是「负交叉熵」这种写法在实现上等于最大化错误损失，训练稳定性存疑，需要核对原文如何防止模型整体退化；三是保留侧依赖冻结参考模型的表征距离，若参考模型本身含有隐私信息，会不会形成新的泄漏面，摘要未讨论（推断）。",
+    "officialNotes": [
+     {
+      "position": "论文称 SIEVE 是一个简单有效的选择性 VLM 遗忘框架，在多种模型-模态设定上取得 SOTA 遗忘表现并保持有竞争力的保留效用，且注意力 value 是敏感与保留知识高度相关时的有效干预点。",
+      "source": "论文摘要（arXiv:2610.01962v1）"
+     }
+    ],
+    "interviewAnswer": "我读的是 SIEVE，做视觉-语言模型的选择性遗忘：要删掉某个人的隐私，但保留他可以被公开的那部分。难点是这两类信息共享同一张图和同一批中间表征，所以简单剔除样本或只改输出都不行。SIEVE 直接在注意力 value 上做文章：遗忘样本的 value 正则到常数零，再加负交叉熵；保留样本则与冻结参考模型的 value 对齐，配合序列级监督。消融说明 value 抑制和负交叉熵是互补的遗忘信号，参考匹配显著降低保留效用退化。它给我的启发是：遗忘的干预点可以更靠中间层，而不是只动输出分布。",
+    "studyPath": {
+     "prerequisites": [
+      "注意力机制中 Q/K/V 与 value 表征的作用",
+      "机器遗忘的评测设定（遗忘效果 + 保留效用）",
+      "交叉熵、负交叉熵与梯度上升的关系"
+     ],
+     "nextSteps": [
+      "读原文核对损失权重、干预层位置与数据集指标",
+      "对比知识编辑/表征引导类方法，理解中间层干预的取舍",
+      "思考多模态遗忘的评测协议：如何构造同人敏感-保留配对样本"
+     ]
+    }
+   }
+  },
+  {
+   "id": "8633dfe2b6d1e3ee",
+   "tldr": "用 RL 做灵巧手动作重定向：点云+手物观测、互补奖励与 FlashSAC 离策略训练，50 个动作成功率 90%。",
+   "keyPoints": [
+    "把人类手-物演示重定向到不同机器人手，要求物理可行",
+    "既有物理方法在成功率或训练效率上存在短板",
+    "观测融合物体点云、手物距离特征与未来轨迹编码",
+    "左右手各自一套 actor-critic，并把 FlashSAC 适配到动作跟踪",
+    "50 个动作基准成功率 90%，约为采样基线 2.5 倍，算力最多少 100 倍"
+   ],
+   "why": "对做机器人、具身智能与 RL 的求职者：它演示了「观测设计 + 互补奖励 + 离策略算法」如何把数据生成成本压下来，可直接迁移到具身数据流水线。",
+   "difficulty": "medium",
+   "tags": [
+    "rl",
+    "robotics",
+    "dexterous-manipulation",
+    "retargeting",
+    "data-generation"
+   ],
+   "entities": [
+    "FlashDexRetarget",
+    "FlashSAC",
+    "XHand",
+    "Sharpa Wave Hand"
+   ],
+   "diagram": {
+    "kind": "flow",
+    "title": "FlashDexRetarget 训练流程",
+    "caption": "把人手演示变成策略可学的观测与互补奖励，再用离策略算法把训练算力省下来。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='FlashDexRetarget 的观测、奖励与离策略训练流程'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>人类手-物演示</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>跨本体迁移</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>点云 + 手物距离 + 未来轨迹</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>观测设计</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>互补奖励 + 双手 actor-critic</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>FlashSAC 离策略</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>50 个动作基准 90% 成功</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>算力最多少 100 倍</text>\n</svg>",
+    "alt": "竖排流程：人类手-物演示经跨本体迁移进入观测设计（物体点云、手物距离特征、未来轨迹编码），再用互补奖励与左右手各自的 actor-critic、以 FlashSAC 离策略方式训练，最终在 50 个动作基准上取得 90% 成功率，训练算力最多减少 100 倍。"
+   },
+   "concepts": [
+    {
+     "name": "物理可行的动作重定向 Physically Feasible Retargeting",
+     "readable": "把人类手-物演示搬到机器人手上时不能只做几何映射：机器人手指长度、自由度和关节限位都不同，映射出来的轨迹必须真的能被物理执行，并完成同样的物体交互。",
+     "analogy": "像把一首用大钢琴弹的曲子改编到只有两个八度的手风琴上：音符要重新分配指法，还得保证手真的按得到。",
+     "analogyBreaksDown": "改编曲子只要求听起来像，而这里还要求接触力与物体运动真的被复制出来，失败会在物理世界里立刻暴露，容错空间小得多。",
+     "mechanism": "关键设计是用 RL 让策略自己搜索可行解，并把「物体运动」与「参考手物关系」拆成互补奖励：前者保证任务结果，后者保证动作形态不跑偏，避免只优化一项而卡在局部最优。",
+     "visual": "画两张并排的手-物轨迹图：左边是人类演示（物体轨迹 + 指尖轨迹），右边是机器人重定向结果；用同色虚线表示对齐的物体轨迹、实线表示不同的指尖轨迹，强调「物体一样、手可以不一样」。",
+     "prerequisites": [
+      "强化学习基础：策略、奖励、on-policy 与 off-policy",
+      "机器人运动学：自由度、关节限位与可达空间",
+      "点云作为策略观测的基本用法"
+     ],
+     "selfTest": [
+      "为什么纯几何映射不能保证重定向结果可用？",
+      "只监督物体运动、不监督手物关系会出现什么问题？",
+      "为什么观测里要加未来轨迹编码？"
+     ],
+     "formula": "r_t=r^{\\text{obj}}_t+r^{\\text{rel}}_t+r^{\\text{fut}}_t"
+    },
+    {
+     "name": "高维连续控制中的离策略适配 Off-policy Adaptation for Dexterous Tracking",
+     "readable": "把 FlashSAC 这类离策略 RL 算法接到灵巧手动作跟踪上：同一批经验可以被反复回放更新，样本效率远高于纯采样或在线方法，但要处理双手带来的高维动作空间。",
+     "analogy": "像用录播课反复复习，而不是每节课都重新上一遍：同一批经验被回放多次，学习成本自然低，但课程内容与考试不匹配时会跑偏。",
+     "analogyBreaksDown": "复习只消耗时间，而离策略 RL 反复用旧数据会带来分布偏移与 Q 值高估，需要额外稳定化；录播课的类比里没有这种「越复习越偏」的机制。",
+     "mechanism": "关键设计是左右手各一套 actor-critic：双手动作空间大，共用一个 critic 会让两侧策略的梯度互相干扰；拆开后每侧维度更低、学习信号更干净，这也是训练算力能大幅下降的原因之一。",
+     "visual": "画一张训练曲线：横轴为训练步数（对数轴），纵轴为成功率；采样基线缓慢上升，FlashDexRetarget 在很早的步数就爬到 90%，两条曲线与横轴之间的涂色表示算力差距。",
+     "prerequisites": [
+      "SAC 与离策略 actor-critic 的结构",
+      "replay buffer 与分布偏移的基本概念"
+     ],
+     "selfTest": [
+      "为什么左右手要分开两套网络？",
+      "离策略方法为什么样本效率更高，代价是什么？",
+      "训练动作数从 50 增加到 1,000 时，摘要说方法表现如何？"
+     ],
+     "formula": ""
+    }
+   ],
+   "formulas": [
+    {
+     "id": "f-complementary-retargeting-reward",
+     "name": "重定向的互补奖励与离策略目标 Complementary Retargeting Reward",
+     "category": "rl",
+     "latex": "r_t=r^{\\text{obj}}_t+r^{\\text{rel}}_t+r^{\\text{fut}}_t,\\qquad \\pi^{*}=\\arg\\max_{\\pi}\\;\\mathbb{E}\\Big[\\sum_{t}\\gamma^{t} r_t\\Big]",
+     "symbols": [
+      ["r^{\\text{obj}}_t", "监督物体运动的奖励项，保证任务结果对被复制出来"],
+      ["r^{\\text{rel}}_t", "参考手-物关系奖励项，约束动作形态不跑偏"],
+      ["r^{\\text{fut}}_t", "由未来轨迹编码驱动的奖励/观测项，帮助策略看到后续走向"],
+      ["\\gamma", "折扣因子，控制策略对远期奖励的重视程度"],
+      ["\\pi^{*}", "学到的重定向策略；左右手各有一套 actor-critic（FlashSAC 离策略更新）"]
+     ],
+     "derivation": [
+      "第 1 步（动机）：人类手-物演示是可复用的数据源，但不同机器人手的形态差异使重定向必须物理可行；纯采样式方法成功率提升慢，纯 RL 方法训练太贵。",
+      "第 2 步（观测侧）：把物体点云、手-物距离特征与未来轨迹编码一起作为观测，让「要跟踪什么」有明确输入，降低策略的学习难度。",
+      "第 3 步（奖励侧）：用互补奖励分别监督物体运动与参考手-物关系，避免单一奖励带来的局部最优（物体动了但手物关系错的解）。",
+      "第 4 步（优化侧）：左右手各自一套 actor-critic，并把 off-policy 的 FlashSAC 适配到灵巧动作跟踪；摘要报告 50 个动作基准成功率 90%，约为采样基线的 2.5 倍，训练算力比所评测 RL 基线最多省 100 倍。"
+     ],
+     "analogy": "像教一个人复刻大师的操作：既要最后作品做出来（物体运动对），又要手型摆得像示范（手物关系对）；只盯成品，可能用完全错误的手势蒙过去。",
+     "pitfalls": [
+      "把重定向当成纯逆运动学或几何映射：那不能保证物理可行，摘要明确指出既有物理方法在成功率或效率上有短板。",
+      "用单一奖励替代互补奖励：物体轨迹对了但手物关系错的解仍会被选中，实际不可用（推断）。",
+      "左右手共用一套 actor-critic：摘要特意分开两套，共用会引入双手动作的相互干扰。"
+     ],
+     "code": "import torch\n\n# 互补奖励：物体运动 + 参考手物关系 + 未来轨迹项\ndef reward(obj_pos, obj_ref, hand_obj_dist, hand_obj_ref,\n           fut_latent, w=(1.0, 0.5, 0.2)):\n    r_obj = -((obj_pos - obj_ref) ** 2).sum(-1)          # 物体运动跟踪\n    r_rel = -(hand_obj_dist - hand_obj_ref).abs().mean(-1)  # 手物关系\n    r_fut = fut_latent.norm(dim=-1) * w[2]               # 未来轨迹编码项\n    return w[0] * r_obj + w[1] * r_rel + r_fut\n\n# 离策略更新：用 replay buffer 反复回放旧经验（FlashSAC 风格的 actor-critic）\nq_loss = torch.nn.functional.mse_loss(q_pred, target_q)\n",
+     "sources": [
+      {
+       "title": "FlashDexRetarget: Accelerating Dexterous Manipulation Data Generation through Multi-Motion Retargeting",
+       "url": "https://arxiv.org/abs/2610.01849v1"
+      }
+     ]
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "论文指出人类手-物演示是可复用的灵巧操作数据来源，但跨本体迁移需要物理可行的重定向。",
+     "论文指出既有基于物理的方法在重定向成功率、针对具体动作的训练效率，或两者上都有局限。",
+     "FlashDexRetarget 是基于 RL 的灵巧动作重定向框架。",
+     "观测结合了物体点云、手-物距离特征与未来轨迹编码，并使用互补奖励监督物体运动与参考手-物关系。",
+     "方法让左右手各用一套 actor-critic，并把 off-policy 的 FlashSAC 适配到灵巧动作跟踪。",
+     "在覆盖单物体与双物体交互的 50 个动作基准上成功率达 90%，约为所评测采样基线的 2.5 倍，训练算力比所评测 RL 基线最多省 100 倍。",
+     "在 XHand 与 Sharpa Wave Hand 上都有稳定收益，组件消融检视了各设计选择；200、500、1,000 个动作的扩展实验显示更大规模下依然稳定，且随训练集增大产出更高效。",
+     "论文还给出用真实世界采集演示做回放的定性结果。"
+    ],
+    "uncertain": [
+     "「up to 100x less training compute」的基线配置与算力口径（GPU 时还是样本数）摘要未说明。",
+     "奖励各项的具体形式与权重未给出，公式为按摘要重建的通用形式，需核对原文。",
+     "90% 成功率的判定标准（是否要求物体位移与接触约束达标）需核对原文。",
+     "摘要给出的项目页链接不在本条目 sources 中，因此正文未引用该链接。"
+    ]
+   },
+   "teaching": {
+    "progressive": [
+     {
+      "level": "一句话",
+      "text": "用强化学习把人的手-物操作演示翻译成机器人灵巧手能真正做出来的动作，又快又省算力。"
+     },
+     {
+      "level": "入门",
+      "text": "人的手-物演示是现成的灵巧操作数据，但机器人手和人手不一样，直接搬过来动作不可执行，需要「重定向」。既有基于物理的方法要么成功率不高，要么每换一类动作都得单独训练。FlashDexRetarget 用强化学习来做：给策略看物体点云、手与物体的距离以及未来轨迹编码，用多项互补奖励分别管「物体动得对不对」和「手物关系像不像」，并且左右手各用一套 actor-critic，用 FlashSAC 这类离策略算法训练。"
+     },
+     {
+     "level": "进阶",
+     "text": "三个设计选择一起起作用。观测侧：点云给出物体几何、手物距离特征给出接触关系、未来轨迹编码让策略提前看到后续走向，降低学习难度。奖励侧：物体运动奖励锁定任务结果，参考手物关系奖励约束动作形态，两者互补可避免只优化一项而落到「物体动了但手势完全不对」的局部最优。优化侧：左右手各有独立的 actor-critic，避免双手策略梯度互相干扰，同时把 off-policy 的 FlashSAC 搬来做动作跟踪，使得同样一批经验能被反复利用。结果是在 50 个动作（单物体与双物体交互）基准上成功率 90%，约为所评测采样基线的 2.5 倍，训练算力比所评测 RL 基线最多少 100 倍。"
+     },
+     {
+      "level": "专家",
+      "text": "与既有路线对比：采样式（如基于物理优化或采样规划）方法成功率高但慢，纯 RL 方法快但训练成本高，本文用「更好的观测 + 多目标奖励 + 离策略算法」同时压这两端。值得注意的两点：一是双手拆分成两个 actor-critic 的做法，本质是在动作空间维度上做分解以稳定学习；二是 200/500/1000 动作的扩展实验说明它不是只对 50 个动作调出来的——规模增大时仍稳定且更高效，这对数据生成流水线比单点成功率更有价值（推断）。边界在于：都是仿真/回放层面的验证，摘要没有给出真机部署的成功率与安全性数据；「100 倍算力」的基线口径也未说明，横向比较需谨慎。"
+     }
+    ],
+    "socratic": [
+     {
+      "q": "如果观测里只有物体点云、没有手物距离特征，会怎样？",
+     "a": "策略只知道物体在哪，不知道自己的手相对物体的接触关系，学「怎么抓」会明显变慢，也更容易学到物理上不合理的姿态（推断）。"
+     },
+     {
+      "q": "为什么不让左右手共用一个 actor-critic？",
+     "a": "双手动作空间维度高且两侧分工不同，共用网络会让梯度互相干扰、学习信号变脏；拆开后每侧问题更低维，摘要也正是这样设计的。"
+     },
+     {
+      "q": "只用采样/物理优化方法不行吗，非要上 RL？",
+     "a": "采样方法成功率是短板，而且每换一类动作往往要重跑；RL 学到的是可复用策略，配合离策略更新能把每个动作的训练算力压下来，所以规模越大越划算。"
+     }
+    ],
+    "mechanism": "为什么必须这样设计：重定向的难点不是「让手模仿人手」，而是「在完全不同的本体上实现同一物体交互」，所以奖励必须同时锁住结果（物体运动）与过程（手物关系），否则策略会找到「物体碰巧被推动、但接触方式完全不可复现」的解。观测侧加入手物距离与未来轨迹编码，是在降低这个多目标问题的搜索难度；把双手拆成两套 actor-critic 并把 off-policy 算法接进来，则是为了在保持稳定的前提下让同一批经验被多次利用——这正是算力能大幅下降的机制。",
+    "boundary": "适用边界：评测集中在 50 个动作基准（单物体与双物体交互）以及 200/500/1000 动作的扩展实验，硬件为 XHand 与 Sharpa Wave Hand；摘要中的定性结果来自真实采集演示的回放，未给出真机部署成功率、接触力安全性或物体多样性上限。互补奖励的权重需要调，换物体或换手型时可能需要重调；「最多省 100 倍算力」是与所评测 RL 基线相比的相对值，不能外推为绝对成本。",
+    "analogyBoundary": "「改编钢琴曲」的类比忽略了接触物理：改编只要求听感相似，而重定向必须复现接触力与物体运动，改编错了不会出事，重定向错了会掉物体甚至损伤硬件，所以奖励设计必须比「听起来像」严格得多。",
+    "misconceptions": [
+     "认为重定向就是逆运动学映射：那不保证物理可行，正是论文要解决的问题。",
+     "把成功率当成唯一指标：训练算力与规模扩展性才是数据生成场景的关键。",
+     "以为双手必须用同一套网络才「统一」：摘要明确使用分开的 actor-critic。"
+    ],
+    "ownAnalysis": "把这条与具身数据生成的主线联系起来：人类演示是可扩展的数据源，瓶颈在于跨本体迁移的成本；本文用观测设计与奖励分解降低单动作训练成本，与「用仿真/RL 放大真实数据」的路线一致（推断）。可疑处有三：一是「最多 100 倍」的算力口径未说明，和采样基线的比较维度（成功率 vs 时间）不同，需看原文表格；二是摘要只给成功率，没有给物体位姿误差或接触力指标，物理保真度难以判断；三是左右手各一套网络的收益，摘要只提到有 component-wise ablation，未给具体数字。总体上它更像工程效率的突破，而非新算法原理（推断）。",
+    "officialNotes": [
+     {
+      "position": "论文自述 FlashDexRetarget 是 RL 框架，在 50 个动作基准上达 90% 成功率（约为所评测采样基线 2.5 倍），训练算力比所评测 RL 基线最多省 100 倍，并在 XHand 与 Sharpa Wave Hand 上给出一致收益。",
+      "source": "论文摘要（arXiv:2610.01849v1）"
+     }
+    ],
+    "interviewAnswer": "我读的是 FlashDexRetarget，做灵巧手动作重定向：人的手-物演示要迁到不同机器人手上，直接几何映射不保证物理可行。它的三点设计是：观测里融合物体点云、手-物距离和未来轨迹编码，降低学习难度；奖励做成互补的多项，分别监督物体运动和参考手物关系，避免局部最优；优化上用左右手各自一套 actor-critic 加 off-policy 的 FlashSAC，让经验可复用。结果是在 50 个动作基准上成功率 90%，约为采样基线 2.5 倍，训练算力比 RL 基线最多省 100 倍，而且在 XHand 和 Sharpa Wave Hand 上都有效。我关注的是它把数据生成成本压下来的工程路径。",
+    "studyPath": {
+     "prerequisites": [
+      "强化学习基础：奖励设计、on-policy 与 off-policy 的区别",
+      "机器人运动学与关节限位、可达空间",
+      "点云观测与 SAC 类 actor-critic 的结构"
+     ],
+     "nextSteps": [
+      "读原文核对奖励各项形式、权重与消融数字",
+      "对比基于物理的重定向方法，理解成功率与效率的取舍",
+      "延伸到具身数据生成流水线：如何用重定向放大人类演示数据"
+     ]
+    }
+   }
+  }
+ ]
+}

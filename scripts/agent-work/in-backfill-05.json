@@ -1,0 +1,1502 @@
+{
+ "batchId": "backfill-05",
+ "mode": "backfill",
+ "items": [
+  {
+   "id": "77e544498b6fdcba",
+   "title": "Patient-Centered Treatment Planning for Chronic Multimorbidity: A Hierarchical Reinforcement Learning Framework for Preference Modeling",
+   "category": "rl",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39911v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39911v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG"
+   ],
+   "publishedAt": "2026-09-30T03:05:48+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 69.7,
+   "summary": "Patient preference, defined as a patient's demonstrated willingness and capacity to adhere to clinical recommendations, is a primary determinant of therapeutic effect yet remains structurally absent from existing computational treatment planning models. We address this gap by presenting patient-centered factored-action hierarchical option-critic (FAHOC), a hierarchical reinforcement learning (HRL) framework that jointly learns high-level options corresponding to therapeutic strategies and factored intra-option policies that decompose the joint action space into disease- and intervention-specific subcomponents, while imposing a cooperation-aware action masking mechanism. This enables structured exploration, improved credit assignment across hierarchy levels, and more interpretable decision pathways, while enforcing patients' preferences. Formal guarantees establish that cooperative patients achieve higher optimal expected health outcomes than non-cooperative patients, and that the factored Q-function approximation error is provably bounded. The framework is evaluated using longitudinal data collected from approximately 50,000 comorbid hypertension and type 2 diabetes mellitus patients from five hospitals in the Southeast U.S. FAHOC achieves a quality-adjusted life year expectancy equivalent improvement of 0.669 (vs -0.133 observed clinician practice), correctly identifies cooperative patients in 95.9% of cases and never violates a patient's preference in held-out test, demonstrating that HRL with explicit preference constraints can support preference-consistent, clinically safe decision-making in multimorbidity management.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "77e544498b6fdcba",
+    "tldr": "FAHOC分层RL联合学习治疗策略选项与疾病/干预分解子策略，加合作感知掩码；5万患者QALY提升0.669。",
+    "keyPoints": [
+     "患者偏好是疗效主要决定因素，却缺失于现有计算治疗规划模型。",
+     "FAHOC 是分层 RL 框架：高层学治疗策略 option，低层学分解式策略。",
+     "分解式子策略把联合动作空间拆成疾病与干预子分量，并施加合作感知掩码。",
+     "形式化保证：合作患者最优期望健康结果更高，且分解 Q 函数近似误差有界。",
+     "五家医院约5万高血压合并2型糖尿病患者数据；95.9%正确识别合作患者。"
+    ],
+    "why": "对 RL / Agent 求职者：分层 option 与因子化动作空间可迁移到长时程工具调用 Agent；多模态、生成式、世界模型方向相关性弱。",
+    "difficulty": "medium",
+    "tags": [
+     "hierarchical-rl",
+     "preference-modeling",
+     "option-critic",
+     "action-masking",
+     "healthcare",
+     "factored-actions"
+    ],
+    "entities": [
+     "FAHOC",
+     "hierarchical reinforcement learning",
+     "option-critic",
+     "cooperation-aware action masking",
+     "type 2 diabetes mellitus",
+     "hypertension"
+    ],
+    "diagram": {
+     "kind": "architecture",
+     "title": "FAHOC 分层决策流程",
+     "caption": "高层选治疗策略选项，低层在合作感知掩码约束下按疾病与干预分解地选动作，终止信号交还高层。",
+     "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 400\" role=\"img\" aria-label=\"FAHOC 分层决策流程图\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><rect x=\"20\" y=\"120\" width=\"150\" height=\"80\" rx=\"8\" stroke=\"var(--line-1)\"/><rect x=\"192\" y=\"120\" width=\"168\" height=\"80\" rx=\"8\" stroke=\"var(--accent)\" stroke-width=\"2\"/><rect x=\"382\" y=\"120\" width=\"210\" height=\"80\" rx=\"8\" stroke=\"var(--line-1)\"/><rect x=\"614\" y=\"120\" width=\"150\" height=\"80\" rx=\"8\" stroke=\"var(--line-1)\"/><rect x=\"786\" y=\"120\" width=\"154\" height=\"80\" rx=\"8\" stroke=\"var(--line-1)\"/><line x1=\"170\" y1=\"160\" x2=\"182\" y2=\"160\"/><polygon points=\"182,155 192,160 182,165\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"360\" y1=\"160\" x2=\"372\" y2=\"160\"/><polygon points=\"372,155 382,160 372,165\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"592\" y1=\"160\" x2=\"604\" y2=\"160\"/><polygon points=\"604,155 614,160 604,165\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"764\" y1=\"160\" x2=\"776\" y2=\"160\"/><polygon points=\"776,155 786,160 776,165\" fill=\"currentColor\" stroke=\"none\"/><path d=\"M861 120 L861 66 L276 66 L276 104\"/><polygon points=\"270,104 282,104 276,116\" fill=\"currentColor\" stroke=\"none\"/></g><g fill=\"currentColor\" text-anchor=\"middle\"><text x=\"95\" y=\"155\" font-size=\"15\">患者状态</text><text x=\"95\" y=\"178\" font-size=\"13\">共病与偏好</text><text x=\"276\" y=\"148\" font-size=\"15\" fill=\"var(--accent)\">高层选项</text><text x=\"276\" y=\"170\" font-size=\"13\">选治疗策略 option</text><text x=\"487\" y=\"148\" font-size=\"15\">分解式子策略</text><text x=\"487\" y=\"170\" font-size=\"13\">疾病 / 干预子分量</text><text x=\"689\" y=\"148\" font-size=\"15\">合作感知掩码</text><text x=\"689\" y=\"170\" font-size=\"13\">过滤不可行动作</text><text x=\"863\" y=\"148\" font-size=\"15\">环境反馈</text><text x=\"863\" y=\"170\" font-size=\"13\">健康结果与偏好</text><text x=\"568\" y=\"56\" font-size=\"13\">option 终止后交还高层，重新选策略</text></g></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "患者状态",
+        "detail": "共病状态与患者偏好"
+       },
+       {
+        "label": "高层选项",
+        "detail": "学习对应治疗策略的 option"
+       },
+       {
+        "label": "分解式子策略",
+        "detail": "intra-option 策略拆成疾病与干预子分量"
+       },
+       {
+        "label": "合作感知掩码",
+        "detail": "按偏好与合作度约束可行动作"
+       },
+       {
+        "label": "环境反馈",
+        "detail": "健康结果与偏好满足情况"
+       }
+      ],
+      "edges": [
+       {
+        "from": "患者状态",
+        "to": "高层选项",
+        "label": "选择策略"
+       },
+       {
+        "from": "高层选项",
+        "to": "分解式子策略",
+        "label": "下发选项"
+       },
+       {
+        "from": "分解式子策略",
+        "to": "合作感知掩码",
+        "label": "候选动作"
+       },
+       {
+        "from": "合作感知掩码",
+        "to": "环境反馈",
+        "label": "执行动作"
+       },
+       {
+        "from": "环境反馈",
+        "to": "高层选项",
+        "label": "option 终止后重新选择"
+       }
+      ]
+     },
+     "alt": "横向流程图：患者状态到高层选项，到分解式子策略，到合作感知掩码，到环境反馈，再由 option 终止信号返回高层重新选择策略。"
+    },
+    "concepts": [
+     {
+      "name": "分层选项与时间抽象",
+      "readable": "把长期治疗拆成两层：上层先挑一个持续一段时间的治疗策略，下层在这个策略内逐步选具体用药或干预。这样每次决策不用从零考虑所有动作，探索更有结构，功劳也能分到对的层级。",
+      "analogy": "像出国旅行：先定这三天待在哪个城市（高层策略），再决定每天具体去哪几个景点（低层动作）；不会每走一步都重新决定去哪个国家。",
+      "analogyBreaksDown": "旅行中高层策略可以随时任性地换，而治疗策略一旦启动就要考虑身体反应延迟与疗程连续性，换策略本身有代价；旅行类比里没有这种不可逆的生理成本。",
+      "mechanism": "高层策略在状态上选择 option，option 内部用 intra-option 策略持续输出动作，直到终止函数判定该 option 结束再交还高层；两层各有价值估计，从而在长时程上做时间抽象与分层信用分配。",
+      "visual": "画一棵两层树：根节点写「治疗策略 option」，下面挂若干子节点写「具体干预动作」，右侧用一条带箭头的回环线标注「终止后回到根节点重选」。",
+      "prerequisites": [
+       "马尔可夫决策过程基础",
+       "策略梯度与价值函数",
+       "option / 半马尔可夫决策过程概念"
+      ],
+      "selfTest": [
+       "高层 option 与低层动作在时间尺度上有什么本质差别？",
+       "终止函数学得不好会导致什么后果？",
+       "为什么分层能改善长时程任务的信用分配？"
+      ],
+      "formula": "\\nabla_\\theta J=\\mathbb{E}\\Big[\\nabla_\\theta\\log\\pi_\\omega(a\\mid s)\\,Q_\\Omega(s,\\omega)\\Big]"
+     },
+     {
+      "name": "因子化动作空间与掩码",
+      "readable": "把一个大动作空间拆成几块小空间，比如按疾病拆、按干预类型拆，各自打分再组合；同时用一个掩码把不符合患者偏好或临床上不可行的动作直接屏蔽掉。",
+      "analogy": "像点外卖：先分「主食 / 饮料 / 小菜」三栏各挑一样，而不是在几千个套餐里硬选；如果有过敏原，带该食材的选项直接被灰掉点不了。",
+      "analogyBreaksDown": "点外卖各栏之间基本独立，而疾病与干预子动作在临床上会互相影响（一种药改变另一种药的效果），类比忽略了这种跨因子的耦合。",
+      "mechanism": "联合 Q 函数被近似为各因子分量之和或组合，每个分量只在自己的子动作空间上取值；合作感知掩码在取动作前把不满足偏好的动作概率置零并重归一化，从而在优化中硬性满足偏好约束。",
+      "visual": "画三列并行的小方格阵列，分别标注疾病 A、疾病 B、干预类型，每列各选一格后再汇入一个写着「组合动作」的方框；方框入口处画一道闸门写「掩码」。",
+      "prerequisites": [
+       "因子化 MDP 与可加 Q 分解",
+       "动作掩码 / 合法动作约束",
+       "约束优化与可行性"
+      ],
+      "selfTest": [
+       "因子化 Q 分解的误差上界依赖什么假设？",
+       "掩码把动作概率置零后为什么必须重归一化？",
+       "掩码与在奖励里加偏好惩罚有什么本质区别？"
+      ],
+      "formula": "Q(s,a)\\approx\\sum_{k=1}^{K}Q_k(s,a_k),\\quad \\pi(a\\mid s)=\\frac{m(s,a)\\,\\tilde\\pi(a\\mid s)}{\\sum_{a\\prime}m(s,a\\prime)\\,\\tilde\\pi(a\\prime\\mid s)}"
+     },
+     {
+      "name": "偏好约束下的策略优化",
+      "readable": "把患者坚持建议的意愿与能力写进决策的可行动作集里，使策略从一开始就不会推荐患者不会执行的治疗，从而让可达到的期望疗效与合作程度挂钩。",
+      "analogy": "像教练制定训练计划：明知学员每周只能练两次，就不会安排每天两小时的方案；按可行强度排的计划，实际成绩反而更好。",
+      "analogyBreaksDown": "健身计划不达标只是成绩差，医疗里不依从可能直接导致病情恶化甚至不可逆，所以约束是硬性的而非软性偏好，代价不对称。",
+      "mechanism": "在分层策略优化中把偏好作为可行域约束而非奖励项，动作必须落在合作患者可执行集合内；由此可证明合作患者的最优期望健康结果不低于非合作患者，且分解近似带来的误差有界。",
+      "visual": "画一条曲线：横轴写「合作程度」，纵轴写「最优期望健康结果」，曲线单调上升；下方用阴影带标出「不可行动作区域」，被一道竖直虚线隔开。",
+      "prerequisites": [
+       "约束马尔可夫决策过程",
+       "策略改进定理",
+       "偏好与效用建模基础"
+      ],
+      "selfTest": [
+       "为什么合作患者的最优期望结果更高是「保证」而非经验观察？",
+       "把偏好当约束与当奖励项分别会带来什么风险？",
+       "偏好估计错误时框架会怎样失效？"
+      ],
+      "formula": "V^\\ast_{\\text{coop}}(s)\\ge V^\\ast_{\\text{non}}(s)\\quad\\text{s.t.}\\ a\\in\\mathcal{A}_{\\text{pref}}(s)"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-option-critic-update",
+      "name": "option-critic 的 intra-option 策略梯度",
+      "category": "rl",
+      "glyph": "∇",
+      "tags": [
+       "hierarchical-rl",
+       "option-critic",
+       "policy-gradient"
+      ],
+      "latex": "\\frac{\\partial J}{\\partial\\theta}=\\mathbb{E}_{s,\\omega,a}\\Big[\\frac{\\partial\\log\\pi_{\\theta}(a\\mid s,\\omega)}{\\partial\\theta}\\,Q_{\\Omega}(s,\\omega,a)\\Big]",
+      "html": "<code>grad = log pi_theta(a|s,omega) * Q_Omega(s,omega,a)</code>",
+      "symbols": [
+       [
+        "J",
+        "期望回报目标"
+       ],
+       [
+        "\\theta",
+        "intra-option 策略参数"
+       ],
+       [
+        "\\omega",
+        "当前高层 option（治疗策略）"
+       ],
+       [
+        "a",
+        "低层动作，可因子化为 a_k"
+       ],
+       [
+        "Q_{\\Omega}",
+        "option 价值函数"
+       ],
+       [
+        "\\pi_{\\theta}",
+        "option 内策略"
+       ]
+      ],
+      "derivation": [
+       "把策略梯度定理从「单层动作」推广到「以 option 为条件的动作」，似然项写成 log π_θ(a|s,ω)。",
+       "用 option 价值 Q_Ω(s,ω,a) 取代普通动作价值，评价的是在 option 内部执行该动作的长期收益。",
+       "实际训练时用采样的单步估计替代期望，并对 Q_Ω 使用自举目标以降低方差。",
+       "FAHOC 进一步把 π_θ(a|s,ω) 分解为疾病与干预子策略的乘积，使每个因子只在自己的子动作空间上更新。"
+      ],
+      "analogy": "像球队里主教练定战术（option）、球员执行具体跑位（intra-option 动作）：每个跑位的价值要用它在整套战术里的贡献来衡量，而不是单独看这一次跑位漂不漂亮。",
+      "pitfalls": [
+       "误用普通 Q(s,a) 代替 option 价值，会丢掉跨时间尺度的信用分配。",
+       "把终止函数梯度漏掉，option 会永不切换或频繁抖动。",
+       "对 log 概率与优势项的量纲不做归一，梯度尺度会随分层而爆炸。"
+      ],
+      "code": "import torch\nimport torch.nn as nn\n\n\nclass IntraOptionPolicy(nn.Module):\n    def __init__(self, state_dim, n_options, n_actions):\n        super().__init__()\n        self.n_options = n_options\n        self.head = nn.Linear(state_dim, n_options * n_actions)\n        self.n_actions = n_actions\n\n    def forward(self, state):\n        logits = self.head(state).view(-1, self.n_options, self.n_actions)\n        return torch.distributions.Categorical(logits=logits)\n\n\ndef intra_option_loss(dist, option, action, option_value, mask=None):\n    logits = dist.logits\n    if mask is not None:\n        # mask 为 0 的动作概率置零后重新归一化\n        logits = logits.masked_fill(mask == 0, float('-inf'))\n    dist = torch.distributions.Categorical(logits=logits)\n    logp = dist.log_prob(action)\n    return -(logp * option_value.detach()).mean()",
+      "sources": [
+       {
+        "title": "arXiv:2609.39911v1 Patient-Centered Treatment Planning for Chronic Multimorbidity",
+        "url": "https://arxiv.org/abs/2609.39911v1"
+       }
+      ]
+     },
+     {
+      "id": "f-pref-constrained-return",
+      "name": "偏好约束下的回报与最优性保证",
+      "category": "rl",
+      "glyph": "V",
+      "tags": [
+       "constrained-rl",
+       "preference",
+       "healthcare"
+      ],
+      "latex": "V^{\\ast}_{\\text{coop}}(s)=\\max_{\\pi}\\ \\mathbb{E}_{\\pi}\\Big[\\sum_{t=0}^{\\infty}\\gamma^{t}r_{t}\\Big]\\ \\ \\text{s.t.}\\ \\ a_{t}\\in\\mathcal{A}_{\\text{pref}}(s_{t})",
+      "html": "<code>V_coop*(s) = max_pi E[sum gamma^t r_t] s.t. a_t in A_pref(s_t)</code>",
+      "symbols": [
+       [
+        "V^{\\ast}_{\\text{coop}}",
+        "合作患者可达到的最优期望健康结果"
+       ],
+       [
+        "\\gamma",
+        "折扣因子"
+       ],
+       [
+        "r_t",
+        "当期健康收益"
+       ],
+       [
+        "\\mathcal{A}_{\\text{pref}}(s)",
+        "状态 s 下符合患者偏好的可行动作集"
+       ],
+       [
+        "\\pi",
+        "分层策略（高层 option + 低层因子化策略）"
+       ]
+      ],
+      "derivation": [
+       "把患者偏好表述为状态相关的可行动作集 A_pref(s)，而不是奖励中的惩罚项。",
+       "合作患者的可行集包含非合作患者的可行集，因此其可行策略集合更大。",
+       "在更大的可行集上取最大，目标值不会下降——这给出 V*_coop ≥ V*_non 的单调性保证。",
+       "因子化把联合 Q 近似为各子分量之和，其近似误差由各分量的估计误差共同界定，因此误差有界。"
+      ],
+      "analogy": "像两个求职者投简历：一个人可以投所有岗位，另一个只能投本地岗位；可投范围更大的人，最优 offer 至少不会更差。",
+      "pitfalls": [
+       "若把偏好当软惩罚，策略仍可能选到不可执行动作，保证失效。",
+       "可行集若随时间漂移而估计滞后，约束会不满足。",
+       "因子化 Q 的误差上界只在分解假设成立时有效，跨因子强耦合会破坏它。"
+      ],
+      "code": "import numpy as np\n\n\ndef masked_softmax(logits, mask):\n    logits = np.asarray(logits, dtype=float)\n    mask = np.asarray(mask, dtype=float)\n    z = np.where(mask > 0, logits, -np.inf)\n    z = z - np.max(z)\n    e = np.exp(z) * (mask > 0)\n    total = e.sum()\n    if total <= 0:\n        raise ValueError('可行动作集为空，偏好约束不可满足')\n    return e / total\n\n\ndef preference_feasible(state_pref, need_coop):\n    # state_pref: 每个动作要求的合作度; need_coop: 患者实际合作度\n    return (state_pref <= need_coop).astype(float)\n\n\nif __name__ == '__main__':\n    logits = [1.0, 2.0, 0.5]\n    mask = preference_feasible([0.2, 0.9, 0.4], 0.5)\n    print(mask, masked_softmax(logits, mask))",
+      "sources": [
+       {
+        "title": "arXiv:2609.39911v1 Patient-Centered Treatment Planning for Chronic Multimorbidity",
+        "url": "https://arxiv.org/abs/2609.39911v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "摘要称患者偏好指患者坚持临床建议的意愿与能力，是疗效的主要决定因素，但在现有计算治疗规划模型中结构性缺失。",
+      "摘要提出 FAHOC，一个分层强化学习框架，联合学习对应治疗策略的高层 option 与分解式 intra-option 策略。",
+      "分解把联合动作空间拆成疾病专用与干预专用子分量，并施加合作感知动作掩码。",
+      "摘要称框架给出形式化保证：合作患者的最优期望健康结果高于非合作患者，且因子化 Q 函数近似误差可证有界。",
+      "评测使用美国东南部五家医院约 5 万名高血压合并 2 型糖尿病患者的纵向数据。",
+      "摘要报告 FAHOC 的 QALY 期望改善为 0.669，而观察到的临床实践为 -0.133。",
+      "摘要报告在留出测试中 95.9% 正确识别合作患者，且从未违反患者偏好。",
+      "该条来自 arXiv，venue 写着 39 pages, including appendices，codeAvailable 为 false。"
+     ],
+     "uncertain": [
+      "合作感知动作掩码的具体实现（掩码规则来源、是否学习得到）摘要未说明。",
+      "0.669 与 -0.133 的计算口径、对照时间段与统计显著性摘要未交代，需回原文核实。",
+      "95.9% 对应的是准确率还是敏感度/特异度，摘要表述为 correctly identifies，存在歧义。",
+      "两条形式化保证的证明细节与所需假设（如偏好稳定、可行集非空）只可能在正文与附录中。",
+      "该框架似为回顾性数据上的离线评估，摘要未提及任何前瞻性临床试验或实际部署。",
+      "摘要称 39 页含附录，但未提及代码或数据是否公开，复现难度未知。",
+      "摘要未给出与其它 HRL 或约束 RL 基线在医学任务上的横向对比细节。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "9ae4c993750e49a5",
+   "title": "Do Better Goal Representations Improve Goal-Conditioned Reinforcement Learning?",
+   "category": "rl",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39901v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39901v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG",
+    "cs.AI"
+   ],
+   "publishedAt": "2026-09-30T03:02:02+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 63.7,
+   "summary": "Goal-conditioned reinforcement learning (GCRL) relies heavily on how target goals are represented to the policy. While recent methods encode goals via temporal distance, occupancy, or controllability, it remains unclear how much downstream performance actually depends on representation quality. We study this in offline GCRL by constructing an exact temporal-distance goal representation in deterministic mazes. We then systematically corrupt its geometric quality while keeping the downstream learner fixed. Across OGBench navigation tasks and two algorithms, large changes in goal-representation quality produce almost no change in performance. However, applying the same interventions to the agent's current state more than doubles success, revealing the state pathway as the true bottleneck. Building on this insight, we show that simple random Fourier positional encodings substantially improve performance on the hardest navigation tasks without map information or objective modifications. Overall, our findings suggest that in state-based offline navigation, improving how the agent's current state is represented matters far more than refining the goal representation. Code will be released soon.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "9ae4c993750e49a5",
+    "tldr": "离线目标条件 RL 里，把目标表征做准几乎不改变成绩，把当前状态表征做好却让成功率翻倍以上。",
+    "keyPoints": [
+     "在确定性迷宫里构造精确的时间距离目标表征",
+     "系统性破坏该表征的几何质量，下游学习器保持不变",
+     "OGBench 导航与两种算法上成绩几乎不变",
+     "对当前状态做同样干预，成功率翻倍以上",
+     "随机傅里叶位置编码在最难的无地图任务上明显更好"
+    ],
+    "why": "RL 里普遍默认「表征越好越强」；这篇用严格消融指出瓶颈在状态通路，做 RL 与世界模型时能少走弯路。",
+    "difficulty": "medium",
+    "tags": [
+     "rl",
+     "goal-conditioned",
+     "representation",
+     "offline-rl",
+     "positional-encoding"
+    ],
+    "entities": [
+     "GCRL",
+     "OGBench",
+     "temporal distance",
+     "random Fourier features"
+    ],
+    "diagram": {
+     "kind": "matrix",
+     "title": "目标通路 vs 状态通路的敏感度",
+     "caption": "同样幅度的表征干预，只有状态侧造成了显著的成绩变化",
+     "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='目标表征与状态表征在同等干预下对下游成绩影响的对照矩阵'><text x='196.5' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是否施加干预</text><text x='373.5' y='24.0' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>对下游成绩的影响</text><text x='98.0' y='72.5' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>目标表征</text><text x='98.0' y='139.5' font-size='13' text-anchor='end' fill='currentColor' font-weight='normal'>*当前状态表征</text><rect x='108.0' y='34.0' width='177.0' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='196.5' y='72.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是</text><rect x='285.0' y='34.0' width='177.0' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='373.5' y='72.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>几乎不变</text><rect x='108.0' y='101.0' width='177.0' height='67.0' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='196.5' y='139.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>是</text><rect x='285.0' y='101.0' width='177.0' height='67.0' fill='none' stroke='var(--accent)' stroke-width='2.0'/><text x='373.5' y='139.5' font-size='13' text-anchor='middle' fill='currentColor' font-weight='normal'>成功率翻倍以上</text></svg>",
+     "spec": {
+      "type": "matrix",
+      "rows": [
+       "目标表征",
+       "*当前状态表征"
+      ],
+      "cols": [
+       "是否施加干预",
+       "对下游成绩的影响"
+      ],
+      "cells": [
+       [
+        "是",
+        "几乎不变"
+       ],
+       [
+        "是",
+        "*成功率翻倍以上"
+       ]
+      ]
+     },
+     "alt": "目标表征与状态表征在同等干预下对下游成绩影响的对照矩阵"
+    },
+    "concepts": [
+     {
+      "name": "Temporal-distance Goal Representation（时间距离目标表征）",
+      "readable": "用「从当前状态走到目标还要多少步」来表示目标，而不是用目标坐标；在确定性迷宫里这个距离可以精确计算。",
+      "analogy": "像导航里用「还有 15 分钟到」而不是「目的地在东经 116.4 度」来描述目标。",
+      "analogyBreaksDown": "只有确定性环境才能精确算时间距离；随机环境里同名状态之间的步数不确定，该表征会退化。",
+      "mechanism": "在确定性迷宫上构造精确的时间距离作为目标表征，使研究者能够精确控制它的几何质量，从而隔离「目标表征好坏」这个变量。",
+      "visual": "同一张迷宫图上画等值线，每条线是到目标步数相同的状态集合。",
+      "prerequisites": [
+       "目标条件 RL",
+       "值函数与距离函数",
+       "离线 RL 数据集"
+      ],
+      "selfTest": [
+       "时间距离目标表征的定义是什么？",
+       "为什么实验要选确定性迷宫？",
+       "它迁移到随机环境会怎样？"
+      ],
+      "formula": "d^{\\pi}(s,g)=\\mathbb{E}_{\\pi}\\Big[\\sum_{t\\ge 0}\\gamma^{t}\\mathbb{1}[s_t\\neq g]\\Big]"
+     },
+     {
+      "name": "State Pathway Bottleneck（状态通路的瓶颈）",
+      "readable": "决定成绩的是「当前状态怎么表示」而不是「目标怎么表示」；给状态换成随机傅里叶位置编码，最难任务就有显著提升。",
+      "analogy": "像考试失分不是题目没说清楚（目标），而是你连自己站在哪里都没搞明白（状态）。",
+      "analogyBreaksDown": "结论限于基于状态的离线导航任务；换成图像输入或需要精细区分目标的任务，未必成立。",
+      "mechanism": "对目标与状态施加同等强度的表征干预，比较下游成绩变化；只有状态侧出现显著差异，说明状态编码才是瓶颈。",
+      "visual": "两条并列敏感度曲线：目标表征那条接近水平，状态表征那条陡峭上升。",
+      "prerequisites": [
+       "位置编码",
+       "表征质量度量",
+       "消融实验设计"
+      ],
+      "selfTest": [
+       "为什么要把同样的干预分别施加到目标和状态上？",
+       "随机傅里叶特征为什么在这里有效？",
+       "这个结论的适用边界是什么？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-temporal-distance-goal",
+      "name": "时间距离目标表征（Temporal-distance Goal Representation）",
+      "category": "rl",
+      "latex": "d^{\\pi}(s,g)=\\mathbb{E}_{\\pi}\\!\\left[\\sum_{t=0}^{\\infty}\\gamma^{t}\\,\\mathbb{1}[s_t\\neq g]\\right],\\qquad \\phi(s,g)=d^{\\pi}(s,g)\\ \\ \\text{(deterministic)}",
+      "symbols": [
+       [
+        "s",
+        "当前状态"
+       ],
+       [
+        "g",
+        "目标状态"
+       ],
+       [
+        "\\gamma",
+        "折扣因子，控制远距离的权重"
+       ],
+       [
+        "\\mathbb{1}[\\cdot]",
+        "指示函数，未到达目标时为 1"
+       ],
+       [
+        "d^{\\pi}(s,g)",
+        "按策略 π 走到目标的期望折扣步数"
+       ],
+       [
+        "\\phi(s,g)",
+        "用作策略输入的目标表征"
+       ]
+      ],
+      "derivation": [
+       "先定义「走到目标所需的折扣步数」为期望的折扣指示函数之和。",
+       "在确定性转移下期望消失，它退化为最短路径长度，可以精确计算。",
+       "把这个标量（或由它导出的嵌入）当作目标表征喂给策略。",
+       "再人为破坏该表征的几何质量，用同一学习器比较成绩，隔离表征变量。"
+      ],
+      "analogy": "像用「还剩几站地铁」替代「目的地的经纬度」来描述目标，远近关系一目了然。",
+      "pitfalls": [
+       "折扣因子 γ 会改变距离度量本身的几何形状，不同 γ 的结论不可直接比较。",
+       "随机转移下「步数」不再是良定义的确定性量，该表征失去精确性。",
+       "破坏几何质量的具体方式会影响结论可比性，必须与状态侧使用同一套干预。"
+      ],
+      "code": "import numpy as np\nfrom collections import deque\n\ndef temporal_distance(goal, grid, blocked):\n    # grid: (H, W); blocked: set of obstacles -> BFS 得到每格到目标的步数\n    H, W = grid.shape\n    dist = np.full((H, W), np.inf)\n    dist[goal] = 0.0\n    q = deque([goal])\n    while q:\n        r, c = q.popleft()\n        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < H and 0 <= nc < W and (nr, nc) not in blocked:\n                if dist[nr, nc] > dist[r, c] + 1:\n                    dist[nr, nc] = dist[r, c] + 1\n                    q.append((nr, nc))\n    return dist   # phi(s, g) = dist[s]; 确定性环境下即时间距离\n\n\ndef fourier_features(x, B):\n    # 随机傅里叶位置编码: 状态的替代表示\n    proj = x @ B                     # B: (d, m) ~ N(0, sigma^2)\n    return np.concatenate([np.sin(proj), np.cos(proj)], axis=-1)\n",
+      "sources": [
+       {
+        "title": "Do Better Goal Representations Improve Goal-Conditioned Reinforcement Learning?",
+        "url": "https://arxiv.org/abs/2609.39901v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "在确定性迷宫中构造了精确的时间距离目标表征",
+      "在保持下游学习器不变的前提下系统破坏该表征的几何质量",
+      "在 OGBench 导航任务与两种算法上，目标表征质量大幅变化几乎没有影响成绩",
+      "对当前状态施加同样干预后成功率提升超过一倍",
+      "随机傅里叶位置编码在不使用地图信息、不改目标函数的前提下提升最难导航任务"
+     ],
+     "uncertain": [
+      "「成功率翻倍以上」未给具体数值与置信区间",
+      "破坏几何质量的具体手段（噪声、置换、降维）摘要未说明",
+      "结论限于基于状态的离线导航，摘要明确说 code 将发布，当前无法复现"
+     ]
+    }
+   }
+  },
+  {
+   "id": "9f48a350d01de4cc",
+   "title": "Reinforcement Learning with Complex (valued) Memories",
+   "category": "rl",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.38598v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.38598v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.LG"
+   ],
+   "publishedAt": "2026-09-29T09:59:34+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 62.0,
+   "summary": "Partially observable environments pose a fundamental challenge in deep reinforcement learning, requiring agents to compress temporal information from observations and maintain a memory to make effective decisions. While there exist many approaches ranging from gated recurrence to attention mechanisms and model-based RL, the search for effective representational techniques that can capture long-term dependencies remains an active area of research. In this work we revisit Unitary recurrent networks (uRNNs) [Arjovsky et al., 2016, Jing et al., 2017], that demonstrated superior gradient flow and associative recall, expressing the recurrence and the hidden state in a complex vector space. Their norm preserving unitary dynamics enable information propagation through long sequences. To this end, we propose three different versions of uRNNs as drop-in replacements for recurrent PPO architectures, and demonstrate that the simple recurrence and the added degree of freedom from the phase of the complex representations enable significant gains over baselines on several memory-improvable tasks, including continuous control. We further explore how to preserve the phase information of the complex hidden state for a phase-aware policy by drawing a parallel to how quantum states are measured. With our methods reaching up to 2-3 $\\times$ the reward in environments like rocksample and Craftax compared to the baselines, this work points towards an exciting new direction of representations for RL and the problem of partial observability. Code is available at: https://github.com/Sathya98/qurl",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "9f48a350d01de4cc",
+    "tldr": "用三种 uRNN 变体替换循环 PPO，以复数模长保持与相位自由度提升记忆任务回报，最高达基线 2-3 倍。",
+    "keyPoints": [
+     "复现 uRNN 并提出三种变体，作为循环 PPO 的即插即用替代",
+     "复数隐状态用酉矩阵递推，模长保持让信息在长序列中传播",
+     "复数相位提供实值 RNN 没有的额外自由度",
+     "在 rocksample、Craftax 等记忆任务上回报达基线 2-3 倍",
+     "提出相位感知策略，类比量子态测量读出复数相位"
+    ],
+    "why": "部分可观测是机器人/世界模型的常见设定，复数递归与相位读出提供了替代门控与注意力的记忆方案，面试可谈表征设计。",
+    "difficulty": "hard",
+    "tags": [
+     "reinforcement-learning",
+     "unitary-rnn",
+     "complex-valued-networks",
+     "recurrent-ppo",
+     "partial-observability",
+     "memory"
+    ],
+    "entities": [
+     "uRNN (Unitary RNN)",
+     "Recurrent PPO",
+     "Arjovsky et al. 2016",
+     "Jing et al. 2017",
+     "rocksample",
+     "Craftax"
+    ],
+    "diagram": {
+     "kind": "architecture",
+     "title": "uRNN 复数递归接入循环 PPO",
+     "caption": "记住三件事：复数隐状态的模长保信息、相位给自由度、隐状态再喂给 PPO 的 actor/critic。",
+     "svg": "<svg viewBox='0 0 480 200' xmlns='http://www.w3.org/2000/svg'><rect x='12' y='30' width='88' height='44' rx='6' fill='none' stroke='var(--line-1)'/><text x='56' y='48' font-size='13' text-anchor='middle' fill='var(--fg-1)'>观测 o_t</text><text x='56' y='65' font-size='13' text-anchor='middle' fill='var(--fg-1)'>部分可观测</text><line x1='100' y1='52' x2='121' y2='52' stroke='currentColor' stroke-width='1.5'/><polygon points='126,52 116,47 116,57' fill='currentColor'/><rect x='126' y='26' width='150' height='52' rx='6' fill='none' stroke='var(--accent)'/><text x='201' y='45' font-size='13' text-anchor='middle' fill='var(--fg-1)'>uRNN 复数递归</text><text x='201' y='63' font-size='13' text-anchor='middle' fill='var(--accent)'>|u|=1 模长保持</text><line x1='276' y1='52' x2='299' y2='52' stroke='currentColor' stroke-width='1.5'/><polygon points='304,52 294,47 294,57' fill='currentColor'/><rect x='304' y='26' width='164' height='52' rx='6' fill='none' stroke='var(--line-1)'/><text x='386' y='45' font-size='13' text-anchor='middle' fill='var(--fg-1)'>循环 PPO</text><text x='386' y='63' font-size='13' text-anchor='middle' fill='var(--fg-1)'>actor / critic</text><line x1='201' y1='78' x2='201' y2='113' stroke='currentColor' stroke-width='1.5'/><polygon points='201,118 196,108 206,108' fill='currentColor'/><text x='210' y='104' font-size='13' fill='var(--fg-1)'>相位=新自由度</text><rect x='126' y='118' width='150' height='52' rx='6' fill='none' stroke='var(--line-1)'/><text x='201' y='137' font-size='13' text-anchor='middle' fill='var(--fg-1)'>相位感知策略</text><text x='201' y='155' font-size='13' text-anchor='middle' fill='var(--fg-1)'>用相位做决策</text><line x1='276' y1='144' x2='299' y2='144' stroke='currentColor' stroke-width='1.5'/><polygon points='304,144 294,139 294,149' fill='currentColor'/><rect x='304' y='118' width='164' height='52' rx='6' fill='none' stroke='var(--line-1)'/><text x='386' y='137' font-size='13' text-anchor='middle' fill='var(--fg-1)'>量子测量类比</text><text x='386' y='155' font-size='13' text-anchor='middle' fill='var(--fg-1)'>读出并保留相位</text></svg>",
+     "spec": {
+      "type": "architecture",
+      "nodes": [
+       {
+        "label": "观测 o_t",
+        "detail": "部分可观测环境的一步观测"
+       },
+       {
+        "label": "uRNN 复数递归",
+        "detail": "复数隐状态按酉动力学递推，逐元素乘 |u|=1 保持模长"
+       },
+       {
+        "label": "循环 PPO",
+        "detail": "隐状态作为 actor/critic 输入，即插即用替代原递归结构"
+       },
+       {
+        "label": "相位感知策略",
+        "detail": "把复数隐状态的相位信息读出用于决策"
+       },
+       {
+        "label": "量子测量类比",
+        "detail": "借鉴量子态如何被测量，组织相位读出方式"
+       }
+      ],
+      "edges": [
+       {
+        "from": 0,
+        "to": 1,
+        "label": "压缩时序信息为复数隐状态"
+       },
+       {
+        "from": 1,
+        "to": 2,
+        "label": "隐状态送入 actor/critic"
+       },
+       {
+        "from": 1,
+        "to": 3,
+        "label": "保留相位而非只取实部"
+       },
+       {
+        "from": 3,
+        "to": 4,
+        "label": "按量子测量方式读出"
+       }
+      ]
+     },
+     "alt": "观测 o_t 进入 uRNN 复数递归（模长保持、相位为新自由度），隐状态送入循环 PPO 的 actor/critic；另一路做相位感知策略，按量子测量类比把复数隐状态的相位读出用于决策。"
+    },
+    "concepts": [
+     {
+      "name": "酉复数递归网络 Unitary Recurrent Network (uRNN)",
+      "readable": "把 RNN 的隐状态和递推都放到复数空间，用模长恒为 1 的酉变换更新，让信息在长序列里不被反复缩放而衰减或爆炸。",
+      "analogy": "像一条无摩擦的滑冰道：每步只改变前进方向（相位），速度（模长）一点不丢，所以能滑很远；普通 RNN 像有沙子的路面，走几步速度就磨没了。",
+      "analogyBreaksDown": "滑冰只说清「不衰减」，没说清容量：酉变换不衰减但也不放大，要写入新信息仍得靠额外的非线性项；而且复数相位是网络自己学出来的内部量，没有真实物理角度可读，别把类比当成机制。",
+      "mechanism": "递推写成 h_t = u ⊙ h_{t-1} + v ⊙ tanh(W x_t + b)，约束 |u|=1 保证梯度长程流动；复数给出模长与相位两条通道，相位是实值 RNN 没有的表征自由度，摘要称其带来更好的梯度流与关联回忆。",
+      "visual": "画一条时间轴：实线折线是普通 RNN 的隐状态模长，指数衰减到 0；水平虚线是 uRNN 恒为 1 的模长。旁边画复平面单位圆，箭头绕圆旋转表示相位逐时刻累积。",
+      "prerequisites": [
+       "RNN/LSTM 的隐状态更新与梯度沿时间连乘",
+       "复数乘法、共轭与极坐标表示",
+       "酉矩阵（正交矩阵的复数版本）",
+       "PPO 与 actor-critic 基础"
+      ],
+      "selfTest": [
+       "为什么约束 |u|=1 能缓解梯度消失？从梯度里连乘 ∏u 的模长角度解释。",
+       "同等参数规模下，复数隐状态比实值隐状态多出的自由度是什么？",
+       "如果把 u 换成实正交矩阵，会失去摘要强调的哪一项好处？"
+      ],
+      "formula": "h_t = u \\odot h_{t-1} + v \\odot \\tanh(W x_t + b), \\qquad |u_i| = 1"
+     },
+     {
+      "name": "相位感知策略 Phase-Aware Policy（量子测量类比）",
+      "readable": "复数隐状态同时带模长和相位；如果策略网络只取实部或模长，相位这条信息就白学了。该方法专门设计读出方式，让策略对相位敏感。",
+      "analogy": "像看旋转的风车：只量叶片长度没用，关键是叶片此刻转到哪个角度。相位感知策略就是给策略装一个「角度刻度盘」，而不是只拿一把尺子量长度。",
+      "analogyBreaksDown": "风车角度是可直接观测的物理量，而复数隐状态的相位是网络内部学出来的表示，没有物理量纲；摘要里的「量子测量」只是组织思路的类比，并未说引入了真正的量子力学形式，坍缩、不可克隆等性质都不适用。",
+      "mechanism": "常规做法把复数隐状态的实部（或模长）直接喂给策略，等于丢掉相位这一新增自由度；摘要提出为相位单独设计读出，使策略显式依赖相位，并用「量子态如何被测量」来类比这个过程。",
+      "visual": "画复平面单位圆：圆上一点表示隐状态，半径长度=模长、与实轴夹角=相位。左侧分支只画投影到实轴的线段（角度丢失），右侧分支沿角度画刻度盘并把角度值送进策略网络。",
+      "prerequisites": [
+       "复数表示与极坐标（模长、辐角）",
+       "策略网络的输入输出与 PPO 的更新目标",
+       "量子态测量中的基与概率幅（懂类比层面即可）"
+      ],
+      "selfTest": [
+       "为什么只取复数隐状态的实部会丢信息？丢的是哪一部分？",
+       "相位感知策略与「直接拿实部过 MLP」的读出头，在输入上差在哪？",
+       "摘要里的「量子测量」是理论工具还是类比？你的依据是什么？"
+      ],
+      "formula": "\\phi_t = \\arg(h_t), \\qquad \\pi_\\theta(a \\mid o_{\\le t}) = \\pi_\\theta\\big(a \\mid |h_t|, \\phi_t\\big)"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-unitary-recurrence",
+      "name": "酉递归更新（Unitary Recurrence）",
+      "category": "rl",
+      "glyph": "⊙",
+      "tags": [
+       "unitary-rnn",
+       "complex-valued",
+       "recurrence",
+       "memory"
+      ],
+      "latex": "h_t = u \\odot h_{t-1} + v \\odot \\tanh(W x_t + b), \\qquad |u_i| = 1, \\quad h_t \\in \\mathbb{C}^{n}",
+      "html": "<code>h_t = u ⊙ h_{t-1} + v ⊙ tanh(W x_t + b),  |u_i| = 1</code>",
+      "symbols": [
+       [
+        "h_t",
+        "t 时刻的复数隐状态，形状 (n,)，取值于 ℂ^n"
+       ],
+       [
+        "x_t",
+        "t 时刻的观测/输入特征，形状 (d,)"
+       ],
+       [
+        "u",
+        "复数递推系数向量，形状 (n,)，约束逐元素 |u_i|=1（模长保持）"
+       ],
+       [
+        "v",
+        "复数输入增益向量，形状 (n,)，控制新信息写入强度"
+       ],
+       [
+        "W, b",
+        "输入到隐状态的复数仿射变换参数，W 形状 (n,d)"
+       ],
+       [
+        "⊙",
+        "逐元素复数乘法（Hadamard 积），不是矩阵乘"
+       ],
+       [
+        "tanh",
+        "逐元素非线性，产生要写入的新信息"
+       ]
+      ],
+      "derivation": [
+       "普通 RNN 做 h_t = W h_{t-1} + U x_t，梯度沿时间要连乘 W；谱半径偏离 1 就消失或爆炸。",
+       "把矩阵乘 W 换成逐元素乘 u（对角化），梯度连乘变成 ∏ u_i，每个通道的模长可独立控制。",
+       "再把 h 与 u 放到复数域并约束 |u_i|=1，于是 |∏ u_i|=1，模长沿时间完全保持，信息不随步数衰减。",
+       "模长保持项只负责搬运旧信息，新信息由 v ⊙ tanh(W x_t + b) 写入，两项相加得到酉递归更新。",
+       "更一般的形式是酉矩阵递推 h_t = U h_{t-1} + V·tanh(...)，U^H U = I；对角 u 是其中参数最省的特例。"
+      ],
+      "analogy": "像一条无损传送带：旧货（隐状态）原样送到下一站，新货由 tanh 那一项加上去；实值 RNN 的传送带每站都掉一部分货，走几十站就什么都不剩。",
+      "pitfalls": [
+       "|u|=1 只保证不衰减、不爆炸，不保证「记住了有用信息」；记忆内容还取决于相位如何旋转以及写入门控。",
+       "复数张量要么用 complex dtype、要么拆成实部虚部两组，参数量与显存约为实值同维度的两倍，收益不是免费的。",
+       "别直接对 u 做无约束梯度下降再期望 |u|=1；通常要参数化成 u = e^{iω} 或每步投影回单位圆。",
+       "⊙ 是逐元素乘而非矩阵乘：对角酉表达力有限，不能把它当成完整 uRNN 的通用形式。"
+      ],
+      "code": "import torch\n\n\ndef unitary_recurrence(x, h, omega, v, W, b):\n    \"\"\"x: (B, T, d) 实数观测; h: (B, n) 复数隐状态初值.\n    omega: (n,) 相位参数; u = exp(i*omega) 自动满足 |u| = 1.\n    v: (n,) complex 增益; W: (n, d) 实数; b: (n,) 实数.\n    返回 (B, T, n) 的复数隐状态序列.\"\"\"\n    u = torch.polar(torch.ones_like(omega), omega)          # (n,) complex, |u|=1\n    gate = torch.tanh(x @ W.t() + b)                        # (B, T, n) real\n    outs = []\n    for t in range(x.size(1)):\n        h = u * h + v * gate[:, t]                          # 逐元素复数乘 + 写入\n        outs.append(h)\n    return torch.stack(outs, dim=1)                         # (B, T, n) complex",
+      "sources": [
+       {
+        "title": "Reinforcement Learning with Complex (valued) Memories",
+        "url": "https://arxiv.org/abs/2609.38598v1"
+       },
+       {
+        "title": "qurl (官方代码仓库)",
+        "url": "https://github.com/Sathya98/qurl"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "摘要指出部分可观测环境要求智能体压缩观测中的时序信息并维持记忆才能有效决策。",
+      "作者重访 uRNN（Arjovsky et al., 2016；Jing et al., 2017），并称其展现出更好的梯度流与关联回忆能力。",
+      "uRNN 把递推和隐状态表达在复数向量空间中，其模长保持的酉动力学使信息能沿长序列传播。",
+      "论文提出三种 uRNN 版本，作为循环 PPO 架构的即插即用替代（drop-in replacements）。",
+      "论文称简单递归加上复数相位的额外自由度，在多个「记忆可改进」任务（含连续控制）上显著优于基线。",
+      "论文进一步探索如何为相位感知策略保留复数隐状态的相位信息，并类比量子态的测量方式。",
+      "在 rocksample 与 Craftax 等环境中，方法回报最高达到基线的 2-3 倍。",
+      "摘要给出的代码地址是 https://github.com/Sathya98/qurl。"
+     ],
+     "uncertain": [
+      "本文三种 uRNN 变体的确切递推式需看原文核对；我给出的 h_t = u ⊙ h_{t-1} + v ⊙ tanh(W x_t + b)（|u|=1）是 Arjovsky et al. 2016 的标准形式，不是摘要原文。",
+      "摘要未给出「相位感知策略」的具体读出公式；concepts 里的 π_θ(a | o, |h_t|, φ_t) 只是示意写法，需看原文核对。",
+      "三种变体之间的差异（例如对角酉 u 还是完整酉矩阵 U、是否与门控/注意力混合）摘要完全未说明。",
+      "「2-3x reward」的评测设置（对比的是哪一版 recurrent PPO 基线、随机种子数与统计方式）摘要未说明。",
+      "摘要提到连续控制，但未列出对应的具体环境名，也未说明该结论来自哪种变体。",
+      "公式中 x_t 的具体形式（原始观测还是编码器输出）与复数值张量的实现细节摘要未说明。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "2e1f908ff2f8f54c",
+   "title": "Regulating the Frontier: Model-Level Evidence from the EU AI Act",
+   "category": "unclassified",
+   "channel": "s2",
+   "url": "https://doi.org/10.17613/8rga5-9wc04",
+   "sources": [
+    {
+     "url": "https://doi.org/10.17613/8rga5-9wc04",
+     "name": "s2"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-12-31T00:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": true,
+   "codeAvailable": false,
+   "relevanceScore": 45.2,
+   "summary": "The European Union's Artificial Intelligence Act creates a binding, economy-wide transparency regime directed specifically at providers of general-purpose AI models. Whether such rules alter model-development practice, rather than merely producing legal documentation outside public view, is an empirical question. This article offers an early model-level assessment using a daily updated public database of 3,571 machine-learning models. The main analysis compares 604 language-based models that satisfy a transparent general-purpose-AI proxy with 401 narrow-task models released during an approximately two-year window from 2 August 2024 to 21 July 2026, when the Act's general-purpose-model obligations began to apply to newly marketed models. A seven-component Structured Disclosure Index records whether public sources report parameter count, training compute, training-data scale, training time, training hardware, training-code status, and model-access status. Organization and calendar-month fixed-effects estimates associate the post-application period with an 8.7 percentage-point increase in structured disclosure for the general-purpose group. The change is concentrated in training-compute reporting. The estimate remains positive in several within-provider specifications, although it becomes small and statistically indistinguishable from zero when organization fixed effects are replaced by country and organization-category controls. No corresponding change is detected in open-weight release, model parameter scale, or disclosed training compute. Only two post-application observati",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "2e1f908ff2f8f54c",
+    "tldr": "用3571个模型的公开数据库做早期实证：EU AI Act通用模型义务生效后，通用模型组结构化披露提升8.7个百分点，且集中在训练算力一项；未检出开放权重、参数规模或披露算力的同步变化。采集摘要有限（结尾截断）。",
+    "keyPoints": [
+     "数据源为每日更新的公开数据库，共 3571 个机器学习模型",
+     "主分析对比 604 个语言类通用模型与 401 个窄任务模型",
+     "观察窗口约为 2024-08-02 至 2026-07-21",
+     "七项披露指数：参数、算力、数据、时长、硬件、代码、获取",
+     "通用模型组结构化披露 +8.7 个百分点，集中于训练算力"
+    ],
+    "why": "与多模态／后训练／RL／Agent技术主线弱相关，属AI治理与合规方向：可迁移点是「用公开模型元数据构建披露指数并做准实验估计」的做法。对做模型卡、数据与算力披露、开源发布策略的求职者可作为谈资。",
+    "difficulty": "medium",
+    "tags": [
+     "ai-governance",
+     "regulation",
+     "disclosure",
+     "empirical-study",
+     "foundation-model",
+     "openness"
+    ],
+    "entities": [
+     "EU AI Act",
+     "general-purpose AI models",
+     "Structured Disclosure Index",
+     "training compute",
+     "open-weight release"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "EU AI Act披露效应估计流程",
+     "caption": "从3571个模型的公开数据库，到通用模型组与窄任务组的对比，再到七项披露指数与固定效应估计。",
+     "svg": "<svg viewBox=\"0 0 960 400\" xmlns=\"http://www.w3.org/2000/svg\" font-family=\"sans-serif\">\n  <rect x=\"0\" y=\"0\" width=\"960\" height=\"400\" fill=\"none\"/>\n  <g stroke=\"var(--line-1)\" fill=\"none\">\n    <path d=\"M190 95 H250\"/>\n    <path d=\"M190 290 H250\"/>\n    <path d=\"M430 95 H490\"/>\n    <path d=\"M430 290 H490\"/>\n    <path d=\"M660 190 H720\"/>\n  </g>\n  <g fill=\"var(--fg-1)\" font-size=\"14\">\n    <text x=\"205\" y=\"88\">筛选</text>\n    <text x=\"205\" y=\"283\">筛选</text>\n  </g>\n  <rect x=\"20\" y=\"120\" width=\"170\" height=\"150\" rx=\"10\" stroke=\"var(--line-1)\" fill=\"none\"/>\n  <text x=\"105\" y=\"175\" font-size=\"15\" fill=\"var(--fg-1)\" text-anchor=\"middle\">公开模型数据库</text>\n  <text x=\"105\" y=\"200\" font-size=\"14\" fill=\"var(--fg-1)\" text-anchor=\"middle\">3571个模型</text>\n  <text x=\"105\" y=\"225\" font-size=\"14\" fill=\"var(--fg-1)\" text-anchor=\"middle\">每日更新</text>\n  <rect x=\"250\" y=\"40\" width=\"180\" height=\"110\" rx=\"10\" stroke=\"var(--accent)\" fill=\"none\"/>\n  <text x=\"340\" y=\"80\" font-size=\"15\" fill=\"var(--fg-1)\" text-anchor=\"middle\">通用模型组</text>\n  <text x=\"340\" y=\"105\" font-size=\"14\" fill=\"var(--fg-1)\" text-anchor=\"middle\">604个语言类模型</text>\n  <text x=\"340\" y=\"130\" font-size=\"14\" fill=\"var(--fg-1)\" text-anchor=\"middle\">满足透明GPAI代理</text>\n  <rect x=\"250\" y=\"235\" width=\"180\" height=\"110\" rx=\"10\" stroke=\"var(--line-1)\" fill=\"none\"/>\n  <text x=\"340\" y=\"275\" font-size=\"15\" fill=\"var(--fg-1)\" text-anchor=\"middle\">窄任务模型组</text>\n  <text x=\"340\" y=\"300\" font-size=\"14\" fill=\"var(--fg-1)\" text-anchor=\"middle\">401个模型</text>\n  <text x=\"340\" y=\"325\" font-size=\"14\" fill=\"var(--fg-1)\" text-anchor=\"middle\">2024-08-02至2026-07-21</text>\n  <rect x=\"490\" y=\"120\" width=\"170\" height=\"150\" rx=\"10\" stroke=\"var(--line-1)\" fill=\"none\"/>\n  <text x=\"575\" y=\"155\" font-size=\"15\" fill=\"var(--fg-1)\" text-anchor=\"middle\">结构化披露指数</text>\n  <text x=\"575\" y=\"180\" font-size=\"13\" fill=\"var(--fg-1)\" text-anchor=\"middle\">参数量 / 训练算力</text>\n  <text x=\"575\" y=\"200\" font-size=\"13\" fill=\"var(--fg-1)\" text-anchor=\"middle\">数据规模 / 训练时长</text>\n  <text x=\"575\" y=\"220\" font-size=\"13\" fill=\"var(--fg-1)\" text-anchor=\"middle\">训练硬件 / 训练代码</text>\n  <text x=\"575\" y=\"240\" font-size=\"13\" fill=\"var(--fg-1)\" text-anchor=\"middle\">模型获取状态</text>\n  <rect x=\"720\" y=\"100\" width=\"220\" height=\"180\" rx=\"10\" stroke=\"var(--accent)\" fill=\"none\"/>\n  <text x=\"830\" y=\"140\" font-size=\"15\" fill=\"var(--fg-1)\" text-anchor=\"middle\">机构与月份固定效应</text>\n  <text x=\"830\" y=\"170\" font-size=\"15\" fill=\"var(--accent)\" text-anchor=\"middle\">+8.7个百分点</text>\n  <text x=\"830\" y=\"195\" font-size=\"13\" fill=\"var(--fg-1)\" text-anchor=\"middle\">集中在训练算力披露</text>\n  <text x=\"830\" y=\"220\" font-size=\"13\" fill=\"var(--fg-1)\" text-anchor=\"middle\">开放权重 / 参数规模</text>\n  <text x=\"830\" y=\"240\" font-size=\"13\" fill=\"var(--fg-1)\" text-anchor=\"middle\">未检出变化</text>\n</svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "公开模型数据库",
+        "detail": "3571个机器学习模型，每日更新"
+       },
+       {
+        "label": "通用模型组",
+        "detail": "604个满足透明GPAI代理的语言模型"
+       },
+       {
+        "label": "窄任务模型组",
+        "detail": "401个模型，约两年窗口内发布"
+       },
+       {
+        "label": "结构化披露指数",
+        "detail": "参数量、训练算力、数据规模、训练时长、硬件、训练代码、模型获取共七项"
+       },
+       {
+        "label": "固定效应估计",
+        "detail": "通用模型组结构化披露+8.7个百分点，集中于训练算力"
+       }
+      ],
+      "edges": [
+       {
+        "from": "公开模型数据库",
+        "to": "通用模型组",
+        "label": "按透明GPAI代理筛选"
+       },
+       {
+        "from": "公开模型数据库",
+        "to": "窄任务模型组",
+        "label": "按窄任务筛选"
+       },
+       {
+        "from": "通用模型组",
+        "to": "结构化披露指数",
+        "label": "逐模型编码七项"
+       },
+       {
+        "from": "窄任务模型组",
+        "to": "结构化披露指数",
+        "label": "同一指数编码"
+       },
+       {
+        "from": "结构化披露指数",
+        "to": "固定效应估计",
+        "label": "机构与日历月固定效应回归"
+       }
+      ]
+     },
+     "alt": "流程图：3571个模型的公开数据库筛出604个通用模型与401个窄任务模型，两组都编码七项结构化披露指数，经机构与日历月固定效应估计得到通用组披露提升8.7个百分点，集中于训练算力。"
+    },
+    "concepts": [
+     {
+      "name": "结构化披露指数",
+      "readable": "把模型公开信息拆成七项可核查的字段——参数量、训练算力、训练数据规模、训练时长、训练硬件、训练代码是否公开、模型获取方式，逐项判断公开来源里有没有写，最后汇总成一个披露程度的分数，用来比较不同模型在透明度上的差别。",
+      "analogy": "像体检表：不判断身体好不好，只逐项打勾看有没有测过身高、血压、血糖，最后数一共勾了几项。",
+      "analogyBreaksDown": "体检项目有客观标准值，而披露指数只衡量「有没有写出来」，写出来不等于写得准，也不等于合规；分数的提高可能来自文档习惯变化而非模型开发实践变化。",
+      "mechanism": "为每个模型编码七个二元字段，加总为披露分；再以通用模型组与窄任务模型组做对比，用机构与日历月固定效应吸收时间趋势与机构差异，估计义务生效期的组间披露差。",
+      "visual": "七格复选框横向排列，每格标注一个字段名，右侧一个分数条随勾选数增长；两行分别代表通用模型组与窄任务模型组，两条分数条长度差即披露差异。",
+      "prerequisites": [
+       "面板数据与固定效应回归的基本概念",
+       "通用目的AI模型与窄任务模型的区分"
+      ],
+      "selfTest": [
+       "结构化披露指数包含哪七项字段？",
+       "为什么指数提高不能直接推出模型开发实践改变？",
+       "机构固定效应与日历月固定效应各自在吸收什么变异？"
+      ],
+      "formula": "D_i = \\sum_{k=1}^{7} \\mathbb{1}[\\text{第}k\\text{项字段在公开来源中可查}]"
+     },
+     {
+      "name": "处理效应与固定效应估计",
+      "readable": "在观察性数据里估计政策效果的标准做法：把结果变量对「是否属于受约束的通用模型组」和「是否在义务生效之后」的交互项回归，同时放进机构与日历月的固定效应，吸收掉机构之间固有差异和共同的时间趋势，剩下的交互项系数就是估计出的政策关联效应。",
+      "analogy": "比较同一批学生在同一场考试前后的成绩变化，把班级差异和试卷难度都扣掉，只看政策影响的净增量。",
+      "analogyBreaksDown": "固定效应只能吸收不随时间变化的机构特征和共同时间冲击；若义务生效期同时发生其他影响披露的事件（如同期其他法规、行业自律），估计值会把它们一并算进去。",
+      "mechanism": "以结构化披露分为因变量，纳入「通用模型组×生效后」交互项、机构固定效应、日历月固定效应；更换控制变量设定做稳健性检验，观察系数大小与显著性如何变化。",
+      "visual": "一张两线时间序列图：横轴为日历月，纵轴为平均披露分，通用组曲线在2024年8月附近上折，窄任务组曲线较平，阴影区标注义务生效期。",
+      "prerequisites": [
+       "双重差分／交互项回归",
+       "固定效应与聚类标准误"
+      ],
+      "selfTest": [
+       "交互项系数在本文中如何解读？",
+       "为什么换成国家与机构类别控制后估计值会变小？",
+       "该设计能否直接给出因果结论？"
+      ],
+      "formula": "D_{it} = \\alpha + \\beta\\,(G_i \\times Post_t) + \\mu_i + \\lambda_t + \\varepsilon_{it}"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-fe-disclosure-did",
+      "name": "双层固定效应双重差分（结构化披露率）",
+      "category": "engineering",
+      "glyph": "β",
+      "tags": [
+       "policy-evaluation",
+       "panel-data",
+       "did"
+      ],
+      "latex": "D_{it} = \\beta\\,(G_i \\times P_t) + \\alpha_i + \\gamma_t + \\varepsilon_{it}",
+      "html": "<code>D_it = β·(G_i × P_t) + α_i + γ_t + ε_it</code>",
+      "symbols": [
+       [
+        "D_{it}",
+        "模型 i 在月份 t 的结构化披露指数"
+       ],
+       [
+        "G_i",
+        "通用模型代理组指示，0 或 1"
+       ],
+       [
+        "P_t",
+        "义务生效后时期指示，0 或 1"
+       ],
+       [
+        "\\beta",
+        "双重差分系数，论文估计为 8.7 个百分点"
+       ],
+       [
+        "\\alpha_i",
+        "组织固定效应，吸收提供方固有差异"
+       ],
+       [
+        "\\gamma_t",
+        "日历月固定效应，吸收共同时间冲击"
+       ],
+       [
+        "\\varepsilon_{it}",
+        "残差项"
+       ]
+      ],
+      "derivation": [
+       "对每条模型-月份观测编码七项披露指标，求和或取均值得到被解释变量 D 的取值。",
+       "构造两个 0/1 指示：G 表示是否属于通用模型代理组，P 表示是否处于义务生效之后的时期。",
+       "交互项 G×P 刻画通用模型组在生效后、相对于窄任务组的额外披露变化。",
+       "加入组织固定效应与日历月固定效应，分别吸收不随时间变化的提供方差异和所有模型共同经历的时间趋势。",
+       "对面板做最小二乘估计得到 β，再用国家与组织类别控制替换组织固定效应做稳健性检验。"
+      ],
+      "analogy": "像两个班换教材：只看重点班涨分说明不了问题，要看重点班涨幅减去普通班涨幅才是教材的净效果；固定效应相当于先把两班原本的水平差异和当次考试的难度差扣掉。",
+      "pitfalls": [
+       "处理组由自定的透明通用模型代理标准划分，不等于法条定义，可能误分类。",
+       "摘要在此处截断，事后观测数量有限，平行趋势假设难以充分检验。",
+       "把组织固定效应换为国家与组织类别控制后，估计变小且与零不可区分，说明结论对设定敏感。",
+       "披露变多只说明文档更完整，不等于模型开发实践或安全性改变。"
+      ],
+      "code": "import numpy as np\n\nrng = np.random.default_rng(0)\nn_org, n_month = 120, 24\nrows = []\nfor i in range(n_org):\n    gpai = i % 2                        # 1 = 通用模型代理组\n    org_fe = rng.normal(0, 0.4)\n    for t in range(n_month):\n        post = 1 if t >= 12 else 0      # 义务生效前后\n        y = 0.30 + org_fe + 0.05 * t + 0.087 * gpai * post + rng.normal(0, 0.3)\n        rows.append((i, t, gpai, post, y))\n\ndata = np.array(rows)\ny, G, P = data[:, 4], data[:, 2], data[:, 3]\nD_org = np.eye(n_org)[data[:, 0].astype(int)]\nD_month = np.eye(n_month)[data[:, 1].astype(int)]\nX = np.column_stack([G * P, D_org[:, 1:], D_month[:, 1:]])\n\nbeta, *_ = np.linalg.lstsq(X, y, rcond=None)\nprint('DID 估计（百分点）:', round(beta[0] * 100, 2))  # 约 8.7",
+      "sources": [
+       {
+        "title": "Regulating the Frontier: Model-Level Evidence from the EU AI Act",
+        "url": "https://doi.org/10.17613/8rga5-9wc04"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "该条是发表在PhilPapers、经同行评审的英文文章，标题为Regulating the Frontier: Model-Level Evidence from the EU AI Act",
+      "文章对EU AI Act面向通用目的AI模型提供者的透明义务做了早期、模型层面的实证评估",
+      "分析基于一个每日更新、含3571个机器学习模型的公开数据库",
+      "主分析比较604个满足透明通用目的AI代理的语言类模型与401个窄任务模型",
+      "观察窗口约为两年，从2024年8月2日到2026年7月21日",
+      "七项结构化披露指数记录参数量、训练算力、训练数据规模、训练时间、训练硬件、训练代码状态、模型获取状态",
+      "机构与日历月固定效应估计给出通用模型组结构化披露提高8.7个百分点",
+      "该变化集中在训练算力报告上",
+      "换成国家与机构类别控制后，估计值变小且与0统计上不可区分",
+      "未检出开放权重发布、模型参数规模或已披露训练算力的对应变化",
+      "该条只有一个来源URL：https://doi.org/10.17613/8rga5-9wc04"
+     ],
+     "uncertain": [
+      "summary在「Only two post-application observati…」处被截断，文章结论的后半段与样本量限制无法核实",
+      "各变量的编码细则、数据来源数据库名称、统计模型的具体设定在摘要中未给出",
+      "8.7个百分点是否被作者表述为因果效应，摘要中只能看到「associate」，需查原文确认",
+      "样本窗口与发布时间（2026-12-31）是否表示该文为预印本或特定期次，摘要未交代",
+      "摘要提到若干within-provider设定下估计仍为正，具体有哪些设定未列出"
+     ]
+    }
+   }
+  },
+  {
+   "id": "e6171b12b44b3aee",
+   "title": "LANTERN: Illuminating Hidden Mathematical Knowledge in Language Models",
+   "category": "unclassified",
+   "channel": "hf_papers",
+   "url": "https://huggingface.co/papers/2609.32264",
+   "sources": [
+    {
+     "url": "https://huggingface.co/papers/2609.32264",
+     "name": "hf_papers"
+    },
+    {
+     "url": "https://arxiv.org/abs/2609.32264",
+     "name": "canonical"
+    }
+   ],
+   "tags": [],
+   "publishedAt": "2026-09-25T12:00:00+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": false,
+   "relevanceScore": 25.1,
+   "summary": "Language models can now prove theorems, but people still decide which problems to pursue. We ask whether a model's internal representations can help identify promising mathematical connections. We develop LANTERN, a fast, cost-efficient pipeline that uses a classifier over pretrained-model activations to rank candidate relations, followed by staged filtering, hypothesis generation, executable verification, and analytical checking. Applied to the On-Line Encyclopedia of Integer Sequences (OEIS), LANTERN ranked 50 million pairs among 10,000 frequently referenced sequences and produced 62 verified relations between pairs without an existing OEIS cross-reference. A content screen retained 13 relations worth presenting; nine of these are informative or insightful, including four which are entirely novel to the best of our knowledge: none appears in the OEIS or in our targeted literature search. The entire end-to-end process including classifier training, candidate ranking, filtering and verification took under 8 hours.",
+   "missing": [
+    "teaching"
+   ],
+   "backfillWeight": 2.0,
+   "existingEnrichment": {
+    "id": "e6171b12b44b3aee",
+    "tldr": "用激活分类器给候选数学关系排序，再经分级过滤与可执行验证；在 OEIS 产出 62 条已验证新关联，全程不到 8 小时。",
+    "keyPoints": [
+     "用预训练模型激活上的分类器，对候选数学关系打分排序",
+     "管线含分级过滤、假设生成、可执行验证与解析检查",
+     "在 OEIS 的 1 万个高频序列中给 5000 万对候选打分",
+     "产出 62 条 OEIS 原本没有交叉引用的已验证关联",
+     "内容筛后保留 13 条，其中 9 条有信息量、4 条属全新，全程不到 8 小时"
+    ],
+    "why": "对多模态/后训练/生成式/世界模型/RL 主线相关性弱：它不训练模型，只用激活当特征做排序加闭环验证。可迁移的是先筛候选再可执行验证、控制成本。",
+    "difficulty": "medium",
+    "tags": [
+     "activation-probing",
+     "llm-reasoning",
+     "math-discovery",
+     "oeis",
+     "verification-pipeline"
+    ],
+    "entities": [
+     "LANTERN",
+     "OEIS",
+     "classifier over pretrained-model activations",
+     "hypothesis generation",
+     "executable verification"
+    ],
+    "diagram": {
+     "kind": "flow",
+     "title": "LANTERN 四阶筛选管线",
+     "caption": "从模型激活上的分类器排序开始，逐级过滤到少量经核验的数学关系。",
+     "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' width='800' height='300' role='img'><title>LANTERN 四阶筛选管线</title><rect x='24' y='60' width='164' height='78' rx='12' fill='none' stroke='var(--line-1)'/><text x='106' y='92' text-anchor='middle' font-size='15' fill='currentColor'>激活分类器打分</text><text x='106' y='116' text-anchor='middle' font-size='13' fill='var(--fg-1)'>5000 万对候选</text><rect x='222' y='60' width='164' height='78' rx='12' fill='none' stroke='var(--line-1)'/><text x='304' y='92' text-anchor='middle' font-size='15' fill='currentColor'>分级过滤</text><text x='304' y='116' text-anchor='middle' font-size='13' fill='var(--fg-1)'>内容筛留 13 条</text><rect x='420' y='60' width='164' height='78' rx='12' fill='none' stroke='var(--line-1)'/><text x='502' y='92' text-anchor='middle' font-size='15' fill='currentColor'>验证与解析检查</text><text x='502' y='116' text-anchor='middle' font-size='13' fill='var(--fg-1)'>验证通过 62 条</text><rect x='618' y='60' width='164' height='78' rx='12' fill='none' stroke='var(--accent)'/><text x='700' y='92' text-anchor='middle' font-size='15' fill='currentColor'>人工复核</text><text x='700' y='116' text-anchor='middle' font-size='13' fill='var(--fg-1)'>9 条有信息量</text><text x='24' y='42' font-size='14' fill='var(--fg-1)'>四个阶段</text><text x='24' y='168' font-size='14' fill='currentColor'>阶段一：排序</text><text x='24' y='190' font-size='13' fill='var(--fg-1)'>分类器只看激活</text><text x='24' y='210' font-size='13' fill='var(--fg-1)'>不更新被探测模型</text><text x='24' y='246' font-size='14' fill='currentColor'>阶段二：收窄</text><text x='24' y='268' font-size='13' fill='var(--fg-1)'>分级过滤与生成</text><text x='300' y='168' font-size='14' fill='currentColor'>阶段三：验证</text><text x='300' y='190' font-size='13' fill='var(--fg-1)'>可执行验证</text><text x='300' y='210' font-size='13' fill='var(--fg-1)'>加解析检查</text><text x='300' y='246' font-size='14' fill='currentColor'>阶段四：判定</text><text x='300' y='268' font-size='13' fill='var(--fg-1)'>是否值得呈现</text><text x='576' y='168' font-size='14' fill='currentColor'>规模与耗时</text><text x='576' y='190' font-size='13' fill='var(--fg-1)'>1 万个高频序列</text><text x='576' y='210' font-size='13' fill='var(--fg-1)'>端到端不到 8 小时</text><text x='576' y='246' font-size='14' fill='currentColor'>成果</text><text x='576' y='268' font-size='13' fill='var(--fg-1)'>4 条为全新发现</text><path d='M188 99 L214 99' stroke='var(--line-1)' fill='none' marker-end='url(#lantern-arrow)'/><path d='M386 99 L412 99' stroke='var(--line-1)' fill='none' marker-end='url(#lantern-arrow)'/><path d='M584 99 L610 99' stroke='var(--line-1)' fill='none' marker-end='url(#lantern-arrow)'/><defs><marker id='lantern-arrow' viewBox='0 0 10 10' refX='8' refY='5' markerWidth='6' markerHeight='6' orient='auto-start-reverse'><path d='M0 0 L10 5 L0 10 z' fill='var(--line-1)'/></marker></defs></svg>",
+     "spec": {
+      "type": "flow",
+      "nodes": [
+       {
+        "label": "激活分类器打分",
+        "detail": "对 1 万个高频序列的 5000 万对候选关系打分排序"
+       },
+       {
+        "label": "分级过滤",
+        "detail": "内容筛后保留 13 条值得呈现的关系"
+       },
+       {
+        "label": "验证与解析检查",
+        "detail": "假设生成后经可执行验证与解析检查，得到 62 条已验证关联"
+       },
+       {
+        "label": "人工判定",
+        "detail": "9 条有信息量，其中 4 条为全新发现，全程不到 8 小时"
+       }
+      ],
+      "edges": [
+       {
+        "from": "激活分类器打分",
+        "to": "分级过滤",
+        "label": "排序结果"
+       },
+       {
+        "from": "分级过滤",
+        "to": "验证与解析检查",
+        "label": "候选假设"
+       },
+       {
+        "from": "验证与解析检查",
+        "to": "人工判定",
+        "label": "已验证关系"
+       }
+      ]
+     },
+     "alt": "流程：激活分类器在 5000 万候选对上排序，经分级过滤与验证解析检查得到 62 条已验证关系，最终 9 条有信息量、4 条全新，全程不到 8 小时。"
+    },
+    "concepts": [
+     {
+      "name": "激活分类器探针（activation probe）",
+      "readable": "把语言模型内部的激活当成特征，只在它上面训练一个分类器，用来判断哪两个数学对象之间可能存在值得研究的关系，再按分数排序候选。模型本身不训练、不改动。",
+      "analogy": "像在考场外不重新上课，只站在阅卷老师旁边观察他停笔的位置，据此预测哪份答卷更可能被划重点。",
+      "analogyBreaksDown": "阅卷老师的偏好有明确对错，而探针学到的只是与训练标签的相关性；它给出的是排序，不是关于关系成立的证明，也可能只学到数据集的偏置。",
+      "mechanism": "冻结预训练模型，对每个候选关系取表示的池化向量，用少量已知关系作正例训练线性分类器，再对全部候选对算分数并排序，把高分对交给后续过滤与验证环节。",
+      "visual": "横轴是候选对按探针分数的排序，纵轴是经人工判定为有信息量的比例；顶部高分区间集中大部分命中的条形最多，直观看出探针只在头部有效（示意，非原文数据）。",
+      "prerequisites": [
+       "语言模型前向推理与激活提取",
+       "线性分类器与逻辑回归损失",
+       "池化/句向量表示",
+       "打分排序与阈值筛选"
+      ],
+      "selfTest": [
+       "为什么探针训练不需要更新被探测模型的权重？",
+       "池化方式（均值/末位 token）变化会如何影响排序质量？",
+       "如何判断探针学到的是真实结构信号而不是数据集偏置？"
+      ],
+      "formula": "s(x)=\\sigma(w^{\\top}\\mathrm{pool}(h(x))+b)"
+     },
+     {
+      "name": "闭环验证的假设筛选",
+      "readable": "让模型先提出候选关系假设，再用可执行验证和解析检查去筛，只有能跑通、逻辑也站得住的才留下，最后人工判断哪些值得呈现。",
+      "analogy": "像投稿前先跑一遍程序化复现和同行评审：算得出来、讲得通的意见才会被送到主编桌上。",
+      "analogyBreaksDown": "可执行验证只能覆盖能写成程序的那部分关系；数学上的「有信息量」「新颖」最终仍由人的判断决定，管线无法把这两步自动化。",
+      "mechanism": "分级过滤先降规模，再对保留候选生成可检验的假设，交给可执行验证跑出结果，再做解析层面的合理性检查，最后内容筛决定哪些关系值得呈现。",
+      "visual": "漏斗式条形：5000 万候选对 → 62 条已验证 → 13 条保留 → 9 条有信息量 → 4 条全新，每层标注该层判据（示意，数字取自原文）。",
+      "prerequisites": [
+       "自动定理/关系验证的基本形态",
+       "可执行代码验证环境的搭建",
+       "LLM 假设生成与提示设计",
+       "人工评审流程设计"
+      ],
+      "selfTest": [
+       "分级过滤放在验证之前能省下什么成本？",
+       "可执行验证通过是否等于数学关系一定正确？",
+       "内容筛保留 13 条而验证通过 62 条，差额说明了什么？"
+      ],
+      "formula": ""
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-activation-probe-score",
+      "name": "激活探针的线性打分",
+      "category": "foundation",
+      "glyph": "σ",
+      "tags": [
+       "probing",
+       "linear-classifier",
+       "ranking"
+      ],
+      "latex": "s(x)=\\sigma\\!\\left(w^{\\top}\\,\\mathrm{pool}\\!\\left(h_{\\theta}(x)\\right)+b\\right)",
+      "html": "<code>s(x) = sigmoid( w · pool( h_θ(x) ) + b )</code>",
+      "symbols": [
+       [
+        "x",
+        "一个候选关系（一对序列或一条待检验的数学陈述）"
+       ],
+       [
+        "h_θ(x)",
+        "冻结的预训练模型给出的激活或表示，θ 不参与训练"
+       ],
+       [
+        "pool(·)",
+        "把序列位置的表示聚合成一个定长向量的池化操作"
+       ],
+       [
+        "w, b",
+        "在激活上训练的线性分类器权重与偏置，只有它们是可学参数"
+       ],
+       [
+        "σ",
+        "sigmoid，把分数压到 0 到 1，用于排序候选关系"
+       ],
+       [
+        "s(x)",
+        "探针分数，越高越可能是有价值的关系"
+       ]
+      ],
+      "derivation": [
+       "把预训练模型的参数 θ 冻住，对候选关系 x 做一次前向，取出内部表示 h_θ(x)。",
+       "用池化把变长表示压成一个定长向量 z = pool(h_θ(x))，作为候选的特征。",
+       "用已知成立（或已知有价值）的关系对当正例训练线性分类器，得到 w、b。",
+       "对全部候选对计算 s(x)，按分数从高到低排序，取头部交给后续过滤与验证。"
+      ],
+      "analogy": "像不改变水温，只在水里插一支温度计：探针不改变模型里已有的知识，只是把已经存在的信号读成一个可比较的分数。",
+      "pitfalls": [
+       "把探针分数当成关系成立的证据：它只反映与训练标签的相关性。",
+       "正例太少或类别极不平衡时，排序头部会被多数类或噪声主导。",
+       "池化方式、层位选择不同，分数几乎不可比，换层必须重训探针。",
+       "训练标签如果来自同一批数据筛选，容易把数据集偏置当成模型知识。"
+      ],
+      "code": "import numpy as np\nfrom sklearn.linear_model import LogisticRegression\n\nrng = np.random.default_rng(0)\nd = 64  # 表示维度\n\ndef make_data(n, w_star, noise=0.9):\n    z = rng.standard_normal((n, d))\n    logits = z @ w_star + noise * rng.standard_normal(n)\n    y = (logits > 0).astype(int)\n    return z, y\n\n# 用少量已知关系训练探针，w_true 代表表示中真实存在的结构方向\nw_true = rng.standard_normal(d)\nw_true /= np.linalg.norm(w_true)\nZ_tr, y_tr = make_data(600, w_true, noise=1.4)\nprobe = LogisticRegression(max_iter=1000).fit(Z_tr, y_tr)\n\ndef score_pairs(probe, Za, Zb):\n    # 候选关系的特征 = 两个对象的表示之差\n    return probe.predict_proba(Za - Zb)[:, 1]\n\nZ_va, y_va = make_data(400, w_true, noise=0.8)\nscores = score_pairs(probe, Z_va, rng.standard_normal((len(Z_va), d)))\norder = np.argsort(-scores)\n\n# 排序价值：只要头部命中率明显高于总体基率，探针就有筛选价值\nfor k in (50, 100, 200):\n    print(k, y_va[order[:k]].mean().round(3), 'base', y_va.mean().round(3))",
+      "sources": [
+       {
+        "title": "LANTERN (hf_papers)",
+        "url": "https://huggingface.co/papers/2609.32264"
+       },
+       {
+        "title": "LANTERN (arXiv)",
+        "url": "https://arxiv.org/abs/2609.32264"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "LANTERN 是一个快速、成本高效的管线，用预训练模型激活上的分类器对候选关系排序。",
+      "管线包含分级过滤、假设生成、可执行验证与解析检查等阶段。",
+      "在 OEIS 上对 1 万个高频引用的序列、5000 万对候选关系做了排序。",
+      "产出 62 条 OEIS 中原本不存在交叉引用的已验证关系。",
+      "内容筛后保留 13 条值得呈现，其中 9 条有信息量、4 条据作者所知为全新。",
+      "整个端到端流程（含分类器训练、候选排序、过滤与验证）不到 8 小时。"
+     ],
+     "uncertain": [
+      "所用预训练模型的规模、训练探针的算力开销与具体成本未在摘要中给出。",
+      "分类器标签（正例）的来源、数量与标注方式未披露。",
+      "55 个序列、4 条全新关系、8 小时等数字来自摘要自述，尚未独立复核。",
+      "「有信息量」「新颖」的判定标准与人工复核流程细节不明。",
+      "可执行验证的具体实现（验证器、失败率）未说明，无法判断漏检风险。",
+      "该条被标为 job 类，但与求职主线的关联需要人工确认。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "5cfce255508d4df1",
+   "title": "MotionWeave: Learning Motion-Centered Future Dynamics for Vision-Language-Action Policies",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39324v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39324v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.RO",
+    "cs.CV",
+    "cs.LG"
+   ],
+   "publishedAt": "2026-09-29T21:00:28+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 63.1,
+   "summary": "Vision-Language-Action (VLA) models have recently incorporated world models to provide richer dynamic supervision beyond sparse action labels. However, explicitly predicting future images or videos may include control-irrelevant appearance, while guidance derived from holistic future visual representations and shared global action features may fail to establish timestep-specific correspondence between actions and local visual changes. To address this issue, we propose MotionWeave, a motion-centric future-dynamics framework for action-chunk prediction with two modules: the Action-Induced Motion Grounder (AIMG) and the Horizon Residual Composer (HRC). Specifically, AIMG conditions on action and proprioceptive representations to construct horizon-specific queries that localize interaction regions associated with each future action timestep from current visual tokens. HRC extracts differences between interaction representations at adjacent horizons, encodes them as temporal motion cues, and injects them into action tokens through a gated residual. During training, robot-arm masks rendered from future frames are used to construct KL-based motion-grounding supervision, while inference uses only the current observation. On six MetaWorld tasks, MotionWeave achieves a 75.3% average success rate, an absolute gain of 8.6% over π0 (66.7%), especially on sustained-interaction tasks. Our code is available at https://github.com/autu-mn/MotionWeave.",
+   "missing": [
+    "diagram",
+    "formulas",
+    "teaching"
+   ],
+   "backfillWeight": 6.0,
+   "existingEnrichment": {
+    "id": "5cfce255508d4df1",
+    "tldr": "只监督动作引起的局部运动而非整帧未来，MetaWorld 成功率达 75.3%。",
+    "keyPoints": [
+     "预测整帧未来会带入与动作无关的外观信息。",
+     "AIMG 用动作与本体感受生成 query，定位每步的交互区域。",
+     "HRC 取相邻时间步交互表示之差作为运动线索，门控注入动作 token。",
+     "训练用未来帧渲染的机械臂掩码做 KL 运动定位监督，推理只用当前观测。"
+    ],
+    "why": "「世界模型该监督什么」比「预测得多准」更关键；只监督可控运动可直接迁移到 VLA/具身实习项目。",
+    "difficulty": "medium",
+    "tags": [
+     "vla",
+     "world-model",
+     "embodied",
+     "action-chunking",
+     "motion"
+    ],
+    "entities": [
+     "MotionWeave",
+     "AIMG",
+     "HRC",
+     "MetaWorld",
+     "π0",
+     "VLA"
+    ],
+    "concepts": [
+     {
+      "name": "动作诱导的运动定位 Action-Induced Motion Grounding",
+      "readable": "直接预测未来整帧会带上大量与动作无关的外观变化；用整体未来表示做引导，又难以建立「某个动作对应局部哪块视觉变化」的时间步级对应。MotionWeave 先用动作与本体感受表示生成按时间步区分的 query，在当前视觉 token 上定位出每个未来动作步真正会改变的局部区域（AIMG）；再把相邻时间步这些交互表示之差编码成运动线索，用门控残差注入动作 token（HRC）。训练时用未来帧渲染的机械臂掩码构造 KL 运动定位监督，推理时只用当前观测。",
+      "analogy": "打台球时你不需要预测整间球房的灯光和观众，只需预测母球会撞到哪颗球、那颗球往哪走。AIMG 是「找出会被撞到的那几颗球」，HRC 是「比较撞击前后的位置差，把差值告诉出杆的手」。",
+      "visual": "画两行时间步（t, t+1, t+2）。每行放一张当前帧缩略图，并在图上用热力图标出被定位的交互区域；相邻两行同一区域之间画箭头，箭头粗细表示运动线索强度；箭头汇聚到一个门控符号后再指向下方的动作 token 序列。",
+      "formula": ""
+     }
+    ],
+    "formulas": [],
+    "selfCheck": {
+     "claims": [
+      "六个 MetaWorld 任务上平均成功率 75.3%，比 π0 的 66.7% 高 8.6 个百分点。",
+      "训练使用未来帧渲染的机器人臂掩码构造 KL 运动定位监督。",
+      "推理阶段只需要当前观测。"
+     ],
+     "uncertain": [
+      "KL 运动定位监督对哪些分布求 KL，摘要未展开。",
+      "「持续交互任务」的具体任务清单与掩码渲染流程未给出。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "8508d26e1576b713",
+   "title": "The Planning Limits of Latent World Models",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.39235v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.39235v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.RO",
+    "cs.CV"
+   ],
+   "publishedAt": "2026-09-29T20:05:32+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 71.0,
+   "summary": "World models offer a promising way to help robots understand how the physical world evolves and plan complex behaviours through imagination. Yet existing studies mainly demonstrate what these models can accomplish, leaving unclear when their predictions remain useful for planning and where they fail. We study this question using action-conditioned predictors built on five frozen self-supervised visual backbones: V-JEPA 2, V-JEPA 2.1, VideoMAEv2, VideoPrism, and DINOv2. We use frozen backbones to test representations intended to transfer across environments. We evaluate these models on diverse Meta-World manipulation tasks and real-robot interactions from BridgeData V2. We find that a world model guides action selection reliably only when the goal lies within, or slightly beyond, the trajectory it imagines during planning. With five-step rollouts, the length the predictor was trained on, the world model ranks actions reliably only for targets five to ten control steps ahead, whereas task goals lie 16 to 53 steps away. Neither an 81-fold larger predictor nor longer-rollout training extends this range; the encoder affects both range and closed-loop success, with V-JEPA 2.1 performing most consistently. More fundamentally, the limit persists under perfect prediction: using the real simulator, success falls from 92% to 41% as the target moves from five to twenty steps ahead of a five-step rollout. Planning therefore requires either longer imagined trajectories or closer subgoals. For distant goals, pure imagination succeeds in 23% of episodes, planning with feedback (MPC) raises success to 30%, imagining as far as the goal to 47%, and nearby expert subgoals to 76%. Used within its plannable range, a world model can also improve a vision-language-action (VLA) policy: choosing",
+   "missing": [
+    "diagram",
+    "formulas",
+    "teaching"
+   ],
+   "backfillWeight": 6.0,
+   "existingEnrichment": {
+    "id": "8508d26e1576b713",
+    "tldr": "世界模型只在想象轨迹覆盖目标时才可靠；完美预测也救不了远目标。",
+    "keyPoints": [
+     "用五个冻结视觉骨干建动作条件预测器，在 Meta-World 评测。",
+     "五步 rollout 仅对 5-10 步内目标可靠。",
+     "预测器放大 81 倍或加长 rollout 训练都不能扩展这个范围。",
+     "完美预测下目标从 5 步推到 20 步，成功率仍从 92% 掉到 41%。",
+     "近处专家子目标把成功率从 23% 提到 76%。"
+    ],
+    "why": "它明确否定了「世界模型越大越能规划」的直觉，为世界模型/具身面试提供可引用的负结果与边界。",
+    "difficulty": "medium",
+    "tags": [
+     "world-model",
+     "model-based-rl",
+     "planning",
+     "vla",
+     "evaluation"
+    ],
+    "entities": [
+     "V-JEPA 2",
+     "V-JEPA 2.1",
+     "VideoMAEv2",
+     "VideoPrism",
+     "DINOv2",
+     "Meta-World",
+     "BridgeData V2",
+     "MPC"
+    ],
+    "concepts": [
+     {
+      "name": "可规划范围 Plannable Horizon",
+      "readable": "世界模型并不是「预测得准就能规划」。论文发现：只有目标落在想象轨迹之内、或略微超出时，世界模型才能可靠地排序动作。用五步 rollout 训练的预测器，只对 5-10 个控制步内的目标可靠；而真实任务目标在 16-53 步之外，靠加长 rollout 或把预测器放大 81 倍都无法扩展这个范围。更关键的是，即使用真实模拟器做完美预测，目标从 5 步推到 20 步，成功率也从 92% 掉到 41%——瓶颈在规划而非预测精度。出路是更长的想象轨迹或更近的子目标。",
+      "analogy": "手电筒只能照五米，要走到五十米外的门，不是把手电筒做亮一点就行，而是沿途找近处的路标一段段走。论文里「附近专家子目标」把成功率从 23% 提到 76% 就是这个道理。",
+      "visual": "横轴为目标距离（控制步），纵轴为成功率，画两条衰减曲线：实线=纯想象 rollout，虚线=完美预测（真实模拟器）。再用两条竖直虚线标出「训练用的 5 步 rollout 长度」和「任务目标 16-53 步区间」，两条线之间用阴影表示可靠区间与失效区间的分界。",
+      "formula": ""
+     }
+    ],
+    "formulas": [],
+    "selfCheck": {
+     "claims": [
+      "五步 rollout 下世界模型只对 5-10 个控制步内的目标可靠排序，而任务目标在 16-53 步外。",
+      "完美预测下目标从 5 步推到 20 步，成功率从 92% 降到 41%。",
+      "纯想象 23%、MPC 30%、想象到目标 47%、近处专家子目标 76%。",
+      "评估使用五个冻结自监督视觉骨干（V-JEPA 2 / V-JEPA 2.1 / VideoMAEv2 / VideoPrism / DINOv2）与 BridgeData V2 真机交互。"
+     ],
+     "uncertain": [
+      "「V-JEPA 2.1 表现最一致」所用的任务集合与指标，摘要未给出。",
+      "81 倍更大预测器与更长 rollout 训练的对照设置细节未给出。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "63407a061b2b8139",
+   "title": "Multi-Link Safety Filtering for VLA Policies Around Moving Hazards",
+   "category": "worldmodel",
+   "channel": "arxiv",
+   "url": "https://arxiv.org/abs/2609.40007v1",
+   "sources": [
+    {
+     "url": "https://arxiv.org/abs/2609.40007v1",
+     "name": "arxiv"
+    }
+   ],
+   "tags": [
+    "cs.RO",
+    "cs.CV"
+   ],
+   "publishedAt": "2026-09-30T03:49:49+08:00",
+   "lang": "en",
+   "peerReviewed": false,
+   "codeAvailable": true,
+   "relevanceScore": 63.8,
+   "summary": "A vision-language-action (VLA) policy can finish a manipulation task while knocking over objects unrelated to it, so task success alone does not show that the policy is safe to deploy in clutter. We study how to keep a pretrained VLA policy clear of such hazards at run time without retraining it, which requires guarding more of the arm than the end effector, following the hazard as it moves, and sharing onboard compute with the policy. Our training-free shield covers the gripper, wrist, and forearm with five ellipsoids and filters every commanded motion through one barrier program against a keep-out ellipsoid fitted from RGB-D perception at reset. Sparse optical flow then carries that ellipsoid's center along with the hazard, with no repeated detection or refitting. Over six simulated hazard-motion conditions, the shield lowers collision from $65.62\\%$ to $27.27\\%$ and raises safe-success, task completion without collision, from $29.35\\%$ to $50.43\\%$. Ablations show that guarding the arm links protects beyond end-effector shielding, and that tracking recovers most of the protection lost when the hazard estimate is frozen at reset. On heterogeneous edge hardware, the five-ellipsoid barrier runs on the CPU in $2.2$~ms at the 99th percentile, and trimming the vision--language prefix and taking fewer flow-matching steps shortens each $π_{0.5}$ policy call on the integrated GPU from $343$ to $177.3$~ms. On a physical SO-101 arm across four tasks, the arm touched the hazard in 3 of 16 shielded episodes versus 11 of 16 unshielded ones. Project page: https://yathag.github.io/multilink-safety-filter/",
+   "missing": [
+    "diagram",
+    "teaching"
+   ],
+   "backfillWeight": 5.0,
+   "existingEnrichment": {
+    "id": "63407a061b2b8139",
+    "tldr": "不重训策略，用五个椭球覆盖整条手臂做运行时安全滤波。",
+    "keyPoints": [
+     "任务成功不等于安全：机械臂可能撞翻无关物体。",
+     "用五个椭球覆盖夹爪、腕、前臂，对每条指令动作做屏障滤波。",
+     "危险物由 RGB-D 拟合 keep-out 椭球，再用光流跟随。",
+     "碰撞率 65.62%→27.27%，安全成功率 29.35%→50.43%。",
+     "五椭球屏障在 CPU 上 99 分位耗时 2.2 ms。"
+    ],
+    "why": "VLA 落地的安全层往往比策略本身更缺；这套免训练屏蔽方案可直接用于具身实习项目。",
+    "difficulty": "medium",
+    "tags": [
+     "vla",
+     "safety",
+     "control-barrier-function",
+     "embodied",
+     "real-time"
+    ],
+    "entities": [
+     "Multi-Link Safety Filtering",
+     "control barrier function",
+     "RGB-D",
+     "sparse optical flow",
+     "π0.5",
+     "SO-101"
+    ],
+    "concepts": [
+     {
+      "name": "多连杆安全滤波 Control Barrier Function Shield",
+      "readable": "预训练的 VLA 策略可以完成操作任务，同时撞翻无关物体，所以任务成功率不能说明它能安全部署在杂物环境里。该方法不重训策略，而是在运行时加一层滤波：用五个椭球覆盖夹爪、腕、前臂（不只是末端），把每条指令动作送进一个屏障程序，要求机械臂始终位于由 RGB-D 在 reset 时拟合出的 keep-out 椭球之外；再用稀疏光流让这个椭球中心随移动的危险物平移，避免反复检测与重新拟合。",
+      "analogy": "给整条手臂（不只指尖）套上会随危险物移动的隐形护具：护具不改变你想去哪儿，只在你快碰到东西时把动作往安全方向推一点。",
+      "visual": "画机械臂简图，用五个椭圆分别圈住 gripper、wrist、forearm；旁边画一个 keep-out 椭球代表危险物；两者之间画一条最短距离虚线并标注 h(x)。下方用时间轴显示光流如何把椭球中心随危险物平移。",
+      "formula": "\\dot{h}(x,u) + \\alpha\\, h(x) \\ge 0"
+     }
+    ],
+    "formulas": [
+     {
+      "id": "f-cbf-shield",
+      "name": "多连杆安全滤波的控制屏障条件 (Control Barrier Condition for Multi-Link Shielding)",
+      "category": "worldmodel",
+      "glyph": "h",
+      "tags": [
+       "cbf",
+       "safety",
+       "vla",
+       "embodied",
+       "real-time"
+      ],
+      "latex": "\\dot{h}(x,u) + \\alpha\\, h(x) \\ge 0, \\qquad h(x) = \\lVert c_{\\text{link}}(q) - c_{\\text{obs}} \\rVert - \\left(r_{\\text{link}} + r_{\\text{obs}}\\right)",
+      "html": "<code>ḣ(x,u) + α·h(x) ≥ 0,   h(x) = ‖c_link(q) − c_obs‖ − (r_link + r_obs)</code>",
+      "symbols": [
+       [
+        "x",
+        "机械臂状态（关节角与速度）"
+       ],
+       [
+        "u",
+        "策略给出的指令动作/速度"
+       ],
+       [
+        "h(x)",
+        "屏障函数：连杆与危险椭球之间的带符号距离，h ≥ 0 表示安全"
+       ],
+       [
+        "c_link, c_obs",
+        "连杆与危险椭球的中心"
+       ],
+       [
+        "r_link, r_obs",
+        "连杆与椭球的等效半径"
+       ],
+       [
+        "α > 0",
+        "收敛速率：越大越早开始避让，但动作更保守"
+       ]
+      ],
+      "derivation": [
+       "只用任务成功率无法保证「没有撞到无关物体」，因此需要在运行时约束指令动作，而不是重训策略。",
+       "用五个椭球覆盖夹爪、腕、前臂，取其中 h 最小者代表整条手臂的屏障，覆盖范围超过只守末端执行器。",
+       "危险物用 RGB-D 在 reset 时拟合一个 keep-out 椭球，再用稀疏光流把椭球中心随危险物平移，避免每步重新检测或重拟合。",
+       "每条指令动作必须满足 ḣ + αh ≥ 0；不满足时在最小改动下投影到满足条件的动作集合上——这就是运行时「滤波」（shield）。"
+      ],
+      "analogy": "像给车装自动紧急制动：它不改变你的目的地，只在你即将追尾时替你轻踩一脚刹车。五个椭球相当于把「车头」换成「整条机械臂」。",
+      "pitfalls": [
+       "只守末端执行器会漏掉手臂中段的碰撞；消融显示守护连杆带来额外保护。",
+       "把危险椭球冻结在 reset 时刻会明显丢失保护，必须用光流跟随。",
+       "α 选大虽更安全，但会限制任务动作；选小则避让不及时。"
+      ],
+      "code": "import numpy as np\n\n\ndef shield(u, h, grad_h, alpha=2.0):\n    \"\"\"h: 屏障值(>=0 安全); grad_h: dh/dx(与 u 同维); 返回最小改动的安全动作。\"\"\"\n    hdot = float(grad_h @ u)\n    if hdot + alpha * h >= 0.0:\n        return u                       # 已满足屏障条件，原样执行\n    # 投影到 {u : grad_h·u >= -alpha*h} 上（最小欧氏改动）\n    return u - (hdot + alpha * h) / (grad_h @ grad_h + 1e-8) * grad_h\n",
+      "sources": [
+       {
+        "title": "Multi-Link Safety Filtering for VLA Policies Around Moving Hazards",
+        "url": "https://arxiv.org/abs/2609.40007v1"
+       }
+      ]
+     }
+    ],
+    "selfCheck": {
+     "claims": [
+      "六个仿真危险运动条件下碰撞率由 65.62% 降到 27.27%，安全成功率由 29.35% 升到 50.43%。",
+      "五椭球屏障在 CPU 上 99 分位耗时 2.2 ms；裁剪视觉-语言前缀并减少 flow-matching 步数可把 π0.5 单次调用从 343 ms 降到 177.3 ms。",
+      "真机 SO-101 上 16 次屏蔽试验中触碰危险物 3 次，未屏蔽为 11 次。"
+     ],
+     "uncertain": [
+      "RGB-D 拟合 keep-out 椭球的算法，以及 reset 时机的精确定义，摘要未展开。",
+      "「keep-out 椭球」尺寸如何随任务设定未说明。"
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,403 @@
+{
+  "batchId": "queue-03",
+  "entries": [
+    {
+      "id": "edfefc7dc6799d27",
+      "tldr": "得物 Java 一面全是八股：ThreadLocal 原理与泄漏、线程池传上下文、线程安全变量、两把锁的对比。",
+      "keyPoints": [
+        "得物 Java 开发一面以八股为主，至少列出 5 道题。",
+        "ThreadLocal 连问使用场景、原理、风险漏洞。",
+        "追问线程池中线程之间如何传递信息。",
+        "要列举除 ThreadLocal 外的线程安全变量访问方式。",
+        "要求对比 synchronized 与 ReentrantLock，面试官会引导。"
+      ],
+      "why": "这四组题是 Java 后端与 Agent 平台岗的高频必答，ThreadLocal 与上下文传递直接决定并发与链路追踪题的表现。",
+      "difficulty": "medium",
+      "tags": ["java", "concurrency", "threadlocal", "threadpool", "interview"],
+      "entities": ["得物", "Java", "ThreadLocal", "synchronized", "ReentrantLock"],
+      "diagram": {
+        "kind": "architecture",
+        "title": "ThreadLocal 存储结构与泄漏点",
+        "caption": "Thread 持有 ThreadLocalMap，key 弱引用、value 强引用，线程池复用线程时不 remove 就会把 value 一直留着。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='ThreadLocal 存储结构与泄漏点'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='var(--accent)' font-weight='bold'>Thread 实例</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>每线程一份 threadLocals</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>ThreadLocalMap</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>以 ThreadLocal 实例为 key</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>Entry 引用设计</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>key 弱引用 / value 强引用</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='var(--accent)' font-weight='bold'>线程池复用线程</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>用完必须 remove()</text></svg>",
+        "alt": "四层结构图：Thread 实例持有 ThreadLocalMap，Map 的 Entry 以弱引用 key 指向 ThreadLocal、强引用 value 指向值，线程池复用线程时若不 remove 则 value 长期滞留。"
+      },
+      "concepts": [
+        {
+          "name": "ThreadLocal 与弱引用 key（ThreadLocal with Weak Reference Key）",
+          "readable": "ThreadLocal 让每个线程各存一份值，读取时不用加锁。实现上每个 Thread 里挂一个 ThreadLocalMap，key 是 ThreadLocal 实例且为弱引用，value 是你要存的东西且为强引用。线程长时间存活又不清理时 value 就会一直留着。",
+          "analogy": "像公司给每个员工配的专属储物柜：钥匙（key）是弱引用的，人走了钥匙可能被收走，但柜子里的东西（value）还锁在储物间里，直到有人主动来清柜。",
+          "analogyBreaksDown": "现实中钥匙和柜子通常绑定，钥匙丢了柜子会被一起清掉；而 Java 的弱引用只作用于 key，value 是否释放取决于 Map 是否仍被 Thread 引用、以及有没有人调用 remove。",
+          "mechanism": "Entry 继承 WeakReference，让 ThreadLocal 实例本身能随业务对象一起被回收，避免 key 泄漏；同时 value 保持强引用以免使用中被误回收，于是清理责任落到使用方的 remove 与 Map 的探测式清理上。",
+          "visual": "画三层嵌套：Thread → ThreadLocalMap → Entry；key 用虚线箭头指向 ThreadLocal（弱），value 用实线箭头指向堆里的值（强）；旁边补一条线程池复用条，标出没 remove 时 value 仍然连着不放。",
+          "prerequisites": ["Java 四种引用类型", "ThreadLocal 基本用法", "哈希表的冲突处理"],
+          "selfTest": ["key 是弱引用，为什么 value 还会泄漏？", "ThreadLocalMap 为什么用开放寻址而不是链地址法？", "线程池里没调用 remove 会发生什么？"],
+          "formula": ""
+        },
+        {
+          "name": "线程池上下文传递（Context Propagation in Thread Pools）",
+          "readable": "线程池复用线程，而 ThreadLocal 的值属于线程而不是任务：新任务可能读到上一个任务的残留值，任务内部再提交的子任务也拿不到父线程的值。正确做法是提交任务时抓快照、执行前回放到执行线程、跑完恢复现场。",
+          "analogy": "像外包团队轮班用同一个工位：交班时先把上一班的工牌和便签收走拍照存档（快照），下一班坐下前把对应工牌挂上（回放），干完立刻摘下（恢复）。",
+          "analogyBreaksDown": "现实里工牌可以复印很多份互不影响；而快照复制的是引用，value 若是可变对象，多份快照仍指向同一个对象，照样会并发出错。",
+          "mechanism": "InheritableThreadLocal 只在创建新线程时复制父线程的值，对池化线程无效；TTL 这类方案用装饰器包装 Runnable，在提交时捕获快照、run 前 replay、finally 里 restore，让上下文跟随任务而不是跟随线程。",
+          "visual": "画一条横向时间轴：提交任务（抓快照）→ 任务入队等待 → 执行前 replay → 任务体执行 → finally restore，每个阶段下方标注当前线程与上下文的对应关系。",
+          "prerequisites": ["ExecutorService 的提交与执行模型", "ThreadLocal 与 InheritableThreadLocal 的行为差异"],
+          "selfTest": ["为什么 InheritableThreadLocal 在线程池里会失效？", "快照应该在提交时抓还是执行时抓，为什么？", "任务抛异常时上下文怎么保证被清理？"],
+          "formula": ""
+        },
+        {
+          "name": "内置锁与显式锁（Intrinsic Lock vs ReentrantLock）",
+          "readable": "synchronized 是 JVM 内置的管程锁，进同步块自动加锁、异常自动释放；ReentrantLock 是 JUC 的显式锁，必须在 finally 里 unlock，换来可中断、可超时、可选公平和多条件队列。两者都可重入。",
+          "analogy": "synchronized 像酒店房卡：刷卡进门、离开自动退房，不用担心忘还；ReentrantLock 像自己捏着一把钥匙，可以试着拧一下就放弃（tryLock）、可以被叫走（可中断），但忘了还钥匙门就一直锁着。",
+          "analogyBreaksDown": "房卡和钥匙都只体现独占，掩盖了两者实现完全不同：synchronized 靠对象头与监视器、还能做锁消除与锁粗化；ReentrantLock 靠 AQS 的 state 与队列，排队和唤醒全在 Java 层。",
+          "mechanism": "synchronized 由 monitorenter/monitorexit 字节码保证释放，把复杂度推给 JVM；ReentrantLock 把 state、同步队列和 Condition 暴露出来，因此能实现公平与非公平、超时与中断，代价是调用方必须保证配对释放。",
+          "visual": "画一张两列对照表：行是加锁方式、释放方式、可重入、可中断、超时、公平性、条件变量、实现层；左列 synchronized 多为自动与不可中断，右列 ReentrantLock 对应手动与支持。",
+          "prerequisites": ["Java 监视器与对象头", "AQS 与 CAS 基础"],
+          "selfTest": ["synchronized 和 ReentrantLock 各自怎么释放锁？", "什么场景必须用 ReentrantLock？", "公平锁为什么吞吐通常更差？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "岗位为得物 Java 开发工程师，帖主参加的是一面。",
+          "面试以八股为主，至少列出 5 道题。",
+          "ThreadLocal 被问使用场景、原理与风险漏洞。",
+          "被问线程池线程之间如何传递信息，以及除 ThreadLocal 外还有哪些线程安全变量访问方式。",
+          "要求对比 synchronized 和 ReentrantLock；帖主自述面试官会引导、自己答得只能说还行。"
+        ],
+        "uncertain": [
+          "开头『9.24bg双2』的具体含义（日期还是背景自评）摘要未展开，待核实。",
+          "『双2』指代（双一流或双非）无法从摘要确定。",
+          "摘要只显示到第 4 题，第 5 题及之后的题目与全部答案缺失。",
+          "帖子未给出这一面的结果（是否通过）。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "得物 Java 一面全是八股：ThreadLocal、线程池传值、线程安全变量和两把锁。"},
+          {"level": "入门", "text": "一面按顺序问 ThreadLocal 的使用场景、原理和风险漏洞；线程池里的线程之间怎么传递信息；除了 ThreadLocal 还有哪些线程安全的变量访问方式；最后对比 synchronized 和 ReentrantLock。帖主说面试官会在你卡住时给引导。"},
+          {"level": "进阶", "text": "这几题考的是同一条主线：状态放在哪一层。ThreadLocal 把状态绑在线程上，换来无锁读取，代价是线程池复用时会串味、key 弱引用而 value 强引用会泄漏；要跨线程传递就得在任务提交时抓快照、执行前回放。另外三条路是栈封闭与不可变、volatile 与原子类、以及锁或并发容器，各自对应不同的可见性与互斥成本。"},
+          {"level": "专家", "text": "面试官真正想分辨的是你会不会以为用了 synchronized 就解决了并发。ThreadLocal 只解决每线程一份，不解决可见性；volatile 只解决可见性与有序性，不解决复合操作的原子性；原子类用 CAS 换无锁但要处理自旋与 ABA；ReentrantLock 比 synchronized 多了可中断、可超时、可选公平和多条件队列，代价是必须 finally 释放。线程池场景还要注意 InheritableThreadLocal 只在建线程时复制，复用线程可能读到上一任务的残留值。"}
+        ],
+        "socratic": [
+          {"q": "如果被问『ThreadLocal 的 key 是弱引用，为什么还会内存泄漏』，你怎么答？", "a": "弱引用只保证 ThreadLocal 实例本身可回收；Entry 的 value 是强引用，Map 又被 Thread 持有，线程不死 value 就不释放，所以必须 remove。"},
+          {"q": "为什么线程池里不能直接用 InheritableThreadLocal 传上下文？", "a": "它只在创建线程时把父线程的值复制过去；线程池的线程是复用的，不会为每个任务新建线程，后续任务拿到的还是旧值。"},
+          {"q": "既然有 synchronized，为什么还需要 ReentrantLock？", "a": "为了可中断等待、tryLock 超时、可选公平锁和多个 Condition 队列；代价是要自己在 finally 里解锁。"},
+          {"q": "volatile 能替代锁吗？", "a": "它只保证可见性并禁止重排序，count++ 这类复合操作仍然不安全，需要原子类或锁。"}
+        ],
+        "mechanism": "为什么必须这样设计：线程是并发执行与上下文切换的单位，把请求级状态放在线程对象上，读取时不需要任何同步，性能最好；代价是这份状态的生命周期跟着线程走，于是线程复用就要靠 remove 或快照回放来隔离。锁的两种形态也是同一取舍：synchronized 把释放交给 JVM 更安全，ReentrantLock 把排队策略交给 Java 层更灵活。",
+        "boundary": "ThreadLocal 不适合跨进程、跨线程池或异步回调链路的传递，也不适合存大对象；synchronized 在高竞争下升级为重量级锁且不可中断、不可超时；ReentrantLock 忘记 finally 解锁会永久死锁。虚拟线程下 ThreadLocal 仍可用，但海量线程各存一份会放大内存占用。",
+        "analogyBoundary": "把 ThreadLocal 类比成『每个线程一个储物柜』在一点上失效：现实里钥匙丢了柜子会被一起清走，而 Java 中只回收弱引用的 key，value 仍被 Map 强引用占着，柜子里的东西不会自动消失。",
+        "misconceptions": [
+          "以为 ThreadLocal 的 value 也是弱引用所以不会泄漏；真正滞留的正是 value。",
+          "以为 InheritableThreadLocal 能解决线程池传值；线程复用时它不会重新复制。",
+          "以为 ReentrantLock 一定比 synchronized 快；它只是更灵活，低竞争下 synchronized 往往更优。"
+        ],
+        "ownAnalysis": "（推断）这组题是一条完整链路：从状态怎么隔离，到状态怎么传递，再到状态怎么同步，常见于交易、订单、链路追踪类后端岗。帖子只列出问题、没记标准答案，第 5 题之后也缺失。准备『风险漏洞』这一问时，用 JDK 的 ThreadLocalMap 源码（开放寻址、探测式清理过期 Entry）作答比背结论更抗追问。",
+        "officialNotes": [
+          {"position": "帖子完整给出前 4 道八股题，第 5 题起正文被截断；帖主自述面试官会引导、自己答得只能说还行，未提及结果。", "source": "牛客网面经原帖"}
+        ],
+        "interviewAnswer": "我用 ThreadLocal 主要放请求级上下文：登录用户、traceId、事务连接，读取时无锁。它的实现是每个 Thread 持有一个 ThreadLocalMap，key 是 ThreadLocal 实例的弱引用、value 是强引用，所以线程池下必须 remove，否则 value 会一直挂着。跨线程传递我会在提交任务时抓快照、执行前回放；其他手段看场景选不可变对象、volatile、原子类或并发容器。锁方面 synchronized 交给 JVM 管释放，ReentrantLock 换来可中断、超时和多条件队列。",
+        "studyPath": {
+          "prerequisites": ["Java 内存模型与 happens-before", "Thread 与 ExecutorService 基础", "CAS 与 AQS 概念"],
+          "nextSteps": ["读 JDK ThreadLocal 与 ThreadLocalMap 源码，重点看过期 Entry 的清理逻辑", "手写一个基于 AQS 的简单锁", "了解 TransmittableThreadLocal 与 MDC 在线程池下的实现"]
+        }
+      }
+    },
+    {
+      "id": "a269d242962e0bae",
+      "tldr": "腾讯 IEG 后台实习二面没有八股，35 分钟只深挖深度研究项目：优势、评估口径、基座来源、效果验证。",
+      "keyPoints": [
+        "二面全程没有八股，35 分钟都在聊项目。",
+        "被问深度研究项目相比市面深度思考的优势。",
+        "追问评估的覆盖率、来源质量、边际收益怎么算。",
+        "追问微调用的预训练模型从哪下载、名字与参数。",
+        "追问如何判断训练后效果变好；帖主已过等 Offer。"
+      ],
+      "why": "大厂实习二面越来越用项目深挖代替八股；能把评估口径与基座来源讲清楚，是过面的分水岭。",
+      "difficulty": "hard",
+      "tags": ["interview", "llm", "finetuning", "evaluation", "agent"],
+      "entities": ["腾讯 IEG", "后台开发", "深度研究项目", "大语言模型", "微调", "预训练模型"],
+      "diagram": {
+        "kind": "flow",
+        "title": "项目深挖面试的四条追问线",
+        "caption": "二面无八股，面试官沿着差异化、评估口径、基座来源、效果验证四条线把项目往下压。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='项目深挖面试的四条追问线'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='var(--accent)' font-weight='bold'>面试形式</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>35 分钟只聊项目</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>追问一 差异化</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>对比市面深度思考</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>追问二 评估口径</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>覆盖率 / 来源质量 / 边际收益</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='var(--accent)' font-weight='bold'>追问三 基座与验证</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>模型来源 + 效果证据</text></svg>",
+        "alt": "四行流程：面试形式为 35 分钟只聊项目，随后依次追问项目差异化、评估口径（覆盖率、来源质量、边际收益）、基座来源与效果验证。"
+      },
+      "concepts": [
+        {
+          "name": "深度研究项目的评估三件套（Coverage / Source Quality / Marginal Benefit）",
+          "readable": "面试官要你把研究做得好不好拆成可计算的量：覆盖率看研究覆盖了多少必答子问题，来源质量看引用材料是否可信、是否一手，边际收益看多花的每一步检索是否换来等量的质量提升。",
+          "analogy": "像给一篇综述打分：覆盖了多少关键分支（覆盖率）、引的是论文原文还是二手转述（来源质量）、再多查一天还能补多少空白（边际收益）。",
+          "analogyBreaksDown": "写作打分可以事后由人主观评审，而 Agent 的这三项要在运行时自动计算；一旦用大模型当裁判，评估本身又引入噪声与成本，边际收益可能被裁判偏差吃掉。",
+          "mechanism": "把深度思考好不好变成可回归的指标：先用子问题清单定义必须回答的集合，再按来源等级给每条引用加权，最后对新增检索步画收益曲线，边际收益低于阈值就停止搜索，这既是评估口径也是早停策略。",
+          "visual": "三张并排小图：左为子问题清单的勾选进度条（覆盖率）；中为来源分层堆叠柱（一手论文、官方文档、二手博客）；右为质量随检索步数的上升曲线，斜率即边际收益，标出斜率趋零的早停点。",
+          "prerequisites": ["Agent 的检索与规划流程", "常用评测指标（精确率、召回率、加权得分）"],
+          "selfTest": ["覆盖率的分母该怎么定义才不会被追问击穿？", "来源质量如何量化成可比较的分数？", "边际收益降到接近零时应该停止还是继续检索？"],
+          "formula": ""
+        },
+        {
+          "name": "基座溯源与微调效果验证（Base Model Provenance and Fine-tuning Evidence）",
+          "readable": "面试官要具体到预训练模型从哪下载、叫什么名字、多少参数：这既验证项目真做过，也决定结果是否可比。效果变好则要控制变量说清：同一数据与评测下，基座与微调后的指标对照，而不只是感觉回答更像样。",
+          "analogy": "像复现实验报告：必须写清用的是哪一版试剂、多少浓度，否则别人没法判断你的提升来自配方还是换了原料。",
+          "analogyBreaksDown": "实验里试剂批次可以完全一致，而开源模型即使同名同参数，不同下载源、量化版本、分词器或对话模板都会让结果不可比。",
+          "mechanism": "把项目讲成可审计的链路：基座来源（仓库、权重名、规模）→ 微调方式与数据 → 评测集与指标 → 对照基线。每一步都留证据，面试官才能判断提升来自方法还是来自换基座。",
+          "visual": "画一条带证据标签的流水线：基座下载（仓库＋权重名＋参数量）→ 微调（数据与方法）→ 评测（同一评测集）→ 对比曲线（基座 vs 微调），每个方框下挂一行证据。",
+          "prerequisites": ["开放模型仓库的下载与命名规则", "SFT 与 LoRA 基本流程", "常见评测集与指标"],
+          "selfTest": ["为什么必须说清基座的名字与参数量？", "怎么证明提升来自微调而不是换了基座？", "同一模型的不同量化版本能直接比较吗？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "岗位为腾讯 IEG 后台开发日常实习。",
+          "二面全程没有八股，只有 35 分钟项目。",
+          "被问深度研究项目相比市面大模型深度思考的优势。",
+          "被问评估环节的覆盖率、来源质量、边际收益怎么计算。",
+          "被问微调用的预训练模型从哪下载、名字是什么、各参数是多少，以及怎么知道训练后效果变好。",
+          "标题自述已通过、在等 Offer。"
+        ],
+        "uncertain": [
+          "摘要未给出评估三件套的具体计算公式，本条只做通用口径说明，需核对原文。",
+          "正文在『训练后的各项』处截断，评测指标名称与结果数值缺失。",
+          "HR 面的具体问题帖子未记录（标题提到二面与 HR 面）。",
+          "『已过等 offer 中』来自帖主自述，无第三方确认。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "腾讯 IEG 后台实习二面不考八股，35 分钟只追问一个深度研究项目。"},
+          {"level": "入门", "text": "二面全程围绕项目：先问你做的深度研究项目相比市面上大模型的深度思考强在哪；再追评估环节的覆盖率、来源质量、边际收益是怎么算出来的；还问微调用的预训练模型从哪下载、叫什么、参数多少，以及你怎么知道训练后效果变好了。帖主已过、在等 Offer。"},
+          {"level": "进阶", "text": "这类追问的套路是层层下钻到可验证的细节：优势必须落到具体机制，不能停在效果更好；评估三件套要给出可计算的口径与分母；基座要能报出仓库、权重名与参数量；效果验证要有同一评测集下的对照。任何一层答不上来，面试官就会怀疑项目是包装出来的。"},
+          {"level": "专家", "text": "（推断）面试官在用可复现性筛人：真做过深度研究项目的人通常记得基座来源、训练配置与评测口径，只会调 API 的人则说不清覆盖率的分母或边际收益怎么定义。准备方式是把项目写成一条可审计链路——基座（来源、名字、参数）→ 微调（数据与方法）→ 评估（子问题清单、来源分层、边际收益曲线）→ 对照基线，每步配一个量化数字和一次失败复盘；差异化问题用具体机制回答，而不是笼统地说更强。"}
+        ],
+        "socratic": [
+          {"q": "如果被问预训练模型从哪下载、参数多少却答不上来，说明什么？", "a": "说明可能只是跑了别人的脚本或调用了成品，没有真正参与训练链路；面试官借此判断项目归属与可复现性。"},
+          {"q": "为什么评估要拆成覆盖率、来源质量、边际收益三项而不是一个总分？", "a": "一个总分说不清问题出在没查全、来源不可信还是检索浪费；分开算才能定位问题并据此决定何时早停。"},
+          {"q": "项目优势题为什么不能答『我们的模型更强』？", "a": "太抽象、无法验证；要落到机制或口径，例如来源分级加权、按边际收益早停，才经得起继续追问。"},
+          {"q": "怎么证明训练之后效果确实变好了？", "a": "固定评测集与解码设置，对比基座与微调后的指标，并说明提升是否显著、是否只集中在某一类样本上。"}
+        ],
+        "mechanism": "为什么面试要这样设计：项目深挖是短时间内唯一能验证你到底做了什么的方式。八股可以背，项目细节背不出来——基座名字、参数量、评估分母、失败原因只有真做过的人才知道。面试官的每个追问都在把陈述往下压一层，直到触及只有作者才掌握的具体数字或取舍。",
+        "boundary": "这套准备方式只在项目确实由你主导时有效；如果只参与很小一环，硬讲全局反而会在追问中露馅，应老实划清自己负责的模块。另外帖子没给标准答案，也没记录后续轮次与 HR 面细节，不能把推断当作官方口径。",
+        "analogyBoundary": "把面试类比成复现实验答辩只能到一定程度：实验要求完全可复现，而工程项目的评测集、数据版权与线上环境往往无法公开，面试官实际考察的是你能否讲清这些边界。",
+        "misconceptions": [
+          "以为没有八股就等于简单；项目追问会直插到你没准备过的细节层。",
+          "把覆盖率当成模型准确率，没说清分母是哪些子问题。",
+          "只报效果变好了，没有同一评测集下的对照与显著性说明。"
+        ],
+        "ownAnalysis": "（推断）这条面经的信号很明确：想做 AI 应用或深度研究岗，必须把项目整理成可审计的技术文档——模型来源、训练配置、评测口径、失败记录。相比通用的检索增强项目，能说清评估三件套如何计算的人在二面几乎不会被问倒。可疑处：正文在『训练后的各项』处被截断，HR 面的具体问题也未记录，因此标题提到的 HR 面只能确认存在，无法展开。",
+        "officialNotes": [
+          {"position": "帖主自述二面全程没有八股、只有 35 分钟项目深挖，标题称已过并在等 Offer；正文在『训练后的各项』处截断。", "source": "牛客网面经原帖"}
+        ],
+        "interviewAnswer": "我这个深度研究项目相比通用深度思考的优势有三点，都能量化：一是检索按子问题清单推进，覆盖率可直接计算；二是引用按一手论文、官方文档、二手来源三级加权，来源质量可回归；三是对每一步新增检索算边际收益，低于阈值就早停，避免无意义搜索。基座下载自公开仓库，权重名与参数量都记在实验记录里；验证时固定同一评测集，对比基座与微调后的指标，并说明提升集中在哪类问题上。",
+        "studyPath": {
+          "prerequisites": ["检索增强与检索 Agent 基本流程", "SFT/LoRA 微调实践", "常见评测指标的含义"],
+          "nextSteps": ["把项目写成一份带数字的实验记录", "准备一次失败复盘作为追问缓冲", "熟悉开放权重的命名与参数量口径"]
+        }
+      }
+    },
+    {
+      "id": "e642b13b2a0d9d5e",
+      "tldr": "字节 AI 应用工程师一面约 70 分钟：手写 1~N 选 k 的组合并分析复杂度，深挖 Agent 项目后挂。",
+      "keyPoints": [
+        "岗位为字节 AI 应用工程师，方向是飞书多维表格。",
+        "一面为视频面，约 70 分钟，以自我介绍开场。",
+        "现场手写：1~N 中选 k 个，给出所有可能答案。",
+        "追问该题的时间复杂度与空间复杂度。",
+        "项目深挖 Agent：为何不用 Claude Code、是否自建。"
+      ],
+      "why": "AI 应用岗第一关仍是手写枚举与复杂度，第二关是讲清 Agent 为什么自建而不是套现成工具，这决定你是会用工具还是能设计系统。",
+      "difficulty": "medium",
+      "tags": ["interview", "algorithm", "backtracking", "agent", "llm-application"],
+      "entities": ["字节", "AI 应用工程师", "飞书多维表格", "Claude Code", "Agent"],
+      "diagram": {
+        "kind": "flow",
+        "title": "字节一面 70 分钟流程拆解",
+        "caption": "一面分四段：自我介绍、手写组合枚举、复杂度追问、Agent 项目深挖，帖主挂在这一面。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='字节一面 70 分钟流程拆解'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='var(--accent)' font-weight='bold'>开场</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>自我介绍</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>算法手写</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>1~N 中选 k 个全部组合</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>复杂度追问</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>时间与空间复杂度</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='var(--accent)' font-weight='bold'>项目深挖</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>Claude Code / 自建 Agent</text></svg>",
+        "alt": "四行流程：自我介绍开场，随后现场手写 1~N 中选 k 个的全部组合，追问时间与空间复杂度，最后深挖 Agent 项目是否自建、为何不用 Claude Code。"
+      },
+      "concepts": [
+        {
+          "name": "组合枚举与回溯剪枝（Combination Enumeration with Backtracking）",
+          "readable": "从 1~N 里挑 k 个数的所有组合，等于在决策树上每层选一个更大的数：选够 k 个就记录，剩下的数不够凑满 k 个就剪枝回退。答案个数是 C(N,k)，每个答案要写 k 个数，所以总时间随答案数量×k 增长，递归深度是 k。",
+          "analogy": "像从一排编号抽屉里挑 k 个带回家：你从左到右决定拿或不拿，一旦发现剩下的抽屉数不够凑满 k 个，就不用再往下想，直接回头。",
+          "analogyBreaksDown": "抽屉可以放回再拿，而组合不允许重复且与顺序无关；把过程想成拿或不拿的二叉树还会得到大量拿不满 k 个的无效叶子，必须靠剪枝与非递减枚举去掉。",
+          "mechanism": "关键设计是传一个起始下标：每层只从比已选元素更大的数开始枚举，天然去重并保证输出有序；配合剩余可选数量不足就剪枝，把无效分支整棵砍掉，避免生成重复组合与无解路径。",
+          "visual": "画一棵深度为 k 的决策树：根是可选集合 1 到 N，每条边标出这一步选的数，路径上的数严格递增；被剪枝的分支用灰色叉号表示，叶子节点就是一组答案。",
+          "prerequisites": ["递归与回溯模板", "组合数的含义", "复杂度分析方法"],
+          "selfTest": ["为什么每层从上一个选中数的下一位开始就能去重？", "剩余数量不足时的剪枝条件怎么写？", "答案个数与总时间复杂度是什么关系？"],
+          "formula": "O\\!\\left(\\binom{N}{k}\\cdot k\\right)"
+        },
+        {
+          "name": "自建 Agent 与套用现成工具（Build vs Wrap）",
+          "readable": "面试官问为什么不用 Claude Code、是否自己搭 Agent，实际在问你是否清楚自研的收益在哪。自建换来可控的工具编排、上下文管理、成本与数据合规，代价是自己维护调用链与失败重试；套现成工具起步快，但难以深度定制与评测。",
+          "analogy": "像做菜用中央厨房半成品还是自己起灶：半成品出餐快，但口味、食材来源和成本都由别人定；自己起灶能按客人口味调，但要自己管火候和买菜。",
+          "analogyBreaksDown": "厨房的取舍是口味与效率，而 Agent 自建还牵涉数据不能出域、模型要可替换、评测要可复现这些工程合规问题，类比覆盖不到。",
+          "mechanism": "核心设计选择是把 Agent 的控制面握在自己手里：规划策略、工具集合、上下文裁剪、重试与降级都可按业务定制并纳入评测；如果只是标准编码辅助，直接用现成工具成本更低。面试要答的是取舍依据，而不是自研更酷。",
+          "visual": "画一张两列对照表：维度为定制能力、维护成本、数据合规、可评测性、上手速度；左列套现成工具、右列自建 Agent，用高低标记填格，末尾标出各自适用的典型场景。",
+          "prerequisites": ["Agent 基本架构（规划、工具、记忆）", "大模型接口调用与提示词工程", "基本的工程成本意识"],
+          "selfTest": ["什么情况下应该直接用现成的编码 Agent？", "自建 Agent 能拿回哪些可控性？", "面试里怎么把不用 Claude Code 讲成取舍而不是否定？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "岗位为字节 AI 应用工程师，方向是飞书多维表格。",
+          "轮次为一面，形式是视频面，时长约 70 分钟。",
+          "现场手写一道算法题：1~N 个数中选 k 个，给出可能的答案，并追问时间复杂度和空间复杂度。",
+          "项目深挖涉及 Agent：问了为什么项目不用 Claude Code、是否是自己搭建的 Agent。",
+          "标题自述这一面挂了。"
+        ],
+        "uncertain": [
+          "帖子在 Agent 追问处被截断，后续问题与挂掉的具体原因未记录。",
+          "『1~N 个数中选 k 个』是否要求输出全部组合、k 的范围与是否允许重复，摘要未说明。",
+          "复杂度答案帖子未给出，O(C(N,k)·k) 与递归深度 O(k) 为通用结论（推断）。",
+          "是否有后续轮次或流程结果未提及。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "字节 AI 应用一面：先手写组合枚举，再讲清 Agent 为什么自己搭，最后挂了。"},
+          {"level": "入门", "text": "一面约 70 分钟视频面：自我介绍后现场手写一道算法题——从 1~N 个数里选 k 个，列出所有可能答案，并追问时间与空间复杂度。之后深挖 Agent 相关项目，问为什么你的项目不用 Claude Code、Agent 是不是自己搭的。帖主最终挂在这一面。"},
+          {"level": "进阶", "text": "考点分布很清楚：算法题考最基础的回溯与剪枝，能否看出答案数量是组合数、总复杂度还要乘上写出每个答案的 k；项目部分考工程判断——面试官想知道你是理解了 Agent 的控制面才自建，还是只会调用现成工具。答不出为什么不用，往往比复杂度估错更致命。"},
+          {"level": "专家", "text": "（推断）为什么不用 Claude Code 这类问题考的是取舍语言：现成工具在标准编码任务上更成熟、维护成本接近零，自建的价值必须落在业务定制、上下文管理、数据出域限制、可评测性或成本上，否则就是重复造轮子。回答时给出对比维度与一个反例（什么情况下我会直接用现成工具），比罗列优点更有说服力。算法部分的失分点通常是没做剪枝、忽略答案数量导致复杂度估算错误，或被追问 k 很大时答不出可用字典序或迭代法避免深递归。"}
+        ],
+        "socratic": [
+          {"q": "1~N 选 k 个，为什么不能简单用两层循环枚举？", "a": "k 是变量，循环层数随之变化；必须用递归回溯，每层从上一个选中数的下一位开始，才能不重不漏。"},
+          {"q": "复杂度为什么不是 N 的 k 次方？", "a": "递增枚举天然去重，有效叶子只有组合数那么多个，但每个叶子要写出 k 个数，所以总时间随答案数量×k 增长，递归深度是 k。"},
+          {"q": "如果追问 k 接近 N/2 且 N 很大怎么办？", "a": "答案数量本身就是组合级爆炸，先说明无法全部输出，再讨论按序号生成第 i 个组合、不枚举全部的做法。"},
+          {"q": "为什么不用 Claude Code 会是加分题也可能是扣分题？", "a": "取决于你能不能说出取舍依据；讲清自建带来的可控性与评测收益就是加分，只说自研更酷就是扣分。"}
+        ],
+        "mechanism": "为什么这样设计面试：AI 应用岗既要能落地写代码，也要能判断工程边界。算法题是低成本筛掉不会写递归的人；为什么不用现成工具则是区分会用 AI 工具与能设计 AI 系统的分水岭——前者只需会调接口，后者必须说清规划、工具、上下文与成本控制怎么做，以及什么情况下不值得自建。",
+        "boundary": "手写回溯只适合 k 较小或只要求部分答案的场景；N 大且 k 接近一半时答案数量本身爆炸，必须换成按序号生成单个组合。Agent 侧同理：自建只在下游有明确定制或合规收益时成立，否则维护成本会超过收益。帖子在项目细问处截断，后续追问只能推断。",
+        "analogyBoundary": "把自建 Agent 类比成自己起灶做菜会在合规维度失效：菜品口味能事后尝出来，而数据是否出域、模型能否替换、评测能否复现这些代价，在项目跑起来之前根本看不见。",
+        "misconceptions": [
+          "以为组合题随便写个递归就行；没处理重复与剪枝，复杂度会退化。",
+          "把不用 Claude Code 答成它就是套壳，否定工具而不是讲取舍。",
+          "忽略每个答案要输出 k 个数，只报答案数量的量级。"
+        ],
+        "ownAnalysis": "（推断）这一轮的结构是很多 AI 应用岗的标准配方：一道算法保底加项目深挖看真实性。值得准备的不是贬低现成工具，而是一张取舍表：可控性、上下文管理、数据合规、评测、维护成本，并给出什么情况下我会直接用现成工具的反例。可疑点：帖子在 Agent 追问处被截断，挂掉的具体原因没有写，因此本条只能确认标题所述的挂这一结果，不能归因到某一题。",
+        "officialNotes": [
+          {"position": "标题自述为一面挂经，岗位是 AI 应用工程师（飞书多维表格方向），一面为视频面约 70 分钟；正文在 Agent 追问处截断。", "source": "牛客网面经原帖"}
+        ],
+        "interviewAnswer": "组合题我会用回溯：传起始下标保证递增去重，选够 k 个就收集，剩余可选数量不足就剪枝，总时间随答案数量×k 增长，递归深度是 k。项目方面我不否认 Claude Code 这类工具在标准编码任务上更成熟，但我们的场景要自己控制工具编排、上下文裁剪和数据不出域，还要能跑可复现的评测，所以选择自建；如果只是写日常业务代码，我会直接用现成工具。",
+        "studyPath": {
+          "prerequisites": ["递归、回溯与剪枝", "组合数与复杂度分析", "Agent 基础架构"],
+          "nextSteps": ["手写按序号生成组合的迭代实现", "整理一张自建与套壳的取舍表", "复盘被追问时的答题结构"]
+        }
+      }
+    },
+    {
+      "id": "e57e1974a45388b9",
+      "tldr": "京东后端实习改成两轮：9.15 技术一面深挖实习与 AI 工具，9.22 HR 面，9.23 OC、9.24 Offer。",
+      "keyPoints": [
+        "京东 jdy 实习改成两轮面试，帖主最终拿到 Offer。",
+        "9.15 一面，9.22 二面 HR 面，9.23 OC，9.24 Offer。",
+        "一面深入追问实习里最有挑战的地方。",
+        "被问用过哪些 AI 工具，并追问 codex 与 cursor。",
+        "面试单独设了 Agent 与开发流程话题。"
+      ],
+      "why": "后端实习也在问 AI 工具链：能说清各工具适合什么任务、如何嵌进开发流程，比列出工具名更有效。",
+      "difficulty": "easy",
+      "tags": ["interview", "backend", "agent", "ai-tools", "tooling"],
+      "entities": ["京东", "jdy", "codex", "cursor", "Agent"],
+      "diagram": {
+        "kind": "timeline",
+        "title": "京东实习两轮面试时间线",
+        "caption": "9 天走完流程：9.15 技术一面、9.22 HR 面、9.23 口头意向、9.24 正式 Offer。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='京东后端实习面试到 Offer 的时间线'><rect x='14' y='14' width='452' height='34' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='240' y='36' font-size='14' text-anchor='middle' fill='var(--accent)' font-weight='bold'>京东 jdy 后端实习：9 天走完流程</text><rect x='14' y='88' width='104' height='56' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='66' y='112' font-size='13' text-anchor='middle' fill='currentColor' font-weight='bold'>9.15 一面</text><text x='66' y='132' font-size='13' text-anchor='middle' fill='currentColor'>技术面</text><line x1='118' y1='116' x2='124' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='130,116 124,112 124,120' fill='var(--line-1)'/><rect x='130' y='88' width='104' height='56' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='182' y='112' font-size='13' text-anchor='middle' fill='currentColor' font-weight='bold'>9.22 二面</text><text x='182' y='132' font-size='13' text-anchor='middle' fill='currentColor'>HR 面</text><line x1='234' y1='116' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='246,116 240,112 240,120' fill='var(--line-1)'/><rect x='246' y='88' width='104' height='56' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='298' y='112' font-size='13' text-anchor='middle' fill='currentColor' font-weight='bold'>9.23 OC</text><text x='298' y='132' font-size='13' text-anchor='middle' fill='currentColor'>口头意向</text><line x1='350' y1='116' x2='356' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='362,116 356,112 356,120' fill='var(--line-1)'/><rect x='362' y='88' width='104' height='56' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='414' y='112' font-size='13' text-anchor='middle' fill='var(--accent)' font-weight='bold'>9.24 Offer</text><text x='414' y='132' font-size='13' text-anchor='middle' fill='currentColor'>正式 Offer</text><text x='14' y='196' font-size='13' text-anchor='start' fill='currentColor'>一面：自我介绍 + 深挖实习挑战点；另设 Agent 与开发流程话题</text></svg>",
+        "spec": {
+          "type": "timeline",
+          "nodes": [
+            {"label": "9.15 技术一面", "detail": "自我介绍，深入追问实习里最有挑战的地方，并问到 AI 工具"},
+            {"label": "9.22 HR 面", "detail": "二面为 HR 面"},
+            {"label": "9.23 OC", "detail": "口头意向"},
+            {"label": "9.24 Offer", "detail": "正式发放 Offer"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "约一周后"},
+            {"from": 1, "to": 2, "label": "次日"},
+            {"from": 2, "to": 3, "label": "次日"}
+          ]
+        },
+        "alt": "时间线：9.15 技术一面、9.22 HR 二面、9.23 口头意向、9.24 正式 Offer，京东 jdy 实习共两轮面试。"
+      },
+      "concepts": [
+        {
+          "name": "AI 编码工具的任务分工（Task Routing between AI Coding Tools）",
+          "readable": "被问 codex 与 cursor 有什么不同，本质是问你会不会按任务选工具：一类是在编辑器里做行内补全与仓库级改写，人在环、反馈快；一类是接任务、读文件、跑命令、改多文件的自主式工具，适合可验证的批量工作。",
+          "analogy": "像写作时用输入法联想还是找代笔：联想帮你把当前这句话补完，快且你一直盯着；代笔你给一个大纲，他写完整篇你再来审。",
+          "analogyBreaksDown": "代笔写错方向你一眼能看出，而自主式工具改了多个文件、跑过命令之后，要靠 diff 与测试才能发现它悄悄改了不该改的地方，审查成本高得多。",
+          "mechanism": "关键设计选择在于谁持有执行循环：编辑器内工具把循环交给人，每次编辑都看得见；自主式工具自己持有循环，读文件、执行命令、迭代到完成，因此适合有测试可验证的任务，而不适合需求模糊、边界不清的任务。",
+          "visual": "画一张二维图：横轴是任务粒度与自主程度，纵轴是人对每一步的可见性；左下放行内补全，右上放任务级自主执行，中间放对话式改仓库，每个点标注典型使用场景。",
+          "prerequisites": ["命令行与 Git 工作流", "对大模型上下文与工具调用的理解"],
+          "selfTest": ["什么任务适合交给能自主执行的 Agent？", "为什么改完多文件后必须看 diff 并跑测试？", "面试里怎么用一句话说清两类工具的分工？"],
+          "formula": ""
+        },
+        {
+          "name": "挑战点叙述框架（Challenge Story Framing）",
+          "readable": "一面让你讲实习里最有挑战的地方，并顺着你的回答层层追问。有效讲法是把挑战讲成一棵可追问的树：背景、你做的关键决策、被否掉的替代方案、量化结果、失败复盘，每根枝条都能再答三层。",
+          "analogy": "像带人参观你装修好的房子：不要只说装好了，要指出哪面墙是承重不能拆、为什么选这种材料、预算超了多少、哪一步返工过。",
+          "analogyBreaksDown": "装修成果看得见摸得着，而工程里的挑战往往是一次线上故障或性能优化，外人无法验证，只能靠你的数字与决策逻辑自证，所以必须提前准备证据。",
+          "mechanism": "面试官追问的目的是区分参与者与主导者：只有主导者知道被否掉的方案和具体数字。主动给出决策点与量化结果，等于把追问引到你准备最充分的地方，而不是被动接招。",
+          "visual": "画一棵树：根是最有挑战的那件事，四条主枝是背景、关键决策、替代方案、量化结果，每条主枝下挂两三个可验证的事实节点，用不同颜色标出你亲手完成的部分。",
+          "prerequisites": ["STAR 叙述框架", "一次完整的实习项目复盘"],
+          "selfTest": ["为什么要主动讲被否掉的替代方案？", "怎么把挑战量化成具体数字？", "如果挑战是团队一起解决的，你该怎么讲？"],
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "岗位为京东后端实习，帖主拿到 Offer。",
+          "时间线为 9.15 一面（Tech）、9.22 二面（HR 面）、9.23 OC、9.24 Offer。",
+          "京东 jdy 实习改成了两轮面试。",
+          "一面先自我介绍，并深入追问实习里最有挑战的地方。",
+          "Agent 与开发流程部分问了使用过哪些 AI 工具，并提到 codex 和 cursor。"
+        ],
+        "uncertain": [
+          "摘要未说明 codex 与 cursor 的具体问法以及该题的答案，正文在此处截断。",
+          "『jdy』具体指哪条实习线或项目组，摘要未解释。",
+          "实习的具体后端方向与技术栈摘要未给出。",
+          "AI 工具话题是否还问到其他工具或开发流程细节，无法确认。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "京东后端实习改两轮：技术一面深挖实习与 AI 工具，一周后 HR 面，接着 OC 和 Offer。"},
+          {"level": "入门", "text": "流程是 9.15 技术一面、9.22 HR 二面、9.23 口头意向、9.24 发 Offer，京东 jdy 实习改成了两轮。一面先自我介绍，然后围绕实习问最有挑战的地方并深入追问；另有一个 Agent 与开发流程话题，问用过哪些 AI 工具，并追问 codex 和 cursor。"},
+          {"level": "进阶", "text": "一面只有两个重心：实习经历的真实性，以及 AI 工具的使用深度。挑战点会被顺势下钻，所以准备时要把项目拆成决策、替代方案和量化结果；AI 工具题则考你会不会按任务分工——行内补全、仓库级改写、任务级自主执行各有适用场景，答都用过而不说清差异，等于没答。"},
+          {"level": "专家", "text": "（推断）这类面试的评分点在于可验证：实习部分看你能否说出只有做过的人才知道的细节，例如被否掉的方案、具体数字、返工原因；AI 工具部分看你是否理解自主程度与人类审查成本的权衡。HR 面通常确认动机、时间投入与转正意向，流程短，但前一轮的技术评价基本决定结果。从一面到 Offer 只有 9 天，说明匹配度高时节奏可以很快，准备重点应放在把项目讲成一棵可追问的树，而不是刷更多八股。"}
+        ],
+        "socratic": [
+          {"q": "为什么一面要顺着『最有挑战的地方』继续追？", "a": "挑战点最容易暴露真实参与度；顺势下钻能快速分辨你是主导者还是旁观者。"},
+          {"q": "被问用过哪些 AI 工具时，列名字够吗？", "a": "不够。面试官要听分工：哪类任务用行内补全、哪类用仓库级改写、哪类交给自主式工具，以及你怎么审查它的改动。"},
+          {"q": "HR 面还需要准备技术内容吗？", "a": "需要保留一版三分钟的项目概述；HR 面虽以动机与时间为主，但常会复核技术面的结论。"},
+          {"q": "9 天走完流程说明什么？", "a": "说明岗位缺口与匹配度都高、决策链短；但不代表技术标准低，只是流程被压缩。"}
+        ],
+        "mechanism": "为什么这样设计流程：实习招聘要同时压低成本与误招风险。技术一面用项目深挖验证真实性，用 AI 工具题确认候选人跟得上团队的开发方式；HR 面处理时间投入、动机与流程合规。两轮结构把能不能干与愿不愿意来拆开，所以一面到 Offer 可以很快。",
+        "boundary": "这套节奏只适用于实习岗位与当时的招聘需求；帖子在 codex 与 cursor 的追问处被截断，AI 工具题的具体问法与答案没有记录。靠工具替代基本编码能力仍会在追问细节时暴露，不能把会用工具当成项目深度的替代品。",
+        "analogyBoundary": "把面试类比成带人参观装修好的房子只在表达层面成立：装修成果可被肉眼验证，而实习里的技术挑战外人无法核验，还受团队协作与线上环境限制，讲得再漂亮也要靠数字与复盘支撑。",
+        "misconceptions": [
+          "以为 HR 面只是走流程，不准备项目概述，被复核时答不上。",
+          "把 AI 工具题答成工具清单，没有任务分工与审查方式。",
+          "讲挑战时只讲结果，不讲被否掉的方案，追问两层就露馅。"
+        ],
+        "ownAnalysis": "（推断）这条面经的价值在时间线：从 9.15 到 9.24 只有 9 天，且明确写了 jdy 实习改为两轮，说明流程被压缩，技术一面基本决定结果。可疑点：正文在 codex 和 cursor 处截断，AI 工具话题的完整问题与回答都缺失，因此本条的 codex/cursor 对比只能作为公开常识层面的背景，不能当作该帖记录的内容。",
+        "officialNotes": [
+          {"position": "帖主自述 9.15 一面（Tech）、9.22 二面（HR 面）、9.23 OC、9.24 Offer，并提到京东 jdy 实习改成两轮面试；正文在 codex 与 cursor 处截断。", "source": "牛客网面经原帖"}
+        ],
+        "interviewAnswer": "我实习里最有挑战的是把一块线上链路的耗时降下来：先定位到瓶颈是一次同步外部调用，试过加缓存但发现有一致性风险，最后改成异步化加补偿并补了监控。AI 工具上我按任务分工：写业务代码用编辑器内的补全和仓库级改写，人盯着改；跑批量重构或补测试这类可验证的任务，交给能自主执行命令的工具，完成后一定看 diff 并跑测试。京东这边流程很快，一面技术、一面 HR，一周内就发了 Offer。",
+        "studyPath": {
+          "prerequisites": ["STAR 复盘方法", "Git 与代码审查流程", "了解主流 AI 编码工具的形态"],
+          "nextSteps": ["准备三分钟项目概述与三层追问预案", "整理一张 AI 工具任务分工表", "记录每个项目的量化结果与失败复盘"]
+        }
+      }
+    }
+  ]
+}

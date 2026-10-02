@@ -1561,6 +1561,55 @@ export function openItem(id) {
       const dg = diagramHtml(it.diagram);
       if (dg) parts.push(dg);
     }
+    /* Teaching layer: the deep-read agent must explain by TEACHING, using several
+       independent approaches (progressive depth, Socratic questions, mechanism,
+       boundary conditions, misconception list, interview phrasing). Rendering it as
+       labelled sections is what turns an enrichment record into something you can
+       actually learn from and rehearse. */
+    if (it.teaching && typeof it.teaching === 'object') {
+      const t = it.teaching;
+      const blocks = [];
+      const prog = Array.isArray(t.progressive) ? t.progressive.filter((p) => p && p.text) : [];
+      if (prog.length) {
+        blocks.push('<div class="eyebrow">由浅入深</div><ol class="teach-prog">'
+          + prog.map((p) => '<li><span class="teach-level">' + esc(p.level || '') + '</span>'
+            + '<span>' + esc(p.text) + '</span></li>').join('') + '</ol>');
+      }
+      const soc = Array.isArray(t.socratic) ? t.socratic.filter((s) => s && s.q) : [];
+      if (soc.length) {
+        blocks.push('<div class="eyebrow" style="margin-top:var(--sp-3)">追问式理解</div>'
+          + soc.map((s) => '<div class="teach-qa"><p class="teach-q">' + esc(s.q) + '</p>'
+            + (s.a ? '<p class="teach-a">' + esc(s.a) + '</p>' : '') + '</div>').join(''));
+      }
+      const row = (label, text) => (text
+        ? '<p class="teach-row"><b>' + label + '</b>' + esc(text) + '</p>' : '');
+      const core = row('机制 · ', t.mechanism) + row('适用边界 · ', t.boundary)
+        + row('类比的失效点 · ', t.analogyBoundary) + row('我的分析 · ', t.ownAnalysis)
+        + row('面试怎么答 · ', t.interviewAnswer);
+      if (core) blocks.push('<div style="margin-top:var(--sp-3)">' + core + '</div>');
+      if (Array.isArray(t.misconceptions) && t.misconceptions.length) {
+        blocks.push('<div class="eyebrow" style="margin-top:var(--sp-3)">常见误解</div>'
+          + '<ul class="teach-mis">' + t.misconceptions.map((m) => '<li>' + esc(m) + '</li>').join('') + '</ul>');
+      }
+      if (Array.isArray(t.officialNotes) && t.officialNotes.length) {
+        blocks.push('<div class="eyebrow" style="margin-top:var(--sp-3)">官方 / 权威口径</div>'
+          + t.officialNotes.map((o) => '<div class="teach-official">' + esc(o.position || '')
+            + (o.source ? ' <span class="text-3">— ' + esc(o.source) + '</span>' : '') + '</div>').join(''));
+      }
+      const sp = t.studyPath || {};
+      const pre = Array.isArray(sp.prerequisites) ? sp.prerequisites : [];
+      const nxt = Array.isArray(sp.nextSteps) ? sp.nextSteps : [];
+      if (pre.length || nxt.length) {
+        blocks.push('<div class="teach-path">'
+          + (pre.length ? '<div><span class="text-3">读之前先会：</span>' + esc(pre.join('、')) + '</div>' : '')
+          + (nxt.length ? '<div style="margin-top:4px"><span class="text-3">读完该练：</span>' + esc(nxt.join('、')) + '</div>' : '')
+          + '</div>');
+      }
+      if (blocks.length) {
+        parts.push('<div class="prose"><h2>讲解 · 教学</h2>'
+          + '<div class="teach">' + blocks.join('') + '</div></div>');
+      }
+    }
     const concepts = Array.isArray(it.concepts) ? it.concepts : [];
     if (concepts.length) {
       const cards = concepts.map((c) => {

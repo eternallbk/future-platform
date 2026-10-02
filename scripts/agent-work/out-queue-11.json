@@ -1,0 +1,632 @@
+{
+  "batchId": "queue-11",
+  "entries": [
+    {
+      "id": "d0df2bf0ccfaf4a3",
+      "tldr": "把「何时压缩、压缩后保留什么」训练成编码 agent 的策略，SWE-bench Verified 绝对提升 9.2%。",
+      "keyPoints": [
+        "长轨迹中早期探索会过时，压缩不只是防溢出，还要决定保留什么。",
+        "用 judge 审查压缩决策与压缩后动作，缺陷输出替换成修正版再执行。",
+        "先 SFT 学修正轨迹，再用任务成功奖励做 RL，联合优化编码与压缩。",
+        "两个基准绝对提升 9.2 与 5.0 个点。",
+        "在 256K 与 16K 两种窗口、全部推理预算下都成立。"
+      ],
+      "why": "长程编码 agent 的上下文管理是当下工业界的真问题：把压缩策略纳入 RL 训练，比手工阈值规则更可迁移，面试常被追问。",
+      "difficulty": "hard",
+      "tags": ["agent", "context-management", "rl", "sft", "swe-bench"],
+      "entities": ["AutoCompact", "SWE-bench Verified", "SWE-PolyBench Verified"],
+      "diagram": {
+        "kind": "flow",
+        "title": "AutoCompact 训练闭环",
+        "caption": "压缩决策不是外部规则，而是和编码动作共享同一个任务成功回报的策略行为。",
+        "alt": "六步竖排流程：编码 Agent 长轨迹、judge 审查压缩决策、修正后回放执行、监督微调、强化学习、跨推理预算稳定提升。",
+        "svg": "<svg viewBox='0 0 480 290' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='AutoCompact 训练闭环流程'><rect x='40' y='12' width='400' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='34' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>编码 Agent 长轨迹</text><text x='426' y='34' font-size='13' text-anchor='end' fill='currentColor'>检查·搜索·编辑·测试</text><line x1='240' y1='46' x2='240' y2='52' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,58 236,52 244,52' fill='var(--line-1)'/><rect x='40' y='58' width='400' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='80' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>Judge 审查压缩决策</text><text x='426' y='80' font-size='13' text-anchor='end' fill='currentColor'>何时压、留什么状态</text><line x1='240' y1='92' x2='240' y2='98' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,104 236,98 244,98' fill='var(--line-1)'/><rect x='40' y='104' width='400' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='126' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>修正后回放执行</text><text x='426' y='126' font-size='13' text-anchor='end' fill='currentColor'>缺陷输出替换为修正版</text><line x1='240' y1='138' x2='240' y2='144' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,150 236,144 244,144' fill='var(--line-1)'/><rect x='40' y='150' width='400' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='172' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>监督微调 SFT</text><text x='426' y='172' font-size='13' text-anchor='end' fill='currentColor'>从修正轨迹冷启动</text><line x1='240' y1='184' x2='240' y2='190' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,196 236,190 244,190' fill='var(--line-1)'/><rect x='40' y='196' width='400' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='218' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>强化学习 RL</text><text x='426' y='218' font-size='13' text-anchor='end' fill='currentColor'>任务成功奖励</text><line x1='240' y1='230' x2='240' y2='236' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,242 236,236 244,236' fill='var(--line-1)'/><rect x='40' y='242' width='400' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='264' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>跨预算稳定提升</text><text x='426' y='264' font-size='13' text-anchor='end' fill='currentColor'>绝对 +9.2 / +5.0</text></svg>"
+      },
+      "concepts": [
+        {
+          "name": "压缩即策略 Compaction as Policy",
+          "readable": "长程编码 agent 的上下文不是装满了才处理：什么时候压缩、摘要里保留哪些工作状态、压缩后怎么接着干活，本身都是决策。AutoCompact 把这些决策当成策略的一部分来训练，而不是用固定阈值规则。",
+          "analogy": "像搬家打包：不是等箱子塞爆才扔东西。有经验的搬家工会边住边决定「这箱留着、那箱现在就压缩封存、封存后标签怎么写才能三个月后找得到」。打包时机和标签写法全是手艺。",
+          "analogyBreaksDown": "搬家打包的代价可逆、内容静态；agent 压缩是不可逆的有损操作，被压掉的探索信息后面可能重新变关键，决策价值依赖未来不确定性，打包类比体现不出这种时序博弈。",
+          "mechanism": "关键设计是把压缩动作与编码动作放进同一个策略，用任务成功奖励联合优化：压缩质量不再由「摘要读起来像不像」评判，而由「压缩后任务还能不能做完」决定，从而摆脱启发式阈值的僵硬。",
+          "visual": "横轴是轨迹步数，纵轴是上下文占用 token 数：画一条锯齿上升曲线，每次压缩向下跳一截；同一张图上叠加任务成功标记点，展示压缩点密集区与成功率的关系。",
+          "prerequisites": ["Transformer 上下文窗口与 KV cache 基本概念", "监督微调与策略梯度/RL 微调流程", "SWE-bench 类仓库级任务的基本形式"],
+          "selfTest": [
+            "固定阈值压缩（例如占用到某个比例就压）与学习式压缩的核心差别是什么？",
+            "为什么压缩后的动作也要被 judge 审查，而不只审查摘要？",
+            "压缩决策如何从任务成功奖励里拿到学习信号？"
+          ],
+          "formula": "\\pi_\\theta\\!\\left(a^{\\text{compact}}_t \\mid s_t\\right)"
+        },
+        {
+          "name": "修正轨迹回放 Judge-Corrected Rollout",
+          "readable": "训练数据不是 agent 原始跑出来的轨迹：先让 judge 审查它的压缩决策、摘要和压缩后动作，把有缺陷的输出替换成修正版本，再在环境里从修正后的决策继续执行，于是每条轨迹都长在「正确决策」的骨架上。",
+          "analogy": "像驾校教练在旁边踩副刹：学员走错时不重开一整趟，而是当场把方向打回来，从纠正后的位置继续开。这样记录的路线天然是「会开的人怎么开」，而不是「新手怎么犯错」。",
+          "analogyBreaksDown": "教练纠正是实时交互，judge 是事后离线改写；改写出的动作序列依赖 judge 自己的先验，轨迹里混入了裁判偏好，学生学到的也许是裁判偏好而非环境真实最优。",
+          "mechanism": "它解决「错误决策污染后续整条轨迹」的信用分配难题：直接在原始轨迹上做 SFT，模型会同时学到正确与错误决策；先修正再执行，相当于给轨迹装上正确的中间状态，让后续步骤有条件正确。",
+          "visual": "画两条并排的轨迹泳道：上排原始轨迹在某步出现「过早压缩」的红点后一路跑偏；下排同一步被换成绿点的修正决策，之后继续执行并成功。两排用虚线标出分叉点。",
+          "prerequisites": ["行为克隆/轨迹级监督微调", "on-policy 与 off-policy 数据的基本区别", "LLM-as-judge 的常见用法与风险"],
+          "selfTest": [
+            "为什么不能在原始轨迹上直接做 SFT，而要替换缺陷动作？",
+            "修正后继续在环境里执行，带来了什么额外信息？",
+            "这种数据构造的主要偏差来源是什么？"
+          ],
+          "formula": "\\tau' = \\text{EnvRollout}\\!\\left(\\text{Fix}_J(\\tau)\\right)"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-compaction-policy",
+          "name": "压缩即动作的策略目标 (Compaction-as-Action Policy Objective)",
+          "category": "agent",
+          "latex": "J(\\theta)=\\mathbb{E}_{\\tau\\sim\\pi_\\theta}\\!\\left[R_{\\text{task}}(\\tau)\\right]-\\beta\\,D_{\\mathrm{KL}}\\!\\left(\\pi_\\theta \\,\\|\\, \\pi_{\\text{ref}}\\right)",
+          "symbols": [
+            ["\\theta", "编码 agent 策略参数，同时决定编码动作与压缩动作"],
+            ["\\tau", "一条长程轨迹：检查/搜索/编辑/测试加若干次压缩"],
+            ["R_{\\text{task}}(\\tau)", "任务成功奖励，即仓库级任务最终是否通过"],
+            ["\\pi_{\\text{ref}}", "监督微调后的参考策略"],
+            ["\\beta", "KL 正则强度，防止 RL 把压缩行为退化掉"]
+          ],
+          "derivation": [
+            "第 1 步：把压缩动作与编码动作放进同一个策略的输出空间，压缩不再由外部阈值函数决定。",
+            "第 2 步：先用修正后的轨迹做监督微调，得到已经会压缩的初始策略，对应论文的 SFT 阶段。",
+            "第 3 步：再用任务成功奖励做 RL，最大化期望 R_task，使「压缩得让任务做得完」成为唯一的优化信号。",
+            "第 4 步：加 KL 正则约束新策略不要偏离参考策略太远，避免 RL 破坏刚学到的压缩行为。"
+          ],
+          "analogy": "像写长篇报告时给自己定规矩：不按页数硬性截断，而是以「最终报告能不能被采纳」为目标，倒推什么时候整理笔记、整理时留哪几页。",
+          "pitfalls": [
+            "把压缩质量单独设成奖励项：摘要说 RL 用的是任务成功奖励，自造中间奖励会引入偏好偏差。",
+            "忽略 KL 正则：纯任务奖励的 RL 容易退化成「几乎不压缩」或「乱压缩」。",
+            "把 SFT 与 RL 的顺序颠倒：没有修正轨迹冷启动，稀疏奖励下几乎没有有效探索。",
+            "把该式当作论文原式：摘要未给出精确目标函数，这是按摘要重建的通用形式。"
+          ],
+          "code": "import torch\n\n# 极简策略梯度：轨迹级任务成功奖励 + KL 正则\ndef policy_loss(logp_actions, logp_ref, rewards, beta=0.02):\n    adv = rewards - rewards.mean()           # 组内归一化，降低方差\n    pg = -(adv.detach() * logp_actions).mean()\n    kl = (logp_actions - logp_ref).mean()     # 近似 KL(pi || pi_ref)\n    return pg + beta * kl",
+          "sources": [
+            {"title": "AutoCompact: Learning When to Compact Context in Long-Horizon Coding Agents", "url": "https://arxiv.org/abs/2610.02163v1"}
+          ]
+        },
+        {
+          "id": "f-judge-corrected-sft",
+          "name": "修正轨迹上的监督损失 (Supervised Loss on Corrected Trajectories)",
+          "category": "agent",
+          "latex": "\\mathcal{L}_{\\text{SFT}}(\\theta)=-\\sum_{t\\in\\mathcal{T}'}\\log \\pi_\\theta\\!\\left(a_t \\mid s_t\\right),\\quad \\tau'=\\text{EnvRollout}\\!\\left(\\text{Fix}_J(\\tau)\\right)",
+          "symbols": [
+            ["\\tau", "基础 agent 在编码任务上跑出的原始轨迹"],
+            ["\\text{Fix}_J(\\cdot)", "judge 对压缩决策、摘要与压缩后动作的修正算子"],
+            ["\\tau'", "从修正后的决策继续在环境中执行得到的轨迹"],
+            ["\\mathcal{T}'", "参与监督的决策步集合，含压缩步与压缩后的编码步"],
+            ["\\pi_\\theta", "被训练的编码 agent 策略"]
+          ],
+          "derivation": [
+            "第 1 步：用基础 agent 采样轨迹，覆盖代码检查、搜索、编辑、测试以及若干次压缩。",
+            "第 2 步：judge 审查压缩决策、摘要文本与压缩后动作，标记有缺陷的输出。",
+            "第 3 步：把缺陷输出替换为修正版本，并在环境中从修正后的决策继续执行，得到新轨迹，使错误不再向后传染。",
+            "第 4 步：在修正轨迹上做负对数似然监督，压缩步与编码步一起学，为后续 RL 提供冷启动。"
+          ],
+          "analogy": "像把学生的错题本改对之后再让他重做一遍，而不是照着错题照抄：重做记录下来的解题步骤才是学习材料。",
+          "pitfalls": [
+            "只修正摘要文本而不管压缩后的动作：后续仍会从错误的中间状态继续。",
+            "用 judge 的改写结果直接当标签却不在环境里真跑：无法验证修正是否可行。",
+            "把修正数据当成 on-policy 数据：它混合了 judge 先验，不是纯策略自身分布。",
+            "公式为按摘要重建的通用监督形式，需核对原文细节。"
+          ],
+          "code": "import torch.nn.functional as F\n\ndef sft_on_corrected(logits, actions, mask):\n    # logits: [B, T, A]，actions: [B, T]，mask 标出压缩步与压缩后步\n    logp = F.log_softmax(logits, dim=-1)\n    tok = logp.gather(-1, actions.unsqueeze(-1)).squeeze(-1)\n    return -(tok * mask).sum() / mask.sum().clamp(min=1)",
+          "sources": [
+            {"title": "AutoCompact: Learning When to Compact Context in Long-Horizon Coding Agents", "url": "https://arxiv.org/abs/2610.02163v1"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "AutoCompact 让编码 agent 把压缩决策作为策略的一部分来学习。",
+          "训练数据由 judge 审查压缩决策、摘要与压缩后动作，缺陷输出被替换为修正版后再执行。",
+          "流程是先监督微调，再用任务成功奖励做强化学习。",
+          "SWE-bench Verified 与 SWE-PolyBench Verified 上分别比基础模型绝对提升 9.2% 与 5.0%。",
+          "256K 窗口不溢出、16K 窗口溢出触发兜底压缩，两种设置下提升都成立。"
+        ],
+        "uncertain": [
+          "摘要未给出具体的奖励函数、KL 系数与压缩动作空间定义，公式为按摘要重建的通用形式，需核对原文。",
+          "judge 的具体模型、审查粒度与修正准则摘要未说明，待核实。",
+          "训练与评测使用的具体基础模型和推理预算档位摘要未给出。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "让编码 agent 自己学会什么时候压缩上下文、压缩后留什么。"},
+          {"level": "入门", "text": "编码 agent 修仓库任务时要读很多文件、反复跑测试，早先的探索很快过时。AutoCompact 不只让它别撑爆窗口，而是把「何时压缩、保留哪些工作状态、压缩后怎么接着干」训练成策略的一部分，先监督微调再用任务成功奖励做强化学习。"},
+          {"level": "进阶", "text": "难点是压缩没有现成的监督信号：摘要写得好不好，要等任务结束才知道。作者先让基础 agent 跑任务，用 judge 审查它的压缩决策、摘要和压缩后的动作，把有缺陷的输出改成修正版再放回环境继续执行，使每条轨迹都建立在正确决策上；随后做 SFT，再用任务成功奖励联合优化编码与压缩。结果是 SWE-bench Verified 绝对提升 9.2、SWE-PolyBench Verified 提升 5.0，且在 256K 与 16K 窗口、各推理预算下都成立。"},
+          {"level": "专家", "text": "与固定阈值压缩、独立摘要模型相比，AutoCompact 把压缩动作并入同一个策略，奖励只来自任务成败，因此压缩的时机、粒度与保留内容由下游可完成性决定，而不是由相似度或信息量这类代理指标决定。代价是数据构造很重：需要 judge 在环、修正后再回放执行，且修正本身会引入裁判偏好。作者报告在 256K 不溢出与 16K 触发兜底压缩两种极端预算下都保持提升，说明收益不只是「少溢出」；但论文未把压缩策略质量与推理预算的贡献解耦，也未给出压缩开销与成功率的权衡曲线。"}
+        ],
+        "socratic": [
+          {"q": "如果只在上下文快满时按固定阈值压缩，会出什么问题？", "a": "压缩点与任务阶段无关：可能正好压掉后面还要用的探索结论，也可能在关键推理中途插入有损摘要，导致失败率随轨迹变长而上升。"},
+          {"q": "为什么压缩后的动作也要被 judge 审查，而不是只审查摘要？", "a": "摘要好不好要由后续动作证明；如果压缩后 agent 选了错误的文件或测试，错误会沿轨迹传播，只改摘要无法阻断污染。"},
+          {"q": "为什么先 SFT 再 RL，不能直接 RL？", "a": "只有任务成败这种稀疏终端奖励时，随机策略几乎探索不到「压缩得对」的行为；修正轨迹的 SFT 提供了会压缩的冷启动策略。"}
+        ],
+        "mechanism": "长程编码任务的瓶颈不是窗口装不下，而是早期探索随任务推进变成噪声，既占预算又干扰注意力。把它当纯工程问题（截断、检索、固定阈值）就绕开了「保留什么状态对下游最有用」这个本质决策。AutoCompact 之所以必须把压缩并入策略并用任务奖励优化，是因为压缩质量的真实标签只在任务结束时才出现：只有让压缩动作和编码动作共享同一个回报，压缩才会朝「让任务能做完」的方向收敛。",
+        "boundary": "摘要给出的适用边界有限：评测只覆盖 SWE-bench Verified 与 SWE-PolyBench Verified 两类仓库级编码任务，能否迁移到非编码的长程 agent（网页操作、多轮检索）未知；训练依赖 judge 在环与可回放环境，环境不可重放或缺乏可靠裁判时数据构造不成立；16K 窗口仍需兜底压缩，说明小窗口下的收益依赖兜底机制而非策略本身。",
+        "analogyBoundary": "「搬家打包」类比只覆盖了「留什么」：真实压缩是不可逆的有损变换，丢掉的信息可能后面重新变关键；也不像搬家有明确终点，压缩价值要在未知的未来步数上折现。",
+        "misconceptions": [
+          "以为 AutoCompact 只是做上下文摘要：它压缩的是策略行为（时机、保留状态、续接），摘要只是输出之一。",
+          "以为提升来自更大的上下文预算：论文强调 256K 不溢出与 16K 触发兜底两种设置下提升都成立。",
+          "把 9.2%/5.0% 说成相对提升：摘要写的是 pass rate 的绝对提升。"
+        ],
+        "ownAnalysis": "从摘要看，AutoCompact 属于「把工程启发式改成可学习决策」这一类工作（推断），与 tool-use、memory 类 agent 训练同源：先把裁判的判断注入轨迹，再用稀疏任务奖励精调。可疑处有三：一是 judge 修正会带来偏好偏差，摘要没有报告 judge 质量与最终收益的关系；二是没有隔离压缩策略之外的因素，也没给出压缩调用带来的额外推理开销；三是只在两个 SWE 基准上验证，泛化证据有限。",
+        "officialNotes": [
+          {"position": "摘要口径：把压缩决策纳入策略，用 judge 修正轨迹，SFT 后用任务成功奖励做 RL；在 SWE-bench Verified 与 SWE-PolyBench Verified 上分别绝对提升 9.2% 与 5.0%，且在 256K 与 16K 两种窗口下都成立。", "source": "arXiv 2610.02163v1 摘要"}
+        ],
+        "interviewAnswer": "我关注长程编码 agent 的上下文管理。AutoCompact 把「何时压缩、保留什么状态、压缩后怎么接」变成策略的一部分：先用基础 agent 跑任务，让 judge 审查压缩决策和压缩后的动作，把缺陷输出替换成修正版再回环境继续执行，得到干净轨迹做 SFT，然后用任务成功奖励做 RL。最值得学的是不再把压缩当固定阈值，而是让压缩和编码共享同一个任务回报。结果是在 SWE-bench Verified 和 SWE-PolyBench Verified 上绝对提升 9.2 和 5.0 个点，256K 与 16K 窗口都成立。",
+        "studyPath": {
+          "prerequisites": ["Transformer 上下文与 KV cache", "SFT 与策略梯度基础", "SWE-bench 类仓库级任务设定"],
+          "nextSteps": ["对比 GRPO/PPO 在 agent 上的应用", "对比 ReAct、记忆压缩类启发式方法", "实现固定阈值压缩基线并与任务成功率对照"]
+        }
+      }
+    },
+    {
+      "id": "20fca658b7320c60",
+      "tldr": "把潜空间压缩器与流式动力学模型端到端联合训练，让潜表示本身为可预测性服务。",
+      "keyPoints": [
+        "现有做法先用 PCA 或独立训练的自编码器压 VFM 特征，再在冻结潜空间上训预测器。",
+        "表示学习与时间预测解耦，潜空间不保证适合建模动力学。",
+        "把预测器直接接在原始 VFM 特征上同样没有可预测性保证。",
+        "Latent-Foresight 端到端联合学潜 tokenizer 与基于流的动力学模型。",
+        "关键设计防止潜变量坍缩，并让重建目标与生成目标对齐。"
+      ],
+      "why": "世界模型的核心争议是「表示该不该为预测而学」；这篇给出端到端方案，直接关系 world model 与视频生成方向的面试论述。",
+      "difficulty": "hard",
+      "tags": ["world-model", "vfm", "representation-learning", "flow-matching", "latent-dynamics"],
+      "entities": ["Latent-Foresight", "Vision Foundation Models", "PCA"],
+      "diagram": {
+        "kind": "flow",
+        "title": "两阶段与端到端潜世界模型",
+        "caption": "两阶段流程里潜空间没人对预测负责；端到端让可预测性直接塑造表示。",
+        "alt": "六步竖排流程：视频帧序列、VFM 特征、两阶段基线压缩、单独训练预测器、本工作端到端联合训练、结果更优。",
+        "svg": "<svg viewBox='0 0 480 290' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='两阶段与端到端潜世界模型流程对比'><rect x='40' y='12' width='400' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='34' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>视频帧序列</text><text x='426' y='34' font-size='13' text-anchor='end' fill='currentColor'>预测场景未来演化</text><line x1='240' y1='46' x2='240' y2='52' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,58 236,52 244,52' fill='var(--line-1)'/><rect x='40' y='58' width='400' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='80' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>VFM 特征</text><text x='426' y='80' font-size='13' text-anchor='end' fill='currentColor'>语义强、维度高</text><line x1='240' y1='92' x2='240' y2='98' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,104 236,98 244,98' fill='var(--line-1)'/><rect x='40' y='104' width='400' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='126' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>旧路线：两阶段</text><text x='426' y='126' font-size='13' text-anchor='end' fill='currentColor'>PCA/自编码器压完冻结</text><line x1='240' y1='138' x2='240' y2='144' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,150 236,144 244,144' fill='var(--line-1)'/><rect x='40' y='150' width='400' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='172' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>再单独训预测器</text><text x='426' y='172' font-size='13' text-anchor='end' fill='currentColor'>表示不为可预测性优化</text><line x1='240' y1='184' x2='240' y2='190' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,196 236,190 244,190' fill='var(--line-1)'/><rect x='40' y='196' width='400' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='218' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>本工作：端到端</text><text x='426' y='218' font-size='13' text-anchor='end' fill='currentColor'>tokenizer 与流动力学同训</text><line x1='240' y1='230' x2='240' y2='236' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,242 236,236 244,236' fill='var(--line-1)'/><rect x='40' y='242' width='400' height='34' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='264' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>结果</text><text x='426' y='264' font-size='13' text-anchor='end' fill='currentColor'>时序更一致，稳定超越两阶段</text></svg>"
+      },
+      "concepts": [
+        {
+          "name": "端到端潜世界模型 End-to-End Latent World Model",
+          "readable": "世界模型要在潜空间里预测未来。以前先把 VFM 特征压成低维潜变量（PCA 或单独训练的自编码器），冻结后再训一个预测器；Latent-Foresight 让压缩器和预测器一起训，潜空间因此会被塑造成「容易预测」的形状。",
+          "analogy": "像两个人合写一本连载小说：以前一个人先定好人物设定并冻结，另一个人硬着头皮往下写，常常写不通；现在是两人一起讨论，人物设定会为了「后面能发展」而调整。",
+          "analogyBreaksDown": "合写可以随时改设定，而联合训练里的重建约束必须同时保证信息不丢与容易预测，两个目标互相拉扯，不是想改就能改；类比也看不出潜变量坍缩这类优化病理。",
+          "mechanism": "核心设计选择是联合优化潜 tokenizer 与基于流的动力学模型，并引入防止潜变量坍缩、让重建目标与生成目标对齐的机制，解决两阶段方案的结构性缺陷：冻结潜空间时无法保证时间上可预测，端到端则把可预测性直接写进表示学习目标。",
+          "visual": "画两个并排的潜空间散点：左边是两阶段冻结潜空间，相邻时刻的点杂乱混在一起；右边是联合训练的潜空间，时间相邻的点连成平滑轨迹。用箭头颜色深浅表示时间步递增。",
+          "prerequisites": ["自编码器与重建损失", "流匹配或扩散模型的基本训练目标", "VFM（如 DINO/CLIP 类）特征的性质"],
+          "selfTest": [
+            "两阶段方案为什么不能保证潜空间适合预测？",
+            "联合训练相比把预测器直接接在原始 VFM 特征上好在哪？",
+            "为什么防潜变量坍缩在联合训练里更关键？"
+          ],
+          "formula": "\\mathcal{L}=\\mathcal{L}_{\\text{recon}}(x,\\,D(z))+\\lambda\\,\\mathcal{L}_{\\text{flow}}(z)"
+        },
+        {
+          "name": "潜变量坍缩 Latent Collapse",
+          "readable": "潜 tokenizer 和动力学模型一起训练时，双方可以「合谋」偷懒：tokenizer 只编码很少的信息，动力学模型只预测一个平凡解，重建损失却因为退化解也能下降，潜空间就失去表达力。这类退化解统称潜变量坍缩。",
+          "analogy": "像两个人合伙做假账：一个只记很少的条目，另一个只写「和上期一样」，账目看起来自洽、每个月都能对上，但真实业务信息已经全丢了。",
+          "analogyBreaksDown": "做假账是主观作弊，而坍缩是梯度优化的自然产物，任何一方都未必有意图；坍缩还常表现为部分潜维度失效，未必像假账那样整体失真。",
+          "mechanism": "摘要说作者用了若干关键设计来防止坍缩并把重建与生成目标对齐：联合训练时重建目标会通过共享潜变量影响动力学模型的输入分布，一旦表示退化，预测目标也会受损，因此需要显式稳定化设计维持梯度信号。",
+          "visual": "画潜空间各维度使用率的条形图：健康时各维方差分布较均匀，坍缩时只有少数维方差接近 0；再叠一条训练曲线，标出坍缩发生后重建损失看似正常但预测指标变差的区间。",
+          "prerequisites": ["KL 正则与后验坍缩的关系（VAE 经验）", "表征退化与对比学习中的塌缩问题", "多目标优化中的梯度冲突"],
+          "selfTest": [
+            "为什么联合训练比冻结潜空间更容易出现坍缩？",
+            "重建损失下降能证明潜空间没坍缩吗？",
+            "有哪些常见手段可以缓解潜变量坍缩？"
+          ],
+          "formula": "\\mathrm{Var}_i\\!\\left(z^{(i)}\\right)\\to 0 \\;\\Rightarrow\\; \\text{部分潜维度失效}"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-joint-latent-flow",
+          "name": "潜空间与流式动力学的联合目标 (Joint Latent Tokenizer and Flow Dynamics Objective)",
+          "category": "worldmodel",
+          "latex": "\\mathcal{L}(\\phi,\\theta)=\\underbrace{\\mathbb{E}_{x}\\|x-D_\\phi(z)\\|^2}_{\\text{重建}}+\\lambda\\underbrace{\\mathbb{E}_{t,z_0,z_1}\\|v_\\theta(z_t,t)-(z_1-z_0)\\|^2}_{\\text{流匹配}}",
+          "symbols": [
+            ["\\phi", "潜 tokenizer（编码器与解码器）的参数"],
+            ["\\theta", "基于流的动力学模型参数"],
+            ["z=E_\\phi(x)", "由 VFM 特征得到的潜 token"],
+            ["v_\\theta(z_t,t)", "流模型预测的速度场"],
+            ["z_t=(1-t)z_0+t\\,z_1", "插值路径上的潜状态"],
+            ["\\lambda", "重建目标与生成目标的权重"]
+          ],
+          "derivation": [
+            "第 1 步：两阶段方案先固定编码器并冻结潜空间，再单独训练动力学模型，两个损失彼此不可见。",
+            "第 2 步：把两个目标写进同一个损失后，潜 tokenizer 会收到来自流匹配项的梯度，从而把潜空间塑造成容易预测的形状。",
+            "第 3 步：流匹配把「从当前潜状态到下一潜状态」回归成常向量场，避免显式的多步采样展开。",
+            "第 4 步：还需要额外稳定化设计防止潜变量坍缩，并让两个目标的尺度对齐，否则权重会决定偏向重建还是偏向可预测。"
+          ],
+          "analogy": "像给地图测绘员和司机同时发奖金：测绘员不能只画好看的图，还要让司机真的能按图开到底，两边目标绑在一起。",
+          "pitfalls": [
+            "权重设得过大或过小：潜空间会偏向重建或偏向可预测，坍缩风险随之变化。",
+            "以为联合训练可以省掉稳定化设计：摘要明确说需要关键设计防坍缩并与生成目标对齐。",
+            "把该式当作论文原式：摘要未给出精确损失项，这是按摘要重建的通用形式，需核对原文。"
+          ],
+          "code": "import torch, torch.nn.functional as F\n\ndef joint_loss(x, z0, z1, enc, dec, vel, lam=1.0):\n    z = enc(x)                                   # 潜 tokenizer\n    recon = F.mse_loss(dec(z), x)                # 重建项\n    t = torch.rand(z0.size(0), 1)\n    zt = (1 - t) * z0 + t * z1                   # 流匹配插值路径\n    flow = F.mse_loss(vel(zt, t), z1 - z0)       # 目标速度场\n    return recon + lam * flow",
+          "sources": [
+            {"title": "Latent-Foresight: End-to-End Learning Predictable Representations for Latent World Models", "url": "https://arxiv.org/abs/2610.01942v1"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "现有方法先用固定降维（如 PCA）或独立训练的自编码器压缩 VFM 特征，再在冻结潜空间上训练单独的预测器。",
+          "把预测器直接接在原始 VFM 特征上同样不能保证潜空间结构适合可预测动力学。",
+          "Latent-Foresight 端到端联合学习潜 tokenizer 与基于流的生成动力学模型。",
+          "作者引入防止潜变量坍缩、并使重建目标与生成目标对齐的关键设计。",
+          "实验显示潜表示时序更一致，在多个未来场景理解任务与预测步长上持续优于两阶段基线，并消除独立训练阶段（含高分辨率适配）。",
+          "作者表示实现代码与模型权重已提供。"
+        ],
+        "uncertain": [
+          "摘要未给出具体损失项、稳定化机制名称与超参数，公式为按摘要重建的通用形式，需核对原文。",
+          "「temporally coherent」的具体度量与数值提升幅度摘要未给出。",
+          "高分辨率适配时如何消除独立训练阶段的具体做法摘要未说明。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "让潜空间的压缩器和未来预测器一起训练，使潜表示天生容易预测。"},
+          {"level": "入门", "text": "世界模型常拿视觉基础模型（VFM）的特征当输入。以前先固定地把特征压到低维（PCA 或单独训的自编码器），冻结后再训预测器；压缩时没人告诉它「要保留容易预测的动力学」。Latent-Foresight 让压缩器和基于流的动力学模型端到端联合训练，把可预测性写进表示学习目标。"},
+          {"level": "进阶", "text": "两阶段方案的根问题是解耦：冻结潜空间时，「这个表示在时间上好不好预测」没有任何约束，PCA 与自编码器只优化重建或统计结构；反过来，直接把预测器接在原始 VFM 特征上又没有压缩，语义丰富但不一定利于动力学建模。Latent-Foresight 的解法是联合优化潜 tokenizer 与流式生成动力学模型，用基于流的生成目标提供可预测性信号，并加入若干稳定化设计避免潜变量坍缩、让重建目标与生成目标对齐。作者报告端到端训练消除了独立阶段（包括高分辨率适配时），并在多个任务与预测步长上稳定超过两阶段基线。"},
+          {"level": "专家", "text": "与「VFM 特征 + PCA/自编码器 + 预测器」的三段式相比，端到端方案把压缩算子变成可微的建模选择：梯度来源从「重建得像不像」变成「重建得像且预测得准」，潜空间几何因此被动力学目标塑造。它与 JEPA 类做法共享「在表示空间预测」的思想，但用基于流的生成模型而不是纯回归，说明作者在意多模态未来分布而非单点期望。代价是联合优化更难：两个目标尺度不同、梯度可能冲突，潜变量坍缩成为主要失效模式。摘要没有报告消融与具体数值，端到端收益与高分辨率适配细节仍需读原文。"}
+        ],
+        "socratic": [
+          {"q": "为什么「冻结潜空间 + 单独训预测器」不能保证表示可预测？", "a": "冻结时优化的是重建或统计压缩，与时间预测目标无关；预测器只能在给定几何里妥协，表示本身不会被调整。"},
+          {"q": "直接把预测器接在原始 VFM 特征上，为什么也不够？", "a": "VFM 特征为语义识别而训练，维度高、冗余多，动力学建模要在无关语义方向上浪费容量，摘要也指出这种做法没有可预测性保证。"},
+          {"q": "联合训练时最需要防的是什么？", "a": "潜变量坍缩：tokenizer 与动力学模型可能收敛到退化解，重建看似正常但潜空间已失去表达力。"}
+        ],
+        "mechanism": "必须端到端的原因在于表示与预测之间存在双向依赖（推断）：预测器能学到什么，取决于潜空间保留了哪些动力学信息；潜空间该保留什么，又取决于预测目标要求哪些信息。两阶段把它拆成两个独立优化问题，等于先固定了其中一个未知量。联合优化让重建损失（别丢信息）与生成/预测损失（别留下无法预测的成分）同时作用在潜 tokenizer 上，并需要额外的稳定化设计来维持梯度信号、避免坍缩。",
+        "boundary": "摘要只给出「多个任务与预测步长上更好」的结论，没有数值与失败案例。从方法形态（推断）看，端到端收益依赖两个目标可对齐；若下游任务需要与动力学无关的细粒度语义（如文字识别），压缩潜空间可能反而丢信息。此外基于流的动力学模型采样成本高于单步回归，实时性场景需要权衡。",
+        "analogyBoundary": "连载小说类比的失效点：小说设定可以任意改，而潜空间同时受重建一致性约束——信息不能丢、还得容易预测，两个目标互相拉扯；类比也看不出潜变量坍缩这类优化病理何时发生。",
+        "misconceptions": [
+          "以为论文只是换了个更强的预测器：改动在表示学习侧，潜 tokenizer 与动力学模型联合训练。",
+          "以为端到端一定普遍更好：摘要只报告在其评测任务与步长上更好，没有消融与通用性证明。",
+          "把 VFM 特征当成已适合世界建模：摘要明确指出直接用原始特征也没有可预测性保证。"
+        ],
+        "ownAnalysis": "Latent-Foresight 的立场与 JEPA 系列一致：世界模型的关键是让表示空间而不是像素空间可预测（推断）。相比两阶段方案，它的卖点是把可预测性变成显式优化目标，并用流模型建模未来分布，这与视频生成/世界模型岗的讨论高度相关。可疑处在于证据强度：摘要用「更时序一致」「持续超过基线」这类定性表述，没有数值、没有消融、没有说明稳定化设计的具体内容；「消除独立训练阶段」在高分辨率适配时的含义也要回原文确认。",
+        "officialNotes": [
+          {"position": "摘要口径：两阶段解耦（固定降维或独立自编码器加冻结潜空间上的预测器）与直接在原始 VFM 特征上做预测，都无法保证潜空间适合可预测动力学；本文端到端联合学习潜 tokenizer 与流式动力学模型，实验上持续优于两阶段基线。", "source": "arXiv 2610.01942v1 摘要"}
+        ],
+        "interviewAnswer": "我在关注世界模型的表示学习。Latent-Foresight 的切入点是：现在大家都用 VFM 特征，但两阶段流程——先用 PCA 或自编码器压到低维、冻结，再单独训预测器——并不能保证潜空间适合预测动力学。它改成端到端联合训练潜 tokenizer 和基于流的动力学模型，把可预测性写进表示学习目标，并加入防止潜变量坍缩、对齐重建与生成目标的稳定化设计。作者报告潜表示时序更一致，多任务多步长稳定超过两阶段基线，还省掉了独立训练阶段。",
+        "studyPath": {
+          "prerequisites": ["自编码器与重建损失", "流匹配/扩散模型基础", "VFM 特征的性质"],
+          "nextSteps": ["读 JEPA / V-JEPA 系列做对比", "复现两阶段 PCA 基线并比较长步长预测", "回原文核对消融与高分辨率适配细节"]
+        }
+      }
+    },
+    {
+      "id": "32618371afde6aaf",
+      "tldr": "把「同样科学、换种说法」的鲁棒性单列为评审指标，并用双分支 SciCore 评审器降低修辞敏感度。",
+      "keyPoints": [
+        "同一科学内容换措辞，AI 评审可能给出不同判断，等于奖励修辞优化。",
+        "修辞鲁棒性 = 改写稳定性 + 跨论文区分度，两者要联合满足。",
+        "RobustReview 基准含 1,260 个稿件版本，评测 30 种评审配置。",
+        "发现假鲁棒：改写不敏感，是因为分数在论文间塌成一片。",
+        "SciCore 把全稿判断与结构化科学内核判断取平均。"
+      ],
+      "why": "AI reviewer 与 LLM-as-judge 是评测岗核心工具：这篇说明「稳」不等于「准」，并给出可复用的双分支设计。",
+      "difficulty": "medium",
+      "tags": ["evaluation", "llm-as-judge", "robustness", "benchmark", "peer-review"],
+      "entities": ["RobustReview", "SciCore", "Rhetorical Robustness", "GPT-5.5"],
+      "diagram": {
+        "kind": "matrix",
+        "title": "修辞鲁棒性四象限",
+        "caption": "只压低改写敏感度会掉进左下角的假鲁棒：分数在论文之间塌成一片。",
+        "alt": "以改写敏感度和跨论文区分度为两轴的 2x2 矩阵，标出真鲁棒、被措辞带偏、假鲁棒与最差四种评审器类型。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='修辞鲁棒性四象限矩阵'><line x1='40' y1='118' x2='456' y2='118' stroke='var(--line-1)' stroke-width='1.4'/><line x1='248' y1='28' x2='248' y2='196' stroke='var(--line-1)' stroke-width='1.4'/><text x='54' y='62' font-size='14' font-weight='bold' fill='currentColor'>低敏感 + 高区分</text><text x='54' y='84' font-size='13' fill='currentColor'>真鲁棒，理想区</text><text x='262' y='62' font-size='14' font-weight='bold' fill='currentColor'>高敏感 + 高区分</text><text x='262' y='84' font-size='13' fill='currentColor'>会被措辞带偏</text><text x='54' y='150' font-size='14' font-weight='bold' fill='currentColor'>低敏感 + 低区分</text><text x='54' y='172' font-size='13' fill='currentColor'>假鲁棒：分数塌成一片</text><text x='262' y='150' font-size='14' font-weight='bold' fill='currentColor'>高敏感 + 低区分</text><text x='262' y='172' font-size='13' fill='currentColor'>最差：既不稳也不分</text><text x='248' y='226' font-size='13' text-anchor='middle' fill='currentColor'>越靠上越能区分论文，越靠左越不受改写影响</text></svg>"
+      },
+      "concepts": [
+        {
+          "name": "修辞鲁棒性 Rhetorical Robustness",
+          "readable": "同一份科学内容用不同措辞写出来，评审系统应该给出同样判断；同时它还得能把不同论文区分开。前者叫改写稳定性，后者叫区分度，论文把两者合起来定义为修辞鲁棒性——只满足一条不算鲁棒。",
+          "analogy": "像盲品同一款酒换了杯子：换个杯子你还认得出是同一款，同时依然分得出另一款酒。如果换杯子后你说「都一样」，那不是稳定，是味觉坏了。",
+          "analogyBreaksDown": "品酒只有单一感官通道，而评审要同时满足同内容同分与不同论文不同分，两个目标可能直接冲突：把分数压到一条窄带里可以轻易获得改写稳定性，却牺牲区分度。",
+          "mechanism": "把鲁棒性从「对扰动不敏感」重新定义为稳定加可区分的联合要求，解决了只看改写敏感度造成的评估盲区：低敏感度可能来自分数塌缩而非真正稳健，也就是论文报告的假鲁棒。",
+          "visual": "二维散点：横轴改写敏感度（越低越稳），纵轴跨论文区分度（越高越好）。理想评审落在左上角；塌缩型评审挤在左下角；对措辞敏感的评审落在右上方。",
+          "prerequisites": ["LLM-as-judge 的基本用法", "排序一致性指标（如 Kendall τ）", "扰动测试与对照实验设计"],
+          "selfTest": [
+            "为什么低改写敏感度单独看会误导？",
+            "稳定性与区分度为什么会冲突？",
+            "一个评审配置在改写测试上完美稳定，能说明它可靠吗？"
+          ],
+          "formula": "R = S - \\lambda\\,(1 - D)"
+        },
+        {
+          "name": "科学内核评审 Science-Core Review",
+          "readable": "SciCore 是双分支评审器：一支照常读全稿给分，另一支先把稿件的科学内核抽成结构化表示再给分，最后把两个判断平均。全稿分支保留写作与论证细节，内核分支对措辞做了归一化，平均后整体对修辞的敏感度下降。",
+          "analogy": "像招聘时既看简历排版，也让候选人做一份结构化能力测评：排版漂亮的人不会因此直接胜出，测评分数把表达技巧和实际能力拉回同一条线上。",
+          "analogyBreaksDown": "结构化测评有客观标准答案，而科学内核的抽取本身由模型完成，可能抽错或漏掉关键贡献；平均两个分支也可能把某一分支的系统性偏差稀释成看似稳健的中间值。",
+          "mechanism": "关键设计是分支互补而非替换：全稿分支保留人评关心的完整上下文，内核分支提供内容归一化视角，取平均在降低修辞敏感度的同时维持与人类判断的竞争力，避免单用内核视图造成的信息损失。",
+          "visual": "画两条并列支路汇入一个平均节点：分支 A 输入全稿文本，分支 B 先经过结构化科学内核抽取再打分；两条分数在末端用平均节点合并成最终分。",
+          "prerequisites": ["LLM-as-judge 的 prompt 设计", "结构化信息抽取（贡献、方法、结论）", "评审分数与人类打分的对齐评估"],
+          "selfTest": [
+            "SciCore 为什么用平均而不是只保留内核分支？",
+            "内核抽取错误会怎样影响最终判断？",
+            "双分支设计相比「只在 prompt 里要求关注内容」的优势是什么？"
+          ],
+          "formula": "s_{\\text{SciCore}} = \\tfrac{1}{2}\\left(s_{\\text{full}} + s_{\\text{core}}\\right)"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-rhetorical-robustness",
+          "name": "修辞鲁棒性的联合指标 (Joint Rhetorical Robustness)",
+          "category": "foundation",
+          "latex": "R = S - \\lambda\\,(1 - D),\\quad S = 1 - \\mathbb{E}_{x,\\,r}\\!\\left[\\,d\\!\\left(s(x),\\,s(r(x))\\right)\\right]",
+          "symbols": [
+            ["x", "原始稿件"],
+            ["r(x)", "保持科学内容不变的改写版本"],
+            ["s(\\cdot)", "评审器给出的分数"],
+            ["d(\\cdot,\\cdot)", "两次打分的差异度量，摘要未给出具体形式"],
+            ["S", "改写稳定性，越高越好"],
+            ["D", "跨论文区分度，越高越好"],
+            ["\\lambda", "稳定性与区分度之间的权衡系数"]
+          ],
+          "derivation": [
+            "第 1 步：只测改写敏感度会漏掉一种坏情况——分数对所有论文都接近常数，改写当然「稳定」。",
+            "第 2 步：因此把鲁棒性定义为两个条件的联合：改写稳定性 S 与跨论文区分度 D。",
+            "第 3 步：用一个带权重的联合指标把两者合成，S 高而 D 低的配置会被惩罚，对应论文报告的假鲁棒。",
+            "第 4 步：在这个联合指标下重新比较 30 种评审配置，发现它与人类对齐指标给出的排序并不一致。"
+          ],
+          "analogy": "像给体重秤做质检：同一个砝码放上去读数要一致（稳定性），不同砝码放上去读数还得不一样（区分度）；一个永远显示 70 公斤的秤，稳定性满分却毫无用处。",
+          "pitfalls": [
+            "只看改写敏感度就说评审鲁棒：分数塌缩也会让敏感度变低，即假鲁棒。",
+            "把人类对齐与修辞鲁棒性当成同一个指标：论文发现两者对评审器的排序不同。",
+            "把该式当作论文原式：摘要只给出稳定性加区分度的联合要求，具体度量与权重需核对原文。"
+          ],
+          "code": "def rhetorical_robustness(scores, rewritten_scores, disc, lam=1.0):\n    # scores / rewritten_scores: [N] 原稿与内容保持改写的打分\n    stability = 1.0 - abs(scores - rewritten_scores).mean()\n    return stability - lam * (1.0 - disc)   # disc 为跨论文区分度（0~1）",
+          "sources": [
+            {"title": "A Missing Piece for Trustworthy AI Reviewers: From Benchmarking Rhetorical Robustness to SciCore Review", "url": "https://arxiv.org/abs/2609.39027"},
+            {"title": "HF Papers 页面", "url": "https://huggingface.co/papers/2609.39027"}
+          ]
+        },
+        {
+          "id": "f-sci-core-average",
+          "name": "SciCore 双分支平均 (Dual-Branch Science-Core Averaging)",
+          "category": "engineering",
+          "latex": "s_{\\text{SciCore}}(x) = \\tfrac{1}{2}\\left(s_{\\text{full}}(x) + s_{\\text{core}}(g(x))\\right)",
+          "symbols": [
+            ["x", "待评审的完整稿件"],
+            ["g(\\cdot)", "抽取结构化科学内核的算子"],
+            ["s_{\\text{full}}", "基于全稿文本的判断分支"],
+            ["s_{\\text{core}}", "基于科学内核的判断分支"],
+            ["\\tfrac{1}{2}", "等权平均，摘要只说 averages，未给权重细节"]
+          ],
+          "derivation": [
+            "第 1 步：动机是全稿分支能看到完整论证与写作，但会读进修辞信号。",
+            "第 2 步：对内核分支先做内容归一化，把与科学贡献相关的信息抽成结构化表示，让句子措辞不再直接进入打分。",
+            "第 3 步：把两个分支的判断做平均，最终分数同时保留稿件级上下文与内容归一化视角。",
+            "第 4 步：在主要的 GPT-5.5 对比中，SciCore 在稳定性-区分度联合剖面上领先，同时保持有竞争力的人类对齐。"
+          ],
+          "analogy": "像论文评审会上的两位评委：一位读完整稿，一位只看匿名化提炼的贡献要点，最终意见取两人平均，避免任何人被措辞左右太多。",
+          "pitfalls": [
+            "以为内核分支可以单独用：摘要素述的是双分支平均，单用内核视图会丢掉稿件级信息。",
+            "以为平均一定提升人类对齐：摘要只维持了有竞争力的人类对齐，并非提升。",
+            "忽略基准范围：结论基于 RobustReview 的 1,260 个稿件版本与 30 种配置，不能外推到所有评审场景。"
+          ],
+          "code": "def scicore_score(full_score, core_score, w=0.5):\n    # 两个分支的判断等权平均；w 可调，摘要只说明是平均\n    return w * full_score + (1.0 - w) * core_score",
+          "sources": [
+            {"title": "A Missing Piece for Trustworthy AI Reviewers: From Benchmarking Rhetorical Robustness to SciCore Review", "url": "https://arxiv.org/abs/2609.39027"},
+            {"title": "HF Papers 页面", "url": "https://huggingface.co/papers/2609.39027"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "论文把修辞鲁棒性定义为内容保持改写下的稳定性与跨论文区分度的联合要求。",
+          "RobustReview 是受控全稿基准，含 1,260 个稿件版本，评测了 30 种评审配置。",
+          "基准揭示假鲁棒：低改写敏感度与跨论文分数塌缩同时出现。",
+          "人类对齐与修辞鲁棒性对评审器的排序不同。",
+          "所评测的以内容为中心的 prompting 协议没有在骨干模型间稳定提升鲁棒性。",
+          "SciCore 把全稿判断与基于结构化科学内核的判断做平均；在主要 GPT-5.5 对比中取得领先的稳定性-区分度联合剖面，并保持有竞争力的人类对齐。"
+        ],
+        "uncertain": [
+          "摘要未给出联合指标的具体度量公式与权重，公式为按摘要重建的通用形式，需核对原文。",
+          "1,260 个版本的构造方式、改写来源与统计口径摘要未给出。",
+          "GPT-5.5 以外的骨干模型上 SciCore 的表现摘要未说明。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "AI 评审不该因为换种说法就改分，也不能对所有论文都给一样的分。"},
+          {"level": "入门", "text": "同一个科学结论换个措辞，AI 评审可能给出不同分数，作者就会去优化修辞而不是科学。论文把「改写后分数稳定」和「能把不同论文区分开」合成一个指标——修辞鲁棒性，并构建了含 1,260 个稿件版本、评测 30 种评审配置的 RobustReview。结果发现假鲁棒：改写不敏感，是因为分数在论文之间塌成一片。"},
+          {"level": "进阶", "text": "把鲁棒性写成稳定性与区分度的联合要求，直接指出了以往只测改写敏感度的盲区：一个给所有论文都打同一个分的评审器改写敏感度为零，却毫无评审价值。论文还报告两个反直觉发现：人类对齐与修辞鲁棒性对评审器的排序不同；以内容为中心的 prompting 协议并不能在骨干模型间稳定提升鲁棒性——说明这不是一句 prompt 能解决的。为此作者提出 SciCore：一支分支按全稿打分，另一支先从稿件中抽取结构化的科学内核再打分，最后把两个判断平均，在降低修辞敏感度的同时保持有竞争力的人类对齐。"},
+          {"level": "专家", "text": "从评估方法学看，这篇的贡献是把「鲁棒」从单轴性质变成双轴联合剖面：稳定性与区分度必须同时看，否则会把分数塌缩误判为稳健。基准方面，1,260 个稿件版本与 30 种配置的受控全稿设计让改写与内容可以分离，比只看摘要或标题扰动更接近真实评审。方法方面，SciCore 的双分支平均是典型的「内容归一化加上下文保留」折中：内核分支降低对措辞的依赖，全稿分支防止内核抽取丢信息。局限也明显（推断）：科学内核抽取本身由模型完成，会引入新的系统性偏差；平均两个分支可能只是把偏差稀释，而这在摘要里没有消融证据；结论主要在 GPT-5.5 上给出，跨骨干泛化未证明。"}
+        ],
+        "socratic": [
+          {"q": "如果只考核「改写前后分数一致」，为什么会得出错误结论？", "a": "把所有论文都打成同一个分也能满足一致性。论文正是发现低改写敏感度会与跨论文分数塌缩同时出现，即假鲁棒。"},
+          {"q": "为什么在 prompt 里要求评审「只看科学内容」不够？", "a": "论文报告这种内容导向的 prompting 协议并不能在骨干模型间稳定提升鲁棒性，说明措辞影响来自更深层的打分机制。"},
+          {"q": "SciCore 为什么保留全稿分支而不只内核分支？", "a": "全稿分支保留完整论证上下文，内核分支提供内容归一化；平均两者可在降低修辞敏感度的同时维持人类对齐。"}
+        ],
+        "mechanism": "评审器的分数来自文本表示，而修辞（措辞、强调、结构）与科学内容在表示里高度纠缠。只在输出端要求关注内容不改变这种纠缠，所以论文选择在输入侧做内容归一化：把科学内核抽成结构化表示后再打分。之所以必须双分支平均，是因为内核抽取会丢信息、单用内核视图会偏离人类判断；全稿分支保证上下文完整，内核分支压低措辞权重。把稳定性与区分度联合评估，则保证压低措辞权重不会退化成对所有论文给同一个分。",
+        "boundary": "结论的适用范围由基准决定：RobustReview 是受控全稿基准（1,260 个版本、30 种配置），不等于真实评审的全部场景，领域差异、长附录与图表信息都未涉及。SciCore 的主要对比在 GPT-5.5 上，摘要没给出其它骨干的结果；改写是否真的保持科学内容不变，也依赖构建方的定义。另外论文没有给出部署成本，双分支意味着两次判断的开销。",
+        "analogyBoundary": "体重秤类比失效在两点：分数不是单一物理量，跨论文区分度依赖论文集合的分布，换一批稿子区分度会变；秤的稳定性来自硬件，而评审器的稳定来自模型对措辞的不敏感，机制完全不同。",
+        "misconceptions": [
+          "以为修辞鲁棒就是对改写不敏感：论文明确指出低敏感度可能是分数塌缩造成的假鲁棒。",
+          "以为人类对齐好的评审器一定鲁棒：摘要说两者对评审器的排序不同。",
+          "以为提升鲁棒只要改 prompt：内容导向 prompting 在不同骨干上并不稳定有效。"
+        ],
+        "ownAnalysis": "这篇把 LLM-as-judge 的一个真实风险——评审器奖励修辞而非科学——变成了可测量的基准与联合指标（推断：这是评估岗最直接的迁移价值）。它与奖励黑客讨论同源：只要评审器对表面特征敏感，被评审者就会优化表面特征。SciCore 的双分支思路也可以迁移到别的 judge 场景（代码评审、答案评分）：一支看完整输入，一支看结构化要点。可疑处：科学内核如何抽取、由谁定义结构完全没在摘要里说，若内核定义偏误，平均反而给偏差披上内容归一化的外衣；论文也未报告该基准与真实人类评审决策的相关性。",
+        "officialNotes": [
+          {"position": "摘要口径：修辞鲁棒性是稳定性（内容保持改写下判断不变）与区分度（跨论文可区分）的联合要求；RobustReview 含 1,260 个稿件版本、评测 30 种配置；SciCore 为双分支平均评审器，在主要 GPT-5.5 对比中取得领先的联合剖面。", "source": "arXiv 2609.39027 / HF Papers 2609.39027 摘要"}
+        ],
+        "interviewAnswer": "我做过 LLM-as-judge，最怕的就是评审器奖励修辞。这篇把问题定义清楚了：修辞鲁棒性 = 内容保持改写下的稳定性加跨论文区分度，只测一条会得出错的结论——低改写敏感度可能只是分数塌缩，论文叫它假鲁棒。他们的 RobustReview 有 1,260 个稿件版本、30 种评审配置，还发现内容导向的 prompt 在不同骨干上并不稳定生效。方法上 SciCore 用双分支：一支看全稿，一支看抽取出的结构化科学内核，两分平均，在主要对比里拿到领先的稳定性-区分度剖面，同时人类对齐有竞争力。",
+        "studyPath": {
+          "prerequisites": ["LLM-as-judge 的评估流程", "排序一致性指标（Kendall τ / Spearman）", "扰动测试与对照实验设计"],
+          "nextSteps": ["查基准的改写构造方式与统计口径", "把双分支平均思路迁移到自己的 judge 场景做 A/B", "对比 pointwise 与 pairwise 评审的鲁棒性差异"]
+        }
+      }
+    },
+    {
+      "id": "2f4c14d6624eecdd",
+      "tldr": "10M/75M Transformer 单检查点控制全部 26 个角色，10M 在同角色 244 局中赢 240 局。",
+      "keyPoints": [
+        "10M 与 75M 两个规模，每个检查点控制全部 26 个角色。",
+        "预训练用约 840,000 场人类回放，并研究架构、优化与超参迁移。",
+        "后训练 = 排名/结果课程 + 75M 到 10M 蒸馏 + 限 Fox 镜像对局的 RL。",
+        "RL 后 10M 对 14 个发布版本的同角色 244 局赢 240 局（98.4%）。",
+        "T4 上 10M 每决策 5.2 ms、75M 8.7 ms，不含模拟器与通信。"
+      ],
+      "why": "小模型加大规模人类数据的后训练范式，与延迟敏感的具身/游戏 agent 工程取舍直接对应，面试可讲 scaling 与蒸馏。",
+      "difficulty": "medium",
+      "tags": ["rl", "distillation", "game-ai", "scaling", "curriculum-learning"],
+      "entities": ["Faynt", "Super Smash Bros. Melee", "Slippi-AI", "NVIDIA T4", "Fox"],
+      "diagram": {
+        "kind": "timeline",
+        "title": "Faynt 训练与评测流程",
+        "caption": "人类回放预训练、课程监督、蒸馏到 10M，最后只在 Fox 镜像对局上做 RL。",
+        "alt": "时间线：约 84 万场人类回放预训练、架构与缩放研究、排名与结果课程监督、75M 到 10M 蒸馏、Fox 镜像对局 RL、最终评测。",
+        "spec": {
+          "type": "timeline",
+          "nodes": [
+            {"label": "约 84 万场人类回放", "detail": "预训练语料：人类 Slippi 对局记录"},
+            {"label": "架构 / 优化 / 缩放研究", "detail": "指导预训练与超参数迁移"},
+            {"label": "监督后训练", "detail": "排名与结果课程；10M 监督后胜率 69.7%"},
+            {"label": "75M 到 10M 蒸馏", "detail": "把能力压到可部署规模"},
+            {"label": "Fox 镜像对局 RL", "detail": "对手分布收窄，终局胜负信号"},
+            {"label": "评测", "detail": "244 局赢 240；T4 每决策 5.2 ms"}
+          ]
+        }
+      },
+      "concepts": [
+        {
+          "name": "单检查点多角色策略 Single-Checkpoint Multi-Character Policy",
+          "readable": "多数游戏 AI 为每个角色单独训一个策略。Faynt 用同一个检查点控制全部 26 个角色，意味着角色身份必须作为条件进入网络，模型学到的是跨角色共享的操作规律，而不是 26 套独立参数。",
+          "analogy": "像一位格斗游戏高手用一个大脑打所有角色：他不必为每个角色单独长一套神经，而是共享距离、帧数、出手时机这些通用判断，只在招式表上分支。",
+          "analogyBreaksDown": "人类高手会显式背诵每个角色的招式帧数据，靠表格外挂；单检查点模型必须把角色差异隐式压进同一组权重，容量不足时角色间会互相干扰，类比体现不出这种容量竞争。",
+          "mechanism": "关键设计选择是把角色作为条件信息交给同一策略，而不是复制 26 套参数：训练数据在角色间共享，样本少的角色可以借助通用操作表征受益；代价是模型容量要在角色间分配，容易出现强势角色占用容量。",
+          "visual": "画一个共享主干加角色条件输入的架构图：底部是观测（画面/状态加角色标识），中间是共享 Transformer 主干，顶部是按键输出头，26 个角色名从底部汇入同一主干。",
+          "prerequisites": ["模仿学习与行为克隆", "Transformer 策略网络与序列输入", "强化学习（策略梯度）基础"],
+          "selfTest": [
+            "单检查点控制多角色相比每角色一个模型，在样本效率与容量上的取舍是什么？",
+            "角色信息应该以什么形式进入网络？",
+            "为什么共享主干对样本少的角色可能有利？"
+          ],
+          "formula": "\\pi_\\theta\\!\\left(a_t \\mid o_t, c\\right),\\; c\\in\\{1,\\dots,26\\}"
+        },
+        {
+          "name": "结果与排名课程 Outcome- and Rank-based Curriculum",
+          "readable": "后训练不是均匀地从所有对局里学。论文用两类课程：一类按对局结果（赢或输）组织学习信号，一类按排名筛选对局难度，再加上只在 Fox 镜像对局上做 RL——把强化学习限制在一个狭窄但可自我对弈的场景里。",
+          "analogy": "像备赛时先刷「能赢但赢得艰难」的对手，而不是每天被冠军横扫或虐菜：训练分布按难度和结果排序，学习信号才不会被大量悬殊对局淹没。",
+          "analogyBreaksDown": "体育备赛的对手是外部给定的，而 RL 的对手就是自己的历史版本，课程难度会随策略变化漂移；限 Fox 镜像对局也不是为了均衡难度，而是为了获得可控的自我对弈环境，类比看不出这种工程动机。",
+          "mechanism": "它解决奖励稀疏与对手分布不均的问题：Melee 的胜负信号只在局末出现，若对手强弱极端，梯度会被无用对局主导。排名与结果课程把训练重心放在信息量大的对局上；把 RL 限在 Fox 镜像对局，还同时消除了对手延迟差异这一混淆因素（推断）。",
+          "visual": "画一个「对局难度 × 采样权重」的柱状图：横轴按排名或结果分箱（大败、小败、小胜、大胜），纵轴是采样权重，曲线显示权重集中在信息量大的中间箱，两端被压低。",
+          "prerequisites": ["课程学习与数据配比", "稀疏奖励与信用分配", "自我对弈（self-play）基础"],
+          "selfTest": [
+            "为什么只在 Fox 镜像对局上做 RL？",
+            "排名课程与结果课程分别想解决什么问题？",
+            "课程采样权重设错会导致什么后果？"
+          ],
+          "formula": "w_i \\propto f\\!\\left(\\text{rank}_i,\\, \\text{outcome}_i\\right)"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-outcome-reward-rl",
+          "name": "结果奖励的策略梯度目标 (Outcome-Reward Policy Gradient)",
+          "category": "rl",
+          "latex": "J(\\theta)=\\mathbb{E}_{\\tau\\sim\\pi_\\theta}\\!\\left[\\sum_{t=0}^{T}\\gamma^{t} r_t\\right],\\quad r_t=0\\;(t<T),\\; r_T=\\pm 1",
+          "symbols": [
+            ["\\theta", "Faynt 策略参数，10M 或 75M"],
+            ["\\tau", "一局对局产生的状态-动作轨迹"],
+            ["\\gamma", "折扣因子"],
+            ["r_T", "终局奖励：胜 +1 或负 -1，按摘要的结果奖励 RL 重建"],
+            ["T", "一局结束的时间步"]
+          ],
+          "derivation": [
+            "第 1 步：先用约 840,000 场人类回放做预训练/模仿，得到会按键但未必会赢的初始策略。",
+            "第 2 步：把一局对局的胜负变成终局奖励，中间步不给奖励，因为 Melee 难以定义可靠的过程奖励。",
+            "第 3 步：用策略梯度最大化期望折扣回报，策略因此朝提高胜率的方向更新。",
+            "第 4 步：论文把 RL 限制在 Fox 镜像对局上运行以降低对手分布带来的方差，再把 75M 的能力蒸馏回 10M。"
+          ],
+          "analogy": "像只按最终比分发奖金的球队训练：整场比赛没有即时奖金，只有赢球才算，球员必须自己摸索哪些动作组合通向胜利。",
+          "pitfalls": [
+            "以为 RL 用了稠密奖励：摘要只提到结果导向的训练与课程，未见过程奖励设计。",
+            "忽略折扣与信用分配：局内步数很大时早期动作拿到的梯度极弱。",
+            "把该式当作论文原式：摘要未给出具体 RL 算法与奖励定义，这是按摘要重建的通用形式。"
+          ],
+          "code": "import torch\n\ndef outcome_pg(logp, reward, gamma=0.99):\n    # logp: [T] 一局内每个决策的对数概率；reward: 终局 +1 / -1\n    T = logp.shape[0]\n    discounts = gamma ** torch.arange(T, dtype=torch.float32)\n    ret = reward * discounts                     # 只在终局给分\n    return -(logp * ret).sum()                   # 策略梯度损失",
+          "sources": [
+            {"title": "Faynt: Scaling and Optimizing Policies for Competitive Melee", "url": "https://arxiv.org/abs/2610.02144v1"}
+          ]
+        },
+        {
+          "id": "f-distill-75m-to-10m",
+          "name": "75M 到 10M 的策略蒸馏 (Large-to-Small Policy Distillation)",
+          "category": "posttraining",
+          "latex": "\\mathcal{L}_{\\text{KD}}(\\theta_S)=\\mathbb{E}_{s}\\!\\left[D_{\\mathrm{KL}}\\!\\left(\\pi_{T}(\\cdot\\mid s)\\,\\|\\,\\pi_{S}(\\cdot\\mid s)\\right)\\right]",
+          "symbols": [
+            ["\\pi_T", "75M 教师策略"],
+            ["\\pi_S", "10M 学生策略，参数为 \\theta_S"],
+            ["s", "游戏状态或观测"],
+            ["D_{\\mathrm{KL}}", "教师与学生动作分布的 KL 散度"],
+            ["\\mathbb{E}_s", "在训练状态分布上的期望"]
+          ],
+          "derivation": [
+            "第 1 步：75M 参数更多、推理更慢（T4 上每决策 8.7 ms），但可作为教师提供更完整的动作分布。",
+            "第 2 步：让学生匹配教师的动作分布，而不是只匹配人类回放里的单步动作标签。",
+            "第 3 步：论文报告监督后的 10M 在 152 局基准上胜率 69.7%，高于预训练 75M 的 45.4%，尽管其整体 held-out 控制器预测损失更高，说明胜率与预测损失不完全同步。",
+            "第 4 步：蒸馏后再做限 Fox 镜像对局的 RL，10M 最终在同角色 244 局中赢 240 局。"
+          ],
+          "analogy": "像把大模型老师的「出手犹豫程度」也教给学生：不只告诉学生该按哪个键，而是连其次想按哪个键的概率分布一起模仿，学生的判断边界更接近老师。",
+          "pitfalls": [
+            "只用预测损失选检查点：论文中 10M 的预测损失更高但胜率更好，说明该指标与对局表现不同步。",
+            "把蒸馏等同于复制教师能力：学生只有 10M，容量压缩必然带来行为差异。",
+            "忽略状态分布差异：状态来自人类回放而非学生自己的轨迹时，KL 匹配会有分布偏移。",
+            "公式为按摘要重建的通用蒸馏形式，需核对原文。"
+          ],
+          "code": "import torch.nn.functional as F\n\ndef distill(student_logits, teacher_logits, tau=1.0):\n    # 用教师的软分布监督学生；tau 控制分布平滑度\n    p_t = F.softmax(teacher_logits / tau, dim=-1)\n    log_p_s = F.log_softmax(student_logits / tau, dim=-1)\n    return F.kl_div(log_p_s, p_t, reduction='batchmean') * tau ** 2",
+          "sources": [
+            {"title": "Faynt: Scaling and Optimizing Policies for Competitive Melee", "url": "https://arxiv.org/abs/2610.02144v1"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "Faynt 是 10M 与 75M 两个规模的 Transformer 策略族，每个检查点控制全部 26 个角色。",
+          "预训练使用约 840,000 场人类回放。",
+          "后训练组合了排名与结果课程、75M 到 10M 蒸馏，以及仅限 Fox 镜像对局的 RL。",
+          "RL 后 10M 在与 14 个发布版本的同角色对局中 244 局赢 240 局（98.4%），对每个发布版本都保持胜绩。",
+          "对手保留 21 或 24 帧动作延迟，Faynt 未加延迟，论文称未分离该差异的影响。",
+          "对私下提供的零延迟 Slippi-AI，10M 在两种条件下 68 局全胜。",
+          "监督 10M 在 152 局初始基准上胜率 69.7%，预训练 75M 为 45.4%，尽管 10M 的 held-out 控制器预测损失更高。",
+          "T4 上优化推理平均每决策 5.2 ms（10M）与 8.7 ms（75M），不含模拟器执行与通信。"
+        ],
+        "uncertain": [
+          "摘要未给出 RL 算法、奖励设计与课程采样权重的具体形式，两个公式均为按摘要重建的通用形式，需核对原文。",
+          "14 个 specialist 与 multi-character releases 的具体名单及各自 roster 摘要未列出。",
+          "摘要明确提到 21/24 帧延迟差异未被隔离，因此 98.4% 胜率的归因存疑。",
+          "摘要说加权验证损失与四个策略的胜率排序一致，但未给出具体数值。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "一个 10M 小模型用 84 万场人类对局加 RL，打遍 26 个角色并几乎全胜。"},
+          {"level": "入门", "text": "Faynt 是给 Super Smash Bros. Melee 做的 Transformer 策略，有 10M 和 75M 两个规模，每个检查点都能操作全部 26 个角色。它先用约 84 万场人类回放做预训练，再用排名与结果课程、75M 到 10M 的蒸馏，以及只在 Fox 镜像对局上的强化学习做后训练。RL 之后 10M 在与 14 个已有版本的同角色 244 场对局中赢下 240 场。"},
+          {"level": "进阶", "text": "论文的看点不是「打赢了游戏」，而是小模型加大规模人类数据加后训练的组合：10M 在监督后就能在同角色对局中超过更大的 75M 预训练模型（69.7% 对 45.4%），而 75M 的 held-out 控制器预测损失反而更低，说明预测损失与对局胜率不同步。作者用加权验证损失做检查点选择，并报告该损失与四个策略的胜率排序一致。后训练把 RL 限制在 Fox 镜像对局，进一步降低对手分布带来的方差（推断）。推理成本是 T4 上每决策 5.2 ms（10M）与 8.7 ms（75M），不含模拟器执行。"},
+          {"level": "专家", "text": "从方法组合看，Faynt 是一条很标准的「预训练到课程监督到蒸馏到受限 RL」流水线，与 LLM 后训练范式同构（推断）：大规模人类回放对应预训练语料，排名与结果课程对应数据配比与过滤，75M 到 10M 蒸馏对应把能力压到可部署规模，Fox 镜像对局 RL 对应在可控环境里做自我对弈。最有信息量的两点：一是 10M 监督模型胜率高于 75M 而预测损失更差，说明控制器预测损失不是对局表现的好代理，选检查点要用更贴近目标的加权验证损失；二是对手保留 21/24 帧动作延迟而 Faynt 不加延迟，作者明确说没有分离该差异的影响，因此 98.4% 的胜率不能全部归因于策略质量。"}
+        ],
+        "socratic": [
+          {"q": "10M 的 held-out 预测损失更差，为什么胜率反而更高？", "a": "控制器预测损失衡量模仿人类按键的平均误差，而胜率取决于关键时机的决策；更小的模型可能牺牲平均拟合换取更贴近取胜的策略，所以选检查点要用与胜率一致的加权验证损失。"},
+          {"q": "为什么把 RL 限制在 Fox 镜像对局？", "a": "镜像对局提供同角色、可自我对弈且对手分布可控的训练环境，能降低对手延迟与角色差异带来的方差（推断）；代价是策略可能在非镜像场景退化。"},
+          {"q": "98.4% 的胜率能直接说明策略更强吗？", "a": "不能完全说明：对手保留 21 或 24 帧动作延迟而 Faynt 不加延迟，论文也说未隔离该差异的影响，所以延迟优势可能是部分原因。"}
+        ],
+        "mechanism": "Melee 是长时程、稀疏奖励、对手行为复杂的游戏，直接 RL 很难起步。Faynt 的设计逻辑是先用海量人类回放把策略推到一个「像人」的起点，再由课程把监督信号集中到信息量大的对局，然后蒸馏到可部署的 10M 规模——因为延迟敏感场景（T4 上每决策 5.2 ms）容不下 75M。最后才用 RL 在 Fox 镜像对局里精调，把对手分布收窄到可控范围，这既降低了探索难度，也让只在终局出现的胜负信号更容易被利用。",
+        "boundary": "方法边界：评测是 Melee 的同角色对局与一份私下提供的零延迟 Slippi-AI，规模小（244 局与 68 局），且对手带 21 或 24 帧延迟，胜率不可外推到零延迟人类高手；RL 只覆盖 Fox 镜像对局，其它角色与对阵组合的 RL 行为未被验证；推理时间 5.2/8.7 ms 不含模拟器执行与通信，端到端实时性还要加上这部分。",
+        "analogyBoundary": "「一个大脑打所有角色」这个类比会漏掉容量竞争：人类靠显式背诵招式帧数据，而单检查点模型必须把 26 个角色的差异压进同一组权重，样本少的角色可能被强势角色挤占容量；类比也看不出对手延迟未隔离这种评测混淆。",
+        "misconceptions": [
+          "以为 98.4% 就是全面碾压：对手带 21/24 帧延迟，论文未隔离该差异的影响。",
+          "以为参数越大越强：监督 10M 胜率 69.7%，高于预训练 75M 的 45.4%。",
+          "以为预测损失越低对局表现越好：10M 的 held-out 控制器预测损失更高但胜率更好。"
+        ],
+        "ownAnalysis": "Faynt 的价值主要在工程范式而非算法新意（推断）：它把 LLM 后训练那一套「预训练、课程、蒸馏、受限 RL」完整搬到游戏 agent 上，并用小模型加可部署延迟作为约束。与 AlphaStar 那类大规模自我对弈路线相比，它更强调人类数据与蒸馏，这更接近当下具身/agent 的落地约束。可疑处：244 局与 68 局的评测规模偏小，置信区间会很宽；对手延迟未隔离使策略更强的结论打折；RL 只在 Fox 镜像对局做，却在全角色上评测，说明跨角色泛化主要来自监督阶段而非 RL，摘要没有给出消融。",
+        "officialNotes": [
+          {"position": "摘要口径：10M 与 75M Transformer 单检查点控制 26 个角色；约 84 万场人类回放预训练；后训练含排名/结果课程、75M 到 10M 蒸馏与 Fox 镜像对局 RL；RL 后 10M 在同角色 244 局赢 240 局（98.4%）；论文声明未隔离对手 21 或 24 帧延迟差异的影响。", "source": "arXiv 2610.02144v1 摘要"}
+        ],
+        "interviewAnswer": "我读 Faynt 是因为它给了小模型后训练的一个完整样本。它是 Melee 的 Transformer 策略族，10M 和 75M 各一个检查点就能操作全部 26 个角色，预训练用约 84 万场人类回放，后训练是排名与结果课程加 75M 到 10M 蒸馏，再做只在 Fox 镜像对局上的 RL。有意思的是监督后的 10M 胜率 69.7%，高于预训练 75M 的 45.4%，尽管它的 held-out 控制器预测损失更差，说明选检查点要看更贴近目标的指标。RL 后 10M 在同角色 244 局赢 240 局，但对手有 21 或 24 帧延迟而这个差异没被隔离，所以我会谨慎解读这个数字。",
+        "studyPath": {
+          "prerequisites": ["模仿学习与行为克隆", "Transformer 策略网络", "强化学习（策略梯度、稀疏奖励）"],
+          "nextSteps": ["对比 AlphaStar 等自我对弈路线的数据与算力取舍", "研究蒸馏后小模型的推理延迟与胜率权衡", "回原文核对课程设计与 RL 算法细节"]
+        }
+      }
+    }
+  ]
+}
