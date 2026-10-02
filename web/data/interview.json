@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-10-02T16:56:12+08:00",
+ "generatedAt": "2026-10-02T20:11:24+08:00",
  "source": "build_interview_index.py (deterministic rules, no LLM)",
- "count": 26,
+ "count": 27,
  "note": "面经时效性最强，按发布时间倒序；公司/轮次/结果/主题由规则抽取，可逐条核对",
  "companies": [
   {
@@ -15,6 +15,10 @@
   {
    "name": "腾讯",
    "count": 3
+  },
+  {
+   "name": "理想汽车",
+   "count": 1
   },
   {
    "name": "京东",
@@ -48,7 +52,7 @@
  "rounds": [
   {
    "name": "一面",
-   "count": 14
+   "count": 15
   },
   {
    "name": "二面",
@@ -109,6 +113,21 @@
  ],
  "withCoding": 5,
  "items": [
+  {
+   "id": "54178cd095b5c1c3",
+   "title": "理想汽车嵌入式面经一面（嵌入式大厂面经22）",
+   "url": "https://nowcoder.com/discuss/933863059641159680",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-02T20:07:58+08:00",
+   "lastSeen": "2026-10-02T20:11:22+08:00",
+   "company": "理想汽车",
+   "round": "一面",
+   "outcome": "",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
   {
    "id": "4b6abf3be439f9c7",
    "title": "面经60：江波龙 | 嵌入式软件 | 二面",
