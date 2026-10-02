@@ -1,77 +1,95 @@
 {
- "generatedAt": "2026-10-03T01:49:37+08:00",
- "corpus": 701,
+ "generatedAt": "2026-10-03T02:20:45+08:00",
+ "corpus": 736,
  "knowledgeTypes": {
-  "method": 406,
-  "project": 118,
-  "fundamentals": 13,
-  "coding": 36,
+  "method": 397,
+  "project": 121,
+  "fundamentals": 62,
+  "coding": 41,
   "job": 30,
-  "interview": 66,
-  "other": 31,
+  "interview": 40,
+  "other": 44,
   "news": 1
  },
  "drop": [],
  "watch": [
   {
-   "id": "a1642ac8a891453d",
-   "title": "jonyzhang2023/awesome-embodied-vla-va-vln - A curated list of state-of",
-   "category": "worldmodel",
-   "relevance": 60.2
-  },
-  {
-   "id": "b7b17a114ffa47c7",
-   "title": "XuankunRong/Awesome-LVLM-Safety - A curated list of resources dedicate",
+   "id": "82e71d5b37dee84f",
+   "title": "vllm-sr/multi-modal-embed-small",
    "category": "multimodal",
-   "relevance": 58.4
+   "relevance": 65.0
   },
   {
-   "id": "beb8222de71bd303",
-   "title": "DravenALG/awesome-vla-wam - A Curated List of Vision-Language-Action (",
-   "category": "worldmodel",
-   "relevance": 55.7
+   "id": "0be84424ddbe168c",
+   "title": "9月秋招个人总结",
+   "category": "coding",
+   "relevance": 55.8
   },
   {
-   "id": "8234937befe52479",
-   "title": "SergioTermann/awesome-post-training-RL - A curated list of papers on r",
-   "category": "posttraining",
-   "relevance": 55.4
-  },
-  {
-   "id": "2f54c259537cca42",
-   "title": "ComposioHQ/awesome-claude-skills - A curated list of awesome Claude Sk",
+   "id": "bc5fbe05f4278d3e",
+   "title": "ChatGPT Plus额度不够怎么办？不升级Pro的API临时方案",
    "category": "course",
-   "relevance": 53.4
+   "relevance": 54.1
   },
   {
-   "id": "12012beb2f76b18b",
-   "title": "showlab/Awesome-Video-Diffusion - A curated list of recent diffusion m",
-   "category": "generative",
-   "relevance": 52.2
+   "id": "57d1cf0f801701da",
+   "title": "404",
+   "category": "coding",
+   "relevance": 54.1
   },
   {
-   "id": "06f0f09d544b5640",
-   "title": "AI-Efficiency/Awesome-Efficient-Diffusion - A curated list of papers a",
-   "category": "posttraining",
-   "relevance": 52.2
+   "id": "7db5e99d71d98229",
+   "title": "金9结束了 我的秋招还好吗？",
+   "category": "job",
+   "relevance": 50.6
   },
   {
    "id": "fd4f3b82268aa645",
    "title": "在三张圆明园鼠首照片里，我们看到了3D AI的Harness时刻",
    "category": "agent",
-   "relevance": 50.5
+   "relevance": 50.4
   },
   {
-   "id": "49dee6d5c0b1bd6f",
-   "title": "liudaizong/Awesome-LVLM-Attack - 😎 up-to-date & curated list of awesom",
-   "category": "multimodal",
-   "relevance": 50.0
+   "id": "367e17bfa5e19024",
+   "title": "9.26 中国电信-计算机类笔试",
+   "category": "coding",
+   "relevance": 50.2
+  },
+  {
+   "id": "19faf28d880171cf",
+   "title": "家人们，秋招貌似迎来转机！！！",
+   "category": "coding",
+   "relevance": 50.2
+  },
+  {
+   "id": "08c13c3679a12cac",
+   "title": "(秋招) 9.16 字节中交广 - 交易与广告业务 - AI全栈开发工程师",
+   "category": "job",
+   "relevance": 50.1
+  },
+  {
+   "id": "dce133154e573ec6",
+   "title": "研究了一下奇安信少年大将军计划，感觉不是普通管培",
+   "category": "job",
+   "relevance": 49.9
+  },
+  {
+   "id": "f470beb4b58bd5b0",
+   "title": "请假面了大疆,搞得没心情上班了",
+   "category": "coding",
+   "relevance": 47.3
+  },
+  {
+   "id": "cc9056852dc5cb02",
+   "title": "免费开源项目|个人深度研究 Agent",
+   "category": "agent",
+   "relevance": 46.8
   },
   {
    "id": "f70b0915b6c9ae6c",
    "title": "AI办公进入「上下文战争」，百度如何出牌？",
    "category": "agent",
-   "relevance": 45.6
+   "relevance": 45.5
   },
   {
    "id": "f0d0edeeadc93486",
@@ -89,7 +107,7 @@
    "id": "c2f6a5d7f09e4caa",
    "title": "GPT-6 Astra 上手体验：花了一周，它真在电脑里建了座曼哈顿！",
    "category": "agent",
-   "relevance": 45.3
+   "relevance": 45.2
   },
   {
    "id": "c9d187c10b55197c",
@@ -104,10 +122,76 @@
    "relevance": 45.2
   },
   {
+   "id": "38402bbcd903b35f",
+   "title": "面了一轮Agent岗，我把问过的问题整理成了文章",
+   "category": "agent",
+   "relevance": 45.2
+  },
+  {
+   "id": "2ecb5586eb60e90a",
+   "title": "计算机专业去做智驾，到底能干什么？",
+   "category": "coding",
+   "relevance": 45.1
+  },
+  {
+   "id": "0dbbc1be350a9669",
+   "title": "27届软件工程关于我的大学三年",
+   "category": "coding",
+   "relevance": 45.0
+  },
+  {
+   "id": "b4b07c88825ecc6b",
+   "title": "9月也快结束了 ，然后9月初才结束差不多三个月的出差,也就是几个月没回去了，前几天中秋节回家了一趟待来几天，给老妈发了几百的过节费，给老爸买",
+   "category": "coding",
+   "relevance": 44.9
+  },
+  {
+   "id": "7c37d4c2e1e684be",
+   "title": "springboot启动时会自动读取环境变量的配置吗",
+   "category": "coding",
+   "relevance": 44.9
+  },
+  {
+   "id": "9a637541b375fbc2",
+   "title": "今天来看一份27届安徽理工大学后端开发岗简历",
+   "category": "coding",
+   "relevance": 44.9
+  },
+  {
+   "id": "ea69886b6a95faf2",
+   "title": "有知道巨人网络的学长学姐吗？想了解一下真实体验！",
+   "category": "coding",
+   "relevance": 44.9
+  },
+  {
+   "id": "fe1aecbfe4127021",
+   "title": "其实很多人的归宿都是中小厂，只不过幸存者偏差让你只看到了大厂",
+   "category": "coding",
+   "relevance": 44.9
+  },
+  {
+   "id": "bbb38d3e7d1c8c4f",
+   "title": "想进 AI应用服务商：产品岗和交付岗，先看清两条路的日常",
+   "category": "coding",
+   "relevance": 44.5
+  },
+  {
+   "id": "fd9825423f043f25",
+   "title": "AGENTS.md 写法参考",
+   "category": "coding",
+   "relevance": 44.1
+  },
+  {
    "id": "72fbe46b74bb5d67",
    "title": "Advisory Group on Mathematics and Artificial Intelligence",
    "category": "course",
    "relevance": 44.0
+  },
+  {
+   "id": "cc655272de701d0d",
+   "title": "28届go-agent求各位大佬简历支招",
+   "category": "agent",
+   "relevance": 43.9
   },
   {
    "id": "3178e26b006c9e5f",
@@ -125,7 +209,7 @@
    "id": "39afa14494a6ae0c",
    "title": "arXiv最严新规！每人每月最多提交2篇，拒稿不退额度",
    "category": "paper",
-   "relevance": 43.1
+   "relevance": 43.0
   },
   {
    "id": "6314bd72d02f0b0e",
@@ -155,13 +239,7 @@
    "id": "eeedabe71ad7374f",
    "title": "丘成桐新论文致谢了GPT和Claude",
    "category": "paper",
-   "relevance": 40.4
-  },
-  {
-   "id": "57dd2eb9b69a82c9",
-   "title": "uncbiag/Awesome-Foundation-Models - A curated list of foundation model",
-   "category": "course",
-   "relevance": 39.5
+   "relevance": 40.3
   },
   {
    "id": "96a43b30b8cf8025",

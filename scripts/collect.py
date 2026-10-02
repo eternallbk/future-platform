@@ -267,7 +267,17 @@ CHANNEL_SPECS = {
     # This channel reads the DECLARED sitemap (sitemap/question/sitemap*.xml) and the
     # questionTerminal pages it points at - i.e. exactly what the site tells crawlers
     # to index - and it does not touch the disallowed paths.
-    "nowcoder_questions": {"tier": "P0", "mode": "html", "timeout": 25, "retries": 1, "backup": []},
+    "nowcoder_questions": {"tier": "P1", "mode": "html", "timeout": 25, "retries": 1, "backup": []},
+    # 代码随想录 —— 算法题解 / LeetCode Hot100 / 大模型。robots.txt 明确 Allow: / 且声明
+    # sitemap，所以走 sitemap 抓取正是站点对爬虫的期望。内容不过期（2021 年的 KMP 讲解
+    # 今天依然正确），因此不按发布时间设门槛。
+    "programmercarl": {"tier": "P0", "mode": "html", "timeout": 30, "retries": 1, "backup": []},
+    # 卡码笔记 —— 大模型/Java/C++ 八股 + 大厂面经。八股是语料里最薄的一类（1.9%），
+    # 而这个站点就是为此存在的。robots.txt 同样是 Allow: / + 声明 sitemap。
+    "kamacoder_notes": {"tier": "P0", "mode": "html", "timeout": 30, "retries": 1, "backup": []},
+    # GitHub 算法/面试仓库（题解不过期，故不做时间过滤）。与通用 github 渠道区分：
+    # 后者按 trend 取项目，产出的是 project 类，从来不是算法题。
+    "github_algo": {"tier": "P0", "mode": "api", "timeout": 25, "retries": 1, "backup": []},
     # zhihu: DISABLED.
     #
     # The only reachable feed is a general hot list (mirror rss.injahow.cn), and a
@@ -1370,6 +1380,288 @@ def collect_zhihu(cfg, log, limit):
     return []
 
 
+def collect_programmercarl(cfg, log, limit):
+    """代码随想录 (programmercarl.com) —— 算法题解 / LeetCode Hot100 / 大模型 / 面经.
+
+    WHY this source: the reader asked for algorithm material from dedicated sites rather
+    than login-walled forums. This is the most widely used free algorithm curriculum in
+    Chinese, and its robots.txt is explicit - `User-agent: * / Allow: /` plus a declared
+    sitemap - so walking that sitemap is what the site asks crawlers to do.
+
+    Sitemap composition (measured, 563 URLs): algo=298 (题解), hot100=48 (LeetCode Hot100),
+    llm=26, kamacoder=49, daichong=31, qita=23, 前序=13. Depth is NOT recency-bound here:
+    a 2021 KMP write-up is still the right answer today, which is why the reader wants
+    past material organised rather than only the latest.
+    """
+    out: list[dict] = []
+    try:
+        _s, body, _ct = http_get("https://programmercarl.com/sitemap.xml",
+                                 timeout=30, cfg=cfg, log=log, retries=1)
+        sitemap = body.decode("utf-8", "replace")
+    except Exception as e:
+        log(f"programmercarl sitemap failed: {e}", "warn")
+        return []
+
+    urls = []
+    for loc in re.findall(r"<loc>([^<]+)</loc>", sitemap):
+        u = loc.strip()
+        # Content pages only. Skip about/ and the training-camp pages: those are
+        # commercial by definition and would only ever be dropped by the spam gate.
+        if re.search(r"/(about|xunlian|ke)/", u):
+            continue
+        if not (u.endswith(".html") or u.endswith("/")):
+            continue
+        urls.append(u)
+    if not urls:
+        return []
+
+    # Rotate so the library keeps growing instead of re-reading the same head daily.
+    day_off = int(now_cst().strftime("%j")) * 5
+    urls = urls[day_off % len(urls):] + urls[:day_off % len(urls)]
+
+    scan_budget = max(limit * 3, limit + 8)
+    scanned = 0
+    for url in urls:
+        if len(out) >= limit or scanned >= scan_budget:
+            break
+        scanned += 1
+        try:
+            _s, page_b, _ct = http_get(url, timeout=20, cfg=cfg, log=log, retries=1)
+            page = page_b.decode("utf-8", "replace")
+        except Exception as e:
+            log(f"programmercarl page failed ({url}): {e}", "warn")
+            continue
+
+        title_m = re.search(r"<title>([^<]+)</title>", page)
+        title = clean_text(title_m.group(1), 160) if title_m else ""
+        title = re.sub(r"\s*[|｜]\s*代码随想录.*$", "", title).strip()
+        if not title:
+            continue
+
+        content = re.sub(r"<script[^>]*>.*?</script>", " ", page, flags=re.S)
+        content = re.sub(r"<style[^>]*>.*?</style>", " ", content, flags=re.S)
+        m_body = re.search(
+            r'<div[^>]*class="[^"]*(?:theme-default-content|content__default)[^"]*"[^>]*>(.*?)</div>\s*</div>',
+            content, re.S)
+        text = clean_text(re.sub(r"<[^>]+>", " ", m_body.group(1) if m_body else content), 1400)
+        if len(text) < 120:
+            continue
+
+        lc = re.search(r"LeetCode\s*(\d+)", page, re.I)
+        tags = ["算法", "代码随想录"]
+        if "/hot100/" in url:
+            tags.append("Hot100")
+        if "/llm/" in url or "/qita/" in url:
+            tags.append("大模型")
+        if lc:
+            tags.append(f"LC{lc.group(1)}")
+
+        out.append({
+            "sourceId": "programmercarl", "channel": "programmercarl",
+            "externalId": url.rstrip("/").rsplit("/", 1)[-1] or url,
+            "title": title,
+            "summary": text,
+            "url": url,
+            "publishedAt": iso(now_cst()),
+            "lang": "zh",
+            "tags": tags,
+            "codeAvailable": True,
+        })
+    log(f"programmercarl -> {len(out)} items", "info" if out else "warn")
+    return out
+
+
+def collect_kamacoder_notes(cfg, log, limit):
+    """卡码笔记 (notes.kamacoder.com) —— 大模型/Java/C++ 八股 + 大厂面经.
+
+    WHY: 八股/基础 was the thinnest category in the corpus (1.9%) while being exactly
+    what the reader wants to accumulate. This site exists for that purpose - it is
+    organised as llm/app, llm/transformer, interview/llm, interview/java, base/... and
+    robots.txt is `Allow: /` with a declared sitemap (525 URLs, measured).
+    """
+    out: list[dict] = []
+    try:
+        _s, body, _ct = http_get("https://notes.kamacoder.com/sitemap.xml",
+                                 timeout=30, cfg=cfg, log=log, retries=1)
+        sitemap = body.decode("utf-8", "replace")
+    except Exception as e:
+        log(f"kamacoder notes sitemap failed: {e}", "warn")
+        return []
+
+    urls = []
+    for loc in re.findall(r"<loc>([^<]+)</loc>", sitemap):
+        u = loc.strip()
+        # jianli/* is resume coaching (commercial) and _llm-master-sync is a mirror index.
+        if "/jianli/" in u or "_llm-master-sync" in u or "/news" in u:
+            continue
+        if any(seg in u for seg in ("interview/", "/llm/", "/base/", "/java/", "/cpp/")):
+            urls.append(u)
+    if not urls:
+        return []
+
+    day_off = int(now_cst().strftime("%j")) * 3
+    urls = urls[day_off % len(urls):] + urls[:day_off % len(urls)]
+
+    scan_budget = max(limit * 3, limit + 8)
+    scanned = 0
+    for url in urls:
+        if len(out) >= limit or scanned >= scan_budget:
+            break
+        scanned += 1
+        try:
+            _s, page_b, _ct = http_get(url, timeout=20, cfg=cfg, log=log, retries=1)
+            page = page_b.decode("utf-8", "replace")
+        except Exception as e:
+            log(f"kamacoder notes page failed ({url}): {e}", "warn")
+            continue
+
+        title_m = re.search(r"<title>([^<]+)</title>", page)
+        title = clean_text(title_m.group(1), 160) if title_m else ""
+        title = re.sub(r"\s*[|｜]\s*卡码笔记.*$", "", title).strip()
+        title = re.sub(r"^\d{4}最全", "", title).strip()
+        if not title:
+            continue
+
+        content = re.sub(r"<script[^>]*>.*?</script>", " ", page, flags=re.S)
+        content = re.sub(r"<style[^>]*>.*?</style>", " ", content, flags=re.S)
+        text = clean_text(re.sub(r"<[^>]+>", " ", content), 1400)
+        # Strip the repeated site chrome so the summary starts at the answer.
+        for anchor in ("卡码笔记-最强八股文", "首页 计算机基础"):
+            k = text.find(anchor)
+            if k >= 0:
+                text = text[k + len(anchor):].strip()
+        if len(text) < 120:
+            continue
+
+        kind = "interview" if "interview/" in url else "fundamentals"
+        tags = ["八股" if kind == "fundamentals" else "面经", "卡码笔记"]
+        if "/llm/" in url:
+            tags.append("大模型")
+        out.append({
+            "sourceId": "kamacoder_notes", "channel": "kamacoder_notes",
+            "externalId": url.rstrip("/").rsplit("/", 1)[-1] or url,
+            "title": title,
+            "summary": text,
+            "url": url,
+            "publishedAt": iso(now_cst()),
+            "lang": "zh",
+            "tags": tags,
+            "kind": kind,
+        })
+    log(f"kamacoder_notes -> {len(out)} items", "info" if out else "warn")
+    return out
+
+
+# Curated algorithm/interview repositories. A targeted list beats a search query here:
+# these are the canonical high-star repos, their content is stable, and curating them
+# lets each carry the right knowledge type instead of being guessed from a README.
+GITHUB_ALGO_REPOS = [
+    # 代码随想录作者的官方仓库（《代码随想录》200 题 60 万字题解），以及卡码网题解全集。
+    # 这两者与 programmercarl / kamacoder 站点互补：站点给讲解，仓库给可检索的题解索引。
+    ("youngyangyang04/leetcode-master", "coding", ["题解", "刷题攻略", "代码随想录"]),
+    ("youngyangyang04/kamacoder-solutions", "coding", ["题解", "卡码网"]),
+    ("doocs/leetcode", "coding", ["题解", "多语言", "LeetCode"]),
+    ("azl397985856/leetcode", "coding", ["题解", "LeetCode", "算法"]),
+    ("halfrost/LeetCode-Go", "coding", ["题解", "Go", "LeetCode"]),
+    ("haoel/leetcode", "coding", ["题解", "LeetCode"]),
+    # 牛客题霸的题解镜像：不需要登录牛客即可获得题目与解法。
+    ("waylau/nowcoder-exam-oj", "coding", ["题解", "牛客题霸"]),
+    ("huihut/interview", "fundamentals", ["八股", "C++", "计算机基础"]),
+    ("InterviewMap/CS-Interview-Knowledge-Map", "fundamentals", ["八股", "面试知识图谱"]),
+    ("donnemartin/interactive-coding-challenges", "coding", ["编程题", "面试题"]),
+    ("liyupi/mianshiya", "fundamentals", ["面试题库", "八股"]),
+    ("csguide-dabai/interview-guide", "fundamentals", ["八股", "后端"]),
+    ("ashishps1/awesome-leetcode-resources", "coding", ["LeetCode", "学习资源"]),
+    ("kunal-kushwaha/DSA-Bootcamp-Java", "coding", ["数据结构", "算法"]),
+    ("Blankj/awesome-java-leetcode", "coding", ["题解", "Java"]),
+]
+
+
+def collect_github_algo(cfg, log, limit):
+    """GitHub 上的算法题解 / 面试知识仓库（含"过往"内容 —— 题解不过期）.
+
+    WHY repos are their own knowledge type here: the generic `github` channel returns
+    trending projects, which are `project` material (a framework to learn) and essentially
+    never algorithm problems. The reader explicitly asked for leetcode/洛谷/OJ repos.
+
+    These are DELIBERATELY not recency-filtered. A 2019 LeetCode solution repo is still
+    correct today, and the reader asked for past material to be organised too - so the bar
+    is stars plus a real description, not publish date.
+    """
+    out: list[dict] = []
+    token = os.environ.get("GITHUB_TOKEN") or ""
+    headers = {"Accept": "application/vnd.github+json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    for full, kind, tags in GITHUB_ALGO_REPOS:
+        if len(out) >= limit:
+            break
+        # Repo metadata changes slowly, so an unchanged repo should not be re-fetched
+        # every day; cache for 3 days.
+        ck = DATA_DIR / "cache" / f"ghalgo-{full.replace('/', '_')}.json"
+        data = None
+        try:
+            if ck.exists() and (time.time() - ck.stat().st_mtime) < 86400 * 3:
+                data = json.loads(ck.read_text("utf-8"))
+        except Exception:
+            data = None
+        if data is None:
+            try:
+                _s, raw, _ct = http_get(f"https://api.github.com/repos/{full}",
+                                        timeout=20, cfg=cfg, log=log, retries=1,
+                                        headers=headers)
+                data = json.loads(raw.decode("utf-8", "replace"))
+                ck.parent.mkdir(parents=True, exist_ok=True)
+                ck.write_text(json.dumps(data, ensure_ascii=False), "utf-8")
+            except Exception as e:
+                log(f"github_algo {full} failed: {e}", "warn")
+                continue
+
+        if not isinstance(data, dict) or data.get("message"):
+            continue
+        stars = int(data.get("stargazers_count") or 0)
+        if stars < 300:
+            continue                        # a fork or a dead repo: not worth a card
+        desc = clean_text(data.get("description") or "", 300)
+        topics = [str(t) for t in (data.get("topics") or [])][:8]
+
+        # The summary is composed ONLY from observed facts - never an invented blurb.
+        bits = []
+        if desc:
+            bits.append(desc)
+        bits.append(f"{stars} stars")
+        if data.get("language"):
+            bits.append(str(data["language"]))
+        if data.get("pushed_at"):
+            bits.append(f"最近更新 {str(data['pushed_at'])[:10]}")
+        if topics:
+            bits.append("主题：" + "、".join(topics))
+        summary = "｜".join(bits)
+        if len(summary) < 40:
+            continue
+
+        out.append({
+            "sourceId": "github_algo", "channel": "github_algo",
+            "externalId": full,
+            "title": f"{full} — {desc[:70]}" if desc else full,
+            "summary": summary,
+            "url": data.get("html_url") or f"https://github.com/{full}",
+            "publishedAt": data.get("pushed_at") or iso(now_cst()),
+            "lang": "en" if not re.search(r"[\u4e00-\u9fff]", desc or "") else "zh",
+            "tags": ["GitHub", "算法仓库"] + tags,
+            # NOTE: `kind` is deliberately NOT set from the curated table. `kind` is
+            # authoritative and would force huihut/interview ("技术面试基础知识总结")
+            # into `job`; it is 八股 material. Letting classify_knowledge_type() judge
+            # from the description keeps each repo in the right bucket.
+            "stars": stars,
+            "codeAvailable": True,
+            "qualitySignals": {"stars": stars},
+        })
+    log(f"github_algo -> {len(out)} items", "info" if out else "warn")
+    return out
+
+
 def collect_nowcoder_questions(cfg, log, limit):
     """牛客试题广场的编程题/算法题（题目陈述 + 时间/空间限制）。
 
@@ -1838,6 +2130,9 @@ COLLECTORS = {
     "hf_blog_rss": collect_hf_blog_rss, "openai_rss": collect_openai_rss,
     "rsshub": collect_rsshub, "zhihu": collect_zhihu, "nowcoder": collect_nowcoder,
     "nowcoder_questions": collect_nowcoder_questions,
+    "programmercarl": collect_programmercarl,
+    "kamacoder_notes": collect_kamacoder_notes,
+    "github_algo": collect_github_algo,
     "jobs_bytedance": collect_jobs_bytedance, "jobs_tencent": collect_jobs_tencent,
     "jobs_alibaba": collect_jobs_alibaba, "jobs_zhipu": collect_jobs_zhipu,
     "jobs_moonshot": collect_jobs_moonshot, "jobs_deepseek": collect_jobs_deepseek,
@@ -2048,25 +2343,187 @@ EXPLICIT_CODING = re.compile(
     r"手撕|手写代码|算法题|题解|刷题|leetcode|力扣|"
     r"\[编程题\]|"
     r"binary search|two pointers|sliding window|union find|backtracking", re.I)
-
-# 八股/基础 markers. A 牛客 单选题 about probability, ML metrics or inference
-# engineering is fundamentals material, not an algorithm problem, and the workbench
-# tracks those separately - so these markers are tested explicitly (and BEFORE the
-# coding patterns) rather than left to the generic text patterns.
+# 八股/基础 markers. A 牛客 单选题 about probability, ML metrics or inference engineering,
+# a C++ 语言特性 explanation, and a 计算机基础 article are all fundamentals material -
+# not algorithm problems, not 面经. These are tested explicitly and BEFORE both the
+# interview and the coding patterns, because:
+#   · "[单选题] …以下哪项…" must not be read as an algorithm problem;
+#   · "技术面试基础知识总结" is 八股, even though it contains the word 面试
+#     (measured: huihut/interview landed in `interview` before this ordering).
 EXPLICIT_FUNDAMENTALS = re.compile(
     r"\[单选题\]|\[多选题\]|\[问答题\]|八股|必考|高频考点|"
-    r"以下哪(?:个|项)|下列说法|关于.{0,12}的说法", re.I)
+    r"以下哪(?:个|项)|下列说法|关于.{0,12}的说法|"
+    # 题库/汇总 collections are reference material, not one person's interview story.
+    # Measured: "liyupi/mianshiya — 企业面试题库网站" was being read as `interview`.
+    r"面试题库|题库|汇总|知识图谱|知识总结|总结大全|"
+    # 计算机基础 / 语言基础 八股
+    r"计算机基础|操作系统|计算机网络|数据库|组成原理|"
+    r"基础知识|入门|速查|cheat ?sheet|常见问题|"
+    # C++ / Java / Go 语言特性. NOTE: a bare `\bGo\b` was here and had to be removed -
+    # it matched the "Go" in "halfrost/LeetCode-Go" and turned a LeetCode solution repo
+    # into `fundamentals`. A language name alone does not identify the content type;
+    # only specific language-topic terms do below.
+    r"C\+\+|cpp|Java|Golang|"
+    r"移动语义|右值引用|虚函数|重载|重写|多态|继承|模板|智能指针|内存泄漏|"
+    r"野指针|内存碎片|栈溢出|堆溢出|自旋锁|互斥锁|死锁|"
+    r"垃圾回收|gc\b|线程池|锁机制|"
+    # ML / 大模型 八股考点
+    r"transformer|attention|batchnorm|dropout|softmax|交叉熵|反向传播|"
+    r"优化器|损失函数|归一化|注意力机制|位置编码", re.I)
 
 # Generic utility tools: a CLI gadget, a wallpaper picker, a phone tracker. These are
 # the items the reader means by "与求职面试算法题、各领域实际技术无关的资讯" when they
-# arrive from a code host. Note this is deliberately narrow - it must NOT catch a
-# framework like diffusers, which is how an earlier, broader rule went wrong.
+# arrive from a code host.
+#
+# SCOPE FIX: `curated list of` / `awesome-list` used to be in here and had to be removed
+# from the blanket rule. Measured: it was rejecting `Awesome-Video-Diffusion`,
+# `awesome-post-training-RL`, `awesome-vla-wam` - curated PAPER collections, which are
+# exactly the 扩展知识 the workbench wants. A curated list is only a tool-list when the
+# thing being curated is a tool (wallpapers, dotfiles, CLI apps), so that judgement now
+# depends on the curated SUBJECT, handled in is_generic_tool().
 GENERIC_TOOL_RE = re.compile(
     r"\b(?:wallpaper|screenshot tool|password manager|bookmark manager|"
     r"file manager|download manager|terminal emulator|dotfiles|"
-    r"awesome[- ]list|curated list of|a list of links|"
     r"track(?:s|ing)? (?:location|phone|mobile)|spyware|adblock|"
     r"emoji picker|color picker|font picker|timer app|todo app)\b", re.I)
+
+# A curated list about a RESEARCH or ALGORITHM subject is learning material.
+CURATED_LIST_RE = re.compile(
+    r"awesome[- ]|curated list|a list of (?:papers|resources|models|datasets)|"
+    r"paper list|资源合集|汇总列表", re.I)
+CURATED_TECH_SUBJECT_RE = re.compile(
+    r"diffusion|vla|vln|vlm|lvlm|llm|language model|video|vision|multimodal|"
+    r"post-?training|reinforcement|rlhf|agent|transformer|attention|"
+    r"embodied|robot|world model|segment|detection|generation|"
+    r"算法|论文|模型|多模态|大模型|强化学习|具身|机器人", re.I)
+
+
+def is_generic_tool(item: dict) -> bool:
+    """Is this a utility tool / non-technical list rather than knowledge?"""
+    blob = f"{item.get('title') or ''} {str(item.get('summary') or '')[:300]}"
+    if not GENERIC_TOOL_RE.search(blob):
+        return False
+    # A curated list that is ABOUT a technical subject is kept even if the word
+    # "awesome"/"curated list" appears.
+    if CURATED_LIST_RE.search(blob) and CURATED_TECH_SUBJECT_RE.search(blob):
+        return False
+    return True
+
+# ============================================================================
+# 6c. SPAM / 灌水 GATE - "面经、八股汇总" that is actually a course advertisement
+# ============================================================================
+#
+# The reader's requirement, verbatim: "注意避免灌水（比如标题为面经、八股汇总，实际是
+# 卖课推广等）". This is a real and common pattern in Chinese algorithm/interview content:
+# an article ranks under 面经/八股 keywords but its actual payload is a paid course, a
+# 知识星球, a training camp, or a QR code to add a sales WeChat.
+#
+# DESIGN CONSTRAINT: this gate must not punish legitimate content. Selling is not the
+# same as mentioning. 代码随想录 genuinely sells a 训练营 and still produces the best free
+# algorithm curriculum in Chinese - a rule matching the bare word 训练营 would delete it.
+# So a signal only counts as spam when the item has LITTLE substance to offer:
+#
+#     spam  =  (has an explicit selling/contact signal)
+#              AND (carries no substantial technical payload)
+#
+# The second half is what protects real tutorials. An article that explains KMP for
+# 3000 characters while also mentioning its 训练营 at the end is KEEPING material.
+SELLING_CTA_RE = re.compile(
+    r"扫码|加微信|加\s*V\s*[:：]|vx[:：]|weixin[:：]|私信我|"
+    r"限时(?:优惠|特价|折扣|活动)|原价|立减|仅需\s*\d|券后|"
+    r"点击购买|立即购买|拼团|"
+    # NOTE: bare 秒杀 and 下单 were here and are NOT sales words in this domain - 秒杀系统
+    # design is a standard interview topic ("点赞用 ZSet…秒杀结束后数据怎么同步"), and
+    # 下单 appears in e-commerce system design. Measured: they flagged the legitimate
+    # 面经 "极兔后端一面". Sales intent needs the promotional compound, not the bare verb.
+    r"秒杀价|限时秒杀|下单立减|立即下单|"
+    r"付费(?:专栏|课程|社群)|收费(?:课程|社群)|会员(?:专享|福利)|"
+    r"知识星球|小报童|训练营(?:报名|开营|招生|仅|最后)|"
+    r"课程(?:报名|咨询|优惠|价格)|"
+    r"团队(?:微信|联系方式)|商务(?:合作|联系)|"
+    r"代充|租号|账号购买|"
+    # Off-topic commercial spam that keyword-matched its way into a 面经 category.
+    # Found in the corpus: two nowcoder posts advertising 品茶 services, classified into
+    # `coding` because their titles contained none of the usual signals.
+    r"品茶|茶工作室|海选|技师|上门服务|会所|桑拿|"
+    r"贷款|办卡|刷单|兼职日结|引流|第一现场.{0,8}工作室",
+    re.I)
+
+# Commerce words that are only weak evidence on their own, because they also appear in
+# legitimate technical writing ("我们订阅了三种推理服务做对比"). Used with a length and
+# technical-payload condition, never alone.
+COMMERCIAL_RE = re.compile(
+    r"套餐|订阅|续费|充值|试用(?:账号|额度)|免费额度|"
+    r"价格(?:对比|一览|多少)|按使用强度选|怎么接入|如何接入|"
+    r"官网(?:价格|入口)|性价比|选购|激活码|破解|白嫖",
+    re.I)
+
+# Content that is commercial or junk no matter how long it is: nothing about it can be
+# learned for an algorithm interview.
+SPAM_ONLY_RE = re.compile(
+    r"品茶|茶工作室|海选|技师|上门服务|会所|桑拿|"
+    r"贷款|办卡|刷单|兼职日结|引流|第一现场.{0,8}工作室",
+    re.I)
+
+# A pricing/tutorial card is spam when its payload is purchase guidance rather than a
+# mechanism. Checked separately from SELLING_SIGNAL_RE because these words legitimately
+# appear inside real technical writing ("我们对比了三种量化方案的显存开销").
+PRICING_GUIDANCE_RE = re.compile(
+    r"套餐|订阅|续费|充值|代充|租号|试用账号|免费额度|价格对比|怎么接入|如何接入|"
+    r"激活码|破解|白嫖|选择建议|选购|性价比",
+    re.I)
+
+# Phrases that signal a genuine explanation is present, regardless of the selling.
+TECH_PAYLOAD_RE = re.compile(
+    r"时间复杂度|空间复杂度|复杂度为|O\(n|算法思路|解题思路|思路如下|代码实现|"
+    r"示例\s*\d|输入[:：]|输出[:：]|推导|原理|定义[:：]|区别[:：]|"
+    r"为什么|原因在于|实现方式|步骤[:：]|源码|样例|"
+    r"recursion|complexity|we propose|implementation", re.I)
+
+
+def spam_reason(item: dict) -> str:
+    """Return a human-readable reason if this looks like 灌水/推广, else "".
+
+    SCOPE LESSON (measured twice, both false positives on real corpus content):
+      · Matching commercial words anywhere in the text flagged the legitimate 八股 card
+        "4.2.2 银行技术面---技术基础类问题（操作系统）" because its body contains the word
+        "订阅". A commercial word inside a technical sentence is not a signal.
+      · Matching bare domain words flagged real VLM papers.
+    So the rule is now: commerce must be the SUBJECT (a title-level claim), or the
+    selling language must dominate a very short body. Substantial technical payload
+    always wins.
+    """
+    title = str(item.get("title") or "")
+    summary = str(item.get("summary") or "")
+    blob = f"{title} {summary}"
+
+    tech_hits = len(set(m.group(0).lower() for m in TECH_PAYLOAD_RE.finditer(blob)))
+
+    # (a) an explicit selling call-to-action anywhere is strong evidence
+    if SELLING_CTA_RE.search(blob):
+        # A long page dense with technical markers is teaching that happens to sell.
+        # Density (marker occurrences), not the count of DISTINCT markers, is what
+        # separates a tutorial from a store page: a real write-up repeats 时间复杂度 /
+        # 代码实现 / 示例 many times, while an ad mentions its one technical word once.
+        tech_total = len(TECH_PAYLOAD_RE.findall(blob))
+        if len(summary) >= 600 and tech_total >= 6:
+            return ""                   # substantial teaching that happens to sell
+        hits = len(set(m.group(0).lower() for m in SELLING_CTA_RE.finditer(blob)))
+        return f"疑似卖课/推广（推销话术 {hits} 处，技术内容不足）"
+
+    # (b) commerce as the TITLE subject, with no real mechanism behind it
+    if PRICING_GUIDANCE_RE.search(title) and tech_hits < 3:
+        return "购买/接入指引类内容（非知识积累）"
+
+    # (c) commercial language dominating a very short body
+    comm = len(set(m.group(0).lower() for m in COMMERCIAL_RE.finditer(blob)))
+    if comm >= 3 and len(summary) < 220 and tech_hits < 2:
+        return f"疑似推广（商业词 {comm} 处，正文过短且无技术内容）"
+
+    # (d) commercial spam that is not a technical topic at all
+    if SPAM_ONLY_RE.search(blob):
+        return "推广/垃圾内容（非知识积累）"
+    return ""
 
 # 牛客题霸 is a big graded set that includes HARDWARE tracks (FPGA/数字电路: 优先编码器、
 # 译码器、时序电路、触发器). Those are real 编程题 but they are irrelevant to an
@@ -2122,10 +2579,17 @@ def classify_knowledge_type(item: dict, cat: str) -> str:
 
     # --- 1. explicit interview/coding titles win outright -------------------------
     if EXPLICIT_INTERVIEW.search(title):
-        return "interview"
-    # Fundamentals BEFORE coding: a 牛客 title is "[单选题] …以下哪项…", so the
+        # A title that is explicitly a 面经/挂经 is interview material - UNLESS it is
+        # framed as a fundamentals collection ("技术面试基础知识总结"), which is 八股.
+        if not EXPLICIT_FUNDAMENTALS.search(title):
+            return "interview"
+    # Fundamentals before coding: a 牛客 title is "[单选题] …以下哪项…", so the
     # multiple-choice marker must be tested before the generic "以下哪项" phrasing or
     # every 八股 question lands in the algorithm-problem bucket.
+    if EXPLICIT_FUNDAMENTALS.search(title):
+        return "fundamentals"
+    # Fundamentals MUST come before the coding patterns: a 牛客 title reads
+    # "[单选题] …以下哪项…", and the "以下哪项" phrasing is a coding-pattern match.
     if EXPLICIT_FUNDAMENTALS.search(title):
         return "fundamentals"
     if EXPLICIT_CODING.search(title):
@@ -2150,8 +2614,7 @@ def classify_knowledge_type(item: dict, cat: str) -> str:
     is_repo = (chan in ("github", "gh_trending")
                or bool(item.get("stars")) or "github.com" in str(item.get("url") or ""))
     if is_repo:
-        blob_r = " ".join([title, str(item.get("summary") or "")[:300]])
-        if GENERIC_TOOL_RE.search(blob_r):
+        if is_generic_tool(item):
             return "other"            # CLI gadget / wallpaper / tracker: not knowledge
         return "project"
 
@@ -2159,8 +2622,19 @@ def classify_knowledge_type(item: dict, cat: str) -> str:
     blob = " ".join([title, str(item.get("summary") or "")[:400],
                      " ".join(item.get("tags") or [])])
     for name, pat in KNOWLEDGE_TYPE_RULES:
-        if pat.search(blob):
-            return name
+        if not pat.search(blob):
+            continue
+        # SCOPE FIX: a `fundamentals` MATCH ON THE SUMMARY IS NOT EVIDENCE, because the
+        # fundamentals markers include generic phrases like 数据结构 and 基础 — which
+        # appear in the description of every algorithm repository. Measured: this made
+        # `halfrost/LeetCode-Go` and `youngyangyang04/leetcode-master` (both LeetCode
+        # solution repos!) come back as fundamentals instead of coding. So a non-method
+        # classification from summary text is only accepted when the TITLE independently
+        # supports it; otherwise the specific title-level rules above already had their
+        # chance and the generic text should not override them.
+        if name != "method" and not any(p.search(title) for _, p in KNOWLEDGE_TYPE_RULES):
+            continue
+        return name
     # A long abstract from a research category is research material even when it
     # avoids every phrase above.
     if cat in ("multimodal", "posttraining", "worldmodel", "generative", "rl",
@@ -3323,6 +3797,7 @@ def run(args) -> int:
     opinion_dropped = 0
     weak_dropped = 0
     offtopic_dropped = 0
+    spam_dropped = 0
     min_rel = float((cfg.get("scoring") or {}).get("minRelevance", 0) or 0)
     # Default True: keep unclassified items out of the corpus (see the gate below).
     drop_unclassified = bool((cfg.get("limits") or {}).get("dropUnclassified", True))
@@ -3404,6 +3879,12 @@ def run(args) -> int:
                 continue
         if ktype == "opinion" and not weak_enough_ok(hits, cfg):
             opinion_dropped += 1
+            continue
+        # 灌水/卖课 gate: a "面经/八股汇总" that is really a course advertisement.
+        spam = spam_reason(item)
+        if spam:
+            spam_dropped += 1
+            log.detail(f"- [spam] {spam}: {str(item.get('title'))[:64]}")
             continue
         cid = deduper.lookup(item)
         if cid:
@@ -3492,7 +3973,7 @@ def run(args) -> int:
     log(f"deduped: new={len(fresh)} updated={len(updated)} duplicate_hits={dup_count} "
         f"dropped={dropped} blocklisted={blocked} unclassified={unclassified_dropped} "
         f"news={news_dropped} opinion={opinion_dropped} weakEvidence={weak_dropped} "
-        f"offTopic={offtopic_dropped}", "ok")
+        f"offTopic={offtopic_dropped} spam={spam_dropped}", "ok")
     if blocked:
         log(f"  {blocked} item(s) skipped by the blocklist (removed earlier by "
             f"prune_items.py / dedupe_deep.py); they will not come back", "info")
@@ -3502,7 +3983,8 @@ def run(args) -> int:
     # Report what the evidence gate rejected, per knowledge type, so the effect of the
     # rule is visible in the log rather than something you have to infer from counts.
     rejected = {"news": news_dropped, "opinion": opinion_dropped,
-                "weakEvidence": weak_dropped, "offTopic": offtopic_dropped}
+                "weakEvidence": weak_dropped, "offTopic": offtopic_dropped,
+                "spam": spam_dropped}
     if any(rejected.values()):
         log("  evidence gate rejected: " + ", ".join(
             f"{k}={v}" for k, v in rejected.items() if v), "info")

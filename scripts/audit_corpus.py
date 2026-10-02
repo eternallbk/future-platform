@@ -52,9 +52,61 @@ OFF_TOPIC_RE = re.compile(
     re.I)
 GENERIC_TOOL_RE = re.compile(
     r"\b(?:wallpaper|screenshot tool|password manager|bookmark manager|"
-    r"file manager|download manager|dotfiles|awesome[- ]list|"
+    r"file manager|download manager|dotfiles|"
     r"track(?:s|ing)? (?:location|phone|mobile)|spyware|adblock|"
     r"emoji picker|color picker)\b", re.I)
+
+# A curated list ABOUT a technical subject is learning material, not a tool list.
+# Must stay in sync with collect.is_generic_tool() - the audit and the collector have to
+# agree, or a card the collector keeps gets recommended for deletion.
+CURATED_LIST_RE = re.compile(
+    r"awesome[- ]|curated list|a list of (?:papers|resources|models|datasets)|"
+    r"paper list|资源合集|汇总列表", re.I)
+CURATED_TECH_SUBJECT_RE = re.compile(
+    r"diffusion|vla|vln|vlm|lvlm|llm|language model|video|vision|multimodal|"
+    r"post-?training|reinforcement|rlhf|agent|transformer|attention|"
+    r"embodied|robot|world model|segment|detection|generation|"
+    r"算法|论文|模型|多模态|大模型|强化学习|具身|机器人", re.I)
+
+# Commercial spam that keyword-matched into the corpus.
+SPAM_AD_RE = re.compile(
+    r"品茶|茶工作室|海选|技师|上门服务|会所|桑拿|"
+    r"贷款|办卡|刷单|兼职日结|引流|",
+    re.I)
+
+
+def _collector_spam_reason(item: dict) -> str:
+    """Ask the COLLECTOR whether it considers this item spam.
+
+    WHY this delegates instead of keeping its own word list: the audit originally had a
+    parallel SPAM_AD_RE containing commerce words like 订阅, and it drifted - it flagged
+    the legitimate 八股 card "4.2.2 银行技术面---技术基础问题（操作系统）" (whose body
+    merely contains 订阅) while the collector correctly kept it. A single source of truth
+    is the only way two judgements about the same item stay consistent; `audit_corpus.py`
+    must never recommend deleting something the collector happily accepts.
+    """
+    try:
+        import importlib.util
+        from pathlib import Path as _P
+        spec = importlib.util.spec_from_file_location(
+            "collect_for_audit", _P(__file__).with_name("collect.py"))
+        mod = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(mod)
+        return mod.spam_reason(item)
+    except Exception:
+        # Never let a delegation failure turn into a false deletion: fall back to the
+        # narrow spam-only pattern above, which cannot match technical prose.
+        blob = f"{item.get('title') or ''} {str(item.get('summary') or '')[:400]}"
+        return "推广/垃圾内容（非知识积累）" if SPAM_AD_RE.search(blob) else ""
+
+
+def is_generic_tool(hay: str) -> bool:
+    if not GENERIC_TOOL_RE.search(hay):
+        return False
+    if CURATED_LIST_RE.search(hay) and CURATED_TECH_SUBJECT_RE.search(hay):
+        return False
+    return True
 
 SUBSTANTIVE = ("method", "interview", "coding", "fundamentals", "project", "job")
 
@@ -106,9 +158,11 @@ def main() -> int:
         rel = float(it.get("relevanceScore") or 0)
 
         reason = None
-        if OFF_TOPIC_RE.search(hay) and k not in ("interview", "coding"):
+        if _collector_spam_reason(it):
+            reason = "推广/垃圾内容（非知识积累）"
+        elif OFF_TOPIC_RE.search(hay) and k not in ("interview", "coding"):
             reason = "与 AI/算法无关的内容"
-        elif GENERIC_TOOL_RE.search(hay):
+        elif is_generic_tool(hay):
             reason = "通用工具类，无技术积累价值"
         elif k in ("news", "opinion") and not hits:
             reason = f"{zh[k]}且无方向关键词"
