@@ -58,3 +58,10 @@ research/channel_probe.json
 
 # Throwaway screenshots written by the UI guards
 docs/screenshots/_*.png
+
+# ---------------------------------------------------------------------------
+# Collector download cache. Regenerated on demand (see collect_nowcoder_questions);
+# web/data/cache/nowcoder-question-list.txt alone is ~2.5 MB, so it must not be
+# versioned - the collector refetches it when older than 7 days.
+# ---------------------------------------------------------------------------
+web/data/cache/
