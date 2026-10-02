@@ -1323,6 +1323,86 @@ export const StarredView = {
 
 /* ============================== PIPELINE =============================== */
 
+/* ======================= REDUNDANCY PANEL =============================== */
+/**
+ * Renders the optional redundancy audit (web/data/redundancy-report.json, written
+ * by scripts/analyze_redundancy.py on every daily run).
+ *
+ * WHY it is surfaced in the UI: redundancy is a slow, silent failure. Nothing errors
+ * when the corpus fills with the same thing reported repeatedly or with items that
+ * matched no tracked direction - the workbench just gets less useful. Showing the
+ * numbers next to channel health makes that drift visible instead of something you
+ * discover months later.
+ *
+ * Degrades to nothing when the report is absent (fresh clone, or a run that predates
+ * this feature) rather than showing an empty shell.
+ */
+function redundancyPanel() {
+  const r = state.redundancy;
+  if (!r || !r.l0) return '';
+
+  const l0 = r.l0 || {};
+  const l3 = r.l3_lowInformation || {};
+  const work = Array.isArray(r.worklist) ? r.worklist : [];
+  const high = work.filter((a) => a.severity === 'high').length;
+  const ent = (r.l1_repeatedEntities || []).slice(0, 5);
+  const sat = (r.l2_saturation || []).filter((s) => s.share >= 0.25).slice(0, 4);
+  const unclShare = Number(l3.unclassifiedShare || 0);
+
+  const stat = (label, value, tone) => `
+    <div class="stat-mini">
+      <div class="stat-mini-v ${tone || ''}">${esc(String(value))}</div>
+      <div class="stat-mini-l">${esc(label)}</div>
+    </div>`;
+
+  return `
+  <div class="panel">
+    <div class="panel-head"><div class="panel-title">${icon('i-chart')} 知识卡片去冗余体检</div>
+      <span class="badge ${high ? 'badge-warn' : 'badge-ok'}" style="margin-left:auto">
+        ${high ? `${high} 项待处理` : '指标正常'}</span></div>
+    <div class="panel-body">
+      <div class="prose" style="font-size:var(--fs-2xs);margin-bottom:var(--sp-3)">
+        <p>采集器的四层去重只处理「同一条内容」，处理不了「同一件事被反复收录」和「命中不了任何方向的条目」。
+        这一栏是每日运行时的去冗余体检：先看硬重复，再看实体重复、话题饱和、未分类占比。</p>
+      </div>
+
+      <div class="grid grid-4" style="gap:var(--sp-3);margin-bottom:var(--sp-4)">
+        ${stat('重复 id / 共用 URL', `${l0.duplicateIds || 0} / ${l0.duplicateUrls || 0}`,
+               (l0.duplicateIds || l0.duplicateUrls) ? 'is-warn' : '')}
+        ${stat('未分类占比', `${(unclShare * 100).toFixed(1)}%`,
+               unclShare >= 0.15 ? 'is-warn' : '')}
+        ${stat('低于相关度门槛', l3.belowGate || 0)}
+        ${stat('摘要 <60 字', l3.shortSummary || 0)}
+      </div>
+
+      ${ent.length ? `
+      <div class="eyebrow">同一实体反复收录（top ${ent.length}）</div>
+      <ul class="kcard-points" data-cat="agent" style="margin-bottom:var(--sp-3)">
+        ${ent.map((e) => `<li><span><b>${esc(e.token)}</b> × ${e.items}
+          <span class="text-3">${esc(Object.keys(e.categories || {}).join(' / '))}</span></span></li>`).join('')}
+      </ul>` : ''}
+
+      ${sat.length ? `
+      <div class="eyebrow">话题饱和（分类内某一实词占比 ≥25%）</div>
+      <ul class="kcard-points" data-cat="generative" style="margin-bottom:var(--sp-3)">
+        ${sat.map((s) => `<li><span>${esc(s.category)} 的 <b>${esc(s.topToken)}</b>
+          占 ${(s.share * 100).toFixed(0)}%（${s.count}/${s.items}）</span></li>`).join('')}
+      </ul>` : ''}
+
+      <div class="eyebrow">工单</div>
+      <ul class="kcard-points" data-cat="posttraining" style="margin-bottom:var(--sp-3)">
+        ${work.slice(0, 6).map((a) => `<li><span><b>[${esc(a.kind)}]</b> ${esc(a.text)}</span></li>`).join('')}
+      </ul>
+
+      <div class="text-3" style="font-size:var(--fs-3xs)">
+        体检时间 ${esc(String(r.generatedAt || '—'))} · 语料 ${esc(String(r.corpus || '—'))} 条 ·
+        命令 <code>python scripts/analyze_redundancy.py</code>（只报告；下架需显式
+        <code>python scripts/prune_items.py --apply</code>）
+      </div>
+    </div>
+  </div>`;
+}
+
 export const PipelineView = {
   title: '采集与运行',
   render() {
@@ -1331,7 +1411,6 @@ export const PipelineView = {
     const reg = state.sourceRegistry;
     const channels = (reg && reg.channels) || [];
     const okCh = channels.filter((c) => c.status === 'ok' || c.reachable).length;
-
     return `
     <div class="section-head">
       <div><h2 class="section-title">采集与运行</h2>
@@ -1493,11 +1572,13 @@ export const PipelineView = {
                 <li>摘要只允许来自原文（标题/摘要/README），<strong>禁止推断未出现的事实</strong>。</li>
                 <li>数字类信息（薪资、star 数、录用率）标记 <code>confidence</code>，低可信度在界面上显式标注。</li>
                 <li>自动生成内容与人工内容分区展示，来源渠道逐一列出。</li>
-                <li>每日自检：链接可达性抽检、重复率、空摘要率、分类覆盖率，异常写入运行日志。</li>
+                <li>每日自检：链接可达性抽检、重复率、空摘要率、分类覆盖率、<strong>去冗余体检</strong>，异常写入运行日志。</li>
               </ul>
             </div>
           </div>
         </div>
+
+        ${redundancyPanel()}
 
         <div class="panel">
           <div class="panel-head"><div class="panel-title">${icon('i-flask')} 自我迭代机制</div>

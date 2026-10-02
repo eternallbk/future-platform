@@ -21,9 +21,9 @@
     "delayBetween": 0.4
   },
   "limits": {
-    "perChannel": 30,
-    "maxNewPerRun": 400,
-    "perCategoryPerRun": 45
+    "perChannel": 12,
+    "maxNewPerRun": 60,
+    "perCategoryPerRun": 8
   },
   "scoring": {
     "freshnessHalfLifeDays": 7.0,
@@ -33,7 +33,7 @@
       "P2": 0.7
     },
     "qualityBoost": 8.0,
-    "minRelevance": 12.0
+    "minRelevance": 45.0
   },
   "dedupe": {
     "simhashBits": 64,
@@ -41,13 +41,13 @@
   },
   "arxiv": {
     "queryTerms": [],
-    "maxPerQuery": 25,
-    "lookbackDays": 10
+    "maxPerQuery": 10,
+    "lookbackDays": 3
   },
   "github": {
     "queries": [],
-    "minStars": 40,
-    "lookbackDays": 30
+    "minStars": 120,
+    "lookbackDays": 7
   },
   "categories": {
     "job": {

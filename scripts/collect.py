@@ -110,6 +110,17 @@ def date_key(dt: datetime) -> str:
 # 1. TAXONOMY — mirrors the front-end CATEGORIES; keywords are tunable in config
 # ============================================================================
 DEFAULT_CATEGORIES = {
+    # `unclassified` is the bucket classify() returns when NOTHING matched. It is a
+    # first-class category here (weight 0, no keywords) so that:
+    #   · taxonomy.json describes it, and selfcheck stops flagging 85 items as
+    #     "using a category not in taxonomy.json" - noise that hid real warnings;
+    #   · it can be filtered and counted on purpose.
+    # It has no keywords by design: adding any would defeat its purpose.
+    "unclassified": {
+        "zh": "未分类", "en": "Unclassified", "weight": 0.0,
+        "desc": "没有命中任何分类关键词的条目。堆在这里通常意味着关键词需要调整。",
+        "goal": "保持接近零；持续增长说明关键词覆盖不足或出现了新方向。",
+        "keywords": [], "arxiv": []},
     "multimodal": {
         "zh": "多模态算法", "en": "Multimodal", "weight": 1.00,
         "desc": "视觉-语言对齐、VLM 架构、跨模态检索与生成、多模态评测。",
@@ -3161,7 +3172,6 @@ def run(args) -> int:
 
     taxonomy = {"generatedAt": iso(now_cst()), "source": "collect.py", "categories": merged_cats}
     atomic_write_json(DATA_DIR / "taxonomy.json", taxonomy)
-
     atomic_write_json(STATE_PATH, state)
 
     log(f"wrote digest/{day}.json, items/index.json, manifest.json, sources.json, logs/runs.json", "ok")
@@ -3235,6 +3245,11 @@ def rescore_all(cfg, log) -> int:
     state["lastRescoreAt"] = iso(now_cst())
     atomic_write_json(STATE_PATH, state)
 
+    # A keyword/weight change alters the taxonomy's derived fields, so regenerate it
+    # here too - otherwise the taxonomy silently disagrees with the index after every
+    # rescore (see write_taxonomy's docstring).
+    write_taxonomy(cfg)
+
     all_items = build_all_items(state, [])
     atomic_write_json(INDEX_DIR / "index.json",
                       {"generatedAt": iso(now_cst()), "count": len(all_items), "items": all_items})
@@ -3264,6 +3279,42 @@ def rescore_all(cfg, log) -> int:
             f"{(a.get('category') or ''):<13} {a.get('relevanceScore')}", "info")
         log(f"     {str(a.get('title'))[:70]}", "info")
     return 0
+
+
+def write_taxonomy(cfg: dict) -> None:
+    """(Re)generate web/data/taxonomy.json from the effective category config.
+
+    WHY this is a function and not inlined: the taxonomy was only written by the full
+    collect path, so `--rescore` (the command you run right after changing keywords or
+    weights) left taxonomy.json stale. That is how a category added to
+    DEFAULT_CATEGORIES appeared in items/index.json but not in the taxonomy, and
+    selfcheck then reported "85 items use a category not in taxonomy.json" - a warning
+    that was both true and entirely an artefact of a missing write.
+    """
+    existing_sources = read_json(DATA_DIR / "sources.json", {}) or {}
+    tax_by_id = {c.get("id"): c for c in (existing_sources.get("categories") or [])
+                 if c.get("id")}
+    merged: list[dict] = []
+    for cid, c in cfg["categories"].items():
+        base = tax_by_id.get(cid, {})
+        merged.append({
+            "id": cid,
+            "nameZh": base.get("nameZh") or c["zh"],
+            "nameEn": base.get("nameEn") or c["en"],
+            "description": base.get("description") or c.get("desc", ""),
+            "collectionGoal": base.get("collectionGoal") or c.get("goal", ""),
+            "updateCadence": base.get("updateCadence") or "每日 20:00 (Asia/Shanghai)",
+            "relevanceWeight": c.get("weight", 0.8),
+            "keywordsZh": [k for k in c["keywords"] if re.search(r"[\u4e00-\u9fff]", k)][:12],
+            "keywordsEn": [k for k in c["keywords"] if not re.search(r"[\u4e00-\u9fff]", k)][:18],
+            "arxivCategories": c.get("arxiv", []),
+        })
+    for cid, base in tax_by_id.items():
+        if cid not in {c["id"] for c in merged}:
+            merged.append(base)
+    atomic_write_json(DATA_DIR / "taxonomy.json",
+                      {"generatedAt": iso(now_cst()), "source": "collect.py",
+                       "categories": merged})
 
 
 def main(argv=None) -> int:

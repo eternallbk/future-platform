@@ -59,6 +59,11 @@ DATA_FILES = [
     "formulas.json",
     "enrichment.json",
     "deep-read-plan.json",
+    # The redundancy audit (analyze_redundancy.py, run every day). Published so the
+    # 采集与运行 view can show the worklist next to channel health - redundancy is a
+    # maintenance signal the reader should be able to see without opening the repo.
+    # It contains only counts, token frequency and item titles, no private state.
+    "redundancy-report.json",
 ]
 
 # Front-end SOURCE files: the parts are concatenated into app.js at build time,

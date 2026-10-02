@@ -39,11 +39,16 @@
   height: 100dvh;
   max-width: var(--content-max);
   margin-inline: auto;
-  /* `overflow-x: clip` contains any accidental horizontal overflow from a child
-     without creating a scroll container (unlike `hidden`, which would make this
-     an ancestor that clips absolutely-positioned popovers). Measured: a 4px
-     overflow here previously escaped to the viewport. */
-  overflow-x: clip;
+  /* `overflow-x: clip` was added to contain a 4px horizontal overflow. It also
+     FORCED the used value of `overflow-y` to `clip` (spec: a `clip` on one axis
+     makes the other axis clip too, unlike `hidden`), which made #app a clipping
+     ancestor for absolutely-positioned popovers - that is what cut the topbar
+     button tooltips in half, because they are placed ABOVE the button
+     (`bottom: calc(100% + 7px)`) and therefore sit outside the topbar box.
+     Measured with scripts/probe-overflow.mjs after the flex-shrink fixes: the 4px
+     overflow no longer exists at 1024/1200/1440/1680px (document overflow is
+     negative), so the guard is not needed and the tooltips can escape normally. */
+  overflow: visible;
 }
 
 /* --- Topbar -------------------------------------------------------------- */
@@ -455,12 +460,25 @@ select.select {
 .ring .track { stroke: var(--bg-4); }
 .ring .val { stroke: var(--cat, var(--accent)); transition: stroke-dashoffset var(--t-slower) var(--ease-out); }
 
-/* --- Tooltip ------------------------------------------------------------ */
+/* --- Tooltip ------------------------------------------------------------
+   Two fixes over the original version:
+   1. A transparent `::before` "bridge" fills the 7px gap between the trigger and
+      the bubble. Without it, moving the pointer into the tooltip left the trigger,
+      the bubble vanished, and the tooltip became unreadable - it flickered.
+   2. `bottom: calc(100% + 8px)` keeps the bubble above the trigger, which now
+      works because #app no longer clips (see the note in the app-shell section).
+   The bubble is pointer-events:none, so the bridge is what holds the hover. */
 [data-tip] { position: relative; }
+[data-tip]::before {
+  content: "";
+  position: absolute;
+  bottom: 100%; left: 0; right: 0;
+  height: 9px;                       /* covers the 8px gap plus a little slack */
+}
 [data-tip]::after {
   content: attr(data-tip);
   position: absolute;
-  bottom: calc(100% + 7px);
+  bottom: calc(100% + 8px);
   left: 50%; translate: -50% 0;
   padding: 5px 9px;
   border-radius: var(--r-sm);
@@ -475,7 +493,49 @@ select.select {
   transition: opacity var(--t-fast), translate var(--t-fast) var(--ease-out);
   z-index: 100;
 }
-[data-tip]:hover::after { opacity: 1; translate: -50% -2px; }
+[data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; translate: -50% -2px; }
+
+/* The topbar is only 60px tall and its 28px buttons are vertically centred, so a
+   trigger sits at y=16 - a tooltip placed ABOVE it lands at y=-18, i.e. completely
+   off-screen. That is the real reason the three top-right controls appeared to show
+   "incomplete" popovers: the bubble was painted above the viewport. Placement is
+   therefore flipped for anything inside the topbar, where there is a whole page of
+   room below. The bridge is flipped with it so the hover does not break. */
+.topbar [data-tip]::before { bottom: auto; top: 100%; }
+.topbar [data-tip]::after {
+  bottom: auto;
+  top: calc(100% + 8px);
+  translate: -50% 0;
+}
+.topbar [data-tip]:hover::after,
+.topbar [data-tip]:focus-visible::after { translate: -50% 2px; }
+/* Keep the right-most bubble inside the viewport instead of letting it run off the
+   right edge (it is centred on a trigger that is already near the edge). */
+.topbar-actions [data-tip]::after { left: auto; right: 0; translate: 0 0; }
+.topbar-actions [data-tip]:hover::after,
+.topbar-actions [data-tip]:focus-visible::after { translate: 0 2px; }
+
+/* The '深度解析 / 深读 / 仅摘要' tag and the relative-time span sit in a card's
+   footer or meta row, which is at the BOTTOM of the card. A downward tooltip can
+   therefore fall past the card and be clipped by the scrolling `#main` (measured:
+   a tag at y=1223 produced a bubble at y=1251..1277, outside the viewport). These
+   triggers always have card content above them, so they point up. */
+.tag[data-tip]::after,
+.kcard-foot [data-tip]::after,
+.kcard-meta [data-tip]::after {
+  top: auto;
+  bottom: calc(100% + 8px);
+  translate: -50% 0;
+}
+.tag[data-tip]::before,
+.kcard-foot [data-tip]::before,
+.kcard-meta [data-tip]::before { top: auto; bottom: 100%; }
+.tag[data-tip]:hover::after,
+.tag[data-tip]:focus-visible::after,
+.kcard-foot [data-tip]:hover::after,
+.kcard-foot [data-tip]:focus-visible::after,
+.kcard-meta [data-tip]:hover::after,
+.kcard-meta [data-tip]:focus-visible::after { translate: -50% -2px; }
 
 /* --- Divider / section headers ----------------------------------------- */
 .section-head {

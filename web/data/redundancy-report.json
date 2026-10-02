@@ -1,0 +1,806 @@
+{
+  "generatedAt": "2026-10-02T16:03:44+08:00",
+  "corpus": 720,
+  "enriched": 116,
+  "l0": {
+    "duplicateIds": 0,
+    "duplicateUrls": 0
+  },
+  "l1_repeatedEntities": [
+    {
+      "token": "面试",
+      "items": 14,
+      "categories": {
+        "coding": 14
+      },
+      "sampleTitles": [
+        "数分岗投了很多一个面试都没有，想请大家帮我看看简历",
+        "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
+        "秋招投了几十家没面试？先别急着怀疑自己"
+      ]
+    },
+    {
+      "token": "面经",
+      "items": 13,
+      "categories": {
+        "coding": 12,
+        "job": 1
+      },
+      "sampleTitles": [
+        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+        "得物Java开发工程师一面面经",
+        "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）"
+      ]
+    },
+    {
+      "token": "一面",
+      "items": 13,
+      "categories": {
+        "coding": 10,
+        "job": 2,
+        "agent": 1
+      },
+      "sampleTitles": [
+        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+        "携程AI应用开发实习一面（OC）",
+        "得物Java开发工程师一面面经"
+      ]
+    },
+    {
+      "token": "秋招",
+      "items": 12,
+      "categories": {
+        "coding": 8,
+        "job": 2,
+        "worldmodel": 1
+      },
+      "sampleTitles": [
+        "9月秋招个人总结",
+        "金9结束了 我的秋招还好吗？",
+        "家人们，秋招貌似迎来转机！！！"
+      ]
+    },
+    {
+      "token": "开发",
+      "items": 12,
+      "categories": {
+        "coding": 8,
+        "job": 2,
+        "agent": 1
+      },
+      "sampleTitles": [
+        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+        "携程AI应用开发实习一面（OC）",
+        "得物Java开发工程师一面面经"
+      ]
+    },
+    {
+      "token": "微信",
+      "items": 12,
+      "categories": {
+        "job": 9,
+        "posttraining": 2,
+        "agent": 1
+      },
+      "sampleTitles": [
+        "微信小店-高级风控算法工程师",
+        "微信小店-推荐算法工程师",
+        "微信搜索-Agent算法专家"
+      ]
+    },
+    {
+      "token": "实习",
+      "items": 8,
+      "categories": {
+        "job": 5,
+        "coding": 3
+      },
+      "sampleTitles": [
+        "字节跳动 多模态算法实习生（Seed）",
+        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+        "携程AI应用开发实习一面（OC）"
+      ]
+    },
+    {
+      "token": "字节",
+      "items": 7,
+      "categories": {
+        "job": 4,
+        "coding": 3
+      },
+      "sampleTitles": [
+        "字节跳动 多模态算法实习生（Seed）",
+        "9月21日字节tiktok社交一面",
+        "【面经】字节/AI 应用工程师 一面挂经……"
+      ]
+    },
+    {
+      "token": "怎么",
+      "items": 7,
+      "categories": {
+        "coding": 7
+      },
+      "sampleTitles": [
+        "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
+        "22届过来人说下，应届生第一份工作怎么选？",
+        "面试官：\"介绍一下你怎么排查 CPU 飙高的线上问题的？\""
+      ]
+    },
+    {
+      "token": "大模",
+      "items": 6,
+      "categories": {
+        "posttraining": 4,
+        "agent": 1,
+        "unclassified": 1
+      },
+      "sampleTitles": [
+        "shibing624/MedicalGPT - MedicalGPT: Training Your Own Medical GPT Model with Cha",
+        "游戏AI-LLM大模型算法研究员",
+        "FRS2003/hands-on-llm - 动手学大模型全栈：CS336 中文精讲 · PyTorch 手搓 Transformer · 单卡复现 Pretr"
+      ]
+    },
+    {
+      "token": "二面",
+      "items": 6,
+      "categories": {
+        "coding": 5,
+        "job": 1
+      },
+      "sampleTitles": [
+        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+        "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）",
+        "快手 Feed 团队二面（25min）"
+      ]
+    },
+    {
+      "token": "一下",
+      "items": 6,
+      "categories": {
+        "coding": 5,
+        "job": 1
+      },
+      "sampleTitles": [
+        "研究了一下奇安信少年大将军计划，感觉不是普通管培",
+        "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
+        "面试官：\"介绍一下你怎么排查 CPU 飙高的线上问题的？\""
+      ]
+    },
+    {
+      "token": "视频",
+      "items": 6,
+      "categories": {
+        "job": 3,
+        "agent": 2,
+        "worldmodel": 1
+      },
+      "sampleTitles": [
+        "从海拉鲁到现实世界：视频模型如何理解「变化」",
+        "harry0703/MoneyPrinterTurbo - 利用 AI 大模型和自动化工作流，根据主题或关键词一键生成高清短视频。Generate HD sho",
+        "实测 Seedance 2.5 vs 可灵 3.0，谁能让我们无痛当上视频导演？"
+      ]
+    },
+    {
+      "token": "工作",
+      "items": 6,
+      "categories": {
+        "agent": 3,
+        "coding": 3
+      },
+      "sampleTitles": [
+        "harry0703/MoneyPrinterTurbo - 利用 AI 大模型和自动化工作流，根据主题或关键词一键生成高清短视频。Generate HD sho",
+        "22届过来人说下，应届生第一份工作怎么选？",
+        "银行科技岗工作内容介绍——总行科技部"
+      ]
+    },
+    {
+      "token": "法专",
+      "items": 6,
+      "categories": {
+        "posttraining": 2,
+        "job": 2,
+        "agent": 1
+      },
+      "sampleTitles": [
+        "微信搜索-Agent算法专家",
+        "微信搜索-电商agent算法专家",
+        "游戏AI-数据挖掘算法专家"
+      ]
+    },
+    {
+      "token": "专家",
+      "items": 6,
+      "categories": {
+        "posttraining": 2,
+        "job": 2,
+        "agent": 1
+      },
+      "sampleTitles": [
+        "微信搜索-Agent算法专家",
+        "微信搜索-电商agent算法专家",
+        "游戏AI-数据挖掘算法专家"
+      ]
+    },
+    {
+      "token": "后端",
+      "items": 6,
+      "categories": {
+        "coding": 5,
+        "job": 1
+      },
+      "sampleTitles": [
+        "字节国际化广告后端实习一二面凉经",
+        "极兔后端一面",
+        "京东后端实习一二面面经（Offer）"
+      ]
+    },
+    {
+      "token": "试官",
+      "items": 6,
+      "categories": {
+        "coding": 6
+      },
+      "sampleTitles": [
+        "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
+        "面试官：\"介绍一下你怎么排查 CPU 飙高的线上问题的？\"",
+        "面试官：“讲一下你怎么把接口性能从15.8秒优化到 300毫秒的？”"
+      ]
+    },
+    {
+      "token": "游戏",
+      "items": 5,
+      "categories": {
+        "posttraining": 2,
+        "job": 2,
+        "rl": 1
+      },
+      "sampleTitles": [
+        "游戏AI-LLM大模型算法研究员",
+        "游戏AI-强化学习算法研究员",
+        "游戏AI-数据挖掘算法专家"
+      ]
+    },
+    {
+      "token": "开源",
+      "items": 5,
+      "categories": {
+        "agent": 3,
+        "coding": 1,
+        "multimodal": 1
+      },
+      "sampleTitles": [
+        "bojieli/ai-agent-book - 《深入理解 AI Agent：设计原理与工程实践》（李博杰 著）开源主仓库：全书正文、编译版 PDF 与按章配套",
+        "DeepSeek 开源算子工具大礼包，联手华为昇腾，手撕 CUDA 绑定！",
+        "从 Codex Harness 开源，看 AI 公司的护城河是什么？"
+      ]
+    },
+    {
+      "token": "面面",
+      "items": 5,
+      "categories": {
+        "coding": 4,
+        "job": 1
+      },
+      "sampleTitles": [
+        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+        "得物Java开发工程师一面面经",
+        "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）"
+      ]
+    },
+    {
+      "token": "腾讯",
+      "items": 5,
+      "categories": {
+        "coding": 4,
+        "multimodal": 1
+      },
+      "sampleTitles": [
+        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+        "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）",
+        "offer帮选腾讯wxg转正 or 南瑞研发中心"
+      ]
+    },
+    {
+      "token": "应用",
+      "items": 5,
+      "categories": {
+        "job": 2,
+        "coding": 2,
+        "unclassified": 1
+      },
+      "sampleTitles": [
+        "携程AI应用开发实习一面（OC）",
+        "【面经】字节/AI 应用工程师 一面挂经……",
+        "想进 AI应用服务商：产品岗和交付岗，先看清两条路的日常"
+      ]
+    },
+    {
+      "token": "控算",
+      "items": 5,
+      "categories": {
+        "job": 5
+      },
+      "sampleTitles": [
+        "微信小店-高级风控算法工程师",
+        "微信安全-风控算法工程师",
+        "微信小店-风控算法工程师"
+      ]
+    },
+    {
+      "token": "风控",
+      "items": 5,
+      "categories": {
+        "job": 5
+      },
+      "sampleTitles": [
+        "微信小店-高级风控算法工程师",
+        "微信安全-风控算法工程师",
+        "微信小店-风控算法工程师"
+      ]
+    },
+    {
+      "token": "启动",
+      "items": 4,
+      "categories": {
+        "job": 2,
+        "worldmodel": 1,
+        "coding": 1
+      },
+      "sampleTitles": [
+        "巨人网络内推，巨人网络27届校招正式启动了",
+        "阿里淘天集团27届校招已经正式启动！阿里巴巴内推",
+        "普渡机器人秋招正式启动啦，普渡机器人内推"
+      ]
+    },
+    {
+      "token": "法研",
+      "items": 4,
+      "categories": {
+        "posttraining": 2,
+        "rl": 1,
+        "multimodal": 1
+      },
+      "sampleTitles": [
+        "游戏AI-LLM大模型算法研究员",
+        "游戏AI-强化学习算法研究员",
+        "原生多模态算法研究员"
+      ]
+    },
+    {
+      "token": "全栈",
+      "items": 4,
+      "categories": {
+        "posttraining": 1,
+        "job": 1,
+        "coding": 1
+      },
+      "sampleTitles": [
+        "FRS2003/hands-on-llm - 动手学大模型全栈：CS336 中文精讲 · PyTorch 手搓 Transformer · 单卡复现 Pretr",
+        "(秋招) 9.16 字节中交广 - 交易与广告业务 - AI全栈开发工程师",
+        "微店 AI全栈开发 秋招一面"
+      ]
+    },
+    {
+      "token": "数据",
+      "items": 4,
+      "categories": {
+        "agent": 2,
+        "job": 2
+      },
+      "sampleTitles": [
+        "t8y2/dbx - 25 MB lightweight cross-platform database client for 100+ databases, ",
+        "字节跳动 AI数据运营实习生（自动化方向）-AI数据与安全 一面面经",
+        "通用 Agent 数据产品经理（办公/生活/搜索）"
+      ]
+    },
+    {
+      "token": "习一",
+      "items": 4,
+      "categories": {
+        "coding": 2,
+        "job": 2
+      },
+      "sampleTitles": [
+        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+        "携程AI应用开发实习一面（OC）",
+        "字节国际化广告后端实习一二面凉经"
+      ]
+    },
+    {
+      "token": "了一",
+      "items": 4,
+      "categories": {
+        "agent": 2,
+        "job": 1,
+        "coding": 1
+      },
+      "sampleTitles": [
+        "研究了一下奇安信少年大将军计划，感觉不是普通管培",
+        "面了一轮Agent岗，我把问过的问题整理成了文章",
+        "9月也快结束了 ，然后9月初才结束差不多三个月的出差,也就是几个月没回去了，前几天中秋节回家了一趟待来几天，给老妈发了几百的过节费，给老爸买了两条烟，然后又去外"
+      ]
+    },
+    {
+      "token": "如何",
+      "items": 4,
+      "categories": {
+        "unclassified": 2,
+        "worldmodel": 1,
+        "paper": 1
+      },
+      "sampleTitles": [
+        "从海拉鲁到现实世界：视频模型如何理解「变化」",
+        "AI办公进入「上下文战争」，百度如何出牌？",
+        "2000座高速闪充站落成，比亚迪如何扛住国庆车流？"
+      ]
+    },
+    {
+      "token": "简历",
+      "items": 4,
+      "categories": {
+        "coding": 3,
+        "agent": 1
+      },
+      "sampleTitles": [
+        "数分岗投了很多一个面试都没有，想请大家帮我看看简历",
+        "简历模板拿走不谢",
+        "今天来看一份27届安徽理工大学后端开发岗简历"
+      ]
+    },
+    {
+      "token": "小店",
+      "items": 4,
+      "categories": {
+        "job": 4
+      },
+      "sampleTitles": [
+        "微信小店-高级风控算法工程师",
+        "微信小店-推荐算法工程师",
+        "微信小店-高级推荐算法工程师"
+      ]
+    },
+    {
+      "token": "信小",
+      "items": 4,
+      "categories": {
+        "job": 4
+      },
+      "sampleTitles": [
+        "微信小店-高级风控算法工程师",
+        "微信小店-推荐算法工程师",
+        "微信小店-高级推荐算法工程师"
+      ]
+    },
+    {
+      "token": "高级",
+      "items": 4,
+      "categories": {
+        "job": 4
+      },
+      "sampleTitles": [
+        "微信小店-高级风控算法工程师",
+        "微信小店-高级推荐算法工程师",
+        "QQ-高级算法工程师"
+      ]
+    },
+    {
+      "token": "荐算",
+      "items": 4,
+      "categories": {
+        "job": 4
+      },
+      "sampleTitles": [
+        "微信小店-推荐算法工程师",
+        "微信小店-高级推荐算法工程师",
+        "QQ-#高级推荐算法工程师#"
+      ]
+    },
+    {
+      "token": "推荐",
+      "items": 4,
+      "categories": {
+        "job": 4
+      },
+      "sampleTitles": [
+        "微信小店-推荐算法工程师",
+        "微信小店-高级推荐算法工程师",
+        "QQ-#高级推荐算法工程师#"
+      ]
+    },
+    {
+      "token": "搜索",
+      "items": 4,
+      "categories": {
+        "agent": 2,
+        "posttraining": 1,
+        "multimodal": 1
+      },
+      "sampleTitles": [
+        "微信搜索-Agent算法专家",
+        "微信搜索-电商agent算法专家",
+        "通用 Agent 数据产品经理（办公/生活/搜索）"
+      ]
+    },
+    {
+      "token": "下你",
+      "items": 4,
+      "categories": {
+        "coding": 4
+      },
+      "sampleTitles": [
+        "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
+        "面试官：\"介绍一下你怎么排查 CPU 飙高的线上问题的？\"",
+        "面试官：“讲一下你怎么把接口性能从15.8秒优化到 300毫秒的？”"
+      ]
+    }
+  ],
+  "l2_saturation": [
+    {
+      "category": "job",
+      "items": 31,
+      "topToken": "微信 高级",
+      "count": 2,
+      "share": 0.0645
+    },
+    {
+      "category": "coding",
+      "items": 56,
+      "topToken": "面试 介绍",
+      "count": 3,
+      "share": 0.0536
+    },
+    {
+      "category": "rl",
+      "items": 28,
+      "topToken": "dexpolicy scheduled",
+      "count": 1,
+      "share": 0.0357
+    },
+    {
+      "category": "engineering",
+      "items": 35,
+      "topToken": "vllm vllm",
+      "count": 1,
+      "share": 0.0286
+    },
+    {
+      "category": "generative",
+      "items": 39,
+      "topToken": "longxiang ai",
+      "count": 1,
+      "share": 0.0256
+    },
+    {
+      "category": "multimodal",
+      "items": 82,
+      "topToken": "nvidia ai",
+      "count": 2,
+      "share": 0.0244
+    },
+    {
+      "category": "paper",
+      "items": 42,
+      "topToken": "uniae moe",
+      "count": 1,
+      "share": 0.0238
+    },
+    {
+      "category": "agent",
+      "items": 115,
+      "topToken": "gpt 6",
+      "count": 2,
+      "share": 0.0174
+    },
+    {
+      "category": "worldmodel",
+      "items": 74,
+      "topToken": "modeling vision",
+      "count": 1,
+      "share": 0.0135
+    },
+    {
+      "category": "unclassified",
+      "items": 85,
+      "topToken": "dynamics portfolio",
+      "count": 1,
+      "share": 0.0118
+    },
+    {
+      "category": "posttraining",
+      "items": 117,
+      "topToken": "lineuprl verifiable",
+      "count": 1,
+      "share": 0.0085
+    }
+  ],
+  "l2_metric": "title-prefix repetition (segmentation-free)",
+  "l3_lowInformation": {
+    "shortSummary": 14,
+    "noSummary": 2,
+    "unclassified": 85,
+    "belowGate": 160,
+    "unclassifiedShare": 0.1181,
+    "unclassifiedSample": [
+      {
+        "id": "657ce65bbfd1b65f",
+        "score": 45.2,
+        "title": "DYNAMICS OF PORTFOLIO ASSESSMENT STRATEGY IN EVALUATING THE ENGLISH LANGUAGE SKI"
+      },
+      {
+        "id": "2e1f908ff2f8f54c",
+        "score": 45.2,
+        "title": "Regulating the Frontier: Model-Level Evidence from the EU AI Act"
+      },
+      {
+        "id": "70b020327d7ac379",
+        "score": 45.2,
+        "title": "Development of a biomarker-guided chemotherapy response model using combined CEA"
+      },
+      {
+        "id": "2ca8c6b88fd1dcdf",
+        "score": 42.7,
+        "title": "debpalash/VoiceStudio - VoiceStudio is the open-source, fully-local ElevenLabs a"
+      },
+      {
+        "id": "a6f32a5f533c9651",
+        "score": 41.0,
+        "title": "pablostanley/yoinks - yoink any video from your terminal. no shady ads."
+      },
+      {
+        "id": "7a77e9c943592111",
+        "score": 41.0,
+        "title": "HunxByts/GhostTrack - Useful tool to track location or mobile number"
+      },
+      {
+        "id": "5f9f94fe275802cc",
+        "score": 40.8,
+        "title": "cursor/plugins - Cursor plugin specification and official plugins"
+      },
+      {
+        "id": "300fc132ba8bfaf3",
+        "score": 40.6,
+        "title": "mvschwarz/openrig - Build your own network of agents from Claude Code, Codex and"
+      },
+      {
+        "id": "b28c1115c566c163",
+        "score": 40.6,
+        "title": "heygen-com/hyperframes - Write HTML. Render video. Built for agents."
+      },
+      {
+        "id": "28cfd704c0396b1a",
+        "score": 40.6,
+        "title": "firebase/firebase-ios-sdk - Firebase SDK for Apple App Development"
+      },
+      {
+        "id": "cb45c63713c9f233",
+        "score": 40.4,
+        "title": "modelcontextprotocol/servers - Model Context Protocol Servers"
+      },
+      {
+        "id": "8b38bdbd370fe6d6",
+        "score": 40.3,
+        "title": "tile-ai/tilelang - Domain-specific language designed to streamline the developme"
+      },
+      {
+        "id": "47f40a4a58cdc21d",
+        "score": 39.8,
+        "title": "Friedrich-M/UniMate - [SIGGRAPH Asia 2026] UniMate: One Unified Model to Animate"
+      },
+      {
+        "id": "bab2cadef72266d1",
+        "score": 39.5,
+        "title": "langchain-ai/langgraph - Build resilient agents."
+      },
+      {
+        "id": "7a704ebdbd553060",
+        "score": 39.2,
+        "title": "openclaw/openclaw - The AI that really does things. Any OS. Any Platform. The lo"
+      }
+    ]
+  },
+  "l4_homogeneity": [
+    {
+      "category": "job",
+      "items": 31,
+      "avgSim": 0.1381,
+      "nearPairShare": 0.0495
+    },
+    {
+      "category": "coding",
+      "items": 56,
+      "avgSim": 0.0145,
+      "nearPairShare": 0.0026
+    },
+    {
+      "category": "unclassified",
+      "items": 85,
+      "avgSim": 0.0027,
+      "nearPairShare": 0.0003
+    },
+    {
+      "category": "posttraining",
+      "items": 117,
+      "avgSim": 0.0063,
+      "nearPairShare": 0.0002
+    },
+    {
+      "category": "agent",
+      "items": 115,
+      "avgSim": 0.0063,
+      "nearPairShare": 0.0
+    },
+    {
+      "category": "engineering",
+      "items": 35,
+      "avgSim": 0.0215,
+      "nearPairShare": 0.0
+    },
+    {
+      "category": "generative",
+      "items": 39,
+      "avgSim": 0.0183,
+      "nearPairShare": 0.0
+    },
+    {
+      "category": "multimodal",
+      "items": 82,
+      "avgSim": 0.005,
+      "nearPairShare": 0.0
+    },
+    {
+      "category": "paper",
+      "items": 42,
+      "avgSim": 0.0018,
+      "nearPairShare": 0.0
+    },
+    {
+      "category": "rl",
+      "items": 28,
+      "avgSim": 0.018,
+      "nearPairShare": 0.0
+    },
+    {
+      "category": "worldmodel",
+      "items": 74,
+      "avgSim": 0.0065,
+      "nearPairShare": 0.0
+    }
+  ],
+  "worklist": [
+    {
+      "kind": "补词",
+      "severity": "high",
+      "text": "未分类 85 条 = 11.8%；其中 82 条同时低于相关度门槛。这些是纯粹的注意力占用：补关键词或提高门槛后 --rescore"
+    },
+    {
+      "kind": "观察",
+      "severity": "low",
+      "text": "'面试' 出现在 14 条里 -> 确认是否同一事物的多个版本"
+    },
+    {
+      "kind": "观察",
+      "severity": "low",
+      "text": "'面经' 出现在 13 条里 -> 确认是否同一事物的多个版本"
+    },
+    {
+      "kind": "观察",
+      "severity": "low",
+      "text": "'一面' 出现在 13 条里 -> 确认是否同一事物的多个版本"
+    },
+    {
+      "kind": "观察",
+      "severity": "low",
+      "text": "'秋招' 出现在 12 条里 -> 确认是否同一事物的多个版本"
+    },
+    {
+      "kind": "观察",
+      "severity": "low",
+      "text": "'开发' 出现在 12 条里 -> 确认是否同一事物的多个版本"
+    },
+    {
+      "kind": "观察",
+      "severity": "low",
+      "text": "'微信' 出现在 12 条里 -> 确认是否同一事物的多个版本"
+    }
+  ]
+}

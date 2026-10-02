@@ -179,7 +179,45 @@ if ($collectExit -eq 0) {
 }
 
 # ---------------------------------------------------------------------------
-# 5. Self-check - integrity / authenticity gate over the produced artifacts
+# 5. Redundancy gate - catch the "same thing, many versions" accumulation.
+#
+#     WHY this is here: the collector's four-layer de-duplication works WITHIN a run
+#     (stable id / canonical url / title fingerprint / simhash), so it cannot see a
+#     model re-uploaded under three repo names or the same paper appearing on arXiv
+#     and OpenAlex. dedupe_deep.py is the second pass for exactly that, but it was
+#     never called by the daily job - so redundancy could only ever be found by a
+#     human remembering to run it by hand.
+#
+#     Both steps are REPORT-ONLY by default. Auto-deleting content from the corpus is
+#     not something an unattended nightly job should do; the report goes into the run
+#     log and the proposals file, and the worklist is for the human to action.
+# ---------------------------------------------------------------------------
+$DedupeDeep = Join-Path $ScriptDir 'dedupe_deep.py'
+$Redundancy = Join-Path $ScriptDir 'analyze_redundancy.py'
+if (Test-Path $DedupeDeep) {
+    Write-Log 'redundancy: scanning for same-content duplicates (report only)' 'STEP'
+    $dedupeExit = Invoke-Logged $PythonExe @($DedupeDeep, '--show', '8')
+    if ($dedupeExit -ne 0) {
+        Write-Log "dedupe_deep.py returned $dedupeExit" 'WARN'
+    }
+} else {
+    Write-Log 'dedupe_deep.py not found, skipping content de-duplication' 'WARN'
+}
+if (Test-Path $Redundancy) {
+    Write-Log 'redundancy: auditing entity repetition, topic saturation, low-info items' 'STEP'
+    $redunReport = Join-Path $Root 'web\data\redundancy-report.json'
+    $redunExit = Invoke-Logged $PythonExe @($Redundancy, '--top', '8', '--json', $redunReport)
+    if ($redunExit -ne 0) {
+        Write-Log "analyze_redundancy.py returned $redunExit (its findings are also asserted by selfcheck)" 'WARN'
+    }
+} else {
+    Write-Log 'analyze_redundancy.py not found, skipping the redundancy audit' 'WARN'
+}
+
+# ---------------------------------------------------------------------------
+# 5a. Self-check - integrity / authenticity gate over the produced artifacts
+#     (this also asserts the redundancy thresholds, so a growing pile of
+#     unclassified or saturated content turns up as a warning here)
 # ---------------------------------------------------------------------------
 $checkExit = 0
 if (Test-Path $SelfCheck) {

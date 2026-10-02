@@ -332,6 +332,77 @@ def check_collection_quality(rep: Report, index, manifest):
         rep.warn("no deep-read enrichment yet - layer 2 may not be running")
 
 
+def check_redundancy(rep: Report):
+    """Is the corpus accumulating redundant or attention-diluting content?
+
+    WHY this belongs in the daily self-check: every other check here proves the data
+    is CONSISTENT. None of them notices that the corpus is slowly filling with the
+    same thing reported repeatedly, or with items that matched no tracked direction
+    at all. That is the "后期冗余" failure - it never errors, it just makes the
+    workbench less useful every day.
+
+    Implemented by reusing analyze_redundancy.build_report() so the daily gate and the
+    on-demand report can never disagree about what counts as redundant.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import analyze_redundancy as AR          # noqa: PLC0415  (optional at runtime)
+    except Exception as e:                        # pragma: no cover
+        rep.warn(f"redundancy analysis unavailable: {e}")
+        return
+    try:
+        items = (load(DATA / "items" / "index.json", rep) or {}).get("items") or []
+        if not items:
+            return
+        enrich = (load(DATA / "enrichment.json", rep) or {}).get("byId") or {}
+        r = AR.build_report(items, enrich)
+    except Exception as e:
+        rep.warn(f"redundancy analysis failed: {e}")
+        return
+
+    l0, l3 = r["l0"], r["l3_lowInformation"]
+    if l0["duplicateUrls"] or l0["duplicateIds"]:
+        rep.warn(f"硬重复：{l0['duplicateIds']} 个重复 id、{l0['duplicateUrls']} 个共用 URL "
+                 f"-> 跑 python scripts/dedupe_deep.py --apply")
+    else:
+        rep.ok("无硬重复（重复 id / 共用 URL 均为 0）")
+
+    share = l3["unclassifiedShare"]
+    if share >= 0.15:
+        rep.warn(f"未分类占 {share:.1%}（{l3['unclassified']} 条）：这些条目没有命中任何方向关键词，"
+                 f"属于纯注意力占用 -> 补关键词后 python scripts/collect.py --rescore")
+    elif share >= 0.05:
+        rep.warn(f"未分类占 {share:.1%}（{l3['unclassified']} 条），建议补关键词")
+    else:
+        rep.ok(f"未分类占比健康（{share:.1%}）")
+
+    # Repetition: N titles in one category all opening with the same words. Measured
+    # on a healthy 720-item corpus the worst category is ~3%, so >10% is a real signal
+    # rather than the noise a token-frequency metric produced.
+    over = [s for s in r["l2_saturation"] if s["share"] >= 0.10]
+    if over:
+        rep.warn("标题套式重复：" + "；".join(
+            f"{s['category']} 有 {s['count']} 条都以 '{s['topToken']}' 开头（{s['share']:.0%}）"
+            for s in over[:3]))
+    else:
+        rep.ok("无标题套式重复（同类目标题前缀重合率均 <10%）")
+
+    homo = [h for h in r["l4_homogeneity"] if h["nearPairShare"] >= 0.10]
+    if homo:
+        rep.warn("分类内主题同质化：" + "；".join(
+            f"{h['category']} 相似配对 {h['nearPairShare']:.0%}" for h in homo[:3]))
+    else:
+        rep.ok("分类内主题分散度正常")
+
+    high = [a for a in r["worklist"] if a["severity"] == "high"]
+    rep.metrics["redundancy"] = {
+        "duplicateUrls": l0["duplicateUrls"],
+        "unclassifiedShare": share,
+        "belowGate": l3["belowGate"],
+        "highSeverity": len(high),
+    }
+
+
 def build_report() -> Report:
     rep = Report()
     check_all_json(rep)
@@ -343,6 +414,7 @@ def build_report() -> Report:
     check_runs(rep, manifest)
     check_proposals(rep)
     check_collection_quality(rep, index, manifest)
+    check_redundancy(rep)
     rep.metrics["generatedAt"] = datetime.now(CST).isoformat(timespec="seconds")
     return rep
 
