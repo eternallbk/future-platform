@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-02T20:30:25+08:00",
+ "generatedAt": "2026-10-02T21:03:14+08:00",
  "source": "build_interview_index.py (deterministic rules, no LLM)",
  "count": 27,
  "note": "面经时效性最强，按发布时间倒序；公司/轮次/结果/主题由规则抽取，可逐条核对",

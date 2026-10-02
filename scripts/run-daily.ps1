@@ -146,33 +146,22 @@ Write-Log "===== Future daily run started | Shanghai $($Now.ToString('yyyy-MM-dd
 Write-Log "Python: $PythonExe"
 
 # ---------------------------------------------------------------------------
-# 2b. Single-instance lock.
+# 2b. Freshness guard - the ONLY duplicate-run protection.
 #
-#     WHY: this script now has TWO possible triggers - Windows Task Scheduler at
-#     20:00 and the DSH automation at 20:00. Without a lock, both would run a full
-#     collection: the only existing guard was the layer-2 agent day-stamp, which sits
-#     AFTER collection, so the expensive half (network fetch, scoring, dedupe,
-#     scoring writes) would execute twice and the second writer would win.
-#     A named mutex is the right primitive: it is released by the OS even if the
-#     process is killed, so it cannot go stale the way a lock file can.
-# ---------------------------------------------------------------------------
-$script:RunMutex = New-Object System.Threading.Mutex($false, 'Global\FutureWorkbenchDailyRun')
-$haveLock = $false
-try { $haveLock = $script:RunMutex.WaitOne(0) } catch { $haveLock = $false }
-if (-not $haveLock) {
-    Write-Log 'another daily run is already in progress - exiting without doing anything' 'WARN'
-    exit 0
-}
-
-# ---------------------------------------------------------------------------
-# 2c. Freshness guard.
+#     ARCHITECTURE (changed 2026-10-02): there is now exactly ONE trigger - the DSH
+#     automation task, which runs this script when it fires. The Windows Task
+#     Scheduler trigger is DISABLED (task definition kept for manual `schtasks /Run`),
+#     so a single-instance mutex used to guard against two simultaneous triggers is no
+#     longer needed and was removed.
 #
-#     A second trigger that arrives after the first one FINISHED is not caught by the
-#     mutex, and would redo the whole pipeline for no benefit (and re-publish). If the
-#     data layer was already refreshed recently, a scheduled trigger should stand down.
-#     Manual runs pass -Force to fetch anyway, which is what a human debugging wants.
+#     What remains is the cheap idempotency check that protects against the real
+#     remaining risk: an accidental double fire (a retry, a manual run, a resumed
+#     schedule). If the data layer was refreshed moments ago there is nothing to gain
+#     from redoing the whole pipeline. The window is small (5 min) so it stays out of
+#     the way - any legitimate re-run is at least that far apart - and `-Force`
+#     bypasses it entirely for deliberate refreshes.
 # ---------------------------------------------------------------------------
-$FreshnessMinutes = 45
+$FreshnessMinutes = 5
 if (-not $Force) {
     $lastIso = & $PythonExe -c "import json;d=json.load(open(r'$DataDir\manifest.json',encoding='utf-8')) if __import__('os').path.exists(r'$DataDir\manifest.json') else {};print(d.get('lastRunAt') or '')" 2>$null
     $lastIso = ("$lastIso").Trim()
