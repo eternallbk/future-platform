@@ -2972,17 +2972,24 @@ def run(args) -> int:
                 continue
             used[c] = used.get(c, 0) + 1
             kept.append(it)
-        if trimmed:
-            over = sorted(((c, n) for c, n in used.items()
-                           if n >= caps.get(c, per_cat_cap)), key=lambda kv: -kv[1])[:5]
-            log(f"per-category intake caps {json.dumps(caps, ensure_ascii=False)}: "
-                f"dropped {trimmed} item(s); busiest: "
-                f"{', '.join(f'{c}={n}' for c, n in over)}", "info")
-            # Report the categories the reader cares about, so it is obvious whether
-            # the interview/algorithm mix is actually being fed.
-            for cid in ("coding", "job", "exam"):
-                if caps.get(cid):
-                    log(f"  {cid}: {used.get(cid, 0)}/{caps[cid]} 条", "info")
+        # Always report the caps, even when nothing was trimmed.
+        #
+        # WHY unconditional: a monitor reads this line to confirm the intake mix is
+        # still being enforced. Logging only on a trim made the line's ABSENCE
+        # ambiguous - "caps applied and nothing hit them" and "the cap code never ran"
+        # looked identical in the log, so the daily check could not actually verify
+        # anything. `DROPPED 0` is the useful, unambiguous form.
+        over = sorted(((c, n) for c, n in used.items()
+                       if n >= caps.get(c, per_cat_cap)), key=lambda kv: -kv[1])[:5]
+        log(f"per-category intake caps {json.dumps(caps, ensure_ascii=False)}: "
+            f"dropped {trimmed} item(s)"
+            + (f"; busiest: {', '.join(f'{c}={n}' for c, n in over)}" if over else ""),
+            "info")
+        # The categories the reader explicitly prioritises, so it is visible whether
+        # the interview/algorithm mix is actually being fed.
+        for cid in ("coding", "job", "exam"):
+            if caps.get(cid):
+                log(f"  {cid}: {used.get(cid, 0)}/{caps[cid]} 条", "info")
         fresh = kept
 
     deduper.prune()

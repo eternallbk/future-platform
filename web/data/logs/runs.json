@@ -1,5 +1,26 @@
 [
  {
+  "startedAt": "2026-10-02T20:14:49+08:00",
+  "finishedAt": "2026-10-02T20:17:09+08:00",
+  "status": "ok",
+  "trigger": "manual",
+  "narrowRun": true,
+  "durationSec": 140.5,
+  "channelsOk": 2,
+  "channelsTotal": 2,
+  "channelsBlocked": 0,
+  "channelsEmpty": 0,
+  "channelsParseError": 0,
+  "newItems": 0,
+  "updatedItems": 3,
+  "duplicates": 3,
+  "rawItems": 80,
+  "collectorVersion": "1.1.0",
+  "itemsFile": "digest/2026-10-02.json",
+  "notes": "all channels reported items",
+  "blockedChannels": {}
+ },
+ {
   "startedAt": "2026-10-02T20:06:59+08:00",
   "finishedAt": "2026-10-02T20:11:22+08:00",
   "status": "partial",
