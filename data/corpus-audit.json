@@ -1,0 +1,405 @@
+{
+ "generatedAt": "2026-10-04T00:06:44+08:00",
+ "corpus": 775,
+ "knowledgeTypes": {
+  "method": 407,
+  "coding": 39,
+  "project": 127,
+  "fundamentals": 64,
+  "job": 30,
+  "interview": 44,
+  "other": 63,
+  "news": 1
+ },
+ "drop": [
+  {
+   "id": "a4c4fe584c82e3a7",
+   "title": "Introducing GPT-6.1 Sol",
+   "category": "agent",
+   "knowledgeType": "news",
+   "relevance": 33.5,
+   "reason": "相关度过低（34 < 35）",
+   "deepRead": false
+  }
+ ],
+ "watch": [
+  {
+   "id": "82e71d5b37dee84f",
+   "title": "vllm-sr/multi-modal-embed-small",
+   "category": "multimodal",
+   "relevance": 63.3
+  },
+  {
+   "id": "0be84424ddbe168c",
+   "title": "9月秋招个人总结",
+   "category": "coding",
+   "relevance": 54.2
+  },
+  {
+   "id": "c0bb2652e4bacfbc",
+   "title": "143. 最长同值路径 | 树形dp | 层序遍历",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "a8e0e0a4c5e23bc4",
+   "title": "137. 消息传输 | 广度优先搜索 | 矩阵 | 最短距离",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "35afdb7e1f30b9ed",
+   "title": "三珠互斥 | 距离计算 | 排序 | 交换",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "e0c6441340747025",
+   "title": "145. 数组子序列的排列 | 哈希表 | 计数 | 遍历",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "a332e1df4b54130b",
+   "title": "小美的排列询问 | 模拟题 | 排列",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "a89a0baf0070fc6d",
+   "title": "扑克牌同花顺 | 同花顺 | 遍历",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "37d3d2c6e91f9a03",
+   "title": "151. 手机流畅运行的秘密 | 差值排序 | 电量计算",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "fa25488ee02d1f89",
+   "title": "146. 传送树 | 递归 | 邻接表 | 叶子节点",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "0c67210c195b08f4",
+   "title": "152. 小米手机通信校准 | 模拟题 | 遍历",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "7ae9b8d09a90913b",
+   "title": "权值优势路径计数 | 二叉树 | 深度优先搜索 | 路径计数",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "ca42fa8f4d39cf13",
+   "title": "同余方程 | 扩展欧几里得算法 | 模反元素",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "f5fb1b33c2553516",
+   "title": "大整数乘法 | 模拟手算乘法 | 逐位相乘累加 | 处理进位",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "c07a35e1596633a9",
+   "title": "最大化密码复杂度 | 字符串 | 遍历 | 字符填充",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "d3451d901e076840",
+   "title": "讨厌鬼的组合帖子 | 子集 | 差值 | 绝对值",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "a45a1bf36916596e",
+   "title": "最小化频率的删除代价 | 频率统计 | 删除代价",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "935a8baed6db14bf",
+   "title": "二维平面上的折线段 | 折线段 | 分段处理 | 坐标计算",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "508dc6da38f45a1e",
+   "title": "优秀数组 | 相邻元素交换 | 位置数组",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "805fe742898b72e3",
+   "title": "小红的第16版方案 | 差分数组 | 二分查找",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "1508b18f89583fb2",
+   "title": "升序数组 | 升序数组 | 相邻元素差值 | 最小差值",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "0218aefe0d3217c6",
+   "title": "序列中位数 | 排序 | 删除操作",
+   "category": "coding",
+   "relevance": 54.1
+  },
+  {
+   "id": "483764c59e96fd52",
+   "title": "Fixing GRPO's credit assignment problem without evaluating every step",
+   "category": "posttraining",
+   "relevance": 54.0
+  },
+  {
+   "id": "6314bd72d02f0b0e",
+   "title": "Async GRPO with LoRA across HF Jobs: a bucket, a proxy, and no NCCL",
+   "category": "posttraining",
+   "relevance": 50.4
+  },
+  {
+   "id": "0723bd39029cf894",
+   "title": "Fine-tuning a 350M Model for Better Structured Outputs in 100 GRPO Ste",
+   "category": "posttraining",
+   "relevance": 50.4
+  },
+  {
+   "id": "ea462175f524a3f9",
+   "title": "再创佳绩！爱奇艺《灵魂摆渡》“浮生梦”系列AIGC网络故事片分账票房破千万",
+   "category": "trend",
+   "relevance": 49.7
+  },
+  {
+   "id": "fd4f3b82268aa645",
+   "title": "在三张圆明园鼠首照片里，我们看到了3D AI的Harness时刻",
+   "category": "agent",
+   "relevance": 49.0
+  },
+  {
+   "id": "7db5e99d71d98229",
+   "title": "金9结束了 我的秋招还好吗？",
+   "category": "job",
+   "relevance": 49.0
+  },
+  {
+   "id": "19faf28d880171cf",
+   "title": "家人们，秋招貌似迎来转机！！！",
+   "category": "coding",
+   "relevance": 48.7
+  },
+  {
+   "id": "08c13c3679a12cac",
+   "title": "(秋招) 9.16 字节中交广 - 交易与广告业务 - AI全栈开发工程师",
+   "category": "job",
+   "relevance": 48.6
+  },
+  {
+   "id": "367e17bfa5e19024",
+   "title": "9.26 中国电信-计算机类笔试",
+   "category": "coding",
+   "relevance": 48.6
+  },
+  {
+   "id": "dce133154e573ec6",
+   "title": "研究了一下奇安信少年大将军计划，感觉不是普通管培",
+   "category": "job",
+   "relevance": 48.3
+  },
+  {
+   "id": "ff8d6271cde0ec90",
+   "title": "How Hugging Face Inference Endpoints, Jobs, and Buckets Power Search o",
+   "category": "engineering",
+   "relevance": 47.4
+  },
+  {
+   "id": "cc88144ba9c9ce40",
+   "title": "DeepSeek扩招！弹性计算团队大量HC，尤其需要资深工程师",
+   "category": "job",
+   "relevance": 45.9
+  },
+  {
+   "id": "f470beb4b58bd5b0",
+   "title": "请假面了大疆,搞得没心情上班了",
+   "category": "coding",
+   "relevance": 45.6
+  },
+  {
+   "id": "cc9056852dc5cb02",
+   "title": "免费开源项目|个人深度研究 Agent",
+   "category": "agent",
+   "relevance": 45.1
+  },
+  {
+   "id": "0cb321e1853d55c6",
+   "title": "A model guide for the GPT-6 family",
+   "category": "course",
+   "relevance": 44.8
+  },
+  {
+   "id": "f70b0915b6c9ae6c",
+   "title": "AI办公进入「上下文战争」，百度如何出牌？",
+   "category": "agent",
+   "relevance": 44.1
+  },
+  {
+   "id": "f0d0edeeadc93486",
+   "title": "Muse爆火，dots入场：Personal Agent开始和互联网平台抢入口",
+   "category": "agent",
+   "relevance": 43.9
+  },
+  {
+   "id": "e0e629146a0ff055",
+   "title": "对比 Codex，免费的 AgnesCode 也能在底层算子优化任务中打得有来有回",
+   "category": "agent",
+   "relevance": 43.8
+  },
+  {
+   "id": "c2f6a5d7f09e4caa",
+   "title": "GPT-6 Astra 上手体验：花了一周，它真在电脑里建了座曼哈顿！",
+   "category": "agent",
+   "relevance": 43.8
+  },
+  {
+   "id": "c9d187c10b55197c",
+   "title": "拆解 WorkBuddy、千问办公和豆包工作，它们其实不是同一种产品",
+   "category": "agent",
+   "relevance": 43.8
+  },
+  {
+   "id": "4dfc7feb27f358ba",
+   "title": "实测 Seedance 2.5 vs 可灵 3.0，谁能让我们无痛当上视频导演？",
+   "category": "agent",
+   "relevance": 43.8
+  },
+  {
+   "id": "2ecb5586eb60e90a",
+   "title": "计算机专业去做智驾，到底能干什么？",
+   "category": "coding",
+   "relevance": 43.6
+  },
+  {
+   "id": "38402bbcd903b35f",
+   "title": "面了一轮Agent岗，我把问过的问题整理成了文章",
+   "category": "agent",
+   "relevance": 43.6
+  },
+  {
+   "id": "b4b07c88825ecc6b",
+   "title": "9月也快结束了 ，然后9月初才结束差不多三个月的出差,也就是几个月没回去了，前几天中秋节回家了一趟待来几天，给老妈发了几百的过节费，给老爸买",
+   "category": "coding",
+   "relevance": 43.4
+  },
+  {
+   "id": "7c37d4c2e1e684be",
+   "title": "springboot启动时会自动读取环境变量的配置吗",
+   "category": "coding",
+   "relevance": 43.4
+  },
+  {
+   "id": "9a637541b375fbc2",
+   "title": "今天来看一份27届安徽理工大学后端开发岗简历",
+   "category": "coding",
+   "relevance": 43.4
+  },
+  {
+   "id": "fe1aecbfe4127021",
+   "title": "其实很多人的归宿都是中小厂，只不过幸存者偏差让你只看到了大厂",
+   "category": "coding",
+   "relevance": 43.4
+  },
+  {
+   "id": "0dbbc1be350a9669",
+   "title": "27届软件工程关于我的大学三年",
+   "category": "coding",
+   "relevance": 43.4
+  },
+  {
+   "id": "ea69886b6a95faf2",
+   "title": "有知道巨人网络的学长学姐吗？想了解一下真实体验！",
+   "category": "coding",
+   "relevance": 43.3
+  },
+  {
+   "id": "bbb38d3e7d1c8c4f",
+   "title": "想进 AI应用服务商：产品岗和交付岗，先看清两条路的日常",
+   "category": "coding",
+   "relevance": 43.0
+  },
+  {
+   "id": "72fbe46b74bb5d67",
+   "title": "Advisory Group on Mathematics and Artificial Intelligence",
+   "category": "course",
+   "relevance": 42.5
+  },
+  {
+   "id": "fd9825423f043f25",
+   "title": "AGENTS.md 写法参考",
+   "category": "coding",
+   "relevance": 42.5
+  },
+  {
+   "id": "cc655272de701d0d",
+   "title": "28届go-agent求各位大佬简历支招",
+   "category": "agent",
+   "relevance": 42.3
+  },
+  {
+   "id": "3178e26b006c9e5f",
+   "title": "Better prompt caching for GPT-6",
+   "category": "engineering",
+   "relevance": 42.2
+  },
+  {
+   "id": "e7d39fcf160b4158",
+   "title": "Disrupting a coordinated model-distillation campaign",
+   "category": "posttraining",
+   "relevance": 41.7
+  },
+  {
+   "id": "671a1808641c9864",
+   "title": "Rebuilding AUTOMATIC1111 with Gradio Workflow",
+   "category": "agent",
+   "relevance": 40.4
+  },
+  {
+   "id": "96a43b30b8cf8025",
+   "title": "Show HN: NCompass Technologies – yet another AI Inference API, but hea",
+   "category": "engineering",
+   "relevance": 39.4
+  },
+  {
+   "id": "d70d3c6f41e9bcb6",
+   "title": "How UK AISI and EvalEval Are Making Benchmark Results Reproducible",
+   "category": "paper",
+   "relevance": 37.4
+  },
+  {
+   "id": "6031cbf3c385afba",
+   "title": "Give Your Coding Agents a Memory You Own",
+   "category": "agent",
+   "relevance": 37.4
+  },
+  {
+   "id": "7cfb49b85943381c",
+   "title": "Measuring benchmark optimization in speech recognition",
+   "category": "paper",
+   "relevance": 37.4
+  },
+  {
+   "id": "f5dc7d71fa51deb4",
+   "title": "Launch HN: machine0 (YC S26) – Persistent CPU and GPU VMs from the CLI",
+   "category": "agent",
+   "relevance": 37.4
+  }
+ ]
+}

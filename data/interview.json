@@ -1,0 +1,720 @@
+{
+ "generatedAt": "2026-10-04T00:06:42+08:00",
+ "source": "build_interview_index.py (deterministic rules, no LLM)",
+ "count": 35,
+ "note": "面经时效性最强，按发布时间倒序；公司/轮次/结果/主题由规则抽取，可逐条核对",
+ "companies": [
+  {
+   "name": "字节跳动",
+   "count": 6
+  },
+  {
+   "name": "华为",
+   "count": 4
+  },
+  {
+   "name": "小红书",
+   "count": 3
+  },
+  {
+   "name": "腾讯",
+   "count": 3
+  },
+  {
+   "name": "快手",
+   "count": 2
+  },
+  {
+   "name": "京东",
+   "count": 2
+  },
+  {
+   "name": "理想汽车",
+   "count": 1
+  },
+  {
+   "name": "携程",
+   "count": 1
+  },
+  {
+   "name": "美团",
+   "count": 1
+  },
+  {
+   "name": "得物",
+   "count": 1
+  },
+  {
+   "name": "vivo",
+   "count": 1
+  }
+ ],
+ "rounds": [
+  {
+   "name": "一面",
+   "count": 19
+  },
+  {
+   "name": "二面",
+   "count": 4
+  },
+  {
+   "name": "HR面",
+   "count": 3
+  },
+  {
+   "name": "三面",
+   "count": 1
+  }
+ ],
+ "topics": [
+  {
+   "name": "项目/论文深挖",
+   "count": 16
+  },
+  {
+   "name": "工程/系统",
+   "count": 8
+  },
+  {
+   "name": "Agent/RAG",
+   "count": 7
+  },
+  {
+   "name": "大模型/LLM",
+   "count": 5
+  },
+  {
+   "name": "手撕/算法题",
+   "count": 5
+  },
+  {
+   "name": "强化学习",
+   "count": 4
+  },
+  {
+   "name": "多模态/CV",
+   "count": 2
+  },
+  {
+   "name": "机器学习基础",
+   "count": 1
+  }
+ ],
+ "outcomes": [
+  {
+   "name": "通过",
+   "count": 20
+  },
+  {
+   "name": "未通过",
+   "count": 4
+  },
+  {
+   "name": "待定",
+   "count": 2
+  }
+ ],
+ "withCoding": 5,
+ "items": [
+  {
+   "id": "c3be2e0b9000747d",
+   "title": "小红书面经 小红书后端开发岗面经-02",
+   "url": "https://nowcoder.com/discuss/934239351909732352",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-03T23:01:24+08:00",
+   "lastSeen": "2026-10-03T23:08:26+08:00",
+   "company": "小红书",
+   "round": "",
+   "outcome": "",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "4faae2d3ac3660aa",
+   "title": "字节 260907 一面面经",
+   "url": "https://nowcoder.com/discuss/935858952644939776",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-03T22:49:43+08:00",
+   "lastSeen": "2026-10-03T22:56:14+08:00",
+   "company": "字节跳动",
+   "round": "一面",
+   "outcome": "",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "9b23e623279c9bb7",
+   "title": "9.18快手可灵策略梯度岗一面",
+   "url": "https://nowcoder.com/discuss/933402920173699072",
+   "channel": "nowcoder",
+   "category": "rl",
+   "publishedAt": "2026-10-03T22:49:23+08:00",
+   "lastSeen": "2026-10-03T22:56:14+08:00",
+   "company": "快手",
+   "round": "一面",
+   "outcome": "",
+   "topics": [
+    "机器学习基础",
+    "强化学习"
+   ],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "a66ad75592a8d2d4",
+   "title": "面经62：超聚变| 一面 | 嵌入式软件",
+   "url": "https://nowcoder.com/discuss/934469012094742528",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-03T22:49:23+08:00",
+   "lastSeen": "2026-10-03T22:56:14+08:00",
+   "company": "",
+   "round": "一面",
+   "outcome": "",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "08218205a7f9193e",
+   "title": "小红书面经 小红书大模型算法岗面经-02",
+   "url": "https://nowcoder.com/discuss/934238226980622336",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-03T22:24:21+08:00",
+   "lastSeen": "2026-10-03T22:30:59+08:00",
+   "company": "小红书",
+   "round": "",
+   "outcome": "",
+   "topics": [
+    "大模型/LLM"
+   ],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "7ee24bfbf5f5d0cc",
+   "title": "宏图智能一面",
+   "url": "https://nowcoder.com/discuss/934206754898866176",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-03T22:24:01+08:00",
+   "lastSeen": "2026-10-03T22:30:59+08:00",
+   "company": "",
+   "round": "一面",
+   "outcome": "",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "c492a209d579751c",
+   "title": "京东面经 京东后端开发岗面经-01",
+   "url": "https://nowcoder.com/discuss/934255208178155520",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-03T20:01:02+08:00",
+   "lastSeen": "2026-10-03T20:07:56+08:00",
+   "company": "京东",
+   "round": "",
+   "outcome": "",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "54178cd095b5c1c3",
+   "title": "理想汽车嵌入式面经一面（嵌入式大厂面经22）",
+   "url": "https://nowcoder.com/discuss/933863059641159680",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-02T20:07:58+08:00",
+   "lastSeen": "2026-10-02T20:11:22+08:00",
+   "company": "理想汽车",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "在程序构建链条中，汇编与链接各自承担什么角色，二者核心差异体现在哪里？汇编阶段生成的目标文件通常包含哪些内容，这些内容对后续构建有何意义？链接器在合并多个目标文件与库时，主要解决哪些与符号、地址和引用相关的问题？AUTOSAR 为何采用分层设计，其整体架构通常如何划分？在 AUTOSAR 架构里，M_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "4b6abf3be439f9c7",
+   "title": "面经60：江波龙 | 嵌入式软件 | 二面",
+   "url": "https://nowcoder.com/discuss/933360982833758208",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-02T14:49:08+08:00",
+   "lastSeen": "2026-10-02T14:52:49+08:00",
+   "company": "",
+   "round": "二面",
+   "outcome": "通过",
+   "topics": [
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "1. 自我介绍2. 具体说一下你在实习期间主要负责什么？哪些工作是你自己独立完成的？3. 实习下来，你觉得自己最大的收获或者变化是什么？回答思路建议大家从 技术能力 + 问题解决方式 + 工作方式 中选 1～2 个重点。刚开始是什么状态 → 实习中遇到了什么 → 后来发生了什么变化 → 对现在有什么_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "819352bfb3ab3afb",
+   "title": "面经59：江波龙 | 嵌入式软件 | 一面",
+   "url": "https://nowcoder.com/discuss/933356238505508864",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-02T01:54:48+08:00",
+   "lastSeen": "2026-10-02T01:58:32+08:00",
+   "company": "",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "1. 自我介绍2. 讲一下实习项目3. 软件架构是怎么设计的？从数据采集到最终算法计算，中间经历了哪些环节？4. 为什么项目选择这个 MCU？有没有考虑过其他型号？回答思路：推荐大家主要从需求匹配的角度回答可以从几个方面考虑：性能：主频、CPU内核、是否有 FPU/DSP，能不能满足数据采集和算法计_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "d44c4c2a9174e06b",
+   "title": "极兔后端一面",
+   "url": "https://nowcoder.com/discuss/932663753219244032",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T23:58:56+08:00",
+   "lastSeen": "2026-10-02T00:02:23+08:00",
+   "company": "",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [
+    "工程/系统",
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "1.Redis Stream 做订单队列，如果消费失败了怎么兜底？2.推模式缺点，改进方案3.滚动分页用的是时间戳加 offset 去重，为什么不直接用 limit 呢？4.点赞用 ZSet 存储用户 DB 存计数，你是怎么保证这个缓存和这个 DB 双写一致的呢？5.秒杀结束后，数据怎么同步到数据库_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "bc43875b886cc899",
+   "title": "字节国际化广告后端实习一二面凉经",
+   "url": "https://nowcoder.com/discuss/933056720308305920",
+   "channel": "nowcoder",
+   "category": "job",
+   "publishedAt": "2026-10-01T23:58:56+08:00",
+   "lastSeen": "2026-10-02T00:02:23+08:00",
+   "company": "字节跳动",
+   "round": "二面",
+   "outcome": "未通过",
+   "topics": [
+    "手撕/算法题",
+    "Agent/RAG"
+   ],
+   "hasCoding": true,
+   "summary": "9-17一面，9.20二面（挂）。不好评价了，二面来了个大的，面试官在那里嬉皮笑脸的，问我我的CodingAgent和Codex比有什么优势？那我说Trae对比qoder，cc，codex有什么优势？算法出个16进制大数相乘，题目描述都不清晰，就一个 a * b，然后说是很大的16进制的数，让我写它_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "34943744e1ea5edd",
+   "title": "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+   "url": "https://nowcoder.com/discuss/932638301494738944",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T22:47:26+08:00",
+   "lastSeen": "2026-10-01T22:50:26+08:00",
+   "company": "腾讯",
+   "round": "二面",
+   "outcome": "通过",
+   "topics": [
+    "手撕/算法题",
+    "大模型/LLM",
+    "工程/系统",
+    "Agent/RAG",
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "发面经攒人品前20min自我介绍+问项目，面试官不搞agent方面的东西所以主要是我在讲，主要追问是市面上同类型产品是怎么做的，以及为什么要做这样一个深度研究agent而不是直接用目前各个大模型给的深度学习功能15min算法：二叉树的最大路径和，dfs做法后20min八股+场景：1.说一下HTTP的_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "a9c03047e127a6b7",
+   "title": "华为OD后端开发 上岸面经",
+   "url": "https://nowcoder.com/discuss/934046099214467072",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T22:27:31+08:00",
+   "lastSeen": "2026-10-01T22:30:48+08:00",
+   "company": "华为",
+   "round": "HR面",
+   "outcome": "待定",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "特别鸣谢 蔡香云大大 整个流程中给我很多帮助 @蔡香云(408613251)🎓学历背景：末9本 因为一些个人原因错过了春秋招，也只有一段小公司实习，了解到华为OD对应届生包容性较强，来碰碰运气👨‍💻意向职位：Python 后端开发 📍流程：机试 -综合素质测试等 -HR面-_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "e57e1974a45388b9",
+   "title": "京东后端实习一二面面经（Offer）",
+   "url": "https://nowcoder.com/discuss/933060569995759616",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T20:28:57+08:00",
+   "lastSeen": "2026-10-01T20:34:12+08:00",
+   "company": "京东",
+   "round": "HR面",
+   "outcome": "通过",
+   "topics": [
+    "Agent/RAG",
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "9.15一面（Tech），9.22二面（HR面），9.23OC，9.24Offer。京东jdy实习改成了两轮面试，总的来说面试体验还是很好的，这下可以做兄弟了，感谢京东。一面自我介绍实习问了最有挑战的地方，深入追问了一些东西。Agent和开发流程1.使用过哪些AI工具？2.codex和cursor有_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "8e10bb18c1eba3a6",
+   "title": "9.24OBSBOT寻影一面",
+   "url": "https://nowcoder.com/discuss/933379676863492096",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T20:16:31+08:00",
+   "lastSeen": "2026-10-01T20:19:31+08:00",
+   "company": "",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "很扯的公司，也没hr打过电话通知你和你约时间，直接他们看啥时候合适他们直接给你发面邀，这样就算了，后面我看他们还突然改时间，得亏我看见邮件也完全没人通知，夸张1.说说你的项目吧2.还有你实习碰到的一些问题3.你的ab实验是怎么做的4.你会关注什么指标5.说说你印象最深刻的实验，你自己主导的6.实验里_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "752ed307ca0827d2",
+   "title": "小红书面经 小红书后端开发岗面经-04",
+   "url": "https://nowcoder.com/discuss/934239814247804928",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T19:24:13+08:00",
+   "lastSeen": "2026-10-01T19:25:52+08:00",
+   "company": "小红书",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [
+    "工程/系统"
+   ],
+   "hasCoding": false,
+   "summary": "面经 01面试岗位：小红书 后端开发岗 ｜ 面试时间：2025 年 9 月 25 日有挑战的事情如何做的做了什么具体实现业务细节现有a、b、c三个线程，需实现“a执行完执行b，b执行完执行c，c执行完回头执行a”的按需循环效果，该如何实现？请说明synchro_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "07bc5c3687968645",
+   "title": "携程AI应用开发实习一面（OC）",
+   "url": "https://nowcoder.com/discuss/933058120102739968",
+   "channel": "nowcoder",
+   "category": "job",
+   "publishedAt": "2026-10-01T18:50:15+08:00",
+   "lastSeen": "2026-10-01T18:51:42+08:00",
+   "company": "携程",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [
+    "Agent/RAG",
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "9-23晚上一面，9-24早上OC。感觉是携程很多实习生离职了，很缺人。面试体验非常好，面试官还会帮我总结我说的东西，对问题的描述也非常清晰。40分钟自我介绍实习Agent上下文管理1.对Agent上下文管理有什么了解？2.除了工具压缩还有哪些压缩机制？3.保留什么？压缩什么？采用什么方式？4.什么_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "c6fa70f3e13ab0b0",
+   "title": "C++美团高强度拷打一面 ！！人都麻了啊",
+   "url": "https://nowcoder.com/discuss/934748467484774400",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T18:49:56+08:00",
+   "lastSeen": "2026-10-01T18:51:42+08:00",
+   "company": "美团",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "1. 你这个项目为什么自己做通信层，而不是直接上现成 RPC？当时链路短、字段固定，自研能把序列化、超时和重试完全控住。现成 RPC 依赖重，部署和排查链路更长，实验室环境不划算。自研也留下了明确边界：只做请求应答，不做服务治理全家桶。后续若要上平台，会把编解码和传输层拆开，方便替换成公司 RPC。_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "ed3acbe06568ac16",
+   "title": "【干货预警-中行面经汇总】中国银行信息科技岗面经汇总（总行信息科技岗、中行软开）",
+   "url": "https://nowcoder.com/discuss/933073510845403136",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T18:49:56+08:00",
+   "lastSeen": "2026-10-01T18:51:42+08:00",
+   "company": "",
+   "round": "",
+   "outcome": "通过",
+   "topics": [],
+   "hasCoding": true,
+   "summary": "零、写在前面工作已经两三年了，说说我近几年的观察，现在银行校招整体也在缩招，和同业了解到有些部门的处室已经连续 3 年只进外协，没有正式员工了....并且有些银行的数据中心甚至来了很多清北的.... 没想到短短几年，就业形势发生这样天翻地覆的变化不过再说句心里话，现在一直说写代码的岗位会被AI取代，_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "edfefc7dc6799d27",
+   "title": "得物Java开发工程师一面面经",
+   "url": "https://nowcoder.com/discuss/932614802113908736",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T17:46:23+08:00",
+   "lastSeen": "2026-10-01T17:47:35+08:00",
+   "company": "得物",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [
+    "工程/系统"
+   ],
+   "hasCoding": false,
+   "summary": "9.24bg双2，本人菜菜的，面试官人挺好的，没想到的点会引导，答得只能说还行八股：1.ThreadLocal使用场景、原理、风险漏洞？2.线程池线程之间的信息如何传递？3.除了ThreadLocal，还有哪些线程安全的变量访问方式？4.synchronized和ReentrantLock的区别？5_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "4870e270e1c6bf80",
+   "title": "微店 AI全栈开发 秋招一面",
+   "url": "https://nowcoder.com/discuss/932574691825287168",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T17:46:23+08:00",
+   "lastSeen": "2026-10-01T17:47:35+08:00",
+   "company": "",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [
+    "大模型/LLM",
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "1. 请做一个简短的自我介绍2. 你在上段实习中，学了点什么, 怎么就呆了俩月3. 大模型应用中的召回率从 78% 提升到 89%，你会如何确认改动确实有效？不能只比较两个百分比，还要确认测试集一致、评估口径一致，并排除数据泄漏。首先需要固定一套评估集，包含：精确关键词问题。同义表达问题。多条件组合_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "6e85217f7aeabd04",
+   "title": "快手 Feed 团队二面（25min）",
+   "url": "https://nowcoder.com/discuss/934110434167095296",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T17:04:11+08:00",
+   "lastSeen": "2026-10-01T17:05:43+08:00",
+   "company": "快手",
+   "round": "二面",
+   "outcome": "通过",
+   "topics": [
+    "手撕/算法题",
+    "工程/系统",
+    "项目/论文深挖"
+   ],
+   "hasCoding": true,
+   "summary": "感觉现在面经已经没什么好写的了，问了一会实习，也没往深层次问，随便介绍了一下，时间就差不多了，没手撕，就结束了，感觉面试官根本不想在这场面试花时间，一面和二面隔了一周，并且二面还是在中秋和国庆之间，估计已经找到人了，懒得和我浪费时间了。1.自我介绍2.为什么不继续上个实习3.对高并发有什么理解？4._牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "3437847e7e173c9f",
+   "title": "27届华为面试凉经+1，今年秋招太难了......",
+   "url": "https://nowcoder.com/discuss/932994497917517824",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T17:04:11+08:00",
+   "lastSeen": "2026-10-01T17:05:43+08:00",
+   "company": "华为",
+   "round": "",
+   "outcome": "未通过",
+   "topics": [
+    "强化学习"
+   ],
+   "hasCoding": false,
+   "summary": "bg本2硕9，在秋招和春招一共拿到了 15+ 家大厂嵌软Offer，包括华为、OPPO、vivo、蔚来、影石及荣耀等。在每次面试完成后，我自己进行整理汇总，总结出大厂面经专栏。专栏累计已有4.2w+ 同学阅读，共整理 70+篇文章、40+篇大厂面经(持续更新中)每道题也都配备了解答(代码块+框架图)_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "153213a1b791c02b",
+   "title": "字节跳动 AI数据运营实习生（自动化方向）-AI数据与安全 一面面经",
+   "url": "https://nowcoder.com/discuss/932604724463882240",
+   "channel": "nowcoder",
+   "category": "job",
+   "publishedAt": "2026-10-01T17:00:33+08:00",
+   "lastSeen": "2026-10-01T17:01:32+08:00",
+   "company": "字节跳动",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "1、自我介绍2、提问因为我看你的简历上面写的都是项目经历嘛，把能不能介绍下哪个项目是，或者我们从最新的项目开始聊起，能不能讲讲多智能体项目的背景和想要解决的什么问题？你为什么选择这个架构，你想解决的问题是什么？是科研的搜索吗？那你当时是为什么会设计这样的架构，为什么是一个主智能体带3个子智能体，为什_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "7b54c87b34529597",
+   "title": "VIVO agent开发 秋招一面",
+   "url": "https://nowcoder.com/discuss/932565368587976704",
+   "channel": "nowcoder",
+   "category": "agent",
+   "publishedAt": "2026-10-01T16:56:43+08:00",
+   "lastSeen": "2026-10-01T16:57:41+08:00",
+   "company": "vivo",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [
+    "Agent/RAG"
+   ],
+   "hasCoding": false,
+   "summary": "1. 两分钟介绍下自己2. 创建工单的请求超时，但外部系统可能已经成功写入，Agent 应如何恢复？超时只能说明调用方没有拿到结果，不能证明外部操作失败。执行前应持久化逻辑操作 ID、参数摘要和执行意图，由工单服务通过唯一约束实现幂等；重试必须复用原操作 ID，而不是重新生成。恢复时优先按该 ID_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "e642b13b2a0d9d5e",
+   "title": "【面经】字节/AI 应用工程师 一面挂经……",
+   "url": "https://nowcoder.com/discuss/933023499399024640",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T16:54:29+08:00",
+   "lastSeen": "2026-10-01T16:55:32+08:00",
+   "company": "字节跳动",
+   "round": "一面",
+   "outcome": "未通过",
+   "topics": [
+    "手撕/算法题",
+    "多模态/CV",
+    "Agent/RAG",
+    "项目/论文深挖"
+   ],
+   "hasCoding": true,
+   "summary": "岗位：AI 应用工程师（飞书多维表格方向）轮次：一面形式：视频面时长：约 70 分钟一、开场自我介绍二、算法现场手写一道算法题（1～N个数中选k个，给出可能的答案）追问：时间复杂度和空间复杂度是多少？三、项目深挖Agent 相关：为什么项目不用 Claude Code？是否是自己搭建的Agent r_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "6869cced09ad15da",
+   "title": "9月21日字节tiktok社交一面",
+   "url": "https://nowcoder.com/discuss/932667730539343872",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T16:46:46+08:00",
+   "lastSeen": "2026-10-01T16:48:06+08:00",
+   "company": "字节跳动",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "复盘一下吧，这个实在是让我难受的一次面试，面完hr直接通知我秒挂，项目八股算法全部都答上来了，也面试了一个小时，面试官的态度也挺好的，捉摸不透，人飞书是隔了一天才挂的，他挂的这么迅速，搞不好还脏我面评，到底为啥呢。。。。。[牛泪][牛泪][牛泪]1.讲讲你实习期的项目2.有没有了解过关于你实习业务线_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "040ac851698f9ed8",
+   "title": "27届大疆面试凉经+1，今年秋招太难了......",
+   "url": "https://nowcoder.com/discuss/934744716044664832",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T16:46:46+08:00",
+   "lastSeen": "2026-10-01T16:48:06+08:00",
+   "company": "华为",
+   "round": "",
+   "outcome": "未通过",
+   "topics": [
+    "强化学习"
+   ],
+   "hasCoding": false,
+   "summary": "bg本2硕9，在秋招和春招一共拿到了 15+ 家大厂嵌软Offer，包括华为、OPPO、vivo、蔚来、影石及荣耀等。在每次面试完成后，我自己进行整理汇总，总结出大厂面经专栏。专栏累计已有6.2w+ 同学阅读，共整理100+篇文章、60+篇大厂面经(持续更新中)每道题也都配备了解答(代码块+框架图)_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "5f47316656dd4eeb",
+   "title": "分享｜5年Java面字节，虚拟线程和GraalVM深挖，三面终于OC",
+   "url": "https://nowcoder.com/discuss/934417678071058432",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T16:46:27+08:00",
+   "lastSeen": "2026-10-01T16:48:06+08:00",
+   "company": "字节跳动",
+   "round": "三面",
+   "outcome": "通过",
+   "topics": [
+    "工程/系统",
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "先交代背景：普通本科，Java后端，5年经验，上一家是某电商平台，负责过订单系统的架构优化，带过5人团队。字节5年经验的面试，一面45分钟，围绕虚拟线程、GraalVM原生镜像、Spring Boot 3.x三个方向深挖。面试官不满足于“知不知道”，而是追问“为什么这么设计”和“线上怎么落地”。三轮_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "52e617684045fc77",
+   "title": "（诺瓦星云）双非硕秋招实录！9 月斩获 4 份嵌入式开发 offer，面经连载中",
+   "url": "https://nowcoder.com/discuss/935200647861792768",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T16:46:27+08:00",
+   "lastSeen": "2026-10-01T16:48:06+08:00",
+   "company": "",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "前言：双非电子信息硕士，秋招 9 月拿下 4 个嵌入式开发 offer。一路踩坑整理面试真题，本专栏持续更新各家嵌入式面经，包含众多厂商面试原题与考点复盘，嵌入式求职小伙伴可以收藏蹲后续！🎓学历背景：双非电子信息硕👨‍💻意向职位：嵌入式软件开发📍求职类型：秋招🔑本篇：诺瓦星云嵌入式一面面经_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "a269d242962e0bae",
+   "title": "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）",
+   "url": "https://nowcoder.com/discuss/935191455750946816",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T16:43:08+08:00",
+   "lastSeen": "2026-10-01T16:44:10+08:00",
+   "company": "腾讯",
+   "round": "HR面",
+   "outcome": "待定",
+   "topics": [
+    "大模型/LLM",
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "#发面经攒人品#二面：全程没有八股，只有35分钟项目，可以用做参考项目话术准备程度：你的深度研究项目相比较市面上的大模型的深度思考有什么优势；评估环节的覆盖率/来源质量/边际收益怎么怎么计算的；你微调训练模型的预训练模型从哪下载的，名字叫什么，各个参数是多少；你怎么知道训练后效果变好了，训练后的各项_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "386e53cdfcfe880e",
+   "title": "面经：腾讯混元多模态一面",
+   "url": "https://nowcoder.com/discuss/xxx",
+   "channel": "inbox",
+   "category": "coding",
+   "publishedAt": null,
+   "lastSeen": "2026-10-01T16:42:05+08:00",
+   "company": "腾讯",
+   "round": "一面",
+   "outcome": "",
+   "topics": [
+    "多模态/CV"
+   ],
+   "hasCoding": false,
+   "summary": "牛客网是互联网求职神器，C++、Java、前端、产品、运营技能学习/备考/求职题库，在线进行百度阿里腾讯网易等互联网名企笔试面试模拟考试练习,和牛人一起讨论经典试题,全面提升你的技术能力"
+  },
+  {
+   "id": "38b311baeaddf577",
+   "title": "DeepSeek 开源算子工具大礼包，联手华为昇腾，手撕 CUDA 绑定！",
+   "url": "https://leiphone.com/category/yanxishe/UUIfK7eeFE9Ws1JI.html",
+   "channel": "leiphone",
+   "category": "coding",
+   "publishedAt": "2026-09-30T18:58:00+08:00",
+   "lastSeen": "2026-10-01T16:44:10+08:00",
+   "company": "华为",
+   "round": "",
+   "outcome": "",
+   "topics": [
+    "手撕/算法题",
+    "强化学习",
+    "工程/系统"
+   ],
+   "hasCoding": true,
+   "summary": "一套代码能跑遍所有芯片。 作者丨 高允毅 编辑丨岑 峰 刚刚，DeepSeek做了一个开源壮举： 把给英伟达 GPU 写代码的全套工具链，原样铺到了华为昇腾 950 NPU 上。 最核心的算子开发产品 TileLang 官宣原生支持昇腾。不仅如此，连同 DeepGEMM、DeepEP、FlashMLA、TileKernels、DeepSelect 五大核心计算与通信库也同步推出昇腾版本，直接对标英伟达平台的全套工具链。 这意味着国产算力第一次在核心算子工具层面，做到了与英伟达生态的能力对标 。 在此之前，全球 AI 行业苦 CUDA 垄断久矣；而现在，DeepSeek 用一行行开源代码，为国产算力自主生态蹚出了一条康庄大道。 01 写算子的 “手工作坊” 时代，该结束了 做过 AI 底层开发的都知道， “写算子” 一直是门槛最高、耗时最久的工作之一。 一张芯片的理论算力上限很高，但如果底层"
+  },
+  {
+   "id": "4f5b506dfea832c7",
+   "title": "liyupi/mianshiya — 持续维护的企业面试题库网站，帮你拿到满意 offer！⭐️ 2026年最新Java面试题、前端面试题、AI大模型面试题、AI Agent面试",
+   "url": "https://github.com/liyupi/mianshiya",
+   "channel": "github_algo",
+   "category": "agent",
+   "publishedAt": "2026-02-04T10:47:29Z",
+   "lastSeen": "2026-10-03T02:13:16+08:00",
+   "company": "",
+   "round": "",
+   "outcome": "通过",
+   "topics": [
+    "大模型/LLM",
+    "工程/系统",
+    "Agent/RAG",
+    "项目/论文深挖"
+   ],
+   "hasCoding": false,
+   "summary": "持续维护的企业面试题库网站，帮你拿到满意 offer！⭐️ 2026年最新Java面试题、前端面试题、AI大模型面试题、AI Agent面试题、RAG面试题、C++面试题、Go面试题、Python面试题、测试面试题、运维面试题、后端面试题、操作系统面试题、计算机网络面试题、Redis面试题、MySQL数据库面试题、算法面试题、Spring面试题、JVM面试题、Java并发面试题、Linux面试题、LLM面试题、Prompt工程面试题、系统设计面试题等1万多道高频程序员求职必备八股文。面试刷题就选面试鸭 💎 React 前端 + Node 后端 + 云开发全栈项目 by 程序员鱼皮｜5927 stars｜TypeScript｜最近更新 2026-02-04｜主题：ai、ai-agents、algorithm、ant-design、backend、cpp、css、database"
+  }
+ ]
+}
