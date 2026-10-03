@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -41,6 +42,24 @@ DAILY = read(ROOT / "scripts" / "run-daily.ps1")
 AGENT = read(ROOT / "scripts" / "daily-agent.md")
 INBOX = read(ROOT / "scripts" / "inbox.py")
 SELFCHECK = read(ROOT / "scripts" / "selfcheck.py")
+BANK = read(ROOT / "scripts" / "build_problem_bank.py")
+PLANNER = read(ROOT / "scripts" / "plan_deep_read.py")
+APPLY = read(ROOT / "scripts" / "apply_enrichment.py")
+PROBVAL = read(ROOT / "scripts" / "validate_problem_analysis.py")
+PRUNE = read(ROOT / "scripts" / "prune_items.py")
+SITE = read(ROOT / "scripts" / "build_site.py")
+CONFIG = read(ROOT / "config" / "collector.config.json")
+
+PROBLEM_BANK = {}
+try:
+    PROBLEM_BANK = json.loads((DATA / "problem-bank.json").read_text("utf-8"))
+except Exception:
+    pass
+PROBLEM_ANALYSIS = {}
+try:
+    PROBLEM_ANALYSIS = json.loads((DATA / "problem-analysis.json").read_text("utf-8"))
+except Exception:
+    pass
 
 INDEX = {}
 try:
@@ -181,8 +200,12 @@ check(S, "人工在环（登录类渠道）",
       "collect_inbox" in COLLECT and "inbox.py" in str(INBOX[:200]) and "manual.jsonl" in INBOX,
       "inbox 渠道只读本地文件，对登录站点 0 请求")
 check(S, "凭据不落地",
-      "GITHUB_TOKEN" in COLLECT and "os.environ" in COLLECT and "password" not in COLLECT.lower(),
-      "token 仅从环境变量读取，脚本不保存凭据")
+      "GITHUB_TOKEN" in COLLECT and "os.environ" in COLLECT
+      and not re.search(r"(?:password|passwd|token|secret|api[_-]?key)\s*[:=]\s*[\"'][^\"']{6,}[\"']",
+                        COLLECT, re.I),
+      "token 仅从环境变量读取；脚本里不允许出现硬编码的凭据字面量"
+      "（旧断言查的是裸词 \"password\"，会被 GENERIC_TOOL_RE 里的 password manager 误判——"
+      "已改为查凭据赋值）")
 
 # ===========================================================================
 # 数据层实际内容检查（避免"代码里有、数据里没有"的假达标）
@@ -215,6 +238,84 @@ check(S, "运行历史可查", (DATA / "logs" / "runs.json").exists(),
 check(S, "manifest 反映真实运行",
       MANIFEST.get("status") in ("ok", "partial", "error") and (MANIFEST.get("totalItems") or 0) > 0,
       f"status={MANIFEST.get('status')} total={MANIFEST.get('totalItems')} channels={MANIFEST.get('channelsOk')}/{MANIFEST.get('channelsTotal')}")
+
+# ===========================================================================
+# 四·信息质量与题库定位（读者第二轮反馈）
+#
+# 读者原话：「现有工作台中包含 API 订阅指南、充值教程、卖课等部分垃圾信息」+
+# 「对于算法题和仓库的整理，直接给出仓库链接虽然可以保留，但我更希望你能根据题库信息，
+# 阅读并自己深度解析相关手撕题、算法题等具体问题并整理到题库定位中附带深入的代码解析或
+# 配图解析等」+「把手撕算法、各领域核心工作或问题等求职面试能直接用上的信息提高采集优先级」。
+# 每条都映射到可检验的证据：函数名、数据字段、前端文案、流水线步骤。
+# ===========================================================================
+S = "四·信息质量与题库定位"
+check(S, "垃圾信息闸门（广告路径/错误页）",
+      "JUNK_URL_RE" in COLLECT and "def junk_reason" in COLLECT and "junk=" in COLLECT,
+      "collect.py: JUNK_URL_RE + junk_reason()，命中计入日志的 junk= 计数")
+check(S, "垃圾信息闸门（API 账号/充值/订阅教程）",
+      "ACCOUNT_COMMERCE_RE" in COLLECT and "HOWTO_RE" in COLLECT,
+      "标题同时命中「账号/充值/订阅/额度…」与「教程/怎么/如何/接入…」才拒绝（需同时命中，避免误杀技术文）")
+check(S, "广告路径在采集层就被跳过",
+      "daichong" in COLLECT,
+      "programmercarl 采集跳过 /daichong/、/error/（代充与 404 页）")
+check(S, "求职可用性优先级（采集打分）",
+      "def interview_value" in COLLECT and "interviewValue" in COLLECT
+      and "interviewValue" in CONFIG and "coreWorksTitle" in CONFIG,
+      "score_item 增加 interviewValue 组件：题目/带解法/领域核心工作/八股 各自加分，上限 20")
+check(S, "各领域核心工作清单可配置",
+      "coreWorksAnywhere" in CONFIG and "手撕" in CONFIG,
+      "collector.config.json: coreWorksTitle / coreWorksAnywhere（数据化，不写死在代码里）")
+check(S, "题库抽取（哪些条目是具体题目）",
+      "def problem_meta" in COLLECT and (ROOT / "scripts" / "build_problem_bank.py").exists(),
+      "collect.py problem_meta() + scripts/build_problem_bank.py")
+check(S, "题库清单已生成且非空",
+      (PROBLEM_BANK.get("stats") or {}).get("total", 0) > 0,
+      f"problem-bank.json: {json.dumps(PROBLEM_BANK.get('stats') or {}, ensure_ascii=False)}")
+check(S, "题库排除了数字电路/硬件题与非题目页",
+      "PROBLEM_EXCLUDE_RE" in COLLECT and "HARDWARE_FALLBACK_RE" in BANK
+      and "TASK_STATEMENT_RE" in BANK,
+      "题目必须有题面（输入/输出/实现…），硬件题与「学习路线」页不进题库")
+check(S, "题解队列进入每日深读计划",
+      "def build_problem_queue" in PLANNER and '"problems"' in PLANNER
+      and "problem-queue" in PLANNER,
+      "plan_deep_read.py 输出 problems 清单，且同一条目不再重复做卡片深读")
+check(S, "题解契约写进每日 Agent 提示词",
+      "题库定位：把题目变成题解" in AGENT and "out-prob-" in AGENT and "code" in AGENT,
+      "daily-agent.md §2.6：题意/思路/复杂度/代码/图解/易错点/追问 + 硬性纪律")
+check(S, "题解有独立校验器",
+      "def check_code" in PROBVAL and "PLACEHOLDER_RE" in PROBVAL and "--only" in PROBVAL,
+      "validate_problem_analysis.py：代码非占位/非过短、图解自包含、禁止编造 URL")
+check(S, "题解合并写入数据层",
+      "def merge_problem_analysis" in APPLY and "problem-analysis.json" in APPLY
+      and "def merge_curated_analysis" in APPLY,
+      "apply_enrichment.py：题解写入 problem-analysis.json，人工题只增不减（挂 analysis 键）")
+check(S, "题解同步成卡片（卡片库也能看到已深读）",
+      "def problem_analysis_as_enrichment" in APPLY and "derivedFromProblems" in APPLY,
+      "题解同时投影成轻量 enrichment，不会降级已有的富卡片")
+check(S, "题库定位前端有「算法题库」分段",
+      "算法题库" in FRONT and "'algo'" in FRONT and "problem-bank.json" in FRONT,
+      "ProblemsView 三段（手撕/笔试场景/算法题库）+ 待解析徽章 + 详解面板")
+check(S, "题库定位详情渲染（代码+图解）",
+      "diagramHtml(a.diagram)" in FRONT and "a.code" in FRONT and "a.approach" in FRONT,
+      "详情页渲染 题意澄清/思路/复杂度/参考实现/图解/边界/追问/变形/自测")
+check(S, "每日流程包含题库两步",
+      "build_problem_bank.py" in DAILY and "validate_problem_analysis.py" in DAILY,
+      "run-daily.ps1：采集后建题库 → 深读后校验合并后的题解")
+check(S, "自检覆盖题库与题解",
+      "def check_problem_bank" in SELFCHECK and "problem-analysis.json" in SELFCHECK,
+      "selfcheck.py：题库清单完整性 + 题解必须含代码与图解（缺则报错）")
+check(S, "发布白名单包含新数据",
+      "problem-bank.json" in SITE and "problem-analysis.json" in SITE,
+      "build_site.py DATA_FILES 白名单（否则线上题库定位只剩人工题）")
+check(S, "清理工具与采集器同一套判定",
+      "import collect as _collect" in PRUNE and "_is_question_item" in PRUNE,
+      "prune_items.py 复用 collect.junk_reason（清理与采集不会规则漂移）")
+check(S, "题解已产出（代码 + 图解）",
+      (PROBLEM_ANALYSIS.get("count") or 0) > 0 and all(
+          ((e.get("code") or {}).get("source") or "").strip()
+          and (((e.get("diagram") or {}).get("svg")) or ((e.get("diagram") or {}).get("spec")))
+          for e in (PROBLEM_ANALYSIS.get("byId") or {}).values() if isinstance(e, dict)),
+      f"problem-analysis.json: count={PROBLEM_ANALYSIS.get('count')}")
 
 # ===========================================================================
 # 报告

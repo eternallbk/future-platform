@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-10-02T09:31:18.035Z",
+  "generatedAt": "2026-10-03T16:32:59.336Z",
   "chrome": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "port": 8791,
   "routes": [
     {
       "route": "dashboard",
       "errors": 0,
-      "domBytes": 57962,
+      "domBytes": 57911,
       "blocks": 12,
       "stillLoading": false,
       "loadFailed": false,
@@ -15,8 +15,8 @@
     {
       "route": "digest",
       "errors": 0,
-      "domBytes": 263264,
-      "blocks": 81,
+      "domBytes": 373888,
+      "blocks": 128,
       "stillLoading": false,
       "loadFailed": false,
       "hasView": true
@@ -24,7 +24,7 @@
     {
       "route": "categories",
       "errors": 0,
-      "domBytes": 46626,
+      "domBytes": 48480,
       "blocks": 17,
       "stillLoading": false,
       "loadFailed": false,
@@ -33,7 +33,7 @@
     {
       "route": "knowledge",
       "errors": 0,
-      "domBytes": 193854,
+      "domBytes": 191144,
       "blocks": 60,
       "stillLoading": false,
       "loadFailed": false,
@@ -42,8 +42,8 @@
     {
       "route": "formulas",
       "errors": 0,
-      "domBytes": 1003106,
-      "blocks": 155,
+      "domBytes": 2281034,
+      "blocks": 359,
       "stillLoading": false,
       "loadFailed": false,
       "hasView": true
@@ -51,8 +51,26 @@
     {
       "route": "problems",
       "errors": 0,
-      "domBytes": 75260,
+      "domBytes": 75752,
       "blocks": 24,
+      "stillLoading": false,
+      "loadFailed": false,
+      "hasView": true
+    },
+    {
+      "route": "problems-algo",
+      "errors": 0,
+      "domBytes": 71487,
+      "blocks": 28,
+      "stillLoading": false,
+      "loadFailed": false,
+      "hasView": true
+    },
+    {
+      "route": "problem-detail",
+      "errors": 0,
+      "domBytes": 42090,
+      "blocks": 17,
       "stillLoading": false,
       "loadFailed": false,
       "hasView": true
@@ -60,7 +78,7 @@
     {
       "route": "repos",
       "errors": 0,
-      "domBytes": 46016,
+      "domBytes": 46213,
       "blocks": 16,
       "stillLoading": false,
       "loadFailed": false,
@@ -69,7 +87,7 @@
     {
       "route": "jobs",
       "errors": 0,
-      "domBytes": 97150,
+      "domBytes": 97347,
       "blocks": 44,
       "stillLoading": false,
       "loadFailed": false,
@@ -78,7 +96,7 @@
     {
       "route": "skills",
       "errors": 0,
-      "domBytes": 121399,
+      "domBytes": 121596,
       "blocks": 32,
       "stillLoading": false,
       "loadFailed": false,
@@ -87,7 +105,7 @@
     {
       "route": "roadmap",
       "errors": 0,
-      "domBytes": 53443,
+      "domBytes": 53640,
       "blocks": 10,
       "stillLoading": false,
       "loadFailed": false,
@@ -96,7 +114,7 @@
     {
       "route": "progress",
       "errors": 0,
-      "domBytes": 43871,
+      "domBytes": 45282,
       "blocks": 9,
       "stillLoading": false,
       "loadFailed": false,
@@ -105,7 +123,7 @@
     {
       "route": "starred",
       "errors": 0,
-      "domBytes": 22797,
+      "domBytes": 22994,
       "blocks": 1,
       "stillLoading": false,
       "loadFailed": false,
@@ -114,7 +132,7 @@
     {
       "route": "pipeline",
       "errors": 0,
-      "domBytes": 103450,
+      "domBytes": 106291,
       "blocks": 11,
       "stillLoading": false,
       "loadFailed": false,

@@ -47,6 +47,17 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "web" / "data"
 CST = timezone(timedelta(hours=8))
 
+# The commerce/junk judgement lives in collect.py, because the collector is where the
+# decision has to be made for NEW items. Importing it here (instead of copying the regexes)
+# is what keeps the cleaner and the ingester from drifting apart - the failure mode this
+# avoids is real: prune_items.py removed 165 items once, the blocklist was not consulted by
+# the collector, and the whole set came back the next day.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:
+    import collect as _collect  # type: ignore
+except Exception:  # noqa: BLE001
+    _collect = None
+
 INDEX = DATA / "items" / "index.json"
 ITEMS_COPY = DATA / "items.json"
 STATE = DATA / "state" / "collector-state.json"
@@ -100,10 +111,42 @@ def title_key(t: str) -> str:
     return s
 
 
+def _is_question_item(item: dict) -> bool:
+    """Is this card a concrete QUESTION (rather than an article/repo about a topic)?"""
+    if item.get("problemKind"):
+        return True
+    if str(item.get("channel") or "") == "nowcoder_questions":
+        return True
+    return bool(re.match(r"\s*\[(编程题|问答题|单选题|多选题)\]", str(item.get("title") or "")))
+
+
 def noise_reason(item: dict) -> tuple[str, str] | None:
     title = str(item.get("title") or "")
     summary = str(item.get("summary") or "")
     blob = f"{title} {summary}"
+    # 1. 商业/垃圾内容：与采集层用同一套判定（collect.junk_reason）。
+    #    这一条是读者投诉的直接落点：「API 订阅指南、充值教程、卖课」。
+    if _collect is not None:
+        try:
+            why = _collect.junk_reason(item)
+        except Exception:  # noqa: BLE001
+            why = ""
+        if why:
+            return "commerce-junk", why
+    # 2. 数字电路/硬件设计题：真实题目，但与算法岗求职无关。
+    #
+    #    SCOPE MATTERS HERE (measured false positives, both removed by this fix):
+    #      · 全库匹配 SUM 摘要 was far too broad — 「自旋锁与互斥锁对比」和「C++智能指针实现原理」
+    #        were flagged because their explanations mention 寄存器/状态转移;
+    #      · a CUDA kernel article was flagged for the same reason (kernels do talk about
+    #        registers).
+    #    The rule was written for 牛客 question pages, where the hardware term is IN THE
+    #    TITLE ("[编程题] 用3-8译码器实现全减器"). So it now applies only to items that are
+    #    actually questions, and only against the title.
+    if _collect is not None and _is_question_item(item) \
+            and _collect.PROBLEM_EXCLUDE_RE.search(title):
+        return ("hardware-exercise",
+                "数字电路/硬件设计题（FPGA/编码器/触发器），与算法岗面试无关")
     for rid, why, patterns in NOISE_RULES:
         for p in patterns:
             if re.search(p, blob):
