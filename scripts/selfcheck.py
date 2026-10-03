@@ -462,6 +462,79 @@ def check_knowledge_quality(rep: Report, index, manifest):
                  f"-> 若与积累面经/算法题的目标不符，应收窄论文类渠道或提高其门槛")
 
 
+def check_problem_bank(rep: Report):
+    """题库定位：题库清单与题解的一致性。
+
+    WHY this is asserted rather than left to the front-end: the reader's requirement is that
+    a collected 手撕/算法题 ends up with a real 题解 (思路/复杂度/代码/配图). Two failures
+    would silently produce the exact experience they complained about, a bare link:
+      · the bank stops matching the plan (so the agent is handed an id that no longer
+        exists, or a question is never queued at all);
+      · a 题解 exists but is thin (no code / no diagram), which the validator catches at
+        write time but nothing re-checks after a merge.
+    Both are checked here, in the daily integrity gate, against the files as published.
+    """
+    bank = load(DATA / "problem-bank.json", rep)
+    if not bank:
+        rep.warn("problem-bank.json missing — 题库定位 will only show the curated problems "
+                 "(run scripts/build_problem_bank.py)")
+        return
+    problems = bank.get("problems") or []
+    stats = bank.get("stats") or {}
+    if not problems:
+        rep.warn("problem-bank.json contains no collected problems — either the corpus has "
+                 "none, or problem_meta() stopped matching (check the web/data/items index "
+                 "for problemKind)")
+    ids = [str(p.get("id")) for p in problems]
+    if len(ids) != len(set(ids)):
+        rep.err("problem-bank.json has duplicate problem ids")
+    bad = [p.get("id") for p in problems
+           if not (p.get("title") or "").strip() or not (p.get("statement") or "").strip()]
+    if bad:
+        rep.warn(f"{len(bad)} 题库条目的题干为空（无法变成题解）：{bad[:5]}")
+    rep.ok(f"题库定位：采集题 {stats.get('total', len(problems))} 道"
+             f"（手撕 {stats.get('hand', 0)} / 场景 {stats.get('exam', 0)}）、"
+             f"已解析 {stats.get('analyzed', 0)}、待解析 {stats.get('pending', 0)}、"
+             f"人工题待补 {stats.get('curatedPending', 0)}")
+
+    analysis = load(DATA / "problem-analysis.json", rep)
+    if not analysis:
+        # Optional by contract: it only exists after the deep-read layer has produced
+        # something. Reported (not an error) so the daily report can distinguish
+        # "the layer has not run" from "the bank is broken".
+        rep.warn("problem-analysis.json missing — 题库定位的题解还没产出过（layer 2 未产出或未合并）")
+        return
+    by_id = analysis.get("byId") or {}
+    if analysis.get("count") not in (None, len(by_id)):
+        rep.warn(f"problem-analysis.json count={analysis.get('count')} 与 byId 实际 "
+                 f"{len(by_id)} 不一致")
+    thin = []
+    for pid, a in by_id.items():
+        if not isinstance(a, dict):
+            thin.append(pid)
+            continue
+        code = (a.get("code") or {}).get("source") if isinstance(a.get("code"), dict) else ""
+        dg = a.get("diagram") or {}
+        if not (code or "").strip() or not (dg.get("svg") or dg.get("spec")):
+            thin.append(pid)
+    if thin:
+        rep.err(f"{len(thin)} 条题解缺代码或缺图解（题库定位会显示半成品）：{thin[:5]}")
+    else:
+        rep.ok(f"题库定位题解：{len(by_id)} 篇，全部含代码与图解")
+    # A 题解 whose id is not in the bank and not a curated problem is orphaned: the
+    # front-end will never render it, so it is a silent loss of work.
+    curated = {str(c.get("id")) for c in (bank.get("curated") or [])}
+    curated |= {str(c.get("id")) for c in (bank.get("curatedAnalyzed") or [])}
+    bank_ids = set(ids)
+    jobs = load(DATA / "jobs.json", rep) or {}
+    curated_ids = {str(p.get("id")) for p in (jobs.get("handWrittenCoding") or [])}
+    curated_ids |= {str(p.get("id")) for p in (jobs.get("writtenExam") or [])}
+    orphans = [pid for pid in by_id if pid not in bank_ids and pid not in curated_ids]
+    if orphans:
+        rep.warn(f"{len(orphans)} 条题解的 id 既不在题库也不在人工题库中（前端不会显示）："
+                 f"{orphans[:5]}")
+
+
 def build_report() -> Report:
     rep = Report()
     check_all_json(rep)
@@ -475,6 +548,7 @@ def build_report() -> Report:
     check_collection_quality(rep, index, manifest)
     check_knowledge_quality(rep, index, manifest)
     check_redundancy(rep)
+    check_problem_bank(rep)
     rep.metrics["generatedAt"] = datetime.now(CST).isoformat(timespec="seconds")
     return rep
 

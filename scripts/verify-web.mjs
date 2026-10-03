@@ -17,7 +17,7 @@
  */
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
@@ -39,6 +39,22 @@ const argVal = (name, dflt) => {
 const PORT = Number(argVal('--port', '8791'));
 const ONLY = argVal('--only', '');
 
+// The 题库定位 page has THREE views (手撕代码 / 笔试场景 / 算法题库) plus a per-problem
+// detail page carrying the written 题解. The default `#/problems` route only renders the
+// first one, so a regression that broke the collected-problem segment or the 题解 panels
+// (code / diagram / complexity) would pass this whole suite unnoticed. These two routes fix
+// that. The detail id is read from the data instead of hardcoded, so the check keeps
+// working as the corpus changes - and it is skipped entirely when no 题解 exists yet.
+const problemDetailRoute = (() => {
+  try {
+    const doc = JSON.parse(readFileSync(join(ROOT, 'web', 'data', 'problem-analysis.json'), 'utf8'));
+    const id = Object.keys(doc.byId || {})[0];
+    return id ? ['problem-detail', `#/problems?id=${encodeURIComponent(id)}`] : null;
+  } catch {
+    return null;
+  }
+})();
+
 const ROUTES = [
   ['dashboard', '#/dashboard'],
   ['digest', '#/digest'],
@@ -46,6 +62,8 @@ const ROUTES = [
   ['knowledge', '#/knowledge'],
   ['formulas', '#/formulas'],
   ['problems', '#/problems'],
+  ['problems-algo', '#/problems?kind=algo'],
+  ...(problemDetailRoute ? [problemDetailRoute] : []),
   ['repos', '#/repos'],
   ['jobs', '#/jobs'],
   ['skills', '#/skills'],

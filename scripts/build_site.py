@@ -72,6 +72,12 @@ DATA_FILES = [
     # candidate rather than only reporting how many items exist. Titles and reasons
     # only, no private state.
     "corpus-audit.json",
+    # 题库定位：problem-bank.json（采集到的具体题目，确定性生成）与
+    # problem-analysis.json（每日深读写出的题解：思路/复杂度/代码/配图）。
+    # 两者都只包含公开题目与自写解析，不含任何本地状态；不发布的话「题库定位」
+    # 在线上只有人工整理的 47 题，算法题库整块消失。
+    "problem-bank.json",
+    "problem-analysis.json",
 ]
 
 # Front-end SOURCE files: the parts are concatenated into app.js at build time,

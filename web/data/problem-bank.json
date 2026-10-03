@@ -1,0 +1,1655 @@
+{
+  "generatedAt": "2026-10-04T00:34:26+08:00",
+  "source": "build_problem_bank.py",
+  "corpusSize": 775,
+  "stats": {
+    "total": 34,
+    "hand": 26,
+    "exam": 8,
+    "analyzed": 15,
+    "pending": 19,
+    "curatedPending": 8,
+    "curatedAnalyzed": 39
+  },
+  "problems": [
+    {
+      "id": "pb-ac40e833ba73fe15",
+      "itemId": "ac40e833ba73fe15",
+      "kind": "exam",
+      "marker": "单选题",
+      "title": "在 RAG 语义检索中，查询向量 q=[0.8,1.2,1.",
+      "statement": "在 RAG 语义检索中，查询向量 q=[0.8,1.2,1.__牛客网 首页 题库 面试 求职 学习 竞赛 搜索面经/职位/试题/公司 搜索 我要招人 去企业版 登录 / 注册 首页 > 试题广场 > 在 RAG 语义检索中，查询向量 q=[0.8,1.2,1. [单选题] 在 RAG 语义检索中，查询向量 q=[0.8,1.2,1.6,2.0]，案例向量 c=[1.0,0.8,1.4,1.8]。计算余弦相似度并保留三位小数：相似度不小于 0.95 为极高匹配，位于 [0.85,0.95) 为高匹配，小于 0.85 为中等匹配。以下哪项正确？ 约 0.842，中等匹配 约 0.989，极高匹配 约 0.948，高匹配 约 0.896，高匹配 查看正确选项 添加笔记 求解答(0) 邀请回答 收藏(0) 分享 纠错 0个回答 添加回答 这道题你会答吗？花几分钟告诉大家答案吧！ 提交观点 问题信息 来自： 2026年-华为-08... 难度： 0条回答 0收藏 12浏览 热门推荐 相关试题 某推荐系统的评分矩阵大小为 100... 评论 (0) 来自 2026年-华为-08月... 设 v 是实单位列向量，House... 评论 (0) 来自 2026年-华为-08月... 端侧推理时，哪项因素最可能使峰值内... 评论 (0) 来自 2026年-华为-08月... 以下哪些属于大模型训",
+      "topics": [
+        "数组与矩阵",
+        "大模型与RL"
+      ],
+      "difficulty": "hard",
+      "substance": 6.4,
+      "sourceUrl": "https://nowcoder.com/questionTerminal/1599e1ca303f47e79a82a96313dca6dc",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 88.1,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-50c04a4ca3002542",
+      "itemId": "50c04a4ca3002542",
+      "kind": "exam",
+      "marker": "单选题",
+      "title": "已知随机过程所属的分布族，但参数 θ 未知。观察样本 X 后",
+      "statement": "已知随机过程所属的分布族，但参数 θ 未知。观察样本 X 后__牛客网 首页 题库 面试 求职 学习 竞赛 搜索面经/职位/试题/公司 搜索 我要招人 去企业版 登录 / 注册 首页 > 试题广场 > 已知随机过程所属的分布族，但参数 θ 未知。观察样本 X 后 [单选题] 已知随机过程所属的分布族，但参数 θ 未知。观察样本 X 后，最大似然估计（MLE）的核心操作是什么？ 计算样本均值与方差，并直接将它们作为任何分布的参数估计 给 θ 设定先验分布，再计算后验分布 不断增加样本量，使估计值收敛于真实参数 寻找让观测样本 X 的似然达到最大的 θ 查看正确选项 添加笔记 求解答(0) 邀请回答 收藏(0) 分享 纠错 0个回答 添加回答 这道题你会答吗？花几分钟告诉大家答案吧！ 提交观点 问题信息 来自： 2026年-华为-08... 难度： 0条回答 0收藏 7浏览 热门推荐 相关试题 矩阵 A 为 1000×2000 ... 评论 (0) 来自 2026年-华为-08月... 设 v 是实单位列向量，House... 评论 (0) 来自 2026年-华为-08月... 视觉问答（Visual Quest... 评论 (0) 来自 2026年-华为-08月... 端侧推理时，哪项因素最可能使峰值内... 评论 (0) 来自 2026年-华为-08月... 在 RAG 语义检索中",
+      "topics": [
+        "数组与矩阵",
+        "大模型与RL"
+      ],
+      "difficulty": "hard",
+      "substance": 6.4,
+      "sourceUrl": "https://nowcoder.com/questionTerminal/b3f36391c03c498da65c0603d173fe84",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 79.8,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-22144df60f7e221b",
+      "itemId": "22144df60f7e221b",
+      "kind": "exam",
+      "marker": "单选题",
+      "title": "以下哪个统计量描述数据的集中趋势或中心位置？",
+      "statement": "以下哪个统计量描述数据的集中趋势或中心位置？__牛客网 首页 题库 面试 求职 学习 竞赛 搜索面经/职位/试题/公司 搜索 我要招人 去企业版 登录 / 注册 首页 > 试题广场 > 以下哪个统计量描述数据的集中趋势或中心位置？ [单选题] 以下哪个统计量描述数据的集中趋势或中心位置？ 偏度 均值 标准差 方差 查看正确选项 添加笔记 求解答(0) 邀请回答 收藏(0) 分享 纠错 0个回答 添加回答 这道题你会答吗？花几分钟告诉大家答案吧！ 提交观点 问题信息 来自： 2026年-华为-08... 难度： 0条回答 0收藏 8浏览 热门推荐 相关试题 某推荐系统的评分矩阵大小为 100... 评论 (0) 来自 2026年-华为-08月... GSPO 使用经过长度归一化的序列... 评论 (0) 来自 2026年-华为-08月... 已知随机过程所属的分布族，但参数 ... 评论 (0) 来自 2026年-华为-08月... softmax(x) 的第 i 项... 评论 (0) 来自 2026年-华为-08月... 扫描二维码，关注牛客网 意见反馈 下载牛客APP，随时随地刷题 刷真题、补算法、看面经、得内推 使用第三方账号直接登录使用吧： 更多 扫一扫，把题目装进口袋 求职之前，先上牛客 扫描二维码，进入QQ群 扫描二维码，关注牛客公众号 关于我们 加入我们 意见反馈 企",
+      "topics": [
+        "数组与矩阵",
+        "机器学习基础"
+      ],
+      "difficulty": "hard",
+      "substance": 6.4,
+      "sourceUrl": "https://nowcoder.com/questionTerminal/fe132301412e4c459a496462b43d180d",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 79.8,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-1703f162fe0be3df",
+      "itemId": "1703f162fe0be3df",
+      "kind": "exam",
+      "marker": "单选题",
+      "title": "向量 x=(1,0,1)、y=(1,1,0)，余弦相似度定义",
+      "statement": "向量 x=(1,0,1)、y=(1,1,0)，余弦相似度定义__牛客网 首页 题库 面试 求职 学习 竞赛 搜索面经/职位/试题/公司 搜索 我要招人 去企业版 登录 / 注册 首页 > 试题广场 > 向量 x=(1,0,1)、y=(1,1,0)，余弦相似度定义 [单选题] 向量 x=(1,0,1)、y=(1,1,0)，余弦相似度定义为 xᵀy/(‖x‖‖y‖)。它们的余弦相似度是多少？ 0.5 1 0.707 0.25 查看正确选项 添加笔记 求解答(0) 邀请回答 收藏(0) 分享 纠错 0个回答 添加回答 这道题你会答吗？花几分钟告诉大家答案吧！ 提交观点 问题信息 来自： 2026年-华为-08... 难度： 0条回答 0收藏 14浏览 热门推荐 相关试题 关于用随机梯度更新实现的在线逻辑回... 评论 (0) 来自 2026年-华为-08月... softmax(x) 的第 i 项... 评论 (0) 来自 2026年-华为-08月... 单词 x 和 y 的嵌入向量分别为... 评论 (0) 来自 2026年-华为-08月... 给定三个数据点 (0,1)、(1,... 评论 (0) 来自 2026年-华为-08月... 以下哪个统计量描述数据的集中趋势或... 评论 (0) 来自 2026年-华为-08月... 扫描二维码，关注牛客网 意见反馈 下载牛客APP，随时随",
+      "topics": [
+        "机器学习基础"
+      ],
+      "difficulty": "hard",
+      "substance": 5.2,
+      "sourceUrl": "https://nowcoder.com/questionTerminal/32080038af5e4d609b062e530d7314d4",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 79.8,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-9c4b714749c3034a",
+      "itemId": "9c4b714749c3034a",
+      "kind": "exam",
+      "marker": "单选题",
+      "title": "给定三个数据点 (0,1)、(1,2)、(2,5)，通过三点",
+      "statement": "给定三个数据点 (0,1)、(1,2)、(2,5)，通过三点__牛客网 首页 题库 面试 求职 学习 竞赛 搜索面经/职位/试题/公司 搜索 我要招人 去企业版 登录 / 注册 首页 > 试题广场 > 给定三个数据点 (0,1)、(1,2)、(2,5)，通过三点 [单选题] 给定三个数据点 (0,1)、(1,2)、(2,5)，通过三点的二次插值多项式在 x=1.5 处的值为多少？ 3.125 3.5 3.75 3.25 查看正确选项 添加笔记 求解答(0) 邀请回答 收藏(0) 分享 纠错 0个回答 添加回答 这道题你会答吗？花几分钟告诉大家答案吧！ 提交观点 问题信息 来自： 2026年-华为-08... 难度： 0条回答 0收藏 6浏览 热门推荐 相关试题 智能体依次执行故障检测 A、根因定... 评论 (0) 来自 2026年-华为-08月... 单个神经元的输入 x=2，权重 w... 评论 (0) 来自 2026年-华为-08月... 以下哪个统计量描述数据的集中趋势或... 评论 (0) 来自 2026年-华为-08月... 矩阵 A 为 1000×2000 ... 评论 (0) 来自 2026年-华为-08月... 向量 x=(1,0,1)、y=(1... 评论 (0) 来自 2026年-华为-08月... 扫描二维码，关注牛客网 意见反馈 下载牛客APP，随时随地刷",
+      "topics": [
+        "数组与矩阵"
+      ],
+      "difficulty": "hard",
+      "substance": 4.2,
+      "sourceUrl": "https://nowcoder.com/questionTerminal/f71961d1aed74b1cbed74d37ab38a12e",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 79.8,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-d1cf823f1a2488b3",
+      "itemId": "d1cf823f1a2488b3",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "[CQOI2007]涂色PAINT",
+      "statement": "[CQOI2007]涂色PAINT_牛客题霸_牛客网 假设你有一条长度为5的木版，初始时没有涂过任何颜色。你希望把它的5个单位长度分别涂上红、绿、蓝、绿、红色，用一个长度为5的字符串表示这个目标：RGBGR。 每次你可以把一段连续的木版涂成一个给定的颜色，后涂的颜色覆盖先涂的颜色。 例如第一次把木版涂成RRRRR，第二次涂成RGGGR，第三次涂成RGBGR，达到目标。 用尽量少的涂色次数达到目标。 输入描述: 输入仅一行，包含一个长度为n的字符串，即涂色目标。字符串中的每个字符都是一个大写字母，不同的字母代表不同颜色，相同的字母代表相同颜色。 输出描述: 仅一行，包含一个数，即最少的涂色次数。 示例1 输入 AAAAA 输出 1 示例2 输入 RGBGR 输出 3 备注: 40% 的数据满足 。100% 的数据满足 。 加载中... AAAAA 1 RGBGR 3",
+      "topics": [
+        "字符串"
+      ],
+      "difficulty": "medium",
+      "substance": 3.94,
+      "sourceUrl": "https://nowcoder.com/practice/512619bee5874e85bd2812a0c9066125",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 83.4,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-154b349e78266c54",
+      "itemId": "154b349e78266c54",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "判断整数奇偶性",
+      "statement": "判断整数奇偶性_牛客题霸_牛客网 KiKi想知道一个整数的奇偶性，请帮他判断。从键盘任意输入一个整数（范围-231~231-1），编程判断它的奇偶性。 输入描述: 多组输入，每行输入包括一个整数。 输出描述: 针对每行输入，输出该数是奇数（Odd）还是偶数（Even）。 示例1 输入 4 7 输出 Even Odd 加载中... 4 7 Even Odd",
+      "topics": [],
+      "difficulty": "medium",
+      "substance": 0.89,
+      "sourceUrl": "https://nowcoder.com/practice/a8b018667e274af29b5f76a6673450fc",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 80.4,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-013467c9a9d0d0dc",
+      "itemId": "013467c9a9d0d0dc",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "网购",
+      "statement": "网购_牛客题霸_牛客网 KiKi非常喜欢网购，在一家店铺他看中了一件衣服，他了解到，如果今天是“双11”（11月11日）则这件衣服打7折，“双12” （12月12日）则这件衣服打8折，如果有优惠券可以额外减50元（优惠券只能在双11或双12使用），求KiKi最终所花的钱数。 数据范围：衣服价格满足 输入描述: 一行，四个数字，第一个数表示小明看中的衣服价格，第二和第三个整数分别表示当天的月份、当天的日期、第四个整数表示是否有优惠券（有优惠券用1表示，无优惠券用0表示）。 注：输入日期保证只有“双11”和“双12”。 输出描述: 一行，小明实际花的钱数（保留两位小数）。（提示：不要指望商家倒找你钱） 示例1 输入 1000.0 11 11 1 输出 650.00 示例2 输入 999.8 12 12 0 输出 799.84 示例3 输入 66.6 11 11 1 输出 0.00 加载中... 1000.0 11 11 1 650.00 999.8 12 12 0 799.84 66.6 11 11 1 0.00",
+      "topics": [],
+      "difficulty": "easy",
+      "substance": 0.0,
+      "sourceUrl": "https://nowcoder.com/practice/5d7dfd405e5f4e4fbfdff6862c46b751",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-9c96bf698472239c",
+      "itemId": "9c96bf698472239c",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "争夺前五名",
+      "statement": "争夺前五名_牛客题霸_牛客网 期中考试开始了，大家都想取得好成绩，争夺前五名。从键盘输入 n 个学生成绩，输出每组排在前五高的成绩。 数据范围： ，成绩采取百分制并不会出现负数 输入描述: 两行，第一行输入一个整数，表示n个学生（=5），第二行输入n个学生成绩（整数表示，范围0~100），用空格分隔。 输出描述: 一行，输出成绩最高的前五个，用空格分隔。 示例1 输入 6 99 45 78 67 72 88 输出 99 88 78 72 67 示例2 输入 5 10 20 30 40 50 输出 50 40 30 20 10 加载中... 6 99 45 78 67 72 88 99 88 78 72 67 5 10 20 30 40 50 50 40 30 20 10",
+      "topics": [],
+      "difficulty": "easy",
+      "substance": 0.0,
+      "sourceUrl": "https://nowcoder.com/practice/cd052308a1c44a88ad00255f312c3e14",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-083c003429750705",
+      "itemId": "083c003429750705",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "及格分数",
+      "statement": "及格分数_牛客题霸_牛客网 KiKi想知道他的考试分数是否通过，请帮他判断。 从键盘任意输入一个整数表示的分数，编程判断该分数是否在及格范围内，如果及格（即分数大于等于 分），则输出 ；否则，输出 。 输入描述: 在一行上输入一个整数 ，表示分数。 输出描述: 如果分数大于等于 分，输出 ；否则输出 。 示例1 输入 94 输出 Pass 示例2 输入 44 输出 Fail 备注: 本题已于下方时间节点更新，请注意题解时效性：1. 2025-11-13 每个测试文件固定为单组测试数据。2. 2025-11-20 优化题面文本与格式。 加载中... 94 Pass 44 Fail",
+      "topics": [],
+      "difficulty": "easy",
+      "substance": 0.0,
+      "sourceUrl": "https://nowcoder.com/practice/56513524333148b38945e1989bc7df4e",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-3057159921d1c3d6",
+      "itemId": "3057159921d1c3d6",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "判断是元音还是辅音",
+      "statement": "判断是元音还是辅音_牛客题霸_牛客网 KiKi开始学习英文字母，BoBo老师告诉他，有五个字母A(a), E(e), I(i), O(o),U(u)称为元音，其他所有字母称为辅音，请帮他编写程序判断输入的字母是元音（Vowel）还是辅音（Consonant）。 输入描述: 多组输入，每行输入一个字母。 输出描述: 针对每组输入，输出为一行，如果输入字母是元音（包括大小写），输出“Vowel”，如果输入字母是非元音，输出“Consonant”。 示例1 输入 A b 输出 Vowel Consonant 加载中... A b Vowel Consonant",
+      "topics": [],
+      "difficulty": "easy",
+      "substance": 0.0,
+      "sourceUrl": "https://nowcoder.com/practice/7eb4df4d52c44d309081509cf52ecbc4",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-73bb7583c1e07f38",
+      "itemId": "73bb7583c1e07f38",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "计算一元二次方程",
+      "statement": "计算一元二次方程_牛客题霸_牛客网 从键盘输入a, b, c的值，编程计算并输出一元二次方程ax2 + bx + c = 0的根，当a = 0时，输出“Not quadratic equation”，当a ≠ 0时，根据△ = b2 - 4*a*c的三种情况计算并输出方程的根。 输入描述: 多组输入，一行，包含三个浮点数a, b, c，以一个空格分隔，表示一元二次方程ax2 + bx + c = 0的系数。 输出描述: 针对每组输入，输出一行，输出一元二次方程ax2 + bx +c = 0的根的情况。 如果a = 0，输出“Not quadratic equation”； 如果a ≠ 0，分三种情况：△ = 0，则两个实根相等，输出形式为：x1=x2=...。△ 0，则两个实根不等，输出形式为：x1=...;x2=...，其中x1 △ x1=实部-虚部i;x2=实部+虚部i，即x1的虚部系数小于等于x2的虚部系数，实部为0时不可省略。实部= -b (2*a),虚部= sqrt(-△ ) (2*a)所有实数部分要求精确到小数点后2位，数字、符号之间没有空格。 示例1 输入 2.0 7.0 1.0 输出 x1=-3.35;x2=-0.15 示例2 输入 0.0 3.0 3.0 输出 Not quadratic equation 示例3 输入 1 2 1 输出 x1=x2=-1.00 示",
+      "topics": [],
+      "difficulty": "hard",
+      "substance": 0.0,
+      "sourceUrl": "https://nowcoder.com/practice/7da524bb452441b2af7e64545c38dc26",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-07a4f13d88234b9b",
+      "itemId": "07a4f13d88234b9b",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "判断是不是字母",
+      "statement": "判断是不是字母_牛客题霸_牛客网 KiKi想判断输入的字符是不是字母，请帮他编程实现。 输入描述: 多组输入，每一行输入一个字符。 输出描述: 针对每组输入，输出单独占一行，判断输入字符是否为字母，输出内容详见输出样例。 示例1 输入 A 6 输出 A is an alphabet. 6 is not an alphabet. 加载中... A 6 A is an alphabet. 6 is not an alphabet.",
+      "topics": [],
+      "difficulty": "easy",
+      "substance": 0.0,
+      "sourceUrl": "https://nowcoder.com/practice/91a588dd4cd244bfa616f17603ec123c",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 81.9,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-87089e65ad56c2f1",
+      "itemId": "87089e65ad56c2f1",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "计算单位阶跃函数",
+      "statement": "计算单位阶跃函数_牛客题霸_牛客网 KiKi最近学习了信号与系统课程，这门课里有一个非常有趣的函数，单位阶跃函数，其中一种定义方式为： 现在试求单位冲激函数在时域t上的值。 输入描述: 题目有多组输入数据，每一行输入一个t(-1000t1000)表示函数的时域t。 输出描述: 输出函数的值并换行。 示例1 输入 11 0 -11 输出 1 0.5 0 加载中... 11 0 -11 1 0.5 0",
+      "topics": [],
+      "difficulty": "easy",
+      "substance": 0.0,
+      "sourceUrl": "https://nowcoder.com/practice/0b23793ae48a4e6cb7dfff042c959a04",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 81.3,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-716b49e226d2eb6c",
+      "itemId": "716b49e226d2eb6c",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "竞选社长",
+      "statement": "竞选社长_牛客题霸_牛客网 假设你们社团要竞选社长，有两名候选人分别是A和B，社团每名同学必须并且只能投一票，最终得票多的人为社长. 输入描述: 一行，字符序列，包含A或B，输入以字符0结束。 输出描述: 一行，一个字符，A或B或E，输出A表示A得票数多，输出B表示B得票数多，输出E表示二人得票数相等。 示例1 输入 ABBABBAAB0 输出 B 加载中... ABBABBAAB0 B",
+      "topics": [],
+      "difficulty": "easy",
+      "substance": 0.0,
+      "sourceUrl": "https://nowcoder.com/practice/45a30e3ef51040ed8a7674984d6d1553",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 81.1,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-f779c07b4d82c551",
+      "itemId": "f779c07b4d82c551",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "你是天才吗？",
+      "statement": "你是天才吗？_牛客题霸_牛客网 据说智商140以上者称为天才，KiKi想知道他自己是不是天才，请帮他编程判断。输入一个整数表示一个人的智商，如果大于等于140，则表明他是一个天才，输出“Genius”。 输入描述: 多组输入，每行输入包括一个整数表示的智商。 输出描述: 针对每行输入，输出“Genius”。 示例1 输入 160 输出 Genius 加载中... 160 Genius",
+      "topics": [],
+      "difficulty": "easy",
+      "substance": 0.0,
+      "sourceUrl": "https://nowcoder.com/practice/557cc54704bb4d56b73b62d1a5455331",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 81.0,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-04077cedb0d0fab1",
+      "itemId": "04077cedb0d0fab1",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "判断字母",
+      "statement": "判断字母_牛客题霸_牛客网 从键盘任意输入一个字符，编程判断是否是字母（包括大小写）。 输入描述: 输入包括一个字符。 输出描述: 输出该字符是字母（YES）或不是（NO）。 示例1 输入 H 输出 YES 示例2 输入 9 输出 NO 加载中... H YES 9 NO",
+      "topics": [],
+      "difficulty": "easy",
+      "substance": 0.0,
+      "sourceUrl": "https://nowcoder.com/practice/44d2d63103664913bc243d3836b4f341",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 78.6,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-2ce1d4189f475eef",
+      "itemId": "2ce1d4189f475eef",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "变种水仙花",
+      "statement": "变种水仙花_牛客题霸_牛客网 变种水仙花数 - Lily Number：把任意的数字，从中间拆分成两个数字，比如1461 可以拆分成（1和461）,（14和61）,（146和1),如果所有拆分后的乘积之和等于自身，则是一个Lily Number。 例如： 655 = 6 * 55 + 65 * 5 1461 = 1*461 + 14*61 + 146*1 求出 5位数中的所有 Lily Number。 输入描述: 无 输出描述: 一行，5位数中的所有 Lily Number，每两个数之间间隔一个空格。 加载中...",
+      "topics": [],
+      "difficulty": "easy",
+      "substance": 0.0,
+      "sourceUrl": "https://nowcoder.com/practice/c178e3f5cc4641dfbc8b020ae79e2b71",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 75.9,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-12cf6d4a3a613472",
+      "itemId": "12cf6d4a3a613472",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "位拆分与运算",
+      "statement": "位拆分与运算_牛客题霸_牛客网 题目描述： 现在输入了一个压缩的16位数据，其实际上包含了四个数据[3:0][7:4][11:8][15:12], 现在请按照sel选择输出四个数据的相加结果,并输出valid_out信号（在不输出时候拉低） 0: 不输出且只有此时的输入有效 1：输出[3:0]+[7:4] 2：输出[3:0]+[11:8] 3：输出[3:0]+[15:12] 信号示意图： 波形示意图： 输入描述: 输入信号 d, clk, rst类型 wire在testbench中，clk为周期5ns的时钟，rst为低电平复位 输出描述: 输出信号 validout out类型 reg 加载中...",
+      "topics": [],
+      "difficulty": "easy",
+      "substance": 0.0,
+      "sourceUrl": "https://nowcoder.com/practice/1649582a755a4fabb9763d07e62a9752",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 75.9,
+      "codeAvailable": true,
+      "needsAnalysis": true
+    },
+    {
+      "id": "pb-9e9baefb2a456ef3",
+      "itemId": "9e9baefb2a456ef3",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "合并两个排序的链表",
+      "statement": "合并两个排序的链表_牛客题霸_牛客网 输入两个递增的链表，单个链表的长度为n，合并这两个链表并使新链表中的节点仍然是递增排序的。 数据范围： ， 要求：空间复杂度 ，时间复杂度 如输入{1,3,5},{2,4,6}时，合并后的链表为{1,2,3,4,5,6}，所以对应的输出为{1,2,3,4,5,6}，转换过程如下图所示： 或输入{-1,2,4},{1,3,4}时，合并后的链表为{-1,1,2,3,4,4}，所以对应的输出为{-1,1,2,3,4,4}，转换过程如下图所示： 示例1 输入 {1,3,5},{2,4,6} 输出 {1,2,3,4,5,6} 示例2 输入 {},{} 输出 {} 示例3 输入 {-1,2,4},{1,3,4} 输出 {-1,1,2,3,4,4} 加载中... import java.util.*; /* * public class ListNode { * int val; * ListNode next = null; * public ListNode(int val) { * this.val = val; * } * } */ public class Solution { /** * 代码中的类名、方法名、参数名已经指定，请勿修改，直接返回方法规定的值即可 * * * @param pHead1 ListNode类 * @param pHea",
+      "topics": [
+        "链表",
+        "排序",
+        "Java"
+      ],
+      "difficulty": "hard",
+      "substance": 9.6,
+      "sourceUrl": "https://nowcoder.com/practice/d8b6b4358f774294a89de2a6ac4d9337",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-0fe3d8b02701d756",
+      "itemId": "0fe3d8b02701d756",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "计算字符串的编辑距离",
+      "statement": "计算字符串的编辑距离_牛客题霸_牛客网 Levenshtein 距离，又称编辑距离，指的是两个字符串之间，由一个转变成另一个所需的最少单字符编辑操作次数。被允许的转变包括： 对于任意一个字符串，在任意位置插入一个字符； 对于任意一个字符串，删除任意一个字符； 对于任意一个字符串，替换任意一个字符。 现在，对于给定的字符串 和 ，请计算出它们的编辑距离。 输入描述: 第一行输入一个长度为 ，仅由小写字母组成的字符串 。第二行输入一个长度为 ，仅由小写字母组成的字符串 。 输出描述: 输出一个整数，表示 和 的编辑距离。 示例1 输入 abcdefg abcdef 输出 1 说明 在这个样例中，可以选择将 末尾的 删除。当然，也可以选择在 末尾插入 。 加载中... import java.io.BufferedReader; import java.io.IOException; import java.io.InputStreamReader; public class Main { public static void main(String[] args) throws IOException { BufferedReader br = new BufferedReader(new InputStreamReader(System.in)); String str; } } #",
+      "topics": [
+        "动态规划",
+        "字符串",
+        "Java"
+      ],
+      "difficulty": "hard",
+      "substance": 9.6,
+      "sourceUrl": "https://nowcoder.com/practice/3959837097c7413a961a135d7104c314",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-b951fea75a25ca89",
+      "itemId": "b951fea75a25ca89",
+      "kind": "exam",
+      "marker": "单选题",
+      "title": "GSPO 使用经过长度归一化的序列级重要性采样比率，一个主要",
+      "statement": "GSPO 使用经过长度归一化的序列级重要性采样比率，一个主要__牛客网 首页 题库 面试 求职 学习 竞赛 搜索面经/职位/试题/公司 搜索 我要招人 去企业版 登录 / 注册 首页 > 试题广场 > GSPO 使用经过长度归一化的序列级重要性采样比率，一个主要 [单选题] GSPO 使用经过长度归一化的序列级重要性采样比率，一个主要动机是什么？ 降低逐 token 比率引入的高方差问题，改善训练稳定性 仅为了增加随机探索次数 完全消除奖励模型的偏差 使算法必然变成离线策略算法 查看正确选项 添加笔记 求解答(0) 邀请回答 收藏(0) 分享 纠错 0个回答 添加回答 这道题你会答吗？花几分钟告诉大家答案吧！ 提交观点 问题信息 来自： 2026年-华为-08... 难度： 0条回答 0收藏 18浏览 热门推荐 相关试题 softmax(x) 的第 i 项... 评论 (0) 来自 2026年-华为-08月... 矩阵 A 为 1000×2000 ... 评论 (0) 来自 2026年-华为-08月... 小红的智能体交替协作 评论 (0) 来自 2026年-华为-08月... 在 RAG 语义检索中，查询向量 ... 评论 (0) 来自 2026年-华为-08月... 以下哪些属于大模型训练中常见的工程... 评论 (0) 来自 2026年-华为-08月... 扫描二维码，关注牛",
+      "topics": [
+        "数组与矩阵",
+        "机器学习基础",
+        "大模型与RL"
+      ],
+      "difficulty": "hard",
+      "substance": 8.6,
+      "sourceUrl": "https://nowcoder.com/questionTerminal/d98bbcf0b0a8483ba11b8ed44b1dfd9f",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 88.1,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-a352cf35797ac6d2",
+      "itemId": "a352cf35797ac6d2",
+      "kind": "exam",
+      "marker": "单选题",
+      "title": "端侧推理时，哪项因素最可能使峰值内存显著超过模型文件本身的大",
+      "statement": "端侧推理时，哪项因素最可能使峰值内存显著超过模型文件本身的大__牛客网 首页 题库 面试 求职 学习 竞赛 搜索面经/职位/试题/公司 搜索 我要招人 去企业版 登录 / 注册 首页 > 试题广场 > 端侧推理时，哪项因素最可能使峰值内存显著超过模型文件本身的大 [单选题] 端侧推理时，哪项因素最可能使峰值内存显著超过模型文件本身的大小？ 中间激活、临时缓冲区和多分支并发执行 输出类别数固定 训练集规模过大 标签类别过少 查看正确选项 添加笔记 求解答(0) 邀请回答 收藏(0) 分享 纠错 0个回答 添加回答 这道题你会答吗？花几分钟告诉大家答案吧！ 提交观点 问题信息 来自： 2026年-华为-08... 难度： 0条回答 0收藏 14浏览 热门推荐 相关试题 GSPO 使用经过长度归一化的序列... 评论 (0) 来自 2026年-华为-08月... 向量 x=(1,0,1)、y=(1... 评论 (0) 来自 2026年-华为-08月... softmax(x) 的第 i 项... 评论 (0) 来自 2026年-华为-08月... 在入门逻辑回归分类模型评估中，以下... 评论 (0) 来自 2026年-华为-08月... 某推荐系统的评分矩阵大小为 100... 评论 (0) 来自 2026年-华为-08月... 扫描二维码，关注牛客网 意见反馈 下载牛客APP，随时随",
+      "topics": [
+        "数组与矩阵",
+        "机器学习基础",
+        "大模型与RL"
+      ],
+      "difficulty": "hard",
+      "substance": 8.6,
+      "sourceUrl": "https://nowcoder.com/questionTerminal/bdc9e29c1a504458b9ac1e6f11e16eaa",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 79.8,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-c97a5a7e82e644b9",
+      "itemId": "c97a5a7e82e644b9",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "设 v 是实单位列向量，Householder 反射矩阵 H",
+      "statement": "设 v 是实单位列向量，Householder 反射矩阵 H__牛客网 首页 题库 面试 求职 学习 竞赛 搜索面经/职位/试题/公司 搜索 我要招人 去企业版 登录 / 注册 首页 > 试题广场 > 设 v 是实单位列向量，Householder 反射矩阵 H [不定项选择题] 设 v 是实单位列向量，Householder 反射矩阵 H=I-2vvᵀ。以下哪些说法正确？ H 是正交矩阵 H 的行列式为 +1 Householder QR 分解通常比经典 Gram–Schmidt 正交化具有更好的数值稳定性 H 是对称矩阵 查看正确选项 添加笔记 求解答(0) 邀请回答 收藏(0) 分享 纠错 0个回答 添加回答 这道题你会答吗？花几分钟告诉大家答案吧！ 提交观点 问题信息 来自： 2026年-华为-08... 难度： 0条回答 0收藏 15浏览 热门推荐 相关试题 小红的空间样本标注 评论 (0) 来自 2026年-华为-08月... 关于早期停止（Early Stop... 评论 (0) 来自 2026年-华为-08月... 向量 x=(1,0,1)、y=(1... 评论 (0) 来自 2026年-华为-08月... 关于用随机梯度更新实现的在线逻辑回... 评论 (0) 来自 2026年-华为-08月... 单个神经元的输入 x=2，权重 w... 评论 (0) 来自 20",
+      "topics": [
+        "数组与矩阵",
+        "数学与概率",
+        "机器学习基础"
+      ],
+      "difficulty": "hard",
+      "substance": 8.0,
+      "sourceUrl": "https://nowcoder.com/questionTerminal/8b95485d87b34572ba2597134506f3dc",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 81.1,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-38f2eb1967795e3d",
+      "itemId": "38f2eb1967795e3d",
+      "kind": "exam",
+      "marker": "单选题",
+      "title": "公司 A、B 分别供应同款芯片的 70% 和 30%，次品率",
+      "statement": "公司 A、B 分别供应同款芯片的 70% 和 30%，次品率__牛客网 首页 题库 面试 求职 学习 竞赛 搜索面经/职位/试题/公司 搜索 我要招人 去企业版 登录 / 注册 首页 > 试题广场 > 公司 A、B 分别供应同款芯片的 70% 和 30%，次品率 [单选题] 公司 A、B 分别供应同款芯片的 70% 和 30%，次品率分别为 2% 和 4%。随机抽到一个次品，它来自 B 的概率约为多少？ 63.2% 53.8% 46.2% 30% 查看正确选项 添加笔记 求解答(0) 邀请回答 收藏(0) 分享 纠错 0个回答 添加回答 这道题你会答吗？花几分钟告诉大家答案吧！ 提交观点 问题信息 来自： 2026年-华为-08... 难度： 0条回答 0收藏 11浏览 热门推荐 相关试题 向量 x=(1,0,1)、y=(1... 评论 (0) 来自 2026年-华为-08月... 关于早期停止（Early Stop... 评论 (0) 来自 2026年-华为-08月... 小红的智能体交替协作 评论 (0) 来自 2026年-华为-08月... 某推荐系统的评分矩阵大小为 100... 评论 (0) 来自 2026年-华为-08月... 端侧推理时，哪项因素最可能使峰值内... 评论 (0) 来自 2026年-华为-08月... 扫描二维码，关注牛客网 意见反馈 下载牛客APP，",
+      "topics": [
+        "数组与矩阵",
+        "数学与概率",
+        "大模型与RL"
+      ],
+      "difficulty": "hard",
+      "substance": 8.0,
+      "sourceUrl": "https://nowcoder.com/questionTerminal/ce3f51dc7d134ac7bac2fb3080d35184",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 79.8,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-ca33c1c95f651461",
+      "itemId": "ca33c1c95f651461",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "汉诺塔问题",
+      "statement": "汉诺塔问题_牛客题霸_牛客网 我们有由底至上为从大到小放置的 n 个圆盘，和三个柱子（分别为左中右即leftmidright），开始时所有圆盘都放在左边的柱子上，按照汉诺塔游戏的要求我们要把所有的圆盘都移到右边的柱子上，要求一次只能移动一个圆盘，而且大的圆盘不可以放到小的上面。 请实现一个函数打印最优移动轨迹。 给定一个 `int n` ，表示有 n 个圆盘。请返回一个 `string` 数组，其中的元素依次为每次移动的描述。描述格式为： `move from [leftmidright] to [leftmidright]`。 数据范围： 要求：时间复杂度 ， 空间复杂度 示例1 输入 2 输出 [\"move from left to mid\",\"move from left to right\",\"move from mid to right\"] 加载中... import java.util.*; public class Solution { /** * 代码中的类名、方法名、参数名已经指定，请勿修改，直接返回方法规定的值即可 * * * @param n int整型 * @return string字符串ArrayList */ public ArrayList getSolution (int n) { // write code here } } class Solut",
+      "topics": [
+        "字符串",
+        "数组与矩阵",
+        "Java"
+      ],
+      "difficulty": "hard",
+      "substance": 7.8,
+      "sourceUrl": "https://nowcoder.com/practice/7d6cab7d435048c4b05251bf44e9f185",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-34583f8e3d5d4c78",
+      "itemId": "34583f8e3d5d4c78",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "反转链表",
+      "statement": "反转链表_牛客题霸_牛客网 给定一个单链表的头结点pHead(该头节点是有值的，比如在下图，它的val是1)，长度为n，反转该链表后，返回新链表的表头。 数据范围： 要求：空间复杂度 ，时间复杂度 。 如当输入链表{1,2,3}时， 经反转后，原链表变为{3,2,1}，所以对应的输出为{3,2,1}。 以上转换过程如下图所示： 示例1 输入 {1,2,3} 输出 {3,2,1} 示例2 输入 {} 输出 {} 说明 空链表则输出空 加载中... import java.util.*; /* * public class ListNode { * int val; * ListNode next = null; * public ListNode(int val) { * this.val = val; * } * } */ public class Solution { /** * 代码中的类名、方法名、参数名已经指定，请勿修改，直接返回方法规定的值即可 * * * @param head ListNode类 * @return ListNode类 */ public ListNode ReverseList (ListNode head) { // write code here } } /** * struct ListNode { * int val; * struct Li",
+      "topics": [
+        "链表",
+        "Java"
+      ],
+      "difficulty": "hard",
+      "substance": 7.6,
+      "sourceUrl": "https://nowcoder.com/practice/75e878df47f24fdc9dc3e400ec6058ca",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-909e1c8682a2c82f",
+      "itemId": "909e1c8682a2c82f",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "合并回文子串",
+      "statement": "合并回文子串_牛客题霸_牛客网 输入两个字符串A和B，合并成一个串C，属于A和B的字符在C中顺序保持不变。如\"abc\"和\"xyz\"可以被组合成\"axbycz\"或\"abxcyz\"等。 我们定义字符串的价值为其最长回文子串的长度（回文串表示从正反两边看完全一致的字符串，如\"aba\"和\"xyyx\"）。 需要求出所有可能的C中价值最大的字符串，输出这个最大价值即可 输入描述: 第一行一个整数T(T ≤ 50)。 接下来2T行，每两行两个字符串分别代表A,B(A,B ≤ 50)，A,B的字符集为全体小写字母。 输出描述: 对于每组数据输出一行一个整数表示价值最大的C的价值。 示例1 输入 2 aa bb a aaaabcaa 输出 4 5 加载中... 2 aa bb a aaaabcaa 4 5",
+      "topics": [
+        "动态规划",
+        "字符串"
+      ],
+      "difficulty": "medium",
+      "substance": 6.74,
+      "sourceUrl": "https://nowcoder.com/practice/2f43728b46744546b4ad7f4f0398054f",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-a0eba0aa1c5bae4d",
+      "itemId": "a0eba0aa1c5bae4d",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "栈的压入、弹出序列",
+      "statement": "栈的压入、弹出序列_牛客题霸_牛客网 输入两个整数序列，第一个序列表示栈的压入顺序，请判断第二个序列是否可能为该栈的弹出顺序。假设压入栈的所有数字均不相等。例如序列1,2,3,4,5是某栈的压入顺序，序列4,5,3,2,1是该压栈序列对应的一个弹出序列，但4,3,5,1,2就不可能是该压栈序列的弹出序列。 1. 0length 2. -1000pushV[i] 3. pushV 的所有数字均不相同 示例1 输入 [1,2,3,4,5],[4,5,3,2,1] 输出 true 说明 可以通过push(1)=>push(2)=>push(3)=>push(4)=>pop()=>push(5)=>pop()=>pop()=>pop()=>pop() 这样的顺序得到[4,5,3,2,1]这个序列，返回true 示例2 输入 [1,2,3,4,5],[4,3,5,1,2] 输出 false 说明 由于是[1,2,3,4,5]的压入顺序，[4,3,5,1,2]的弹出顺序，要求4，3，5必须在1，2前压入，且1，2不能弹出，但是这样压入的顺序，1又不能在2之前弹出，所以无法形成的，返回false 加载中... import java.util.*; public class Solution { /** * 代码中的类名、方法名、参数名已经指定，请勿修改，直接返回方法规定的值即可 * * * @",
+      "topics": [
+        "栈与队列",
+        "Java"
+      ],
+      "difficulty": "hard",
+      "substance": 6.6,
+      "sourceUrl": "https://nowcoder.com/practice/d77d11405cc7470d82554cb392585106",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-a974726e38630532",
+      "itemId": "a974726e38630532",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "三角形判断",
+      "statement": "三角形判断_牛客题霸_牛客网 KiKi想知道，已经给出的三条边 、、 能否构成一个非退化三角形，如果能构成，判断三角形的类型（等边三角形、等腰三角形或普通三角形）。 【名词解释】 非退化三角形：三条边长均大于 且任意两边之和均大于第三边的三角形。 输入描述: 在一行上输入三个整数 ，表示三角形的三条边。 输出描述: 在一行上输出一个字符串，表示三角形的类型，具体地：如果三角形是等边三角形，则输出 ；如果三角形是等腰三角形，则输出 ；如果三角形是普通三角形，则输出 ；如果不能构成非退化三角形，则输出 。 示例1 输入 2 3 2 输出 Isosceles triangle! 示例2 输入 3 3 3 输出 Equilateral triangle! 示例3 输入 4 3 2 输出 Ordinary triangle! 示例4 输入 3 2 1 输出 Not a triangle! 备注: 本题已于下方时间节点更新，请注意题解时效性：1. 2025-11-28 优化题面文本与格式，每个测试文件固定为单组测试数据。增加两组样例。新增若干组数据。 加载中... 2 3 2 Isosceles triangle! 3 3 3 Equilateral triangle! 4 3 2 Ordinary triangle! 3 2 1 Not a triangle!",
+      "topics": [
+        "字符串"
+      ],
+      "difficulty": "hard",
+      "substance": 4.92,
+      "sourceUrl": "https://nowcoder.com/practice/689ec1e742394e09b1059556fc167b65",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-6b4fea8c9d73c5b4",
+      "itemId": "6b4fea8c9d73c5b4",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "最大子矩阵",
+      "statement": "最大子矩阵_牛客题霸_牛客网 已知矩阵的大小定义为矩阵中所有元素的和。给定一个矩阵，你的任务是找到最大的非空(大小至少是1 * 1)子矩阵。 比如，如下4 * 4的矩阵 0 -2 -7 0 9 2 -6 2 -4 1 -4 1 -1 8 0 -2 的最大子矩阵是 9 2 -4 1 -1 8 这个子矩阵的大小是15。 输入描述: 输入是一个N * N的矩阵。输入的第一行给出N (0 N = 100)。 再后面的若干行中，依次（首先从左到右给出第一行的N个整数，再从左到右给出第二行的N个整数……）给出矩阵中的N2个整数，整数之间由空白字符分隔（空格或者空行）。 已知矩阵中整数的范围都在[-127, 127]。 输出描述: 输出最大子矩阵的大小。 示例1 输入 4 0 -2 -7 0 9 2 -6 2 -4 1 -4 1 -1 8 0 -2 输出 15 加载中... 4 0 -2 -7 0 9 2 -6 2 -4 1 -4 1 -1 8 0 -2 15",
+      "topics": [
+        "数组与矩阵"
+      ],
+      "difficulty": "medium",
+      "substance": 3.34,
+      "sourceUrl": "https://nowcoder.com/practice/a5a0b05f0505406ca837a3a76a5419b3",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-949462393c28b944",
+      "itemId": "949462393c28b944",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "移位运算与乘法",
+      "statement": "移位运算与乘法_牛客题霸_牛客网 题目描述： 已知d为一个8位数，请在每个时钟周期分别输出该数乘1378,并输出一个信号通知此时刻输入的d有效（d给出的信号的上升沿表示写入有效） 信号示意图： 波形示意图： 输入描述: 输入信号 d, clk, rst类型 wire在testbench中，clk为周期5ns的时钟，rst为低电平复位 输出描述: 输出信号 input_grant out类型 reg 加载中...",
+      "topics": [
+        "位运算"
+      ],
+      "difficulty": "medium",
+      "substance": 3.04,
+      "sourceUrl": "https://nowcoder.com/practice/1dd22852bcac42ce8f781737f84a3272",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 75.4,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-edc977a25048a279",
+      "itemId": "edc977a25048a279",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "旅游",
+      "statement": "旅游_牛客题霸_牛客网 Cwbc和XHRlyb生活在 s 市，这天他们打算一起出去旅游。 旅行地图上有 n 个城市，它们之间通过 n-1 条道路联通。 Cwbc和XHRlyb第一天会在 s 市住宿，并游览与它距离不超过 1 的所有城市，之后的每天会选择一个城市住宿，然后游览与它距离不超过 1 的所有城市。 他们不想住在一个已经浏览过的城市，又想尽可能多的延长旅行时间。 XHRlyb想知道她与Cwbc最多能度过多少天的时光呢？ 聪明的你在仔细阅读题目后，一定可以顺利的解决这个问题！ 输入描述: 第一行，两个正整数n和s，表示城市个数和第一天住宿的城市s。接下来n-1行，每行两个整数x和y，表示城市x与城市y之间有一条双向道路，保证无环。 输出描述: 第一行，一个非负整数表示答案。 示例1 输入 4 1 1 2 2 3 3 4 输出 2 说明 第一天，在1号城市住宿，游览了1、2号城市。 第二天，在3号城市住宿，游览了4号城市，旅行结束。 备注: 1 ≤ n ≤ 500000, 1 ≤ s, x, y ≤ n。 加载中... 4 1 1 2 2 3 3 4 2",
+      "topics": [],
+      "difficulty": "medium",
+      "substance": 2.42,
+      "sourceUrl": "https://nowcoder.com/practice/600dd094e1af43c4bcb32b58cd9c9394",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    },
+    {
+      "id": "pb-796ed0cc88e165e2",
+      "itemId": "796ed0cc88e165e2",
+      "kind": "hand",
+      "marker": "编程题",
+      "title": "健康评估",
+      "statement": "健康评估_牛客题霸_牛客网 BMI指数（即身体质量指数）是用体重公斤数除以身高米数平方得出的数字，是目前国际上常用的衡量人体胖瘦程度以及是否健康的一个标准。例如：一个人的身高为1.75米，体重为68千克，他的BMI=68(1.75^2)=22.2（千克米^2）。当BMI指数为18.5～23.9时属正常，否则表示身体存在健康风险。编程判断人体健康情况。 输入描述: 一行，输入一个人的体重（千克）和身高（米），中间用一个空格分隔。 输出描述: 一行，输出身体Normal(正常)或Abnormal(不正常)。 示例1 输入 68 1.75 输出 Normal 示例2 输入 67.5 1.65 输出 Abnormal 加载中... 68 1.75 Normal 67.5 1.65 Abnormal",
+      "topics": [],
+      "difficulty": "medium",
+      "substance": 1.75,
+      "sourceUrl": "https://nowcoder.com/practice/08b28e61ff6345febf09969b3a167f7e",
+      "sourceName": "牛客题库",
+      "channel": "nowcoder_questions",
+      "relevanceScore": 82.2,
+      "codeAvailable": true,
+      "needsAnalysis": false
+    }
+  ],
+  "curated": [
+    {
+      "id": "aliyun-video-convergence",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "如何系统判断视频生成模型是否训练完成",
+      "statement": "阿里云面经八股：“如何系统判断是否训练完成，特别是在视频生成模型中？”以及“如何判断模型是否收敛”“梯度消失或爆炸怎么解决”。",
+      "topics": [],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": true
+    },
+    {
+      "id": "baidu-reasoning-enhance",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "如何为 base model 增强 reasoning 能力",
+      "statement": "百度文心一面开放题：“对于一个 base model，如何增强大模型的 reasoning 能力？”“为什么现在大家都在关注大模型的推理能力？”",
+      "topics": [],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": true
+    },
+    {
+      "id": "bytedance-coin-probability",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "概率题：两人轮流抛硬币，先抛者的胜率",
+      "statement": "字节三面概率题（面经原文）：两个人轮流抛硬币，抛到正面获胜，反面给对方。先抛的人胜率是多少？",
+      "topics": [
+        "数学与概率"
+      ],
+      "difficulty": "easy",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": true
+    },
+    {
+      "id": "deepseek-inference-accel",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "推理加速的底层实现：PagedAttention 与投机解码",
+      "statement": "DeepSeek 笔试第四题：讲清 vLLM 的 PagedAttention 原理与投机解码的工程实现，并说明两者可以结合但不是同一个算法。",
+      "topics": [
+        "深度学习实现",
+        "大模型与RL"
+      ],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": true
+    },
+    {
+      "id": "huawei-framework-exam",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "华为诺亚笔试：算法题 + 深度学习框架题（线下 2 小时）",
+      "statement": "华为诺亚方舟实习笔试形式（面经原文）：两道题，一道考察算法，一道考察深度学习框架，两小时，线下做。",
+      "topics": [],
+      "difficulty": "medium",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": true
+    },
+    {
+      "id": "kuaishou-pizza-dp",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "手撕：切分披萨数（DP / dfs + 记忆化搜索）",
+      "statement": "快手可灵策略梯度岗一面手撕题：非 hot100 的“切分披萨数”，可用 DP 或 dfs + 记忆化搜索。",
+      "topics": [
+        "动态规划",
+        "回溯"
+      ],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": true
+    },
+    {
+      "id": "tencent-backprop-derivation",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "推导神经网络反向传播过程 + 排列组合概率题",
+      "statement": "腾讯混元四面（不考八股、偏思维与基础）：“推导一下神经网络反向传播的过程”，外加一道排列组合的概率题。",
+      "topics": [
+        "数学与概率",
+        "机器学习基础",
+        "计算机网络"
+      ],
+      "difficulty": "medium",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": true
+    },
+    {
+      "id": "tencent-coin-change",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "手撕：零钱兑换 I / II（完全背包两类问法）",
+      "statement": "腾讯混元三面手撕（面试官原题）：322. 零钱兑换 与 518. 零钱兑换 II。考察“最少硬币数”与“组合数”两类完全背包的循环顺序差异。",
+      "topics": [
+        "动态规划"
+      ],
+      "difficulty": "medium",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": true
+    }
+  ],
+  "curatedAnalyzed": [
+    {
+      "id": "ali-array-sampling",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "概率题：按给定概率多次有放回采样，如何做到常数时间",
+      "statement": "阿里机器学习二面编程题（面经原文）：有包含很多样本数据的数组，对这些数进行多次有放回采样，每个数有自己的采样概率（存在另一数组，总概率为 1），问怎么实现这个采样过程。面试官说存在常数时间的做法。",
+      "topics": [
+        "数学与概率"
+      ],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "aliyun-digital-human-scenario",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "场景题：把数字人模型训练成只生成同一个人",
+      "statement": "阿里云多模态大模型暑期实习一面场景题：“如果我目前有一个数字人的模型，我想训练成只生成一个人的，可以怎么做？”并追问“你看过什么别的 SOTA 模型的 ref image 注入方式，有什么优劣？”",
+      "topics": [],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "aliyun-three-easy-tasks",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "手撕三连：二叉树右视图 / 滑动窗口 / 扎气球最少箭数",
+      "statement": "阿里云多模态大模型暑期实习手撕：1) 二叉树的右视图；2) 非 hot100 的滑动窗口；3) 扎破所有气球的最少箭数（lc452，区间贪心）。",
+      "topics": [
+        "二叉树",
+        "双指针"
+      ],
+      "difficulty": "medium",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "baidu-dpo-curve",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "DPO 对齐训练的曲线形态与正例概率是否提升",
+      "statement": "百度文心一言大模型算法实习一面第 2 题：“DPO 对齐训练的曲线是怎么样的，正例的概率会提升吗？”这是一道需要区分“chosen 的绝对概率”与“chosen 相对 rejected 的 margin”的分析题。",
+      "topics": [
+        "数学与概率",
+        "大模型与RL"
+      ],
+      "difficulty": "medium",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "batchnorm",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 BatchNorm2d（训练/推理行为差异）",
+      "statement": "实现 BatchNorm2d：训练时用 batch 统计量并更新 running stats，推理时用 running stats；更新 running_var 时要用无偏估计。",
+      "topics": [
+        "normalization",
+        "cv"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "beam-search",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 Beam Search（含长度归一化）",
+      "statement": "实现 beam search：每步为 beam 中的每条序列扩展 top-k 候选，按累计对数概率排序保留 beam 条；说明为什么要做长度归一化以及 beam search 的退化问题。",
+      "topics": [
+        "decoding",
+        "generative"
+      ],
+      "difficulty": "hard",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "binary-search",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写二分查找（含四种边界写法）",
+      "statement": "实现标准二分查找（找到返回下标，找不到返回 -1），并说明左闭右闭与左闭右开两种写法的循环条件与 mid 更新差异；再实现“查找第一个 >= target 的位置”。",
+      "topics": [
+        "binary-search",
+        "coding"
+      ],
+      "difficulty": "easy",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "bytedance-rag-chunking",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "场景题：RAG 分块策略与父子块召回（含具体数值处理）",
+      "statement": "字节 Agent 秋招二面大段追问 RAG 分块：Markdown 文档的分块逻辑是怎样的？是否先按标题结构划分模块再拆小 chunk？检索时召回小 chunk 再补充对应父模块吗？相邻块是否重合？如果一段内容有 1000 个 token、chunk size 为 400，最后剩余 200 如何处理，是否会向前补充内容凑成 400？",
+      "topics": [
+        "大模型与RL"
+      ],
+      "difficulty": "medium",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "clip-contrastive-loss",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 CLIP 对称对比损失（InfoNCE）",
+      "statement": "实现 CLIP 的图像-文本对称对比损失，并说明温度系数（logit scale）的作用与负样本数量的影响。",
+      "topics": [
+        "multimodal",
+        "contrastive"
+      ],
+      "difficulty": "easy",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "cross-entropy-backward",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写交叉熵与反向传播",
+      "statement": "手写交叉熵损失（含多标签情形），并推导 dL/dlogits = softmax(logits) - onehot(target) 这一结论。",
+      "topics": [
+        "loss",
+        "foundation"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "dataloader",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 Dataset / DataLoader / collate_fn",
+      "statement": "实现一个变长文本 Dataset、collate_fn（padding + attention_mask + label 置 -100）以及按长度分桶的 Sampler，说明为什么需要分桶。",
+      "topics": [
+        "engineering",
+        "pytorch"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "ddpm-sampling",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 DDPM 采样循环",
+      "statement": "实现 DDPM 的反向采样循环：用模型预测噪声 eps_theta，按闭式后验均值公式迭代，并在 t>0 时注入方差。",
+      "topics": [
+        "diffusion",
+        "generative"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "deepseek-dpo-derivation",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "DPO 的完整训练流程推导（从数据准备到梯度更新）",
+      "statement": "DeepSeek 笔试第二题：推导 DPO 的完整训练流程。要点不是“把语言模型当成奖励模型”，而是从 KL 约束下的最优策略形式中消去显式奖励模型，得到只依赖偏好对数概率的目标。",
+      "topics": [
+        "机器学习基础",
+        "大模型与RL"
+      ],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "deepseek-kv-cache-calc",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "KV 缓存压缩原理与内存占用计算",
+      "statement": "DeepSeek 笔试第六题：写出 KV Cache 的标准显存公式，说明 MLA/GQA/量化如何改变公式，并给出一组具体配置的量级估算。注意题目强调具体版本号与参数规模应以公开模型配置和可复现实验为准。",
+      "topics": [],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "deepseek-mha-full",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "手写完整的 Multi-Head Attention，不能只写框架",
+      "statement": "DeepSeek 大模型算法岗笔试第一题：手写完整的 Multi-Head Attention。题目明确要求“不能只写四个线性层”，需要把张量形状、缩放点积、掩码语义、数值稳定性和输出投影都讲清楚。",
+      "topics": [
+        "深度学习实现"
+      ],
+      "difficulty": "medium",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "deepseek-moe-bias",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "DeepSeek MoE 的无辅助损失负载均衡机制推导",
+      "statement": "DeepSeek 笔试第八题：推导“无辅助损失”的负载均衡机制。要点不是取消均衡控制，而是把均衡从主损失中的可学习惩罚项，改成路由器外部的专家偏置反馈。",
+      "topics": [],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "deepseek-moe-comm",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "MoE 模型的通信开销计算与负载不均衡分析",
+      "statement": "DeepSeek 笔试第三题：分析 MoE 的计算量与通信量，给出 All-to-All 载荷与通信时间的估算式，并说明如何度量与缓解负载不均衡。",
+      "topics": [],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "deepseek-visual-primitive",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "多模态视觉原语推理框架的数学建模",
+      "statement": "DeepSeek 笔试第七题：为“视觉原语”（point/box/mask/polygon）推理框架建立数学建模，说明如何把文本 token 与几何原语统一到一个混合序列的生成问题中。",
+      "topics": [
+        "大模型与RL"
+      ],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "doubao-agent-multiagent-design",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "场景题：多智能体架构设计（为什么 1 主 + 3 子而不是 4 个）",
+      "statement": "字节 AI 数据运营实习生（自动化方向）一面（含 Agent 项目追问）：介绍多智能体项目的背景与要解决的问题、为什么选择这样的架构、为什么是一个主智能体带 3 个子智能体而不是 4 个、为什么不是串行、如何让不同 Agent 的边界清晰、你的校验是什么、评测工作如何做。",
+      "topics": [],
+      "difficulty": "medium",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "dpo-loss",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 DPO 损失（含 completion 对数概率）",
+      "statement": "实现 DPO 损失：给定 policy/reference 对 chosen 与 rejected 的 token 级 logprob，计算 log-ratio、margin 与损失；说明为什么参考模型的 log-prob 必须只累加 completion 部分。",
+      "topics": [
+        "rlhf",
+        "post-training"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "flashattention-concept",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "FlashAttention 的在线 softmax 分块实现",
+      "statement": "不落地 S×S 注意力矩阵，实现分块注意力：按 K/V 块迭代，用 running max 与 running sum 在线归一化。解释它为什么把显存从 O(S^2) 降到 O(S)。",
+      "topics": [
+        "attention",
+        "inference",
+        "numerical"
+      ],
+      "difficulty": "hard",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "gae-and-grpo",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 GAE 与 GRPO 目标函数",
+      "statement": "实现 GAE 的优势估计（含 gamma/lambda），并实现 GRPO 的组内相对优势与带 clip 的替代目标函数。",
+      "topics": [
+        "rl",
+        "post-training"
+      ],
+      "difficulty": "hard",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "iou-nms",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 IoU 与 NMS",
+      "statement": "实现 numpy 版 NMS：输入 boxes [N,4] 与 scores，按分数降序，抑制 IoU 大于阈值的框；并说明旋转框 NMS 与 soft-NMS 的区别。",
+      "topics": [
+        "cv",
+        "detection"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "jd-agentic-rl-longhorizon",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "场景题：用强化学习让模型完成长程任务",
+      "statement": "京东人才计划实习生（北大 AI 博士，研究方向 Agentic RL）自述工作：主要做“怎么通过强化学习，让模型完成长程任务”；工作方式是先和负责人讨论方向，再自己搭训练环境、调整算法、训练、看结果、汇报。",
+      "topics": [
+        "大模型与RL"
+      ],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "kmp",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 KMP 字符串匹配",
+      "statement": "实现 KMP：先构造 next 数组（最长相等前后缀），再在主串中线性匹配；说明为什么复杂度是 O(n+m) 而不是 O(n*m)。",
+      "topics": [
+        "string",
+        "coding"
+      ],
+      "difficulty": "hard",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "kv-cache-memory",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "KV-Cache 显存计算与 GQA 优化",
+      "statement": "给定 L=80 层、H_kv=8 个 KV 头、d_h=128、上下文 T=10^6、FP16、batch=1，计算标准 MHA 的 KV Cache 字节数；并说明 GQA/MQA/MLA/量化分别如何改变这个公式。",
+      "topics": [
+        "inference",
+        "memory"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "layernorm-rmsnorm",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 LayerNorm 与 RMSNorm",
+      "statement": "实现 LayerNorm 与 RMSNorm 的前向，并说明现在大模型为什么普遍用 RMSNorm 而不是 LayerNorm。",
+      "topics": [
+        "normalization",
+        "transformer"
+      ],
+      "difficulty": "easy",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "lora-implementation",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 LoRA 层（含初始化细节）",
+      "statement": "实现一个 LoRA 包装的 Linear 层：冻结原权重 W0，注入低秩 BA 增量并乘以 alpha/r 缩放；说明 A、B 的初始化方式。",
+      "topics": [
+        "peft",
+        "post-training"
+      ],
+      "difficulty": "easy",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "max-subarray-monotonic-stack",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "最大子数组和 + 单调栈（每日温度）",
+      "statement": "实现 lc53 最大子数组和（Kadane，DP 视角）与 lc739 每日温度（单调递减栈）；说明两者的状态定义与不变量。",
+      "topics": [
+        "dp",
+        "monotonic-stack"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "meituan-ce-vocab-calc",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "10w 词表的交叉熵损失值计算",
+      "statement": "美团大模型算法二面第 6 题：“LLM 的损失函数是什么？给你一个 10w 的词表，计算出事的损失值。”考察对 CE 量级、均匀分布与随机初始化 loss 的直觉。",
+      "topics": [
+        "机器学习基础"
+      ],
+      "difficulty": "medium",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "meituan-reward-shock",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "为什么 GRPO 训练一开始 Reward 会大幅震荡",
+      "statement": "美团大模型算法二面：“奖励函数如何设置的，为什么？有没有想过为什么一开始 Reward 出现大幅度震荡？GRPO 是否一定有效，还有什么解决方法？”",
+      "topics": [
+        "大模型与RL"
+      ],
+      "difficulty": "hard",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "mha-implementation",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 Multi-Head Self-Attention",
+      "statement": "实现一个多头自注意力模块：输入 [B, S, d_model]，头数 H，支持因果 mask 与 padding mask，返回 [B, S, d_model]。要求写全张量形状变换、缩放点积、掩码与输出投影。",
+      "topics": [
+        "transformer",
+        "attention"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "rope-implementation",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 RoPE 旋转位置编码",
+      "statement": "实现 RoPE 的 cos/sin 缓存与作用函数（相邻两维一组），并解释它为什么具有相对位置性质。",
+      "topics": [
+        "position",
+        "transformer"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "sensetime-lamp-puzzle",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "智力题：100 盏灯与 100 个学生（完全平方数）",
+      "statement": "商汤二面智力题（面经原文）：一个房间有 100 盏灯（全关），编号 1-100 的开关控制；100 个学生依次进入，第 i 个学生切换所有 i 的倍数的开关。问第 100 个学生进入后还有多少盏灯亮着？",
+      "topics": [],
+      "difficulty": "medium",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "sliding-window",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "滑动窗口（最长无重复子串 / 最小覆盖子串）",
+      "statement": "实现 lc3 最长无重复字符子串与 lc76 最小覆盖子串，说明窗口收缩的不变量。",
+      "topics": [
+        "sliding-window",
+        "coding"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "softmax-stable",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "数值稳定的 Softmax 与 Log-Softmax",
+      "statement": "实现数值稳定的 softmax 与 log_softmax，说明为什么必须先减最大值，以及 log_softmax 为什么不能写成 log(softmax(x))。",
+      "topics": [
+        "numerical",
+        "foundation"
+      ],
+      "difficulty": "easy",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "top-k-top-p-sampling",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写 Top-k 与 Top-p（Nucleus）采样",
+      "statement": "实现 top-k 采样与 nucleus（top-p）采样，并说明温度缩放如何影响分布熵；解释为什么 top-p 比固定 top-k 更自适应。",
+      "topics": [
+        "decoding",
+        "generative"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "union-find",
+      "kind": "hand",
+      "marker": "手撕代码",
+      "title": "手写并查集（路径压缩 + 按秩合并）",
+      "statement": "实现并查集并支持连通分量计数；用并查集解 lc200 岛屿数量，说明路径压缩与按秩合并各自的复杂度贡献。",
+      "topics": [
+        "dsu",
+        "graph"
+      ],
+      "difficulty": "medium",
+      "substance": 9.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": true,
+        "pitfalls": true,
+        "solution": true,
+        "answerOutline": false
+      },
+      "needsAnalysis": false
+    },
+    {
+      "id": "youzan-hmm-lora-exam",
+      "kind": "exam",
+      "marker": "笔试场景",
+      "title": "AI 岗笔试综合题：RNN/HMM/强化学习/LoRA/激活函数",
+      "statement": "牛客用户记录的“联想 ai 岗笔试”结构：20 道单选 + 1 道编程 + 1 道 AI coding。选择涉及算法题补充代码、RNN、HMM、强化学习、LoRA、SQL、激活函数、简单排序；编程题面试者用贪心但只通过 18% 用例；AI coding 首次遇到，需要自己指定关键约束。",
+      "topics": [
+        "大模型与RL"
+      ],
+      "difficulty": "medium",
+      "substance": 7.0,
+      "sourceName": "人工整理（research/jobs_kb.json）",
+      "origin": "curated",
+      "has": {
+        "keyPoints": false,
+        "pitfalls": false,
+        "solution": false,
+        "answerOutline": true
+      },
+      "needsAnalysis": false
+    }
+  ]
+}

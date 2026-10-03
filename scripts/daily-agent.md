@@ -24,7 +24,7 @@
 
 1. 读 `web/data/manifest.json`：拿到本轮 `newItems`、`status`、失败的渠道列表。
 2. **读 `web/data/deep-read-plan.json` —— 这是你的工作清单，不要自己另挑条目。**
-   它由 `scripts/plan_deep_read.py` 生成，包含两个清单：
+   它由 `scripts/plan_deep_read.py` 生成，包含三个清单：
    - **`queue`**：**尚未深读**的条目。已做质量闸门（求职吐槽、泛化提问、内推码广告、
      纯薪资讨论标为 `skimmed`，**不要**深读，它们仍留在卡片库可搜索、参与去重）
      与配额分配（按分类 2–10 条）。
@@ -32,7 +32,14 @@
      这些是"有的卡片有解析、有的只有摘要"的历史遗留。**必须一并补全**：
      按 `missing` 字段补齐缺的那几层，不要重写已有内容（合并而非覆盖）。
      `backfillWeight` 越高越优先。
-   两个清单**都**要处理，**每一条都必须产出完整解析（含图解，见第 2 节）**。
+   - **`problems`**：**题库定位的待解析题目**（读者明确要求的那一层）。
+     **优先级最高：先把 `problems` 做完，再去做 `queue` / `backfill`。**
+     理由：卡片深读是"锦上添花"，而一道题没有题解就是读者明确抱怨过的"只有一个链接"。
+     每条是一个**具体题目**（`id / kind / title / statement / topics / sourceUrl`），
+     你要为它写一份**题解**：题意澄清 → 思路（暴力→最优）→ 复杂度 → **可运行代码** →
+     图解 → 易错点/边界 → 面试追问与变形。**源页面没有解析也要自己写**——
+     这是读者的原话要求，也是这份清单存在的唯一理由。产出到 `out-prob-*.json`（见 2.6）。
+   三个清单**都要**处理，**每一条都必须产出完整解析（含图解，见第 2 节）。**
    两者都为空时直接跳到第 5 步（只写运行备注）。
 3. 读 `web/data/digest/today.json` 与 `web/data/items/index.json` 取这些条目的原文摘要。
 4. 读 `config/collector.config.json` 了解关注方向与权重。
@@ -178,6 +185,68 @@
 
 ---
 
+## 2.6 题库定位：把题目变成题解（`problems` 清单）
+
+读者的原话：「对于算法题和仓库的整理，直接给出仓库链接虽然可以保留，但我更希望你能根据题库
+信息，阅读并自己深度解析相关手撕题、算法题等具体问题并整理到题库定位中附带深入的代码解析或
+配图解析等」。所以在 `problems` 清单里，**链接不算交付**，题解才算。
+
+### 交付物
+每个题目写一个文件：`scripts/agent-work-{{DATE}}/out-prob-<两位数序号>.json`，
+形状固定为 `{"batchId": "prob-01", "entries": [ <题解对象> ]}`，一个文件一条（便于并行与复核）。
+
+### 题解对象 schema
+```jsonc
+{
+  "id": "pb-<itemId> 或人工题 id（必须与清单里的 id 完全一致，不要自己改）",
+  "itemId": "如果清单给了 itemId 就带上（采集题才有）",
+  "tldr": "一句话结论 ≤60 字：这题考什么、最优解是什么",
+  "restated": "题意澄清 ≤140 字：输入/输出/约束/样例。题面被截断就写清楚截断在哪",
+  "approach": [
+    {"step": "暴力", "detail": "枚举什么、为什么不够（复杂度）"},
+    {"step": "最优", "detail": "用什么观察/数据结构把复杂度降下来"}
+  ],
+  "complexity": {"time": "O(n)", "space": "O(1)", "why": "代价来自哪里 ≤80 字"},
+  "code": {
+    "language": "python",
+    "source": "完整可运行的 Python 实现（含输入解析或函数签名 + 必要的边界处理）",
+    "walkthrough": [{"note": "这一段在做什么（逐块讲，不要逐行念代码）"}]
+  },
+  "edgeCases": ["空输入", "n=1", "全相同元素"],
+  "pitfalls": ["面试现场最容易写错的地方"],
+  "followUps": ["面试官可能的追问（复杂度再降/换数据结构/改成在线）"],
+  "variations": ["同源变形题"],
+  "diagram": { "kind": "flow|architecture|curve|matrix|timeline", "title": "≤20 字",
+               "caption": "这张图让你记住什么", "svg": "<svg viewBox='0 0 480 240' ...>", "alt": "一行替代文字" },
+  "selfTest": ["2-3 道自测题，能答对才算会"],
+  "keyPoints": ["得分要点（≤5 条）"],
+  "sources": [{"title": "题目出处", "url": "只能用清单里的 sourceUrl 或题面里已有的链接"}],
+  "selfCheck": {"claims": ["能从题面/公开定义直接证实的断言"], "uncertain": ["题面被截断、样例缺失、复杂度依赖假设等，逐条列出"]}
+}
+```
+
+### 硬性纪律
+- **代码必须是真的**：能跑、有边界处理、≥ 8 行有效逻辑。禁止 `pass` / `...` / `# TODO` 占位
+  （`validate_problem_analysis.py` 会拒绝）。
+- **思路必须写「为什么」**：不只写"用哈希表"，要写"因为要在 O(1) 内判断补数是否出现过"。
+- **图解是硬性要求**：每道题都要有一张自包含 SVG（规则同 2.1：viewBox、无 `<image>`/`<script>`、
+  字号 ≥13、只用主题色、16:6~16:9）。流程图/状态转移图/双指针移动图/递归树，选最能说清的那个。
+- **禁止编造 URL**：`sources[].url` 只能是清单里的 `sourceUrl`，或题面文本里已经出现的链接。
+- **人工题（`origin: "curated"`）不要重写人工内容**：`has` 里为 `true` 的层已经有人写了，
+  你只补缺的（通常是 `code` / `diagram` / `complexity` / `approach`），并保持原文观点。
+- **题面不足就直说**：只从题面能确定的写进正文，其余进 `selfCheck.uncertain`，不要脑补样例。
+- 校验：`python scripts/validate_problem_analysis.py --date {{DATE}} --strict`（必须 0 error；
+  警告也要求清零）。`apply_enrichment.py` 会把 `out-prob-*.json` 合并成
+  `web/data/problem-analysis.json`，并把采集题同步投影成一张轻量卡片（卡片库也会显示「已深读」）。
+
+### 配额与优先级
+`problems` 清单已经按「有完整题面的手撕题 → 人工手撕题 → 笔试场景题」排好序，
+**按顺序做完清单内的题**（默认每天 20 道配额，由 `plan_deep_read.py --problems-max` 决定）。
+做不完就在 `skips.json` 里记一条 `{"rule":"budget","ids":[...],"why":"本轮预算内未完成，次日继续"}`，
+**不要**为凑数写空洞题解。
+
+---
+
 ## 3. 岗位信息合并
 
 如果本轮 digest 里出现招聘类条目（`category == "job"`），或字节/腾讯/阿里等招聘接口
@@ -220,15 +289,20 @@
    读旧文件后合并（新值覆盖同 id 的旧值），不要丢历史。
 2. **`web/data/formulas.json`** — `{"generatedAt": "...", "source": "seed+daily", "formulas": [...]}`。
    读旧文件，按 `id` 去重后追加本轮的新公式；保留所有已有公式。
-3. **`web/data/jobs.json`** — 见第 3 步（增量合并）。
-4. **`web/data/proposals/{{DATE}}.json`** — 见第 4 步。
-5. **`web/data/logs/agent-{{DATE}}.json`** — 运行记录：
-   `{"date","startedAt","finishedAt","status","enrichedCount","formulaCount","newJobs","notes","errors"}`。
+3. **`web/data/problem-analysis.json`** — 题库定位题解，形如
+   `{"generatedAt": "...", "source": "seed+daily-agent", "count": N, "byId": {"<题目 id>": {...题解...}}}`。
+   **由 `out-prob-*.json` 经 `apply_enrichment.py` 合并**（不要手写这个文件的关键结构）。
+4. **`web/data/jobs.json`** — 见第 3 步（增量合并）。
+5. **`web/data/proposals/{{DATE}}.json`** — 见第 4 步。
+6. **`web/data/logs/agent-{{DATE}}.json`** — 运行记录：
+   `{"date","startedAt","finishedAt","status","enrichedCount","formulaCount","problemAnalysisCount","newJobs","notes","errors"}`。
 
-写完后运行一次校验：
+写完后运行校验：
 
 ```bash
 python -c "import json,glob;[json.load(open(f,encoding='utf-8')) for f in glob.glob('web/data/**/*.json',recursive=True)];print('all json ok')"
+python scripts/validate_agent_out.py --date {{DATE}} --strict
+python scripts/validate_problem_analysis.py --date {{DATE}} --strict
 ```
 
 ---
@@ -237,7 +311,7 @@ python -c "import json,glob;[json.load(open(f,encoding='utf-8')) for f in glob.g
 
 最后用中文输出一份简短汇报（≤200 字 + 列表）：
 
-- 本轮深读了几条、新增几个公式、几个岗位；
+- 本轮深读了几条、**题库定位写了几道题解**、新增几个公式、几个岗位；
 - 数据层健康状况（哪些渠道失败、是否需要人工介入登录类渠道）；
 - 你在 `selfCheck.uncertain` 里标记的、需要我确认的事项；
 - 下一步建议（1–3 条，具体可执行）。

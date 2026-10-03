@@ -996,6 +996,8 @@ export const state = {
   enrichment: {},       // layer-2 agent deep-read output, keyed by item id
   redundancy: null,     // optional redundancy audit (analyze_redundancy.py)
   interview: null,      // optional interview extract (build_interview_index.py)
+  problemBank: null,    // optional collected problem list (build_problem_bank.py)
+  problemAnalysis: null, // optional daily deep-read analyses (problem-analysis.json)
   enrichedCount: 0,
   papers: [],
   milestones: [],
@@ -1113,7 +1115,7 @@ export const Store = {
     const stamp = Date.now();
     const q = (p) => `${p}?t=${stamp}`;
 
-    const [manifest, digest, jobsKb, learningKb, sourceRegistry, channels, runs, index, proposals, enrichment, deepPlan, redundancy, interview] = await Promise.all([
+    const [manifest, digest, jobsKb, learningKb, sourceRegistry, channels, runs, index, proposals, enrichment, deepPlan, redundancy, interview, problemBank, problemAnalysis] = await Promise.all([
       this.json(q('manifest.json')),
       this.json(q('digest/today.json')),
       this.json(q('jobs.json')),
@@ -1130,6 +1132,13 @@ export const Store = {
       this.json(q('redundancy-report.json'), null),
       // Optional: written by build_interview_index.py (面经速览 panel).
       this.json(q('interview.json'), null),
+      // Optional: written by build_problem_bank.py (自动采集的算法题库题).
+      // Absent on a fresh clone, so it must degrade to null instead of adding a
+      // load error, and ProblemsView must still render from jobs.json alone.
+      this.json(q('problem-bank.json'), null),
+      // Optional: written by the daily deep-read layer. May be missing or empty
+      // for a long time - an absent file just means "nothing analysed yet".
+      this.json(q('problem-analysis.json'), null),
     ]);
 
     state.manifest = manifest;
@@ -1143,6 +1152,8 @@ export const Store = {
     state.deepReadPlan = deepPlan || null;
     state.redundancy = redundancy || null;
     state.interview = interview || null;
+    state.problemBank = problemBank || null;
+    state.problemAnalysis = problemAnalysis || null;
 
     /* Items: prefer the flat search index; otherwise reconstruct from runs. */
     let items = [];
@@ -1224,14 +1235,48 @@ export const Store = {
 
     if (jobsKb) {
       state.skills = (jobsKb.skillMatrix || []).map(normalizeSkill);
-      state.problems = [
-        ...(jobsKb.handWrittenCoding || []).map((p) => normalizeProblem(p, 'hand')),
-        ...(jobsKb.writtenExam || []).map((p) => normalizeProblem(p, 'exam')),
-      ];
       state.interviewProcess = jobsKb.interviewProcess || [];
       state.salaryBands = jobsKb.salaryBands || [];
       state.jobSources = jobsKb.sources || [];
     }
+
+    /* Problems — three sources, in priority order:
+         1. jobs.json handWrittenCoding / writtenExam: 人工整理, always shown;
+         2. problem-bank.json problems[]: 自动采集的算法题库题 (kind 'algo',
+            or 'exam' when the collector labelled it as a written-exam item).
+       problem-bank.curated[] is deliberately NOT appended: those entries are
+       already emitted by jobs.json (build_problem_bank.py copies them from
+       research/jobs_kb.json), so appending them would render each curated
+       problem twice.
+       The analysis layer is keyed by raw id, so BOTH of the above get their
+       deep-read attached by the same lookup. */
+    const problemList = [
+      ...(((jobsKb || {}).handWrittenCoding) || []).map((p) => normalizeProblem(p, 'hand')),
+      ...(((jobsKb || {}).writtenExam) || []).map((p) => normalizeProblem(p, 'exam')),
+    ];
+    const seenProblemIds = new Set(problemList.map((p) => p.rawId));
+    for (const raw of ((problemBank || {}).problems) || []) {
+      const kind = raw && raw.kind === 'exam' ? 'exam' : 'algo';
+      const p = normalizeProblem(raw, kind);
+      if (seenProblemIds.has(p.rawId)) continue;
+      problemList.push(p);
+      seenProblemIds.add(p.rawId);
+    }
+
+    const analysisById = (problemAnalysis && problemAnalysis.byId) || {};
+    for (const p of problemList) {
+      const a = analysisById[p.rawId] || analysisById[p.id] || null;
+      if (!a) continue;
+      p.analysis = a;
+      p.status = 'analyzed';
+      // The analysis repeats a few facts the flat problem fields already carry.
+      // Merge them in rather than overwrite, so hand-curated content always wins
+      // and a repeat analysis cannot duplicate a bullet.
+      p.keyPoints = dedupeStrings([...p.keyPoints, ...arr(a.keyPoints)]);
+      p.pitfalls = dedupeStrings([...p.pitfalls, ...arr(a.pitfalls)]);
+      p.followUps = dedupeStrings([...p.followUps, ...arr(a.followUps)]);
+    }
+    state.problems = problemList;
 
     if (learningKb) {
       state.tracks = (learningKb.tracks || []).map(normalizeTrack);
@@ -1397,23 +1442,53 @@ function normalizeSkill(s) {
   };
 }
 
+/* Problem-bank kinds. 'algo' = an automatically collected algorithm-bank
+   question; 'hand'/'exam' = the hand-curated interview problems. */
+const PROBLEM_TYPES = { hand: '手撕代码', exam: '场景题', algo: '算法题库' };
+
+/** Trim → drop empties → drop repeats, preserving order. Used to fold a
+ *  problem analysis into the flat hand-curated fields without duplicating a
+ *  bullet that both layers happen to mention. */
+function dedupeStrings(list) {
+  const out = [];
+  const seen = new Set();
+  for (const v of arr(list)) {
+    const s = String(v == null ? '' : v).trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+}
+
 function normalizeProblem(p, kind) {
   const id = String(pick(p.id, p.title, Math.random().toString(36).slice(2)));
   return {
     id: `${kind}-${id}`,
     rawId: id,
-    kind, // 'hand' | 'exam'
+    kind, // 'hand' | 'exam' | 'algo'
     title: String(pick(p.title, p.prompt, '—')),
-    type: p.type || (kind === 'hand' ? '手撕代码' : '场景题'),
-    difficulty: p.difficulty || 'medium',
+    type: p.type || PROBLEM_TYPES[kind] || '场景题',
+    // `null` means "unknown"; the UI renders it as 难度未知 via a muted badge
+    // instead of inventing a level. All 47 hand-curated problems already carry a
+    // real difficulty, so this only ever fires for collected bank rows.
+    difficulty: p.difficulty || null,
     frequency: clamp(Number(pick(p.frequency, 3)) || 3, 1, 5),
     topics: arr(pick(p.topics, p.tags)).map(String),
     prompt: p.prompt || p.title || '',
+    statement: p.statement || '',
     keyPoints: arr(p.keyPoints).map(String),
     pitfalls: arr(p.pitfalls).map(String),
+    followUps: arr(p.followUps).map(String),
     solution: p.referenceSolution || p.solution || '',
     answerOutline: arr(p.answerOutline).map(String),
     sources: arr(p.sources),
+    sourceUrl: safeUrl(pick(p.sourceUrl, p.url)) || '',
+    origin: p.origin || '',
+    needsAnalysis: p.needsAnalysis !== false,
+    // Filled by the merge step in boot() from problem-analysis.json.
+    analysis: null,
+    status: 'pending', // 'pending' | 'analyzed'
   };
 }
 

@@ -84,7 +84,7 @@ CATEGORY_DEPTH_VALUE = {
     "agent": 0.60,
     "course": 0.55,
     "job": 0.50,      # 岗位信息进岗位看板，不需要逐条深度解析
-    "exam": 0.80,
+    "exam": 0.95,     # 笔试/客观题：面试直接复用，读者明确要求提高优先级
     "trend": 0.45,    # 趋势类留少量即可
 }
 
@@ -214,7 +214,23 @@ def depth_score(item: dict) -> tuple[float, dict]:
         "material": is_material * 100 * 0.15,
     }
     catw = CATEGORY_DEPTH_VALUE.get(cat, 0.5)
-    return round(sum(parts.values()) * (0.6 + 0.4 * catw) * typew, 2), parts
+    # 求职可用性 bonus (see collect.py §6e for how the signal is produced).
+    #
+    # The reader asked for 手撕题 / 领域核心工作 to be COLLECTED with higher priority; this
+    # is the same priority applied to the deep-read order, because collecting a question and
+    # never analysing it is precisely the "bare link" complaint. Two separate bonuses:
+    #   · the collector's interviewValue (already in relevanceBreakdown) is added verbatim,
+    #     so the plan cannot disagree with the intake ranking;
+    #   · a concrete question (`problemKind`) gets a flat lift, because a 题面 with no 题解
+    #     is worth less than nothing to a reader who is preparing for an interview - it is
+    #     the analysis that makes it usable.
+    iv = float(((item.get("relevanceBreakdown") or {}).get("interviewValue")) or 0.0)
+    problem_lift = 14.0 if item.get("problemKind") else 0.0
+    core_lift = 6.0 if (item.get("interviewSignals") or {}).get("coreWork") else 0.0
+    bonus = iv + problem_lift + core_lift
+    base = sum(parts.values()) * (0.6 + 0.4 * catw) * typew
+    return round(base + bonus, 2), {**parts, "interviewValue": iv,
+                                    "problemLift": problem_lift, "coreWorkLift": core_lift}
 
 
 FORMULA_CATEGORIES = {
@@ -286,7 +302,110 @@ def build_backfill_queue(items: list[dict], enrichment: dict) -> list[dict]:
     return out
 
 
-def build_plan(per_min: int, per_max: int, fresh_only: bool) -> dict:
+# 值得解析的题库题目最低实质度（见 build_problem_bank.substance_score，0-10）。
+#
+# MEASURED (2026-10-03, the reason this constant exists): with no floor, a whole day's 题解
+# quota went to 牛客题霸 warm-ups — 判断字母 / 及格分数 / 网购 / 计算一元二次方程 — because
+# they were the only questions left in the queue once the substantive ones were analysed.
+# The reader's stated goal is "求职面试能直接用上的信息", and a 判断字母 题解 is not it.
+# 1.5 keeps every 笔试客观题 with real content (measured 4.2-8.6) and every curated question
+# (9.0/7.0), and excludes the warm-up band (0.0-1.3) plus the two mid ones (1.51/1.7) that
+# are still I/O drills.
+MIN_PROBLEM_SUBSTANCE = 1.5
+
+
+def build_problem_queue(bank: dict, analysis: dict, limit: int) -> tuple[list[dict], int, dict]:
+    """题库定位的「待解析」工作清单（读者明确要求的那一层）。
+
+    WHY a SEPARATE list instead of more quota inside `queue`: the two produce different
+    output. A normal queue entry becomes a knowledge card (概念/公式/图解). A problem
+    entry becomes a 题解 attached to a question — 题意澄清、解法（暴力→最优）、复杂度、
+    可运行代码、配图、易错点、面试追问 — and it must be written even though the source page
+    contains no solution at all. Mixing them would let the card-shaped work crowd out the
+    problem-shaped work, which is what happened before: 45 collected questions sat in the
+    corpus as bare links while the plan spent its quota on papers.
+
+    ORDERING IS SUBSTANCE, NOT LABELS.
+    The first version grouped by origin/kind ("有题面的手撕题 → 人工手撕题 → 笔试场景"), which
+    measured badly: 牛客题霸's machine-collected list is full of warm-ups (判断字母/及格分数/
+    网购), and those are `hand`, so they were queued BEFORE the substantive 笔试客观题
+    (GSPO/贝叶斯/RAG 相似度, substance 6.4-8.6). The reader's complaint is precisely "只给链接、
+    没有含金量的题" — so the queue is now sorted by `substance` (topic weight + statement
+    length − warm-up penalty, see build_problem_bank.substance_score), with a mild preference
+    for 手撕题 at equal substance.
+
+    MIN_PROBLEM_SUBSTANCE filters warm-ups OUT of the queue entirely rather than filling the
+    quota with them. They stay in the bank (searchable, still marked 待解析) and are reported
+    as skipped, so the truncation is visible instead of looking like an empty backlog.
+    """
+    analyzed = set((analysis.get("byId") or {}).keys())
+    rows: list[dict] = []
+    skipped_low: list[dict] = []
+
+    def consider(row: dict) -> None:
+        sub = float(row.get("substance") or 0)
+        if sub < MIN_PROBLEM_SUBSTANCE:
+            skipped_low.append({"id": row.get("id"), "title": row.get("title"),
+                                "substance": sub, "kind": row.get("kind"),
+                                "origin": row.get("origin")})
+            return
+        rows.append(row)
+
+    for p in bank.get("problems") or []:
+        pid = str(p.get("id") or "")
+        if not pid or pid in analyzed:
+            continue
+        consider({
+            "id": pid,
+            "origin": "collected",
+            "kind": p.get("kind") or "hand",
+            "marker": p.get("marker") or "",
+            "title": p.get("title"),
+            "topics": p.get("topics") or [],
+            "difficulty": p.get("difficulty"),
+            "statement": str(p.get("statement") or "")[:1400],
+            "sourceUrl": p.get("sourceUrl"),
+            "sourceName": p.get("sourceName"),
+            "itemId": p.get("itemId"),
+            "channel": p.get("channel"),
+            # Substance comes from the bank (topic weights + statement length, see
+            # build_problem_bank.substance_score) so the plan and the bank agree on what
+            # "worth analysing" means instead of each re-deriving its own notion.
+            "substance": p.get("substance"),
+        })
+
+    for p in bank.get("curated") or []:
+        pid = str(p.get("id") or "")
+        if not pid or pid in analyzed:
+            continue
+        consider({
+            "id": pid,
+            "origin": "curated",
+            "kind": p.get("kind") or "hand",
+            "marker": p.get("marker") or "",
+            "title": p.get("title"),
+            "topics": p.get("topics") or [],
+            "difficulty": p.get("difficulty"),
+            "statement": str(p.get("statement") or "")[:1400],
+            "sourceUrl": None,
+            "sourceName": p.get("sourceName"),
+            "substance": p.get("substance"),
+            "has": p.get("has") or {},
+        })
+
+    total = len(rows) + len(skipped_low)
+    rows.sort(key=lambda r: (-(float(r.get("substance") or 0)),
+                             0 if r.get("kind") == "hand" else 1,
+                             -len(str(r.get("statement") or "")),
+                             str(r.get("id"))))
+    skipped = {"lowSubstance": len(skipped_low),
+               "lowSubstanceSample": skipped_low[:10],
+               "threshold": MIN_PROBLEM_SUBSTANCE}
+    return rows[:limit], total, skipped
+
+
+def build_plan(per_min: int, per_max: int, fresh_only: bool,
+               problems_max: int = 12) -> dict:
     index = load(DATA / "items" / "index.json", {}) or {}
     items = index.get("items") or []
     digest = load(DATA / "digest" / "today.json", {}) or {}
@@ -296,6 +415,15 @@ def build_plan(per_min: int, per_max: int, fresh_only: bool) -> dict:
     # Items already analysed but with an incomplete analysis (no diagram etc).
     backfill = build_backfill_queue(items, enrichment)
 
+    # 题库定位的分析队列。Computed BEFORE the card pool so that a question is not queued
+    # twice: a 编程题 handled as a card would get 概念/公式 (which a question does not have)
+    # and would then still be waiting in the problem queue, i.e. the same source read twice
+    # for two half-answers. Questions are analysed as questions.
+    bank = load(DATA / "problem-bank.json", {}) or {}
+    analysis = load(DATA / "problem-analysis.json", {}) or {}
+    problems, problems_total, problems_skipped = build_problem_queue(bank, analysis, problems_max)
+    problem_item_ids = {p.get("itemId") for p in problems if p.get("itemId")}
+
     # Candidates: not already enriched, and (optionally) only today's fresh items.
     pool = [i for i in items
             if i.get("id") not in enrichment
@@ -304,6 +432,13 @@ def build_plan(per_min: int, per_max: int, fresh_only: bool) -> dict:
     by_cat: dict[str, list] = {}
     skim: list[dict] = []
     for it in pool:
+        if it.get("id") in problem_item_ids:
+            # Not "noise" — it is queued for a 题解 instead of a card. Reported so the
+            # plan explains the missing id rather than looking like it dropped it.
+            skim.append({"id": it.get("id"), "title": (it.get("title") or "")[:90],
+                         "category": it.get("category"), "rule": "problem-queue",
+                         "why": "已排入题库定位的题解队列（按题目解析，不再重复做卡片深读）"})
+            continue
         reason = noise_reason(it)
         if reason:
             skim.append({"id": it.get("id"), "title": (it.get("title") or "")[:90],
@@ -387,6 +522,7 @@ def build_plan(per_min: int, per_max: int, fresh_only: bool) -> dict:
         }
 
     selected.sort(key=lambda x: -x["depthScore"])
+
     return {
         "generatedAt": now_iso(),
         "generatedBy": "plan_deep_read.py",
@@ -414,6 +550,14 @@ def build_plan(per_min: int, per_max: int, fresh_only: bool) -> dict:
         # work: each backfill shrinks this list permanently.
         "backfill": backfill,
         "backfillTotal": len(backfill),
+        # 题库定位待解析清单：题面 → 题解（思路/复杂度/代码/配图/易错点/追问）。
+        # 与 queue 一样是"按清单做"的确定性产物；每完成一条，这份清单永久变短。
+        "problems": problems,
+        "problemsTotal": problems_total,
+        "problemsByOrigin": _count_by(problems, "origin"),
+        # 被实质度门槛挡在队列外的题目（入门练手题）。它们仍在题库里可搜索、仍标「待解析」，
+        # 只是不占用每日题解配额；报告出来是为了让"截断"可见，而不是看起来像没活了。
+        "problemsSkipped": problems_skipped,
         "skimSample": skim[:40],
         "skimByRule": _count_by(skim, "rule"),
     }
@@ -439,6 +583,9 @@ def main(argv=None) -> int:
     ap.add_argument("--fresh-only", action="store_true",
                     help="explicitly restrict the plan to today's fresh items")
     ap.add_argument("--show", action="store_true", help="print the queue")
+    ap.add_argument("--problems-max", type=int, default=20,
+                    help="题库定位本题最多解析几道（默认 12）。题解比卡片贵，"
+                         "但读者明确要求逐条深度解析手撕题，所以这是一个独立配额。")
     ap.add_argument("--dry-run", action="store_true", help="do not write the plan file")
     args = ap.parse_args(argv)
 
@@ -447,11 +594,16 @@ def main(argv=None) -> int:
     # backlog this queue exists to drain.
     fresh_only = bool(args.fresh_only) and not args.all
     plan = build_plan(max(1, args.per_category_min), max(1, args.per_category_max),
-                      fresh_only=fresh_only)
+                      fresh_only=fresh_only, problems_max=max(0, args.problems_max))
 
     t = plan["totals"]
     print(f"corpus={t['corpus']} candidates={t['candidates']} "
           f"skimmed={t['skimmed']} selected={t['selected']} over {t['categories']} categories")
+    print(f"题库定位：本轮排入 {len(plan['problems'])} 题 / 队列内 {plan['problemsTotal']} 题待解析"
+          f"（本轮来源 {json.dumps(plan['problemsByOrigin'], ensure_ascii=False)}，"
+          f"另有 {plan['problemsSkipped'].get('lowSubstance', 0)} 题因实质度 < "
+          f"{plan['problemsSkipped'].get('threshold')} 不占用配额（入门练手题），"
+          f"其中 {plan['skimByRule'].get('problem-queue', 0)} 条条目因此不再重复做卡片深读）")
     print("noise filtered by rule: " + (json.dumps(plan["skimByRule"], ensure_ascii=False) or "{}"))
     print("")
     print(f"{'category':<14}{'quota':>6}{'picked':>7}{'candidates':>11}  weight")
@@ -465,6 +617,11 @@ def main(argv=None) -> int:
         print("--- deep-read queue (top 25) ---")
         for row in plan["queue"][:25]:
             print(f"  {row['depthScore']:>6}  {row['category']:<13} {str(row['title'])[:62]}")
+        print("")
+        print("--- 题库定位待解析 (all) ---")
+        for row in plan["problems"]:
+            print(f"  [{row['origin']:<9}] {row['kind']:<4} {str(row['id'])[:22]:<22} "
+                  f"{str(row['title'])[:56]}")
 
     if args.dry_run:
         print("\n--dry-run: plan not written")

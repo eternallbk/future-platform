@@ -168,6 +168,103 @@ def merge_enrichment(data_dir, payload, stamp):
     return path, doc, {"added": added, "replaced": replaced, "total": len(by_id)}
 
 
+def merge_problem_analysis(data_dir, payload, stamp, logger):
+    """Merge 题库定位的题解（payload.problemAnalyses）into problem-analysis.json.
+
+    WHY a separate file instead of putting the 题解 inside enrichment.json:
+      · the shapes differ (a 题解 is 思路/复杂度/代码/配图, a card is 概念/公式/teaching);
+      · enrichment.json is already 3.6 MB and is fetched by the browser on every load -
+        appending code blocks to it would tax every page for data only the 题库定位 page
+        needs;
+      · the bank is keyed by problem id (collected: `pb-<itemId>`, curated: the human id),
+        which is not always an item id, so a shared map would be ill-typed.
+
+    SIDE EFFECT (deliberate): for a COLLECTED problem (one that also exists as a card) we
+    also upsert a light enrichment entry, so the card in the library shows 「已深读」 and the
+    same 图解 instead of looking untouched. The card is derived from the 题解, so the two
+    views cannot disagree, and it never overwrites a richer existing card.
+    """
+    path = os.path.join(data_dir, "problem-analysis.json")
+    old = read_json(path, {}) or {}
+    by_id = dict(old.get("byId") or {})
+    added, replaced = [], []
+    for entry in payload.get("problemAnalyses") or []:
+        pid = entry.get("id")
+        if not pid:
+            logger("  ! 题解缺 id，已跳过：%s" % canon(entry)[:160])
+            continue
+        if pid in by_id:
+            replaced.append(pid)
+        else:
+            added.append(pid)
+        by_id[pid] = entry
+    doc = {
+        "generatedAt": stamp,
+        "source": "seed+daily-agent",
+        "count": len(by_id),
+        "byId": by_id,
+    }
+    return path, doc, {"added": added, "replaced": replaced, "total": len(by_id)}
+
+
+def problem_analysis_as_enrichment(entry):
+    """A light card-shaped view of a 题解, for the card library. Never invents content."""
+    pid = entry.get("id")
+    item_id = entry.get("itemId")
+    if not item_id:
+        return None
+    card = {
+        "id": item_id,
+        "tldr": entry.get("tldr") or entry.get("restated") or "",
+        "keyPoints": [str(k) for k in (entry.get("keyPoints") or [])][:5],
+        "why": entry.get("why") or "面试高频手撕题：本题的完整题解已写入题库定位。",
+        "difficulty": entry.get("difficulty") or "medium",
+        "tags": ["算法题", "题解"],
+        "diagram": entry.get("diagram"),
+        "concepts": [],
+        "formulas": [],
+        "selfCheck": entry.get("selfCheck") or {"claims": [], "uncertain": []},
+        "problemAnalysisId": pid,
+        "derivedFrom": "problem-analysis.json",
+    }
+    return card
+
+
+def merge_curated_analysis(j_path, doc, payload, stamp, logger):
+    """Curated (human-written) problems: attach the 题解 to jobs.json's problem entries.
+
+    The human entries already carry prompt/keyPoints/pitfalls/referenceSolution; the agent
+    adds the missing code-level layers. Written additively into the SAME entry (`analysis`
+    key) so nothing a human wrote is replaced, and so the UI can render one merged object.
+
+    NOTE the jobs document is passed IN instead of being read from disk here: merge_jobs()
+    runs first and may have appended new postings, so re-reading the file would silently
+    drop those changes when the merged document is written back. (That is the bug this
+    signature exists to prevent.)
+    """
+    analyses = {e.get("id"): e for e in (payload.get("problemAnalyses") or [])
+                if isinstance(e, dict) and e.get("id")}
+    if not analyses:
+        return None, {"attached": []}
+    doc = doc if isinstance(doc, dict) else {}
+    attached = []
+    changed = False
+    for key in ("handWrittenCoding", "writtenExam"):
+        for prob in doc.get(key) or []:
+            if not isinstance(prob, dict):
+                continue
+            a = analyses.get(str(prob.get("id")))
+            if not a:
+                continue
+            prob["analysis"] = a
+            attached.append(str(prob.get("id")))
+            changed = True
+    if not changed:
+        return None, {"attached": []}
+    doc["problemsAnalyzedAt"] = stamp
+    return doc, {"attached": attached}
+
+
 def collect_formulas(payload):
     """Formulas live inside each enrichment entry (daily-agent.md section 5.2)."""
     out = []
@@ -279,6 +376,41 @@ def merge_jobs(data_dir, payload, stamp, logger):
                        "dateIds": date_ids}
 
 
+def merge_channel_health(old_list, new_list):
+    """Merge the agent's channel observations into the collector's.
+
+    The two producers are not supersets of each other: ``collect.py`` owns the
+    *streak* (consecutive failed runs) and the ``escalate`` flag, while the
+    agent owns the quoted evidence and the suggested action.  Replacing the
+    collector's entry with the agent's (the generic dedupe rule) silently reset
+    streak 4 -> 2 and dropped every ``escalate=true`` entry, which erased the
+    "needs human review" list on the pipeline page -- a violation of
+    daily-agent.md rule 5 ("do not shrink existing data").  So: prose from the
+    agent when it has any, counters as max/OR of both.
+    """
+    old_list = [x for x in (old_list or []) if isinstance(x, dict)]
+    new_list = [x for x in (new_list or []) if isinstance(x, dict)]
+    out = [dict(x) for x in old_list]
+    pos = {x.get("id"): i for i, x in enumerate(out) if x.get("id")}
+    for item in new_list:
+        cid = item.get("id")
+        if cid in pos:
+            base = out[pos[cid]]
+            merged = dict(base)
+            merged.update(item)
+            if base.get("streak") is not None or item.get("streak") is not None:
+                merged["streak"] = max(int(base.get("streak") or 0),
+                                       int(item.get("streak") or 0))
+            if "escalate" in base or "escalate" in item:
+                merged["escalate"] = bool(base.get("escalate")) or bool(item.get("escalate"))
+            merged["lastError"] = item.get("lastError") or base.get("lastError")
+            out[pos[cid]] = merged
+        else:
+            pos[cid] = len(out)
+            out.append(dict(item))
+    return out
+
+
 def merge_proposals(data_dir, payload, date, stamp):
     agent = payload.get("proposals") or {}
     path_day = os.path.join(data_dir, "proposals", "%s.json" % date)
@@ -292,7 +424,7 @@ def merge_proposals(data_dir, payload, date, stamp):
         merged["generatedAt"] = old["generatedAt"]
     merged["agentGeneratedAt"] = stamp
 
-    merged["channelHealth"] = dedupe_dicts(old.get("channelHealth"), agent.get("channelHealth"), "id")
+    merged["channelHealth"] = merge_channel_health(old.get("channelHealth"), agent.get("channelHealth"))
     # taxonomy/keyword proposals have no stable id -> dedupe on full content.
     merged["taxonomyProposals"] = dedupe_dicts(old.get("taxonomyProposals"), agent.get("taxonomyProposals"), None)
     merged["keywordProposals"] = dedupe_dicts(old.get("keywordProposals"), agent.get("keywordProposals"), None)
@@ -340,6 +472,7 @@ def merge_log(data_dir, payload, date, stamp, counts, started):
     # the real contribution instead of zeroes.
     payload_enrich_ids = [e.get("id") for e in (payload.get("enrichment") or [])]
     payload_formula_ids = [f.get("id") for f in collect_formulas(payload)]
+    payload_problem_ids = [e.get("id") for e in (payload.get("problemAnalyses") or [])]
     doc = {
         "date": date,
         "startedAt": started,
@@ -347,6 +480,7 @@ def merge_log(data_dir, payload, date, stamp, counts, started):
         "status": log.get("status") or "ok",
         "enrichedCount": len(payload_enrich_ids),
         "formulaCount": len(payload_formula_ids),
+        "problemAnalysisCount": len(payload_problem_ids),
         "newJobs": len(counts["jobs"].get("dateIds") or []),
         "notes": log.get("notes") or "",
         "errors": list(log.get("errors") or []),
@@ -355,9 +489,14 @@ def merge_log(data_dir, payload, date, stamp, counts, started):
         "details": {
             "enrichedIds": payload_enrich_ids,
             "formulaIds": payload_formula_ids,
+            "problemAnalysisIds": payload_problem_ids,
             "jobIds": counts["jobs"].get("dateIds") or [],
             "enrichmentInsertedThisRun": counts["enrichment"]["added"],
             "enrichmentReplacedThisRun": counts["enrichment"]["replaced"],
+            "derivedCardsFromProblems": counts["enrichment"].get("derivedFromProblems", 0),
+            "problemAnalysesAddedThisRun": (counts.get("problems") or {}).get("added") or [],
+            "problemAnalysesReplacedThisRun": (counts.get("problems") or {}).get("replaced") or [],
+            "curatedProblemsAttached": (counts.get("curatedProblems") or {}).get("attached") or [],
             "formulasAppendedThisRun": counts["formulas"]["appended"],
             "formulasUpdatedThisRun": counts["formulas"]["updated"],
             "formulasAlreadyPresent": counts["formulas"]["skipped"],
@@ -414,9 +553,31 @@ def main(argv=None):
     f_path, f_doc, f_info = merge_formulas(data_dir, payload, stamp, log)
     j_path, j_doc, j_info = merge_jobs(data_dir, payload, stamp, log)
     p_path, p_doc = merge_proposals(data_dir, payload, date, stamp)
+    # 题库定位题解（payload.problemAnalyses）——独立文件，见 merge_problem_analysis()。
+    pa_path, pa_doc, pa_info = merge_problem_analysis(data_dir, payload, stamp, log)
+    # 人工整理题目的题解直接挂进 jobs.json 的同一条目（只加 `analysis` 键，不覆盖人工字段）。
+    # It MUTATES j_doc in place and returns it; the write below persists both changes at once.
+    _, cj_info = merge_curated_analysis(j_path, j_doc, payload, stamp, log)
+    # 采集题目同时投影成一张轻量卡片，使卡片库也能看到「已深读」与同一张图解。
+    derived = [c for c in (problem_analysis_as_enrichment(e)
+                           for e in (payload.get("problemAnalyses") or [])) if c]
+    if derived:
+        by_id = dict(e_doc.get("byId") or {})
+        derived_added = 0
+        for card in derived:
+            old_card = by_id.get(card["id"])
+            if isinstance(old_card, dict) and old_card.get("concepts"):
+                continue          # never downgrade a richer existing card
+            if old_card is None:
+                derived_added += 1
+            by_id[card["id"]] = card
+        e_doc["byId"] = by_id
+        e_doc["count"] = len(by_id)
+        e_info["derivedFromProblems"] = derived_added
     l_path, l_doc = merge_log(
         data_dir, payload, date, stamp,
         {"enrichment": e_info, "formulas": f_info, "jobs": j_info,
+         "problems": pa_info, "curatedProblems": cj_info,
          "unknownIds": unknown_ids}, started,
     )
     latest_path = os.path.join(data_dir, "proposals", "latest.json")
@@ -427,6 +588,9 @@ def main(argv=None):
     log("formulas.json   : +%d appended, %d updated, %d unchanged, total %d"
         % (len(f_info["appended"]), len(f_info["updated"]), len(f_info["skipped"]), f_info["total"]))
     log("jobs.json       : +%d appended, %d already present, total %d" % (len(j_info["added"]), len(j_info["skipped"]), j_info["total"]))
+    log("题解            : +%d new, %d updated, total %d（人工题挂载 %d）"
+        % (len(pa_info["added"]), len(pa_info["replaced"]), pa_info["total"],
+           len(cj_info.get("attached") or [])))
     log("proposals       : %s (+ latest.json mirror)" % p_path)
     log("agent log       : %s" % l_path)
     log("payload record  : enriched=%d formulas=%d jobs=%d -> %s"
@@ -443,6 +607,7 @@ def main(argv=None):
     write_json(j_path, j_doc, style="pretty2")   # wedata_common.write_json style
     write_json(p_path, p_doc, style="compact")   # collect.py style
     write_json(latest_path, p_doc, style="compact")
+    write_json(pa_path, pa_doc, style="pretty2")  # 题库定位题解：新文件
     write_json(l_path, l_doc, style="pretty2")   # new file
 
     log("\nverifying every JSON under %s ..." % data_dir)

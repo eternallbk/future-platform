@@ -6,7 +6,7 @@
  * ========================================================================= */
 'use strict';
 
-/* ===== core.part.js — 1598 lines ===== */
+/* ===== core.part.js — 1673 lines ===== */
 
 /* ============================================================================
  * Future · 求职学习工作台 — app.js (part 1/2)
@@ -1006,6 +1006,8 @@ const state = {
   enrichment: {},       // layer-2 agent deep-read output, keyed by item id
   redundancy: null,     // optional redundancy audit (analyze_redundancy.py)
   interview: null,      // optional interview extract (build_interview_index.py)
+  problemBank: null,    // optional collected problem list (build_problem_bank.py)
+  problemAnalysis: null, // optional daily deep-read analyses (problem-analysis.json)
   enrichedCount: 0,
   papers: [],
   milestones: [],
@@ -1123,7 +1125,7 @@ const Store = {
     const stamp = Date.now();
     const q = (p) => `${p}?t=${stamp}`;
 
-    const [manifest, digest, jobsKb, learningKb, sourceRegistry, channels, runs, index, proposals, enrichment, deepPlan, redundancy, interview] = await Promise.all([
+    const [manifest, digest, jobsKb, learningKb, sourceRegistry, channels, runs, index, proposals, enrichment, deepPlan, redundancy, interview, problemBank, problemAnalysis] = await Promise.all([
       this.json(q('manifest.json')),
       this.json(q('digest/today.json')),
       this.json(q('jobs.json')),
@@ -1140,6 +1142,13 @@ const Store = {
       this.json(q('redundancy-report.json'), null),
       // Optional: written by build_interview_index.py (面经速览 panel).
       this.json(q('interview.json'), null),
+      // Optional: written by build_problem_bank.py (自动采集的算法题库题).
+      // Absent on a fresh clone, so it must degrade to null instead of adding a
+      // load error, and ProblemsView must still render from jobs.json alone.
+      this.json(q('problem-bank.json'), null),
+      // Optional: written by the daily deep-read layer. May be missing or empty
+      // for a long time - an absent file just means "nothing analysed yet".
+      this.json(q('problem-analysis.json'), null),
     ]);
 
     state.manifest = manifest;
@@ -1153,6 +1162,8 @@ const Store = {
     state.deepReadPlan = deepPlan || null;
     state.redundancy = redundancy || null;
     state.interview = interview || null;
+    state.problemBank = problemBank || null;
+    state.problemAnalysis = problemAnalysis || null;
 
     /* Items: prefer the flat search index; otherwise reconstruct from runs. */
     let items = [];
@@ -1234,14 +1245,48 @@ const Store = {
 
     if (jobsKb) {
       state.skills = (jobsKb.skillMatrix || []).map(normalizeSkill);
-      state.problems = [
-        ...(jobsKb.handWrittenCoding || []).map((p) => normalizeProblem(p, 'hand')),
-        ...(jobsKb.writtenExam || []).map((p) => normalizeProblem(p, 'exam')),
-      ];
       state.interviewProcess = jobsKb.interviewProcess || [];
       state.salaryBands = jobsKb.salaryBands || [];
       state.jobSources = jobsKb.sources || [];
     }
+
+    /* Problems — three sources, in priority order:
+         1. jobs.json handWrittenCoding / writtenExam: 人工整理, always shown;
+         2. problem-bank.json problems[]: 自动采集的算法题库题 (kind 'algo',
+            or 'exam' when the collector labelled it as a written-exam item).
+       problem-bank.curated[] is deliberately NOT appended: those entries are
+       already emitted by jobs.json (build_problem_bank.py copies them from
+       research/jobs_kb.json), so appending them would render each curated
+       problem twice.
+       The analysis layer is keyed by raw id, so BOTH of the above get their
+       deep-read attached by the same lookup. */
+    const problemList = [
+      ...(((jobsKb || {}).handWrittenCoding) || []).map((p) => normalizeProblem(p, 'hand')),
+      ...(((jobsKb || {}).writtenExam) || []).map((p) => normalizeProblem(p, 'exam')),
+    ];
+    const seenProblemIds = new Set(problemList.map((p) => p.rawId));
+    for (const raw of ((problemBank || {}).problems) || []) {
+      const kind = raw && raw.kind === 'exam' ? 'exam' : 'algo';
+      const p = normalizeProblem(raw, kind);
+      if (seenProblemIds.has(p.rawId)) continue;
+      problemList.push(p);
+      seenProblemIds.add(p.rawId);
+    }
+
+    const analysisById = (problemAnalysis && problemAnalysis.byId) || {};
+    for (const p of problemList) {
+      const a = analysisById[p.rawId] || analysisById[p.id] || null;
+      if (!a) continue;
+      p.analysis = a;
+      p.status = 'analyzed';
+      // The analysis repeats a few facts the flat problem fields already carry.
+      // Merge them in rather than overwrite, so hand-curated content always wins
+      // and a repeat analysis cannot duplicate a bullet.
+      p.keyPoints = dedupeStrings([...p.keyPoints, ...arr(a.keyPoints)]);
+      p.pitfalls = dedupeStrings([...p.pitfalls, ...arr(a.pitfalls)]);
+      p.followUps = dedupeStrings([...p.followUps, ...arr(a.followUps)]);
+    }
+    state.problems = problemList;
 
     if (learningKb) {
       state.tracks = (learningKb.tracks || []).map(normalizeTrack);
@@ -1407,23 +1452,53 @@ function normalizeSkill(s) {
   };
 }
 
+/* Problem-bank kinds. 'algo' = an automatically collected algorithm-bank
+   question; 'hand'/'exam' = the hand-curated interview problems. */
+const PROBLEM_TYPES = { hand: '手撕代码', exam: '场景题', algo: '算法题库' };
+
+/** Trim → drop empties → drop repeats, preserving order. Used to fold a
+ *  problem analysis into the flat hand-curated fields without duplicating a
+ *  bullet that both layers happen to mention. */
+function dedupeStrings(list) {
+  const out = [];
+  const seen = new Set();
+  for (const v of arr(list)) {
+    const s = String(v == null ? '' : v).trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+}
+
 function normalizeProblem(p, kind) {
   const id = String(pick(p.id, p.title, Math.random().toString(36).slice(2)));
   return {
     id: `${kind}-${id}`,
     rawId: id,
-    kind, // 'hand' | 'exam'
+    kind, // 'hand' | 'exam' | 'algo'
     title: String(pick(p.title, p.prompt, '—')),
-    type: p.type || (kind === 'hand' ? '手撕代码' : '场景题'),
-    difficulty: p.difficulty || 'medium',
+    type: p.type || PROBLEM_TYPES[kind] || '场景题',
+    // `null` means "unknown"; the UI renders it as 难度未知 via a muted badge
+    // instead of inventing a level. All 47 hand-curated problems already carry a
+    // real difficulty, so this only ever fires for collected bank rows.
+    difficulty: p.difficulty || null,
     frequency: clamp(Number(pick(p.frequency, 3)) || 3, 1, 5),
     topics: arr(pick(p.topics, p.tags)).map(String),
     prompt: p.prompt || p.title || '',
+    statement: p.statement || '',
     keyPoints: arr(p.keyPoints).map(String),
     pitfalls: arr(p.pitfalls).map(String),
+    followUps: arr(p.followUps).map(String),
     solution: p.referenceSolution || p.solution || '',
     answerOutline: arr(p.answerOutline).map(String),
     sources: arr(p.sources),
+    sourceUrl: safeUrl(pick(p.sourceUrl, p.url)) || '',
+    origin: p.origin || '',
+    needsAnalysis: p.needsAnalysis !== false,
+    // Filled by the merge step in boot() from problem-analysis.json.
+    analysis: null,
+    status: 'pending', // 'pending' | 'analyzed'
   };
 }
 
@@ -3043,7 +3118,7 @@ const KnowledgeView = {
   after() { wireSortSelect(); wireItemKeyboard(); },
 };
 
-/* ===== views2.part.js — 2010 lines ===== */
+/* ===== views2.part.js — 2172 lines ===== */
 
 /* ============================================================================
  * Future · 求职学习工作台 — views2.js (part 3)
@@ -3552,6 +3627,7 @@ const ProblemsView = {
         <div class="segmented" role="group" aria-label="题型">
           <button data-route="#/problems?kind=hand" class="${kind === 'hand' ? 'is-on' : ''}">手撕代码 ${all.filter((p) => p.kind === 'hand').length}</button>
           <button data-route="#/problems?kind=exam" class="${kind === 'exam' ? 'is-on' : ''}">笔试场景 ${all.filter((p) => p.kind === 'exam').length}</button>
+          <button data-route="#/problems?kind=algo" class="${kind === 'algo' ? 'is-on' : ''}">算法题库 ${all.filter((p) => p.kind === 'algo').length}</button>
         </div>
       </div>
     </div>
@@ -3603,12 +3679,16 @@ const ProblemsView = {
 
 function problemCard(p, i = 0) {
   const st = statusOf(p.id);
+  const pending = p.kind === 'algo' && p.status === 'pending';
+  const src = (p.sources && p.sources[0]) || (p.sourceUrl ? { url: p.sourceUrl, title: p.sourceName } : null);
+  const srcLabel = p.kind === 'algo' ? '题目来源' : '面经来源';
   return `
   <article class="card card-pad card-hover" data-cat="coding" style="animation:card-in var(--t-slow) var(--ease-out) both;animation-delay:${i * 18}ms"
     data-freq="${p.frequency}" data-diff="${attr(p.difficulty)}" data-topic="${attr(p.topics[0] || '')}">
     <div class="row" style="align-items:flex-start;gap:var(--sp-2)">
       <span class="kcard-cat">${esc(p.type)}</span>
-      <span class="badge ${p.difficulty === 'hard' ? 'badge-err' : p.difficulty === 'medium' ? 'badge-warn' : 'badge-ok'}">${esc(DIFF_ZH[p.difficulty] || p.difficulty)}</span>
+      <span class="badge ${diffBadge(p.difficulty)}">${esc(diffLabel(p.difficulty))}</span>
+      ${pending ? '<span class="badge badge-mute">待解析</span>' : ''}
       <div class="kcard-actions" style="margin-left:auto">
         <span class="relevance" data-tip="出现频率">${'★'.repeat(p.frequency)}${'☆'.repeat(5 - p.frequency)}</span>
         <button class="icon-btn${st === 'done' ? ' is-done' : ''}" data-act="status" data-id="${attr(p.id)}" data-status="done"
@@ -3621,21 +3701,171 @@ function problemCard(p, i = 0) {
       ${p.topics.slice(0, 5).map((t) => `<span class="tag">${esc(t)}</span>`).join('')}
     </div>
     <div class="kcard-foot">
-      <button class="btn btn-sm btn-ghost" data-route="#/problems?id=${encodeURIComponent(p.id)}">${icon('i-play')} 详解与代码</button>
-      ${p.sources && p.sources[0] ? `<a class="kcard-src" href="${attr(safeUrl(p.sources[0].url))}" target="_blank" rel="noopener noreferrer" style="margin-left:auto">
-        ${icon('i-external', '', 11)} 面经来源</a>` : ''}
+      <button class="btn btn-sm btn-ghost" data-route="#/problems?id=${encodeURIComponent(p.id)}">${icon('i-play')} ${p.status === 'analyzed' ? '详解与代码' : '题目与来源'}</button>
+      ${src ? `<a class="kcard-src" href="${attr(safeUrl(src.url))}" target="_blank" rel="noopener noreferrer" style="margin-left:auto">
+        ${icon('i-external', '', 11)} ${srcLabel}</a>` : ''}
     </div>
   </article>`;
 }
 
+const DIFF_UNKNOWN = '难度未知';
+
+/** Difficulty presentation. `null` means "the collector did not say", so it is
+ *  labelled 难度未知 rather than faked into 'medium'. */
+function diffLabel(d) { return DIFF_ZH[d] || d || DIFF_UNKNOWN; }
+function diffBadge(d) { return d === 'hard' ? 'badge-err' : d === 'medium' ? 'badge-warn' : d === 'easy' ? 'badge-ok' : 'badge-mute'; }
+
+/** Plain text for a value that the analysis layer may shape as a string, an
+ *  object ({note|text|detail|step|title}) or a primitive. Never throws, so an
+ *  unexpected agent payload degrades to one readable line instead of an
+ *  uncaught exception inside a template literal. */
+function noteText(v) {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (typeof v === 'object') {
+    if (v.note !== undefined) return noteText(v.note);
+    for (const k of ['text', 'detail', 'desc', 'step', 'title', 'label', 'name', 'case', 'value', 'why']) {
+      if (v[k] !== undefined && v[k] !== null && v[k] !== '') return noteText(v[k]);
+    }
+    return safeStringify(v);
+  }
+  return String(v);
+}
+
+function safeStringify(v) {
+  try { return JSON.stringify(v); } catch { return String(v); }
+}
+
+/** `arr()`-style coercion + placeholder filter, without requiring the array. */
+function notes(v) {
+  return arr(v).map(noteText).map((s) => s.trim()).filter(Boolean);
+}
+
+/** Accepts either url strings or {title,url} objects (the analysis `sources`
+ *  shape) and renders them as buttons, skipping entries without a url. */
+function sourceLinks(list, limit = 8) {
+  const out = [];
+  for (const s of arr(list)) {
+    if (!s) continue;
+    const url = safeUrl(typeof s === 'string' ? s : (s.url || s.href || s.link));
+    if (!url) continue;
+    const title = typeof s === 'string' ? hostOf(url) : (s.title || s.name || hostOf(url));
+    out.push(`<a class="btn btn-sm btn-ghost" style="justify-content:flex-start;text-align:left" href="${attr(url)}" target="_blank" rel="noopener noreferrer">
+      ${icon('i-external')} <span class="truncate">${esc(title)}</span></a>`);
+    if (out.length >= limit) break;
+  }
+  return out.join('');
+}
+
+/** 解题思路 — elements may be {step, detail} objects or plain strings. */
+function approachHtml(list) {
+  const items = arr(list).map((s) => {
+    if (s && typeof s === 'object' && !Array.isArray(s)) {
+      const step = noteText(s.step || s.title || s.name || '');
+      const detail = noteText(s.detail || s.text || s.desc || '');
+      if (!step && !detail) return '';
+      return `<li style="margin-bottom:6px">${step ? `<b>${esc(step)}</b>` : ''}${step && detail ? '：' : ''}${esc(detail)}</li>`;
+    }
+    const t = noteText(s);
+    return t ? `<li style="margin-bottom:6px">${esc(t)}</li>` : '';
+  }).filter(Boolean);
+  if (!items.length) return '';
+  return `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-bulb')} 解题思路</div></div>
+    <div class="panel-body"><ol class="prose" style="list-style:decimal;padding-left:var(--sp-5)">${items.join('')}</ol></div></div>`;
+}
+
+function complexityHtml(c) {
+  if (!c || typeof c !== 'object') return '';
+  const rows = [['时间', c.time], ['空间', c.space]]
+    .filter(([, v]) => v)
+    .map(([k, v]) => `<div class="row" style="gap:var(--sp-2);align-items:baseline">
+      <span class="text-3" style="min-width:2.5em">${k}</span><code>${esc(noteText(v))}</code></div>`);
+  const why = c.why ? `<div class="text-3" style="margin-top:6px">${esc(noteText(c.why))}</div>` : '';
+  if (!rows.length && !why) return '';
+  return `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-activity')} 复杂度</div></div>
+    <div class="panel-body"><div class="col" style="gap:6px">${rows.join('')}</div>${why}</div></div>`;
+}
+
+/** 参考实现 — the daily layer's `analysis.code`, highlighted with the same
+ *  helper (and copy affordance) the hand-curated `referenceSolution` uses. */
+function analysisCodeHtml(code) {
+  if (!code) return '';
+  const src = typeof code === 'string' ? code : (code.source || code.code || '');
+  const text = typeof src === 'string' ? src : (src ? safeStringify(src) : '');
+  if (!text.trim()) return '';
+  const lang = String((typeof code === 'object' && code && code.language) || '').toLowerCase();
+  const walkthrough = typeof code === 'object' && code ? notes(code.walkthrough) : [];
+  const head = (typeof code === 'object' && code && code.language)
+    ? ` <span class="text-3" style="font-weight:400">${esc(code.language)}</span>` : '';
+  return `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-terminal')} 参考实现${head}</div>
+      <button class="icon-btn copy" style="margin-left:auto" data-act="copy" data-copy="${attr(text)}" data-copy-msg="代码已复制"
+        aria-label="复制代码">${icon('i-copy')}</button></div>
+    <div class="panel-body flush"><pre class="code" style="padding:var(--sp-4)">${highlight(text, lang)}</pre></div>
+    ${walkthrough.length ? `<div class="panel-body"><div class="eyebrow" style="margin-bottom:6px">代码要点</div>
+      <ul class="kcard-points">${walkthrough.map((w) => `<li><span>${esc(w)}</span></li>`).join('')}</ul></div>` : ''}</div>`;
+}
+
+function bulletPanel(iconName, title, list, cat) {
+  const items = notes(list);
+  if (!items.length) return '';
+  return `<div class="panel"><div class="panel-head"><div class="panel-title">${icon(iconName)} ${esc(title)}</div></div>
+    <div class="panel-body"><ul class="kcard-points"${cat ? ` data-cat="${cat}"` : ''}>${items.map((k) => `<li><span>${esc(k)}</span></li>`).join('')}</ul></div></div>`;
+}
+
+/** The "not analysed yet" notice. Its job is to explain the wait and to hand
+ *  the reader the raw source, because that is all the layer has so far.
+ *  Scoped to the collected bank rows: a hand-curated problem may already carry
+ *  a reference solution / answer outline, and telling the reader it "has no deep
+ *  analysis" there would just be noise. */
+function pendingNotice(p) {
+  if (p.kind !== 'algo' || p.status !== 'pending') return '';
+  const links = sourceLinks([...(p.sources || []), p.sourceUrl ? { url: p.sourceUrl, title: p.sourceName || hostOf(p.sourceUrl) } : null]);
+  return `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-info')} 深度解析待补齐</div>
+      <span class="badge badge-mute">待解析</span></div>
+    <div class="panel-body">
+      <div class="prose">本题已入库，深度解析由每日深读层补齐（次日自动）。届时这里会补上解题思路、复杂度、参考实现逐行讲解、图解、边界与易错、面试追问与自测题。</div>
+      ${links ? `<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:var(--sp-3)">${links}</div>` : ''}
+    </div></div>`;
+}
+
 function problemDetailHtml(p) {
+  const a = p.analysis || null;
+  const selfCheck = a && a.selfCheck && typeof a.selfCheck === 'object' ? a.selfCheck : null;
+  const uncertain = selfCheck ? notes(selfCheck.uncertain) : [];
+  const diagram = a ? diagramHtml(a.diagram) : '';
+  const statement = p.statement || p.prompt || '';
+  const sourceList = [...(p.sources || []), p.sourceUrl ? { url: p.sourceUrl, title: p.sourceName || hostOf(p.sourceUrl) } : null];
+  const sourceHtml = sourceLinks(sourceList);
+  const deep = a ? [
+    approachHtml(a.approach),
+    complexityHtml(a.complexity),
+    analysisCodeHtml(a.code),
+    diagram ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-layers')} 图解</div></div>
+      <div class="panel-body">${diagram}</div></div>` : '',
+    a.edgeCases && notes(a.edgeCases).length ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-alert')} 边界情况</div></div>
+      <div class="panel-body"><ul class="kcard-points" data-cat="coding">${notes(a.edgeCases).map((k) => `<li><span>${esc(k)}</span></li>`).join('')}</ul></div></div>` : '',
+    bulletPanel('i-compass', '面试追问', a.followUps),
+    bulletPanel('i-filter', '变形题', a.variations),
+    notes(a.selfTest).length ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-check')} 自测</div></div>
+      <div class="panel-body"><ol class="prose" style="list-style:decimal;padding-left:var(--sp-5)">
+        ${notes(a.selfTest).map((k) => `<li style="margin-bottom:6px">${esc(k)}</li>`).join('')}</ol></div></div>` : '',
+    sourceLinks(a.sources) ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-link')} 解析参考来源</div></div>
+      <div class="panel-body"><div class="col" style="gap:6px">${sourceLinks(a.sources)}</div></div></div>` : '',
+    uncertain.length ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-info')} 未确认点</div></div>
+      <div class="panel-body"><ul class="kcard-points"><li><span>自动解析标注：以下结论尚未交叉验证 —— ${esc(uncertain.join('；'))}</span></li></ul></div></div>` : '',
+  ].join('') : '';
+
   return `
   <div class="section-head">
     <div style="min-width:0">
-      <div class="row" style="gap:6px;margin-bottom:6px"><span class="kcard-cat" data-cat="coding">${esc(p.type)}</span>
-        <span class="badge ${p.difficulty === 'hard' ? 'badge-err' : p.difficulty === 'medium' ? 'badge-warn' : 'badge-ok'}">${esc(DIFF_ZH[p.difficulty] || p.difficulty)}</span>
-        <span class="relevance">频率 ${'★'.repeat(p.frequency)}</span></div>
+      <div class="row" style="gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="kcard-cat" data-cat="coding">${esc(p.type)}</span>
+        <span class="badge ${diffBadge(p.difficulty)}">${esc(diffLabel(p.difficulty))}</span>
+        ${p.kind === 'algo' && p.status === 'pending' ? '<span class="badge badge-mute">待解析</span>' : ''}
+        <span class="relevance">频率 ${'★'.repeat(p.frequency)}</span>
+        ${a && a.analyzedAt ? `<span class="text-3" style="font-size:var(--fs-3xs)">解析于 ${esc(String(a.analyzedAt).slice(0, 10))}</span>` : ''}</div>
       <h2 class="section-title">${esc(p.title)}</h2>
+      ${a && a.tldr ? `<p class="section-desc">${esc(noteText(a.tldr))}</p>` : ''}
     </div>
     <div class="section-actions">
       <button class="btn btn-sm" data-route="#/problems?kind=${p.kind}">${icon('i-x')} 返回列表</button>
@@ -3644,10 +3874,17 @@ function problemDetailHtml(p) {
     </div>
   </div>
 
+  ${p.status === 'pending' ? pendingNotice(p) : ''}
+
   <div class="grid grid-dash">
     <div class="col" style="gap:var(--sp-4)">
-      ${p.prompt ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-list')} 题目描述</div></div>
-        <div class="panel-body"><div class="prose">${md(p.prompt)}</div></div></div>` : ''}
+      ${statement ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-list')} 题目描述</div></div>
+        <div class="panel-body"><div class="prose">${md(statement)}</div></div></div>` : ''}
+
+      ${a && a.restated ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-info')} 题意澄清</div></div>
+        <div class="panel-body"><div class="prose">${esc(noteText(a.restated))}</div></div></div>` : ''}
+
+      ${deep}
 
       ${p.solution ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-terminal')} 参考实现</div>
         <button class="icon-btn copy" style="margin-left:auto" data-act="copy" data-copy="${attr(p.solution)}" data-copy-msg="代码已复制"
@@ -3656,7 +3893,7 @@ function problemDetailHtml(p) {
 
       ${p.answerOutline.length ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-bulb')} 答题框架</div></div>
         <div class="panel-body"><ol class="prose" style="list-style:decimal;padding-left:var(--sp-5)">
-          ${p.answerOutline.map((a) => `<li style="margin-bottom:6px">${esc(a)}</li>`).join('')}</ol></div></div>` : ''}
+          ${p.answerOutline.map((x) => `<li style="margin-bottom:6px">${esc(x)}</li>`).join('')}</ol></div></div>` : ''}
     </div>
 
     <div class="col" style="gap:var(--sp-4)">
@@ -3664,13 +3901,13 @@ function problemDetailHtml(p) {
         <div class="panel-body"><ul class="kcard-points">${p.keyPoints.map((k) => `<li><span>${esc(k)}</span></li>`).join('')}</ul></div></div>` : ''}
       ${p.pitfalls.length ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-alert')} 常见踩坑</div></div>
         <div class="panel-body"><ul class="kcard-points" data-cat="coding">${p.pitfalls.map((k) => `<li><span>${esc(k)}</span></li>`).join('')}</ul></div></div>` : ''}
+      ${(p.followUps || []).length ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-compass')} 面试追问</div></div>
+        <div class="panel-body"><ul class="kcard-points">${p.followUps.map((k) => `<li><span>${esc(k)}</span></li>`).join('')}</ul></div></div>` : ''}
       <div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-filter')} 主题</div></div>
         <div class="panel-body"><div class="row" style="flex-wrap:wrap;gap:4px">
-          ${p.topics.map((t) => `<button class="chip" data-route="#/problems?kind=${p.kind}">${esc(t)}</button>`).join('')}</div></div></div>
-      ${p.sources.length ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-link')} 来源</div></div>
-        <div class="panel-body"><div class="col" style="gap:6px">
-          ${p.sources.map((s) => `<a class="btn btn-sm btn-ghost" style="justify-content:flex-start" href="${attr(safeUrl(s.url))}" target="_blank" rel="noopener noreferrer">
-            ${icon('i-external')} <span class="truncate">${esc(s.title || hostOf(s.url))}</span></a>`).join('')}</div></div></div>` : ''}
+          ${p.topics.length ? p.topics.map((t) => `<button class="chip" data-route="#/problems?kind=${p.kind}">${esc(t)}</button>`).join('') : '<span class="text-3">—</span>'}</div></div></div>
+      ${sourceHtml ? `<div class="panel"><div class="panel-head"><div class="panel-title">${icon('i-link')} 来源</div></div>
+        <div class="panel-body"><div class="col" style="gap:6px">${sourceHtml}</div></div></div>` : ''}
     </div>
   </div>`;
 }

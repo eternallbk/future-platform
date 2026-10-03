@@ -128,6 +128,8 @@ try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false) } 
 $Collector = Join-Path $ScriptDir 'collect.py'
 $SelfCheck = Join-Path $ScriptDir 'selfcheck.py'
 $Planner   = Join-Path $ScriptDir 'plan_deep_read.py'
+$ProblemBank = Join-Path $ScriptDir 'build_problem_bank.py'
+$ProblemCheck = Join-Path $ScriptDir 'validate_problem_analysis.py'
 if (-not (Test-Path $Collector)) {
     Write-Log "Collector not found: $Collector" 'ERROR'
     exit 1
@@ -302,6 +304,26 @@ if (Test-Path $SelfCheck) {
 }
 
 # ---------------------------------------------------------------------------
+# 5b-0. Problem bank - which collected items are CONCRETE questions?
+#
+# The reader's requirement: turn collected hand-written/algorithm questions into
+# analysed entries in the 题库定位 (question-bank) view instead of bare links.
+# This step decides that set deterministically (channel + URL + marker rules in
+# collect.py's problem_meta), so the planner below can hand the deep-read layer a
+# problem-solution work list instead of the agent picking items by vibes. It must
+# run BEFORE the planner, which reads web/data/problem-bank.json.
+# ---------------------------------------------------------------------------
+if (Test-Path $ProblemBank) {
+    Write-Log 'problem bank: deciding which collected items are real questions' 'STEP'
+    $pbExit = Invoke-Logged $PythonExe @($ProblemBank)
+    if ($pbExit -ne 0) {
+        Write-Log "build_problem_bank.py returned $pbExit; the problem queue will be empty this run" 'WARN'
+    }
+} else {
+    Write-Log 'build_problem_bank.py not found, skipping the problem bank' 'WARN'
+}
+
+# ---------------------------------------------------------------------------
 # 5b. Deep-read plan - decide WHAT deserves a deep analysis, and how many.
 #
 # Separating "collect" from "decide what to analyse" is deliberate: a daily pass
@@ -447,6 +469,39 @@ if (-not $SkipAgent) {
     }
 } else {
     Write-Log 'layer 2: skipped by -SkipAgent' 'WARN'
+}
+
+# ---------------------------------------------------------------------------
+# 6a. Problem-solution check - verify the merged question-bank analyses and
+#     report coverage.
+#
+#     The agent validates its own batches before merging
+#     (validate_problem_analysis.py); this runs against the MERGED file, so a
+#     partial merge, a schema drift or a hand-edited file cannot reach the
+#     published site unnoticed. Non-fatal by design: the deterministic data layer
+#     is already written and the card library does not depend on the solutions.
+# ---------------------------------------------------------------------------
+$ProblemAnalysisPath = Join-Path $DataDir 'problem-analysis.json'
+if ((Test-Path $ProblemCheck) -and (Test-Path $ProblemAnalysisPath)) {
+    Write-Log 'problem bank: verifying merged problem analyses' 'STEP'
+    $pcExit = Invoke-Logged $PythonExe @($ProblemCheck, '--merged')
+    if ($pcExit -ne 0) {
+        Write-Log 'problem analysis validation FAILED (fix out-prob-*.json, then re-run the merge)' 'WARN'
+    }
+    # Refresh the bank AFTER the analyses landed.
+    #
+    # MEASURED: the bank is built at 5b-0 (before the planner, which needs the pending work
+    # list), so the copy that gets published still describes the PRE-run state - it showed
+    # "analyzed 12 / pending 22 / curatedPending 25" while the analysis file already held 54.
+    # The UI derives its badges from problem-analysis.json and is unaffected, but the
+    # published stats were wrong, and a reader comparing the two files would think solutions
+    # had been lost. Re-running it is cheap, offline and idempotent (5b-0 already proved it
+    # is deterministic), and this second pass only carries the coverage numbers forward.
+    if (Test-Path $ProblemBank) {
+        $null = Invoke-Logged $PythonExe @($ProblemBank)
+    }
+} elseif (-not $SkipAgent) {
+    Write-Log 'problem bank: no problem-analysis.json yet (no solutions produced this run)' 'WARN'
 }
 
 # ---------------------------------------------------------------------------

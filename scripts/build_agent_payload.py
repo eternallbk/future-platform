@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import glob
 import json
 import os
 import sys
@@ -139,12 +140,62 @@ def main(argv=None):
         print("build aborted: %d problem(s)" % len(problems))
         return 1
 
+    plan = read_json(os.path.join(data_dir, "deep-read-plan.json"), {}) or {}
+
+    # ---- 题库定位题解批次 (out-prob-*.json) ------------------------------------
+    #
+    # The problem queue is a SEPARATE work list with its own output shape (a 题解, not a
+    # knowledge card), so its batches are read separately. Missing problem output is a
+    # WARNING instead of an error, deliberately: the deep-read layer is optional by
+    # contract (`docs/05`), and a day where the agent ran out of budget must still publish
+    # the deterministic data. The gap is visible in the log's problemsProcessed/queued.
+    prob_batches = sorted(glob.glob(os.path.join(work_dir, "out-prob-*.json")))
+    planned_problems = {str(p.get("id")): p for p in (plan.get("problems") or [])}
+    # The accepted-id set must be the WHOLE bank, not just this run's queue.
+    #
+    # MEASURED BUG: filtering entries against `plan.problems` alone silently dropped 15 of
+    # 22 written 题解, because the plan contains only the still-un-analysed problems - so a
+    # solution written for a curated 手撕题 (or for a collected problem that left the queue
+    # between planning and writing) was reported "不在本轮题库队列里" and thrown away. Work
+    # that has already been produced must never be discarded by a bookkeeping check.
+    bank = read_json(os.path.join(data_dir, "problem-bank.json"), {}) or {}
+    known_problems = set(planned_problems)
+    for p in bank.get("problems") or []:
+        if isinstance(p, dict) and p.get("id"):
+            known_problems.add(str(p["id"]))
+    for key in ("curated", "curatedAnalyzed"):
+        for c in bank.get(key) or []:
+            if isinstance(c, dict) and c.get("id"):
+                known_problems.add(str(c["id"]))
+    problem_analyses, seen_problems = [], set()
+    for path in prob_batches:
+        doc = read_json(path) or {}
+        entries = doc.get("entries")
+        if not isinstance(entries, list):
+            print("WARN %s 的 entries 不是数组" % os.path.basename(path))
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict):
+                print("WARN %s 有非对象 entry" % os.path.basename(path))
+                continue
+            pid = str(entry.get("id") or "")
+            if pid not in known_problems:
+                print("WARN %s/%s 不在题库里（采集题与人工题都不是）" % (os.path.basename(path), pid))
+                continue
+            if pid in seen_problems:
+                print("WARN id 重复出现：%s" % pid)
+                continue
+            seen_problems.add(pid)
+            problem_analyses.append(entry)
+    if planned_problems and not prob_batches:
+        print("WARN 题库队列有 %d 题，但没有 out-prob-*.json（本轮未产出题解）"
+              % len(planned_problems))
+
     jobs_doc = read_json(os.path.join(work_dir, "jobs.json"), []) or []
     jobs = jobs_doc.get("jobs") if isinstance(jobs_doc, dict) else jobs_doc
     proposals = read_json(os.path.join(work_dir, "proposals.json"), {}) or {}
     log = read_json(os.path.join(work_dir, "log.json"), {}) or {}
     skips = read_json(os.path.join(work_dir, "skips.json"), {}) or {}
-    plan = read_json(os.path.join(data_dir, "deep-read-plan.json"), {}) or {}
 
     skip_by_rule = {}
     for s in skips.get("skips", []):
@@ -173,6 +224,11 @@ def main(argv=None):
                     for b in manifest.get("batches", [])],
         "corpusSize": len(known_ids),
         "alreadyEnrichedBeforeThisRun": len(old_by_id),
+        "problemsQueued": len(planned_problems),
+        "problemsProcessed": len(problem_analyses),
+        "problemsFiles": [os.path.basename(p) for p in prob_batches],
+        "problemsNote": "题库定位的题解由 out-prob-*.json 单独产出（题目→思路/复杂度/代码/配图/易错点/追问），"
+                        "与卡片深读互不重复：排入题库队列的条目已从卡片队列中移除。",
         "quotaRule": "完全按 deep-read-plan.json 的清单执行，不自己另挑条目；唯一的人工干预是按证据剔除误分类/占位条目，依据写在 skips.json，可复核、可回滚。",
         "note": "backfill 条目只补 missing 里缺的层，由本脚本深合并进已有 enrichment，绝不重写或删除已有解析。",
     }
@@ -183,6 +239,7 @@ def main(argv=None):
         "generatedBy": "scripts/build_agent_payload.py",
         "selection": selection,
         "enrichment": enrichment,
+        "problemAnalyses": problem_analyses,
         "jobs": jobs or [],
         "proposals": proposals,
         "log": log,
@@ -195,6 +252,7 @@ def main(argv=None):
     print("merged layers (backfill): %s" % json.dumps(stats["merged_layers"], ensure_ascii=False))
     print("jobs      : %d" % len(jobs or []))
     print("proposals : %s" % ("yes" if proposals else "none"))
+    print("题解      : %d/%d 题（题库队列）" % (len(problem_analyses), len(planned_problems)))
     print("problems  : %d" % len(problems))
     return 0
 

@@ -34,9 +34,17 @@ TARGETS = [
     ("web/data/manifest.json", "manifest.json"),
     ("web/data/logs/runs.json", "logs/runs.json"),
     ("web/data/formulas.json", "formulas.json"),
+    ("web/data/problem-bank.json", "problem-bank.json"),
+    ("web/data/problem-analysis.json", "problem-analysis.json"),
 ]
 
 REQUIRED_KEYS = {
+    "problem-bank.json": ["generatedAt", "source", "stats", "problems"],
+    # Optional by design: the file only exists once the first 题解 has been merged by
+    # apply_enrichment.py. A fresh clone (and the day before the deep-read layer produces
+    # anything) must still verify clean, so absence is not a failure - but if it IS there,
+    # its shape is checked like everything else.
+    "problem-analysis.json": ["generatedAt", "source", "count", "byId"],
     "jobs.json": ["jobs", "skillMatrix", "handWrittenCoding", "writtenExam",
                   "interviewProcess", "salaryBands", "confidenceSummary", "meta"],
     "learning.json": ["meta", "tracks", "papers", "repos", "courses", "milestones", "studySystem"],
@@ -53,6 +61,9 @@ REQUIRED_KEYS = {
 
 CANONICAL_DIRECTIONS = ["multimodal", "post-training", "world-model",
                         "generative", "rl", "agent", "infra", "embodied"]
+
+# Files that may legitimately be absent (see REQUIRED_KEYS above for why).
+OPTIONAL_TARGETS = {"problem-analysis.json"}
 REQUIRED_CATEGORY_IDS = ["multimodal", "posttraining", "worldmodel", "generative", "rl",
                          "agent", "foundation", "engineering", "coding", "exam", "job",
                          "paper", "course", "trend"]
@@ -110,6 +121,9 @@ def main():
         path = os.path.join(os.path.dirname(DATA), rel.replace("web/data/", ""))
         path = os.path.join(DATA, name)
         if not os.path.exists(path):
+            if name in OPTIONAL_TARGETS:
+                print("  (optional) %s not present yet - skipped" % rel)
+                continue
             fail("%s does not exist" % rel)
             continue
         size = os.path.getsize(path)
