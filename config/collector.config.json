@@ -30,7 +30,7 @@
   "limits": {
     "perChannel": 12,
     "maxNewPerRun": 60,
-    "perCategoryPerRun": 8,
+    "perCategoryPerRun": 9,
     "dropUnclassified": true
   },
   "scoring": {
@@ -41,7 +41,91 @@
       "P2": 0.7
     },
     "qualityBoost": 8.0,
-    "minRelevance": 45.0
+    "minRelevance": 45.0,
+    "interviewValue": {
+      "enabled": true,
+      "problemMarker": 12.0,
+      "solutionPayload": 6.0,
+      "fundamentalsTopic": 5.0,
+      "coreWork": 10.0,
+      "cap": 20.0,
+      "coreWorksTitle": [
+        "transformer",
+        "self-attention",
+        "multi-head attention",
+        "kv cache",
+        "paged attention",
+        "rope",
+        "rotary position",
+        "lora",
+        "qlora",
+        "peft",
+        "rlhf",
+        "dpo",
+        "grpo",
+        "gspo",
+        "ppo",
+        "reward model",
+        "chain-of-thought",
+        "chain of thought",
+        "rag",
+        "retrieval-augmented",
+        "moe",
+        "mixture of experts",
+        "vit",
+        "vision transformer",
+        "clip",
+        "blip",
+        "llava",
+        "ddpm",
+        "ddim",
+        "stable diffusion",
+        "classifier-free guidance",
+        "flow matching",
+        "vae",
+        "gan",
+        "scaling law",
+        "batchnorm",
+        "batch normalization",
+        "layernorm",
+        "rmsnorm",
+        "adam",
+        "dropout",
+        "softmax",
+        "cross-entropy",
+        "backpropagation",
+        "yolo",
+        "unet",
+        "world model",
+        "dreamer",
+        "vla",
+        "diffusion policy",
+        "kmp",
+        "并查集",
+        "单调栈",
+        "动态规划",
+        "快速排序",
+        "归并排序",
+        "lru",
+        "环形链表",
+        "topk",
+        "手撕",
+        "八股"
+      ],
+      "coreWorksAnywhere": [
+        "attention is all you need",
+        "flash attention",
+        "flashattention",
+        "bert",
+        "gpt-3",
+        "instructgpt",
+        "word2vec",
+        "segment anything",
+        "alphafold",
+        "resnet",
+        "react"
+      ]
+    }
   },
   "dedupe": {
     "simhashBits": 64,
@@ -82,7 +166,9 @@
         "kv-cache",
         "归一化",
         "long-context",
-        "positional encoding"
+        "positional encoding",
+        "training stability",
+        "pretraining objective"
       ],
       "keywordRemove": [
         "theory",
@@ -102,6 +188,26 @@
       "keywords": [
         "goal-conditioned"
       ]
+    },
+    "multimodal": {
+      "keywords": [
+        "vision-language model",
+        "audio-visual reasoning"
+      ]
+    },
+    "posttraining": {
+      "keywords": [
+        "on-policy distillation",
+        "preference distillation",
+        "verifier reward"
+      ]
+    },
+    "worldmodel": {
+      "keywords": [
+        "world model rollout",
+        "embodied navigation",
+        "object permanence"
+      ]
     }
   },
   "retention": {
@@ -109,9 +215,9 @@
     "keepDayFiles": 400
   },
   "categoryIntakeWeight": {
-    "coding": 2.0,
+    "coding": 2.6,
     "job": 1.5,
-    "exam": 1.8,
+    "exam": 2.4,
     "multimodal": 1.0,
     "posttraining": 1.0,
     "worldmodel": 1.0,

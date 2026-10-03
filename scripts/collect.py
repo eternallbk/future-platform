@@ -1407,7 +1407,16 @@ def collect_programmercarl(cfg, log, limit):
         u = loc.strip()
         # Content pages only. Skip about/ and the training-camp pages: those are
         # commercial by definition and would only ever be dropped by the spam gate.
-        if re.search(r"/(about|xunlian|ke)/", u):
+        #
+        # MEASURED ADDITION (the reader's complaint: "API 订阅指南、充值教程、卖课"):
+        # `daichong/` is the site's 代充/API-中转 section - 31 sitemap URLs whose payload
+        # is "how to buy/recharge an account", not algorithm teaching. Five of them were
+        # in the corpus and scored 54-70 (higher than most real 题解) because a long
+        # purchase tutorial is long, and length fed the content component. Path-level
+        # exclusion is the honest fix: the section's subject is commerce, so nothing in
+        # it can become 知识积累 by being long. `error/` is the 404 template - one was
+        # stored as a card titled "404".
+        if re.search(r"/(about|xunlian|ke|daichong|error)/", u):
             continue
         if not (u.endswith(".html") or u.endswith("/")):
             continue
@@ -1524,12 +1533,35 @@ def collect_kamacoder_notes(cfg, log, limit):
 
         content = re.sub(r"<script[^>]*>.*?</script>", " ", page, flags=re.S)
         content = re.sub(r"<style[^>]*>.*?</style>", " ", content, flags=re.S)
-        text = clean_text(re.sub(r"<[^>]+>", " ", content), 1400)
-        # Strip the repeated site chrome so the summary starts at the answer.
-        for anchor in ("卡码笔记-最强八股文", "首页 计算机基础"):
-            k = text.find(anchor)
-            if k >= 0:
-                text = text[k + len(anchor):].strip()
+        # Prefer the ARTICLE CONTAINER over the whole page.
+        #
+        # MEASURED BUG: the anchor-stripping approach below assumed every page carries the
+        # literal header "首页 计算机基础". Many do not (the C++ section pages start with
+        # "C++ Java Go 🔥大模型🔥 …"), so the stored summary began with ~400 characters of
+        # site navigation - the sidebar's table of contents - and the actual 简要回答 /
+        # 详细回答 was pushed past the 1400-char cap. Result: 20 corpus cards classified as
+        # 八股 with a summary that answered nothing, which also starved the deep-read layer
+        # (it can only analyse what the summary contains). VitePress wraps article content
+        # in a stable class, so extract that container first - same technique the
+        # programmercarl channel above already uses.
+        m_body = re.search(
+            r'<div[^>]*class="[^"]*(?:theme-default-content|content__default|vp-doc)[^"]*"[^>]*>(.*?)'
+            r'(?:<footer|<div[^>]*class="[^"]*(?:prev-next|page-edit|VPDocFooter))',
+            content, re.S)
+        text = clean_text(re.sub(r"<[^>]+>", " ", m_body.group(1) if m_body else content), 1600)
+        # Fallback for a template change: strip the known chrome anchors that DO appear
+        # when the container lookup fails, then drop a leading table-of-contents block
+        # (recognisable: it repeats 简要回答/详细回答 link text before the real answer).
+        if not m_body:
+            for anchor in ("卡码笔记-最强八股文", "首页 计算机基础", "本栏必读"):
+                k = text.find(anchor)
+                if k >= 0:
+                    text = text[k + len(anchor):].strip()
+            for answer_anchor in ("简要回答", "详细回答", "题目描述", "答案"):
+                k = text.find(answer_anchor)
+                if k > 0:
+                    text = text[k:].strip()
+                    break
         if len(text) < 120:
             continue
 
@@ -1799,6 +1831,9 @@ def collect_nowcoder_questions(cfg, log, limit):
         if PROBLEM_EXCLUDE_RE.search(hay):
             continue
         if not PROBLEM_RELEVANT_RE.search(hay):
+            continue
+        # 入门练手题：不进语料（见 PROBLEM_WARMUP_RE 的说明）。
+        if PROBLEM_WARMUP_RE.search(title):
             continue
 
         limits = ""
@@ -2525,6 +2560,179 @@ def spam_reason(item: dict) -> str:
         return "推广/垃圾内容（非知识积累）"
     return ""
 
+
+# ============================================================================
+# 6d. JUNK GATE - API 账号/充值/订阅教程 与 广告路径
+# ============================================================================
+#
+# The reader's complaint, verbatim: "现有工作台中包含 API 订阅指南、充值教程、卖课等
+# 部分垃圾信息". The spam gate above catches 卖课 (selling language that dominates a short
+# body), but it did NOT catch the API-commerce tutorial family, and the reason is worth
+# recording because it is structural:
+#
+#   · such a page is LONG, so the "正文过短" condition never fires;
+#   · it states no price and no call-to-action, so 推销话术 never fires;
+#   · it reads like a technical walkthrough ("Base URL 填什么"), so the technical-payload
+#     test passes.
+#
+# Measured on the corpus: five programmercarl `/daichong/` pages ("没有 Claude 账号怎么用
+# Opus…", "GPT Image 2 国内怎么调用", "CodeBuddy 如何配置…", "ChatGPT Plus 额度不够怎么办",
+# "Codex 一定要海外手机号吗") scored 54-70 — higher than most real 题解 — because length
+# fed the content component. One was even classified `trend` and another `course`.
+#
+# TWO INDEPENDENT SIGNALS, either decisive:
+#   (a) URL-level: the site itself files the page under an advertising path. The subject
+#       is commerce/coupon/top-up by construction, so no amount of length makes it
+#       knowledge. (This is also why the programmercarl crawler now skips /daichong/;
+#       this gate is the second line of defence for the same pattern on other channels.)
+#   (b) Title-level: the SUBJECT of the page is acquiring/activating an account,
+#       subscription, quota or 中转 endpoint. Commerce word AND how-to word must BOTH be
+#       in the TITLE, so "如何配置 CUDA 环境" or a paper about subscription pricing in
+#       the title is untouched (it has no account/commerce word).
+JUNK_URL_RE = re.compile(
+    r"/(?:daichong|chongzhi|vip|membership|pay|payment|pricing|coupon|discount|"
+    r"affiliate|promo)(?:/|$|\?)|"
+    r"/(?:error|404|403|500)(?:/|\.|$|\?)|"
+    r"[?&](?:aff|ref|referral|invite|coupon)=", re.I)
+
+ACCOUNT_COMMERCE_RE = re.compile(
+    r"账号|帐号|账户|会员|订阅|续费|充值|代充|套餐|额度|点数|余额|激活码|卡密|"
+    r"海外手机号|手机号|虚拟卡|信用卡|开卡|升级\s*(?:pro|plus|会员)|付费|收费|"
+    r"价格|计费|中转|镜像站|机场|白嫖|破解|租号|合租|拼车", re.I)
+
+HOWTO_RE = re.compile(
+    r"教程|指南|攻略|方案|怎么|如何|步骤|流程|接入|调用|配置|注册|登录|验证|"
+    r"替代", re.I)
+
+JUNK_TITLE_RE = re.compile(
+    r"^\s*(?:404|403|500|error|not\s*found|页面不存在|访问出错|出错啦)\s*$", re.I)
+
+
+def junk_reason(item: dict) -> str:
+    """Return why this item is commerce/junk rather than knowledge, else "".
+
+    Kept separate from spam_reason() because the two answer different questions:
+    spam_reason asks "is this selling something instead of teaching?" and this asks
+    "is the SUBJECT of this page acquiring an account/subscription rather than a
+    technique?". A page can be innocent of selling and still be pure commerce guidance.
+    """
+    url = str(item.get("url") or item.get("canonicalUrl") or "")
+    if JUNK_URL_RE.search(url):
+        return "广告/错误页路径（非知识内容）"
+    title = str(item.get("title") or "").strip()
+    if JUNK_TITLE_RE.match(title):
+        return "错误页/无效页面（非知识内容）"
+    if ACCOUNT_COMMERCE_RE.search(title) and HOWTO_RE.search(title):
+        return "API 账号/充值/订阅指引类内容（非知识积累）"
+    return ""
+
+
+# ---------------------------------------------------------------------------
+# 6e. 求职可用性 - the reader's priority, expressed as a score component
+# ---------------------------------------------------------------------------
+#
+# Verbatim requirement: "把手撕算法、各领域核心工作或问题等求职面试能直接用上的信息
+# 提高采集优先级". Until now the score asked only "is this on-topic" (category evidence)
+# and "is this deep material" (knowledge type). Neither question expresses WHETHER THE
+# READER CAN USE IT IN AN INTERVIEW TOMORROW, which is the stated goal of the workbench.
+#
+# CALIBRATION (measured on the live 757-item corpus, first draft rejected):
+# the first version let the problem marker fire on the SUMMARY and let generic domain words
+# (transformer / attention / rag) count as 核心工作 anywhere in the text. Result: 581 of 757
+# items (77%) collected the full 20 points, i.e. the "priority" component ADDED A CONSTANT -
+# it could no longer reorder anything, which is the one thing it exists to do. So:
+#   · the problem marker must be in the TITLE (a summary that says 题解 is describing
+#     something, not being a question);
+#   · the solution payload only counts FOR A PROBLEM - a bare 复杂度 mention in a paper
+#     abstract is not a solution;
+#   · 核心工作 splits into two lists: domain-canonical topics (title-only, because "we use
+#     attention" is not news) and named seminal works (a body mention is still a signal,
+#     at reduced weight);
+#   · `codeAvailable` was dropped from this component - it is already scored under
+#     `quality`, and it is true of every repo, so it only re-flattened the ranking.
+PROBLEM_TITLE_RE = re.compile(
+    r"\[(?:编程题|问答题|单选题|多选题)\]|手撕|手写代码|算法题|题解|刷题|"
+    r"leetcode|力扣|\blc\s?\d{1,4}\b|剑指\s*offer|hot\s?100|笔试题", re.I)
+
+SOLUTION_PAYLOAD_RE = re.compile(
+    r"时间复杂度|空间复杂度|复杂度为|O\(n|O\(log|算法思路|解题思路|思路[:：]|思路如下|"
+    r"代码实现|参考实现|题解|解法|示例\s*\d|状态转移|递推|推导",
+    re.I)
+
+FUNDAMENTALS_TOPIC_RE = re.compile(
+    r"八股|必考|高频考点|常见问题|基础知识|面试题|速查|cheat ?sheet|手写\s*STL|"
+    r"背题|背诵", re.I)
+
+
+def interview_value(item: dict, ktype: str, cfg: dict) -> tuple[float, dict]:
+    """How directly can this be USED in an interview? Returns (score, signals)."""
+    table = ((cfg or {}).get("scoring") or {}).get("interviewValue") or {}
+    if table.get("enabled", True) is False:
+        return 0.0, {}
+
+    title = str(item.get("title") or "")
+    summary = str(item.get("summary") or "")
+    low_title = title.lower()
+    low_blob = f"{low_title} {summary.lower()}"
+
+    problem_marker = float(table.get("problemMarker", 12.0))
+    solution_payload = float(table.get("solutionPayload", 6.0))
+    core_work = float(table.get("coreWork", 10.0))
+    fundamentals = float(table.get("fundamentalsTopic", 5.0))
+
+    signals: dict[str, float] = {}
+    # 1. IS it a question the reader can be asked?
+    is_problem = bool(PROBLEM_TITLE_RE.search(title)) or bool(item.get("problemKind"))
+    if is_problem:
+        signals["problem"] = problem_marker
+        # 2. does it carry a SOLUTION (not just the question text)?
+        if SOLUTION_PAYLOAD_RE.search(f"{title} {summary}"):
+            signals["solution"] = solution_payload
+    elif SOLUTION_PAYLOAD_RE.search(title) and re.search(r"题解|解法|思路", title):
+        # A 题解 article about a class of problems is half as valuable as a concrete题目.
+        signals["solution"] = round(solution_payload * 0.5, 1)
+
+    # 3. 八股/必考 material - the questions interviews actually ask.
+    if FUNDAMENTALS_TOPIC_RE.search(title):
+        signals["fundamentals"] = fundamentals
+
+    # 4. 领域核心工作 (canonical work / topic).
+    title_terms = [str(w) for w in (table.get("coreWorksTitle") or [])]
+    named_works = [str(w) for w in (table.get("coreWorksAnywhere") or [])]
+    if any(w.lower() in low_title for w in title_terms) or \
+       any(w.lower() in low_title for w in named_works):
+        signals["coreWork"] = core_work
+    elif any(w.lower() in low_blob for w in named_works):
+        # A named seminal work mentioned in the body is weaker evidence than being the
+        # subject, but it is still a signal a candidate should see.
+        signals["coreWork"] = round(core_work * 0.4, 1)
+
+    cap = float(table.get("cap", 20.0))
+    total = min(cap, sum(signals.values()))
+    return round(total, 1), {k: round(v, 1) for k, v in signals.items()}
+
+
+def problem_meta(item: dict) -> str:
+    """Deterministic 'this is a concrete problem' marker, or "".
+
+    Used by scripts/build_problem_bank.py to fill 题库定位 with REAL questions instead of
+    only the hand-curated ones. Only sources whose payload IS a question qualify: a
+    题解导读 article, a repo and an awesome-list are not problems, and labelling them as
+    such would make "待解析" meaningless.
+    """
+    url = str(item.get("url") or "")
+    title = str(item.get("title") or "")
+    chan = str(item.get("channel") or item.get("sourceId") or "")
+    if chan == "nowcoder_questions" or "/questionTerminal/" in url:
+        if re.search(r"\[(单选题|多选题|不定项选择题|不定项|问答题)\]", title):
+            return "exam"                      # 笔试/八股客观题：场景题的一种
+        return "hand"                          # [编程题]：手撕代码
+    if chan == "programmercarl" and re.search(r"/(?:algo|hot100)/", url):
+        return "hand"                          # 代码随想录的题解页，带 LeetCode 编号
+    # Everything else (repos, awesome-lists, 面经, papers) is NOT a problem: a repo may
+    # contain 500 solutions and still not be a question the reader can be asked.
+    return ""
+
 # 牛客题霸 is a big graded set that includes HARDWARE tracks (FPGA/数字电路: 优先编码器、
 # 译码器、时序电路、触发器). Those are real 编程题 but they are irrelevant to an
 # algorithm-intern candidate, and position-based sampling cannot separate them because
@@ -2549,6 +2757,23 @@ PROBLEM_EXCLUDE_RE = re.compile(
     r"多路器|数据选择器|全加器|半加器|奇偶校验|verilog|vhdl|fpga|"
     r"状态转移|卡诺图|布尔|与非门|或非门|d触发器|t触发器|jk触发器|cmos|"
     r"走线|管脚|时钟树|复位信号|亚稳态",
+    re.I)
+
+# 入门练手题（warm-up）不该进入语料。
+#
+# WHY: 牛客题霸的公开列表是**按难度递进**的（本函数末尾的位置偏移就是为此），开头是
+# 「判断字母」「及格分数」「计算一元二次方程」这类题。它们是真题，但对算法岗面试没有
+# 信息量——读者的要求是"求职面试能直接用上的信息"。Measured on 2026-10-03: 一天采集到
+# 44 道编程题，其中 11 道是这类练手题，而它们**吃掉了整天的题解配额**（题库排序按实质度，
+# 但配额只有 20 个，先到先得）。
+#
+# 判据刻意做成**标题级 + 可枚举**：不做全库匹配。摘要里出现"判断"不是信号——这个坑在
+# prune_items 的硬件规则上已经踩过一次（CUDA/锁的文章因摘要含"寄存器"被误杀）。
+PROBLEM_WARMUP_RE = re.compile(
+    r"判断(?:是|是不是)?(?:字母|元音|辅音|数字|奇偶)|及格分数|成绩(?:转换|等级)|"
+    r"大小写转换|温度转换|简单计算|圆的面积|网购|竞选社长|单位阶跃|一元二次方程|"
+    r"你是天才吗|变种水仙花|争夺前五名|位拆分|输出什么|打印(?:图形|菱形|九九)|"
+    r"平均值",
     re.I)
 
 EVIDENCE_KEYS = ("category", "categoryEvidence", "knowledge")
@@ -2701,6 +2926,15 @@ def score_item(item, cfg, tier, cat_hits):
     # What KIND of material this is - the reader's actual priority, as data.
     ktype = classify_knowledge_type(item, item.get("category") or "")
     parts["knowledge"] = knowledge_value(item, ktype, cfg)
+    # Direct interview usability — 手撕题 / 领域核心工作 / 八股 / 带解法 (see interview_value).
+    # The component is numeric so the breakdown stays a flat map of numbers the UI can
+    # render; the per-signal detail rides on the item as `interviewSignals` so a reader can
+    # see WHY a problem outranked a same-day paper instead of trusting the number.
+    iv, iv_signals = interview_value(item, ktype, cfg)
+    if iv:
+        parts["interviewValue"] = iv
+        if iv_signals:
+            item["interviewSignals"] = iv_signals
     # An item that matched NO category keyword loses the category component entirely
     # and takes an extra penalty, so it ranks below every genuinely classified item.
     if not cat_hits:
@@ -2763,6 +2997,11 @@ def explain(item, hits, cfg):
         bits.append(f"社区热度 {item['upvotes']}")
     if item.get("codeAvailable"):
         bits.append("疑似附带开源实现")
+    if item.get("problemKind"):
+        bits.append("题库题目（可深读为代码级解析）")
+    sig = item.get("interviewSignals") or {}
+    if "coreWork" in sig:
+        bits.append("领域核心工作")
     if item.get("lang") == "zh":
         bits.append("中文来源，贴近国内求职语境")
     return f"归属「{czh}」方向" + ("；" + "；".join(bits) if bits else "；待人工复核相关性")
@@ -2819,6 +3058,12 @@ def normalize(raw, cfg, tier):
     item["category"] = cat
     item["categoryHits"] = hits
     item["knowledgeType"] = classify_knowledge_type(item, cat)
+    # Deterministic "this is a concrete, askable question" marker. The daily deep-read
+    # planner turns these into the 题库定位 analysis queue, so the marker lives here (one
+    # definition) rather than being re-derived by the planner from URL shapes.
+    pk = problem_meta(item)
+    if pk:
+        item["problemKind"] = pk
     rel, breakdown = score_item(item, cfg, tier, hits)
     item["relevanceScore"] = rel
     item["relevanceBreakdown"] = breakdown
@@ -3798,6 +4043,7 @@ def run(args) -> int:
     weak_dropped = 0
     offtopic_dropped = 0
     spam_dropped = 0
+    junk_dropped = 0
     min_rel = float((cfg.get("scoring") or {}).get("minRelevance", 0) or 0)
     # Default True: keep unclassified items out of the corpus (see the gate below).
     drop_unclassified = bool((cfg.get("limits") or {}).get("dropUnclassified", True))
@@ -3886,6 +4132,14 @@ def run(args) -> int:
             spam_dropped += 1
             log.detail(f"- [spam] {spam}: {str(item.get('title'))[:64]}")
             continue
+        # 广告/错误页 + API 账号/充值/订阅指引 gate (see 6d). Runs after the evidence gate
+        # on purpose: it is a SCOPE rejection, not a quality judgement, and it must apply to
+        # material the evidence gate would otherwise admit (a long purchase tutorial).
+        junk = junk_reason(item)
+        if junk:
+            junk_dropped += 1
+            log.detail(f"- [junk] {junk}: {str(item.get('title'))[:64]}")
+            continue
         cid = deduper.lookup(item)
         if cid:
             dup_count += 1
@@ -3973,7 +4227,7 @@ def run(args) -> int:
     log(f"deduped: new={len(fresh)} updated={len(updated)} duplicate_hits={dup_count} "
         f"dropped={dropped} blocklisted={blocked} unclassified={unclassified_dropped} "
         f"news={news_dropped} opinion={opinion_dropped} weakEvidence={weak_dropped} "
-        f"offTopic={offtopic_dropped} spam={spam_dropped}", "ok")
+        f"offTopic={offtopic_dropped} spam={spam_dropped} junk={junk_dropped}", "ok")
     if blocked:
         log(f"  {blocked} item(s) skipped by the blocklist (removed earlier by "
             f"prune_items.py / dedupe_deep.py); they will not come back", "info")
@@ -3984,7 +4238,7 @@ def run(args) -> int:
     # rule is visible in the log rather than something you have to infer from counts.
     rejected = {"news": news_dropped, "opinion": opinion_dropped,
                 "weakEvidence": weak_dropped, "offTopic": offtopic_dropped,
-                "spam": spam_dropped}
+                "spam": spam_dropped, "junk": junk_dropped}
     if any(rejected.values()):
         log("  evidence gate rejected: " + ", ".join(
             f"{k}={v}" for k, v in rejected.items() if v), "info")
@@ -4292,6 +4546,16 @@ def rescore_all(cfg, log) -> int:
         item["category"] = cat
         item["categoryHits"] = hits
         item["knowledgeType"] = classify_knowledge_type(item, cat)
+        # Refresh the derived markers too, otherwise a rescore after this change would
+        # keep the OLD corpus's missing `problemKind` forever (the 题库定位 bank is built
+        # from it) and would leave stale `interviewSignals` attached to items whose title
+        # the new rules no longer reward.
+        pk = problem_meta(item)
+        if pk:
+            item["problemKind"] = pk
+        else:
+            item.pop("problemKind", None)
+        item.pop("interviewSignals", None)
         rel, breakdown = score_item(item, cfg, spec["tier"], hits)
         if abs(float(rel) - float(item.get("relevanceScore") or 0)) > 0.05:
             changed_score += 1
