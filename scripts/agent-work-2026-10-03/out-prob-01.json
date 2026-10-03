@@ -1,0 +1,126 @@
+{
+  "batchId": "prob-01",
+  "entries": [
+    {
+      "id": "pb-0fe3d8b02701d756",
+      "itemId": "0fe3d8b02701d756",
+      "tldr": "编辑距离：经典二维 DP，只有插入/删除/替换三种转移；滚动数组可把空间压到 O(min(n,m))。",
+      "restated": "输入两行，各是一个仅含小写字母的字符串 a、b（题面里的长度记号被截断，实际长度未给出）。输出一个整数：把 a 变成 b 所需的最少单字符操作次数，允许的操作是在任意位置插入一个字符、删除一个字符、替换一个字符。样例：a=abcdefg，b=abcdef，输出 1，因为删掉 a 末尾的 g 即可（题解也说明了对 b 末尾插入 g 等价）。题面未给出样例之外的数据范围。",
+      "approach": [
+        {
+          "step": "暴力",
+          "detail": "对 a 的每一位枚举「不动 / 删除 / 替换成 26 个字母之一」、再枚举插入位置，递归搜出所有编辑序列取最短。分支因子约 28n，序列长度可达 n+m 步，时间约 O((n·m)^(n+m))，n=m=20 就已经算不完——它枚举的是「操作序列」，而大量不同序列对应同一个中间状态，重复子问题被反复展开。"
+        },
+        {
+          "step": "记忆化递归",
+          "detail": "观察到暴力搜索里反复求解同一个子问题：把「a 的前 i 个字符变成 b 的前 j 个字符」看作状态，函数 d(i,j) 只依赖 d(i-1,j)、d(i,j-1)、d(i-1,j-1) 三个更小的状态，于是总状态数只有 (n+1)(m+1)，用 memo 表缓存即可 O(nm)。但递归深度是 n+m，n、m 到 10^4 就会撞上 Python 默认递归上限，且函数调用常数大。"
+        },
+        {
+          "step": "最优（自底向上 DP + 滚动数组）",
+          "detail": "改成按 i 从小到大、j 从小到大填表，天然消除了递归深度与函数调用开销，时间仍是 O(nm)，但每格只做三次比较和一次加法。再进一步：第 i 行只依赖第 i-1 行，所以不需要整张表，只保留「上一行」加一个变量暂存左上角斜对角值（因为 dp[j-1] 会被本行覆盖），空间降到 O(min(n,m))。这样 n=m=5000 时时间 O(2.5×10^7) 可接受、内存只要 20KB 量级，而不是 25M 个整数。"
+        }
+      ],
+      "complexity": {
+        "time": "O(n·m)",
+        "space": "O(min(n,m))（滚动数组；朴素二维表为 O(n·m)）",
+        "why": "代价来自填满 (n+1)×(m+1) 个状态，每格只向前驱状态取 min，是 O(1) 转移；空间靠「第 i 行只依赖第 i-1 行」这一观察压缩到一行。"
+      },
+      "code": {
+        "language": "python",
+        "source": "import sys\n\n\ndef edit_distance(a: str, b: str) -> int:\n    \"\"\"Levenshtein 距离：插入 / 删除 / 替换代价均为 1，滚动数组实现。\"\"\"\n    if not a:\n        return len(b)\n    if not b:\n        return len(a)\n    if len(a) < len(b):\n        a, b = b, a\n    m = len(b)\n    prev = list(range(m + 1))\n    for i in range(1, len(a) + 1):\n        cur = [i] + [0] * m\n        for j in range(1, m + 1):\n            cost = 0 if a[i - 1] == b[j - 1] else 1\n            cur[j] = min(\n                prev[j] + 1,\n                cur[j - 1] + 1,\n                prev[j - 1] + cost,\n            )\n        prev = cur\n    return prev[m]\n\n\ndef main() -> None:\n    lines = sys.stdin.read().splitlines()\n    a = lines[0].strip() if len(lines) >= 1 else \"\"\n    b = lines[1].strip() if len(lines) >= 2 else \"\"\n    print(edit_distance(a, b))\n\n\nif __name__ == \"__main__\":\n    main()\n",
+        "walkthrough": [
+          {
+            "note": "输入层：用 sys.stdin.read().splitlines() 而不是 input()，避免只有一行时抛 EOFError，也顺手吃掉行尾的 \\r。缺第二行时按空串处理，因为空串是合法的编辑距离输入。"
+          },
+          {
+            "note": "状态定义：dp[i][j] = a 的前 i 个字符变成 b 的前 j 个字符的最少操作数。第 0 行 dp[0][j]=j 表示只能靠 j 次插入；第 0 列 dp[i][0]=i 表示只能靠 i 次删除。"
+          },
+          {
+            "note": "空间压缩：先让 a 是较长串，于是内层长度 m = min(n,m)。prev 表示第 i-1 行，cur 表示第 i 行；cur[j-1] 是同一行刚算出的左边格，prev[j] 是正上方的上一行，prev[j-1] 是左上方斜对角——正好对应删除 a[i]、插入 b[j]、替换/匹配这三种来源。"
+          },
+          {
+            "note": "转移：a[i-1]==b[j-1] 时 cost=0（该字符配对、不操作），否则 cost=1（替换一次）；三种来源取 min。写二维版本时这一步最容易漏掉 cost 为 0 的分支。"
+          },
+          {
+            "note": "答案：外层循环结束后 prev[m] 就是 dp[n][m]，即整串 a 到整串 b 的最短编辑距离。"
+          },
+          {
+            "note": "边界：任一侧为空串直接返回另一侧长度，既是对的又避免了 m=0 时内层循环不执行导致返回错误值。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "某一行为空 → 答案就是另一串的长度（题面未说明是否允许空串，但这是 DP 的天然边界，必须处理）",
+        "只有一个字符：相同输出 0，不同输出 1（一次替换）",
+        "a == b：整条对角线 cost 全为 0，输出 0",
+        "长度差很大：先做 a,b 交换，保证内层循环跑较短的那个串",
+        "输入末尾有空行或 \\r\\n：splitlines().strip() 已处理",
+        "只有一行输入（第二行缺失）：按空串处理，不抛 EOFError"
+      ],
+      "pitfalls": [
+        "初始化写错：第 0 行必须是 range(m+1)，第 0 列必须是 i，不能全填 0，否则结果偏小",
+        "用 input() 读两行，遇到空行（空串）时把空串丢掉，导致答案错位",
+        "二维版本里忘记 cost 分支，a[i-1]==b[j-1] 时仍按替换 +1 算，答案普遍偏大",
+        "滚动数组里先覆盖了 dp[j-1] 再去取斜对角值，丢掉了真正的左上角；必须先存 prev_diag 或用上一行副本",
+        "把 a[i-1]/b[j-1] 写成 a[i]/b[j]，数组越界或错位（Python 里不报 IndexError 而取到错误的末尾字符）",
+        "误以为可以用 O(min(n,m)) 的额外空间做 O(nm) 之外的优化（除非允许近似算法，如长度差下界 / Ukkonen 带状剪枝）"
+      ],
+      "followUps": [
+        "如果插入/删除/替换的代价不是 1 而是 (ci, cd, cr)，转移公式要怎么改？（分别加权到三个来源）",
+        "只允许插入和删除（不允许替换）时答案是多少？与最长公共子序列有什么关系？（n+m-2·LCS）",
+        "如何把空间从 O(min(n,m)) 进一步降到 O(|n-m|) 级别？需要什么额外条件？（只记录对角线带，配合长度差下界剪枝，得到的是近似或需 band 假设）",
+        "n、m 到 10^5 时怎么办？（放弃精确 DP，改用 Ukkonen 的 O(nd) 算法，d 为编辑距离本身，只遍历对角线带）",
+        "要输出具体编辑操作序列（insert/delete/replace 的位置）而不是数字，怎么做？（保留完整二维表或额外存父指针回溯）"
+      ],
+      "variations": [
+        "最长公共子序列（LCS）：把「匹配」记 0、「替换」记成本，等价形式",
+        "只允许删除字符使两串相同的最少删除次数（n+m-2·LCS）",
+        "判断两串编辑距离是否恰好为 1（One Edit Distance，双指针 O(n) 不解 DP）",
+        "正则表达式 / 通配符匹配与 72. 编辑距离共享同一套二维 DP 模板",
+        "DNA 序列比对（带 gap 罚分的全局比对，Needleman-Wunsch）",
+        "拼写纠错：把编辑距离 ≤k 的候选词从词典里捞出来（BK 树 / 三进制搜索树）"
+      ],
+      "diagram": {
+        "kind": "matrix",
+        "title": "编辑距离 DP 依赖",
+        "caption": "每个格子只由左、上、左上三个方向决定；匹配的格子走对角不花代价，所以 cut→cat 的答案只需一次替换。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.18' stroke-width='1'/><text x='16' y='20' font-size='13' fill='currentColor'>dp[i][j]：a 前 i 个字符变成 b 前 j 个字符的最少操作数</text><text x='48' y='45' font-size='13' fill='currentColor'>ε</text><text x='88' y='45' font-size='13' fill='currentColor'>c</text><text x='128' y='45' font-size='13' fill='currentColor'>a</text><text x='168' y='45' font-size='13' fill='currentColor'>t</text><text x='24' y='85' font-size='13' fill='currentColor'>ε</text><text x='24' y='125' font-size='13' fill='currentColor'>c</text><text x='24' y='165' font-size='13' fill='currentColor'>u</text><text x='24' y='205' font-size='13' fill='currentColor'>t</text><rect x='40' y='55' width='160' height='160' fill='none' stroke='var(--line-1)' stroke-width='1'/><line x1='80' y1='55' x2='80' y2='215' stroke='var(--line-1)' stroke-width='1'/><line x1='120' y1='55' x2='120' y2='215' stroke='var(--line-1)' stroke-width='1'/><line x1='160' y1='55' x2='160' y2='215' stroke='var(--line-1)' stroke-width='1'/><line x1='40' y1='95' x2='200' y2='95' stroke='var(--line-1)' stroke-width='1'/><line x1='40' y1='135' x2='200' y2='135' stroke='var(--line-1)' stroke-width='1'/><line x1='40' y1='175' x2='200' y2='175' stroke='var(--line-1)' stroke-width='1'/><text x='52' y='79' font-size='13' fill='currentColor'>0</text><text x='92' y='79' font-size='13' fill='currentColor'>1</text><text x='132' y='79' font-size='13' fill='currentColor'>2</text><text x='172' y='79' font-size='13' fill='currentColor'>3</text><text x='52' y='119' font-size='13' fill='currentColor'>1</text><text x='92' y='119' font-size='13' fill='currentColor'>0</text><text x='132' y='119' font-size='13' fill='currentColor'>1</text><text x='172' y='119' font-size='13' fill='currentColor'>2</text><text x='52' y='159' font-size='13' fill='currentColor'>2</text><text x='92' y='159' font-size='13' fill='currentColor'>1</text><text x='132' y='159' font-size='13' fill='currentColor'>1</text><text x='172' y='159' font-size='13' fill='currentColor'>2</text><text x='52' y='199' font-size='13' fill='currentColor'>3</text><text x='92' y='199' font-size='13' fill='currentColor'>2</text><text x='132' y='199' font-size='13' fill='currentColor'>2</text><text x='172' y='199' font-size='13' fill='currentColor'>1</text><rect x='120' y='135' width='40' height='40' fill='var(--accent)' fill-opacity='0.16' stroke='var(--accent)' stroke-width='2'/><text x='250' y='95' font-size='13' fill='currentColor'>蓝格三项来源：</text><text x='250' y='113' font-size='13' fill='currentColor'>左 +1 插入 b[j]</text><text x='250' y='131' font-size='13' fill='currentColor'>上 +1 删除 a[i]</text><text x='250' y='149' font-size='13' fill='currentColor'>左上 +cost</text><text x='250' y='167' font-size='13' fill='currentColor'>cost = a[i]!=b[j]</text><text x='250' y='185' font-size='13' fill='currentColor'>取三者最小</text><line x1='80' y1='135' x2='116' y2='155' stroke='var(--accent)' stroke-width='2'/><line x1='160' y1='95' x2='124' y2='135' stroke='var(--accent)' stroke-width='2'/><line x1='80' y1='95' x2='116' y2='135' stroke='var(--accent)' stroke-width='2'/><circle cx='140' cy='155' r='4' fill='var(--accent)'/><text x='16' y='232' font-size='13' fill='currentColor'>表内数字为 a=cut、b=cat 的距离矩阵，右下角 1（一次替换 u→a）即答案</text></svg>",
+        "alt": "4x4 编辑距离 DP 表，突出显示某个格子及其左、上、左上三个依赖来源，并给出三个转移的含义。"
+      },
+      "selfTest": [
+        "写出 a=cut、b=cat 时 dp 表的右下角值，并说明它由哪一步得到（答：1，只需把 u 替换成 a，c 与 t 沿对角免费匹配）。",
+        "为什么第 0 行是 0,1,2,3…、第 0 列是 0,1,2,3…？如果都填 0 会得到什么错误结果？",
+        "在滚动数组实现里，为什么只用一个 prev 数组加一个变量就够，而不会丢状态？"
+      ],
+      "keyPoints": [
+        "状态 dp[i][j] = a 前 i 个字符变成 b 前 j 个字符的最少操作数，三类操作正好对应左、上、左上三个来源",
+        "初始化第 0 行/列为 0..m、0..n，是「只用插入」和「只用删除」的基线",
+        "替换的代价是 0 或 1（字符相等就是 0），这一分支是本题最容易漏的地方",
+        "滚动数组把空间从 O(nm) 压到 O(min(n,m))，先交换保证内层是较短串",
+        "面试先给二维 DP 讲清转移，再补空间优化；直接用 sys.stdin.read() 读两行避免空行陷阱"
+      ],
+      "sources": [
+        {
+          "title": "牛客题库：计算字符串的编辑距离",
+          "url": "https://nowcoder.com/practice/3959837097c7413a961a135d7104c314"
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "题面明确规定允许三种操作：任意位置插入一个字符、删除任意一个字符、替换任意一个字符（原文列举）",
+          "题面样例 a=abcdefg、b=abcdef 输出 1，原文说明可删 a 末尾字符或在 b 末尾插入，两种都成立",
+          "输入是两个仅由小写字母组成的字符串，分为两行；输出是一个整数",
+          "题面给出的语言模板是 Java（BufferedReader + InputStreamReader），说明这是需要手写完整程序的线上编程题",
+          "题目标签为动态规划 / 字符串，难度标记为 hard"
+        ],
+        "uncertain": [
+          "题面里的长度记号被截断（原文只剩「长度为 ，」），两个串的最大长度未知，因此最优实现到底是 O(nm) 的二维 DP 还是必须做带状剪枝、以及是否可能被卡常数，无法从题面判定",
+          "同样因为长度被截断，无法确认是否允许空串输入；代码里按允许处理（返回另一串长度），但这属于实现选择而非题面依据",
+          "题面只给了一个样例（abcdefg / abcdef → 1），没有给出 a、b 相等的样例或长度不等的更复杂样例，题解中的 cut/cat 例子是我自己构造的，仅用于讲表，不是题面样例",
+          "题面未说明是否要求输出具体编辑方案，仅要求输出整数，故代码只返回距离",
+          "原始页面在题面后附了 Java 模板骨架（含未写完的 main），题面正文在「加载中...」处被截断，不确定是否还有「示例2」「备注」等后续内容未采集到"
+        ]
+      }
+    }
+  ]
+}

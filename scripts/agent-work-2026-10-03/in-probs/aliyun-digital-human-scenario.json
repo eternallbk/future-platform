@@ -1,0 +1,22 @@
+{
+  "batchId": "prob-cur-32",
+  "problem": {
+    "id": "aliyun-digital-human-scenario",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "场景题：把数字人模型训练成只生成同一个人",
+    "topics": [],
+    "difficulty": "hard",
+    "statement": "阿里云多模态大模型暑期实习一面场景题：“如果我目前有一个数字人的模型，我想训练成只生成一个人的，可以怎么做？”并追问“你看过什么别的 SOTA 模型的 ref image 注入方式，有什么优劣？”",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

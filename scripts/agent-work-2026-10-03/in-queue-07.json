@@ -6,222 +6,195 @@
   "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
   "items": [
     {
-      "id": "249413542592e5b7",
-      "title": "OmniSeek: Native Tool Integration for Multi-turn Audio-Visual Reasoning",
-      "category": "multimodal",
-      "channel": "hf_papers",
-      "url": "https://huggingface.co/papers/2610.02181",
-      "sources": [
-        {
-          "url": "https://huggingface.co/papers/2610.02181",
-          "name": "hf_papers"
-        },
-        {
-          "url": "https://arxiv.org/abs/2610.02181",
-          "name": "canonical"
-        },
-        {
-          "url": "https://arxiv.org/abs/2610.02181v1",
-          "name": "arxiv"
-        }
-      ],
-      "tags": [
-        "cs.CV"
-      ],
-      "summary": "We present OmniSeek, an agentic framework that transforms an Omni Large Language Model (Omni-LLM) into an active, multi-turn reasoning agent with native tool use. Rather than passively processing an entire audio-visual sequence in a single forward pass, OmniSeek makes evidence acquisition part of the reasoning process: it dynamically decides whether to look or listen, and over which temporal window, to retrieve sparse but critical evidence across different modalities within long contexts. Through an iterative multi-turn protocol, the retrieved raw audio or visual segments are appended back into the context to support subsequent reasoning. To cold-start this capability, we build a data engine that synthesizes OmniTraj-170K, a corpus of multi-hop Chain-of-Thought trajectories with interleaved audio and visual evidence. We first supervise the model on these trajectories to instill multi-turn tool-use behavior, and then further optimize the policy via a two-stage reinforcement learning with verifiable rewards. Moreover, we introduce an Audio-Visual Necessity objective that explicitly rewards successful trajectories whose reasoning depends on both modalities, discouraging single-modality shortcuts. Extensive experiments across a wide range of benchmarks demonstrate that OmniSeek learns adaptive cross-modal evidence seeking and consistently improves audio-visual reasoning performance.",
-      "authors": [
-        "Haibo Wang",
-        "Jiteng Mu",
-        "Jialu Li",
-        "Jingru Yi",
-        "Yuanjun Xiong",
-        "Jianming Zhang",
-        "Lifu Huang",
-        "Mingze Xu"
-      ],
-      "publishedAt": "2026-10-01T08:00:00+08:00",
-      "knowledgeType": "method",
-      "why": "归属「多模态算法」方向；命中关键词 cross-modal、audio-visual；社区热度 1",
-      "relevanceScore": 82.6,
-      "qualitySignals": {
-        "upvotes": 1
-      },
-      "peerReviewed": false,
-      "codeAvailable": false,
-      "planRelevanceScore": 82.6,
-      "planDepthScore": 65.59
-    },
-    {
-      "id": "03cc95f58cdf7d9d",
-      "title": "EWAM: Emergent Depth-Wise Specialization in a Unified Embodied Model -- From Semantic Understanding through Visual Foresight to Action",
-      "category": "worldmodel",
-      "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2609.39973v1",
-      "sources": [
-        {
-          "url": "https://arxiv.org/abs/2609.39973v1",
-          "name": "arxiv"
-        }
-      ],
-      "tags": [
-        "cs.RO"
-      ],
-      "summary": "Vision-language-action (VLA) policies emphasize semantic understanding, whereas world-action models (WAMs) learn predictive representations of environment dynamics. Systems that expose a policy to both sources often still concentrate action computation on a single expert. We present EWAM, an action-centric unified embodied model whose asymmetric joint attention lets action tokens read semantic, current-visual, predicted-future, and action information at every layer while the perceptual experts retain their distinct roles. Without layer-wise supervision, EWAM develops an emergent depth-wise specialization: action queries attend mainly to vision-language features in shallow layers, to predicted future frames in intermediate layers, and to action tokens themselves in deep layers. This handoff replicates across tasks and is stable across denoising steps. Checkpoint tracking and causal interventions show that it is learned and that action generation depends on it. EWAM is pretrained in two separate regimes, one on cross-embodiment robot trajectories and one on human egocentric video. In simulation and real-robot experiments, it surpasses existing VLA, WAM, and hybrid baselines. Human egocentric data improve both cross-embodiment transfer and real-robot robustness, and subtask-phase supervision improves long-horizon completion. Together, these results suggest that unified embodied learning can induce an ordered internal progression from semantic understanding, through visual foresight, to action formation.",
-      "authors": [
-        "Hao Wang",
-        "Jiajun Wen",
-        "Jingzhi Liu",
-        "Shuoshuo Xue",
-        "Zhiliang Chen",
-        "Min Lin",
-        "Yicheng Chang",
-        "Xiaoyu Guo",
-        "Yukang Zhuo",
-        "Zheng Chong",
-        "Yunshuang Nie",
-        "Jian Zhang"
-      ],
-      "publishedAt": "2026-09-30T03:35:53+08:00",
-      "knowledgeType": "method",
-      "why": "归属「世界模型」方向；命中关键词 vla、vision-language-action、embodied",
-      "relevanceScore": 82.5,
-      "qualitySignals": {},
-      "peerReviewed": false,
-      "codeAvailable": false,
-      "planRelevanceScore": 82.5,
-      "planDepthScore": 65.56
-    },
-    {
-      "id": "3192f3e121d782ee",
-      "title": "LEAP: Learned Block-wise Evidence Retrieval for Long Audio-Video Perception",
-      "category": "multimodal",
-      "channel": "hf_papers",
-      "url": "https://huggingface.co/papers/2609.39938",
-      "sources": [
-        {
-          "url": "https://huggingface.co/papers/2609.39938",
-          "name": "hf_papers"
-        },
-        {
-          "url": "https://arxiv.org/abs/2609.39938",
-          "name": "canonical"
-        }
-      ],
-      "tags": [],
-      "summary": "Hour-scale audio-visual question answering is constrained by a context dilemma: dense whole-recording encoding rapidly exhausts context limits, whereas uniform temporal compression severely dilutes fine-grained acoustic and visual evidence. We introduce LEAP, a framework where the model retrieves its own evidence without placing the whole recording in one context. LEAP divides a recording into fixed-duration blocks, applying a lightweight localization pass to each block to score short candidate windows. The highest-ranked windows are pooled and re-encoded in a single bounded answer pass. Consequently, the answer input and peak context remain independent of the recording duration. By decoupling evidence localization from reasoning, our framework can localize candidate temporal windows over pre-computed transcripts without decoding media frames, while preserving fine-grained visual and non-speech evidence by routing the final answering pass over raw audio-visual streams. LEAP trains both stages: a localization LoRA improves the selected windows, and an answer LoRA improves the answers read from the same windows. The block grid natively supports causal queries, enabling LEAP to support streaming inference without streaming-specific training. Across several AVQA benchmarks, LEAP improves over the Qwen3-Omni-30B-A3B baseline by 4.5-16.8%, and transfers to a second omni-modal backbone, MiniCPM-o 4.5, surpassing its published results by 3.1-13.0%.",
-      "authors": [
-        "Juyi Lin",
-        "Zhiqiang Lao",
-        "Jiali Cui",
-        "Lin Zhao",
-        "Pu Zhao",
-        "Dichang Zhang",
-        "Arman Akbari",
-        "Yu Qi",
-        "Xinru Jiang",
-        "Yanzhi Wang",
-        "Heather Yu",
-        "Liang Peng"
-      ],
-      "publishedAt": "2026-09-30T08:00:00+08:00",
-      "knowledgeType": "method",
-      "why": "归属「多模态算法」方向；命中关键词 audio-visual、omni-modal；社区热度 1",
-      "relevanceScore": 82.0,
-      "qualitySignals": {
-        "upvotes": 1
-      },
-      "peerReviewed": false,
-      "codeAvailable": false,
-      "planRelevanceScore": 82.0,
-      "planDepthScore": 65.37
-    },
-    {
-      "id": "9e285061cb75920c",
-      "title": "Smaller Models, Better Rejects: Preference Distillation Scaling",
+      "id": "891fdc7983aeb96a",
+      "title": "hscspring/rl-llm-nlp - Curated, opinionated index of post-R1 LLM × Reinforcement Learning. Many deep-dive blog posts cross-linked to many papers — GRPO, DAPO, DPO, PPO, RLHF, GSPO, CISPO, VAPO, Reward Modeling, MoE RL stability, Verifier-Free RL, Training-Free RL, Agentic RL, DeepSeek-R1 reproduction.",
       "category": "posttraining",
-      "channel": "hf_papers",
-      "url": "https://huggingface.co/papers/2609.38987",
+      "channel": "github",
+      "url": "https://github.com/hscspring/rl-llm-nlp",
       "sources": [
         {
-          "url": "https://huggingface.co/papers/2609.38987",
-          "name": "hf_papers"
-        },
-        {
-          "url": "https://arxiv.org/abs/2609.38987",
-          "name": "canonical"
+          "url": "https://github.com/hscspring/rl-llm-nlp",
+          "name": "github"
         }
       ],
-      "tags": [],
-      "summary": "Preference distillation typically treats a teacher response as preferred and the student's own response as rejected. This assumes that self-generated failures are the most informative negatives and that rejects must come from a model at least as large as the student, making generation costly at scale. We find neither assumption holds: across students from 7B to 72B, smaller frozen models generate rejects with less inference compute yet train stronger students than self-generated rejects, before and after sequence-level knowledge distillation, on code generation and mathematical reasoning. To explain this result, we derive a finite-horizon utility bound for Direct Preference Optimization in a linearized feature model. The bound characterizes favorable reject distributions and motivates three interventions. First, mixing rejects from smaller and student-scale models improves performance as the smaller model's share increases. Second, reassigning rejects to other prompts and shuffling their code tokens still outperform length-matched gibberish, showing that task structure contributes to reject utility. Third, selecting candidates with lower likelihood under the reference policy improves net transfer when higher-likelihood candidates provide less useful contrast. Lower-likelihood selections outperform higher-likelihood ones for every source. These results suggest that effective rejects preserve task structure while limiting coupling to the reference policy, and that smaller frozen models can provide them at low cost.",
-      "authors": [
-        "Rui Cai",
-        "Wenhui Zhu",
-        "Xiwen Chen",
-        "Jincheng Cao",
-        "Han Yu",
-        "Shayan Mohajer Hamidi",
-        "Zelin He",
-        "Qiyao Ma",
-        "Daiwei Chen",
-        "Xuanzhao Dong",
-        "Yuanda Xu",
-        "Jelena Markovic-Voronov"
+      "tags": [
+        "agentic-rl",
+        "alignment",
+        "awesome",
+        "awesome-list",
+        "curated-list",
+        "deepseek-r1",
+        "dpo",
+        "grpo"
       ],
-      "publishedAt": "2026-09-30T08:00:00+08:00",
-      "knowledgeType": "method",
-      "why": "归属「后训练」方向；命中关键词 preference optimization、distillation；社区热度 1",
-      "relevanceScore": 78.0,
+      "summary": "Curated, opinionated index of post-R1 LLM × Reinforcement Learning. Many deep-dive blog posts cross-linked to many papers — GRPO, DAPO, DPO, PPO, RLHF, GSPO, CISPO, VAPO, Reward Modeling, MoE RL stability, Verifier-Free RL, Training-Free RL, Agentic RL, DeepSeek-R1 reproduction.",
+      "authors": [
+        "hscspring"
+      ],
+      "publishedAt": "2026-09-10T22:29:35+08:00",
+      "knowledgeType": "project",
+      "why": "归属「后训练」方向；命中关键词 rlhf、dpo、grpo、verifier；GitHub 75 stars；疑似附带开源实现；领域核心工作",
+      "relevanceScore": 81.2,
       "qualitySignals": {
-        "upvotes": 2
+        "stars": 75,
+        "forks": 6,
+        "codeAvailable": true
       },
       "peerReviewed": false,
-      "codeAvailable": false,
-      "planRelevanceScore": 78.0,
-      "planDepthScore": 63.83
+      "codeAvailable": true,
+      "planRelevanceScore": 81.2,
+      "planDepthScore": 67.7
     },
     {
-      "id": "a9ac6f5d38bf0a3c",
-      "title": "Joint and Cross-Modal Video-Audio Generation and Editing: A Unified Formulation and Design Taxonomy",
-      "category": "multimodal",
+      "id": "199afbc0e96d447e",
+      "title": "Org-Agent: Beyond Personal Assistants Towards Organizational Agents",
+      "category": "agent",
       "channel": "hf_papers",
-      "url": "https://huggingface.co/papers/2609.34381",
+      "url": "https://huggingface.co/papers/2609.34392",
       "sources": [
         {
-          "url": "https://huggingface.co/papers/2609.34381",
+          "url": "https://huggingface.co/papers/2609.34392",
           "name": "hf_papers"
         },
         {
-          "url": "https://arxiv.org/abs/2609.34381",
+          "url": "https://arxiv.org/abs/2609.34392",
           "name": "canonical"
         }
       ],
       "tags": [],
-      "summary": "Video and audio are perceived together, yet most generative models treat them in isolation. We examine methods that model the two modalities jointly, generate one from the other, or edit them in a coupled manner, organized around a single question: how is the output kept coherent across modalities in time and semantics? A unified formulation casts joint generation, cross-modal generation, and joint editing as three problems defined on a single distribution over audio-visual pairs, and a taxonomy compares methods along five design axes. To our knowledge, this is the first overview to systematically taxonomize joint audio-visual editing, which we map as nine edit categories spanning 28 edit types. We describe methods, datasets, and metrics for each setting and close with the open problems we view as most consequential.",
+      "summary": "Language model agents serving organizations must coordinate requests from multiple users while using knowledge distributed across their interactions. We identify two complementary capabilities for this setting, namely cross-user interaction and decision-making, as well as cross-user memory and knowledge use. Both capabilities are governed by organizational constraints across three aspects: user identity, authority, and access permissions; the attribution and temporal validity of information; and rules for resolving conflicting requirements across users and completion requirements for joint decisions. These constraints shape what information or decisions must be obtained before an action can proceed and what conditions must be satisfied during its execution. Motivated by this, we introduce Org-Agent, a unified constraint-centric reasoning framework that organizes task execution in three stages. Specifically, Org-Agent decomposes a task into atomic subtasks and constructs a task dependency graph whose edges encode the dependencies among them. Building on this graph, it schedules the subtasks in dependency order through topological sorting. It then executes each subtask while accounting for the task's constraints, supported by evidence-acquisition and memory-management tools. Experiments on MUSES-Bench and GroupMemBench demonstrate the effectiveness of Org-Agent on both capabilities, and ablations further support the contributions of dependency modeling and tool use.",
       "authors": [
-        "Abhinav Sharma",
-        "Sai Karthik Navuluru",
-        "Wang Wei",
-        "Daksh Dangi",
-        "Xiangbo Gao",
-        "Li Li",
-        "Bo Ni",
-        "Vardhan Dongre",
-        "Junda Wu",
-        "Xiyang Hu",
-        "Jiuxiang Gu",
-        "Seunghyun Yoon"
+        "Luyao Zhuang",
+        "Yujing Zhang",
+        "Zijin Hong",
+        "Yilin Xiao",
+        "Xiao Huang"
       ],
       "publishedAt": "2026-09-28T08:00:00+08:00",
       "knowledgeType": "method",
-      "why": "归属「多模态算法」方向；命中关键词 cross-modal、audio-visual；社区热度 1",
-      "relevanceScore": 81.1,
+      "why": "归属「Agent 理论与实践」方向；命中关键词 agent、tool use、memory；社区热度 5；领域核心工作",
+      "relevanceScore": 89.6,
       "qualitySignals": {
-        "upvotes": 1
+        "upvotes": 5
       },
       "peerReviewed": false,
       "codeAvailable": false,
-      "planRelevanceScore": 81.1,
-      "planDepthScore": 63.8
+      "planRelevanceScore": 89.6,
+      "planDepthScore": 67.35
+    },
+    {
+      "id": "dc373482c9fa535f",
+      "title": "shibing624/MedicalGPT - MedicalGPT: Training Your Own Medical GPT Model with ChatGPT Training Pipeline. 训练医疗大模型，实现了包括增量预训练(PT)、有监督微调(SFT)、RLHF、DPO、ORPO、GRPO。",
+      "category": "posttraining",
+      "channel": "github",
+      "url": "https://github.com/shibing624/MedicalGPT",
+      "sources": [
+        {
+          "url": "https://github.com/shibing624/MedicalGPT",
+          "name": "github"
+        }
+      ],
+      "tags": [
+        "chatgpt",
+        "dpo",
+        "gpt",
+        "llama",
+        "llm",
+        "medical",
+        "medicalgpt",
+        "Python"
+      ],
+      "summary": "MedicalGPT: Training Your Own Medical GPT Model with ChatGPT Training Pipeline. 训练医疗大模型，实现了包括增量预训练(PT)、有监督微调(SFT)、RLHF、DPO、ORPO、GRPO。",
+      "authors": [
+        "shibing624"
+      ],
+      "publishedAt": "2026-09-15T01:46:54+08:00",
+      "knowledgeType": "project",
+      "why": "归属「后训练」方向；命中关键词 sft、rlhf、dpo、orpo、grpo；GitHub 5849 stars；疑似附带开源实现；领域核心工作",
+      "relevanceScore": 84.8,
+      "qualitySignals": {
+        "stars": 5849,
+        "forks": 798,
+        "codeAvailable": true
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 84.8,
+      "planDepthScore": 66.66
+    },
+    {
+      "id": "c6cf073644ed8f6e",
+      "title": "On the Off-Policy Teacher in On-Policy Distillation",
+      "category": "posttraining",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.38360",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.38360",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.38360",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "On-policy distillation (OPD) has recently emerged as a promising post-training paradigm in which the student learns from trajectories generated by its own policy under dense teacher supervision. However, OPD introduces a fundamental asymmetry: although the sampled trajectories are on-policy for the student, they are off-policy for the teacher. The teacher is typically optimized to continue from prefixes generated by its own policy, but during OPD it must instead supervise prefixes generated by the student. Empirically, we find that its continuation performance degrades as these prefixes grow longer. To address this issue, we propose Student-COnditioned Updates of the Teacher (SCOUT), a co-training framework that adapts the teacher to student-generated prefixes. Alongside standard OPD updates, SCOUT periodically optimizes the teacher's conditional ability using reinforcement learning with verifiable rewards, where the teacher generates continuations from student prefixes and learns from outcome rewards. Controlled experiments show that SCOUT improves the teacher's ability to continue from student-generated prefixes, supporting the intended mechanism of student-conditioned teacher adaptation. Across multiple teacher--student configurations, model scales, and reasoning domains, SCOUT also consistently improves the effectiveness of on-policy distillation.",
+      "authors": [
+        "Langlin Huang",
+        "Hao Liu",
+        "Mononito Goswami",
+        "Xinyu Li",
+        "Prithwith Jana",
+        "Nikos Kanakaris",
+        "Patrick Blöbaum",
+        "Purak Jain"
+      ],
+      "publishedAt": "2026-09-29T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「后训练」方向；命中关键词 post-training、distillation、on-policy distillation；社区热度 10",
+      "relevanceScore": 83.9,
+      "qualitySignals": {
+        "upvotes": 10
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 83.9,
+      "planDepthScore": 66.09
+    },
+    {
+      "id": "e57c363c256725b4",
+      "title": "Toward Self-organizing Production Logistics: A Multi-agent Approach",
+      "category": "agent",
+      "channel": "s2",
+      "url": "https://doi.org/10.1007/978-3-032-38614-4_37",
+      "sources": [
+        {
+          "url": "https://doi.org/10.1007/978-3-032-38614-4_37",
+          "name": "s2"
+        }
+      ],
+      "tags": [],
+      "summary": "Production logistics is increasingly exposed to variability, dynamic interdependencies, and operational disturbances that challenge conventional centralized planning and control approaches. Following a Design Science Research Methodology, this paper establishes a...",
+      "authors": [
+        "Jan-Felix Klein",
+        "Yongkuk Jeong",
+        "Erik Flores-García",
+        "Magnus Wiktorsson"
+      ],
+      "publishedAt": "2026-09-30T00:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「Agent 理论与实践」方向；命中关键词 agent、multi-agent、planning；同行评审 (IFIP advances in information and communication technology)；领域核心工作",
+      "relevanceScore": 98.2,
+      "qualitySignals": {
+        "citations": 0,
+        "venue": "IFIP advances in information and communication technology",
+        "via": "openalex"
+      },
+      "peerReviewed": true,
+      "codeAvailable": false,
+      "planRelevanceScore": 98.2,
+      "planDepthScore": 66.06
     }
   ]
 }

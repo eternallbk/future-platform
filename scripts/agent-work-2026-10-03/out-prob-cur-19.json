@@ -1,0 +1,194 @@
+{
+  "batchId": "prob-cur-19",
+  "entries": [
+    {
+      "id": "beam-search",
+      "tldr": "每步为 beam 内各序列扩展 top-k，按 logprob/len^penalty 排序留 beam 条，各 beam 自持 KV cache。",
+      "restated": "题意澄清：输入是 prompt 的 token id，形状 [1, T0]（人工 referenceSolution 自注仅演示单条样本逻辑）；模型每步对最后一个位置输出未归一化 logits [1, V]。要求实现：每步为 beam 中每条序列扩展 top-k，共 beam×k 个候选，按累计对数概率经长度归一化后的 score/len^penalty 排序保留 beam 条；命中 eos_id 或达 max_new 停止；输出得分最高的序列 [1, L] 与其分数。还要说明为什么要长度归一化以及退化问题。人工题干未给 V 与样例数值。",
+      "approach": [
+        {
+          "step": "朴素/易错写法一：每步贪心 argmax，或把每步概率乘起来当分数",
+          "detail": "最省事的是每步取 argmax（贪心），或者真的用 p1·p2·… 连乘作为序列分数。贪心的问题在于局部最优不等于全局最优：当前概率最高的那个 token 可能把序列引到一条后续全是低概率的分支上，而 beam search 的意义正是同时保留多条路径、在下一步用累计分数把它们比出高下。概率连乘的问题在数值：每一步的概率都 < 1，V 大、步数长时乘积很快下溢（fp32 最小正规数约 1.2e-38），所有候选的分数都塌成 0，排序失去意义。正确做法是全程在对数域做加法：log p 累加，乘法变加法，而 log 是单调变换，不改变候选之间的排序。"
+        },
+        {
+          "step": "朴素/易错写法二：让所有 beam 共用一份状态（序列 / KV cache）",
+          "detail": "第二版常见写法是用一个列表或一个张量承载所有 beam 的状态，例如 [state] * beam 这种浅复制，或者让模型原地改写同一份 KV cache。解码时每条候选都要把「自己刚生成的 token」追加到上下文里，共享一份 cache 就是互相污染：beam A 的新 token 被写进了 B 的上下文，输出看起来通顺、其实对应的是并不存在的序列，而且不报错。正确设计是每条 beam 持有自己的四元组 (tokens, score, 自己的 KV cache, finished 标记)；扩展候选时子候选继承父候选的 cache（同一个前缀只读共享是安全的），命中 eos 的候选连同分数单独存进 finished 池——这正是人工 keyPoints 第三条的要求。"
+        },
+        {
+          "step": "正确写法关键设计一：候选集合 = 每条 beam 各自 top-k，再按累计分数排序保留 beam 条",
+          "detail": "每步对每条未结束的 beam 做一次增量前向：只喂最后一个 token、复用该 beam 的 cache，得到 logits [1, 1, V]；log_softmax 后 topk(k) 取候选，把 (父序列 + 新 token, 父分数 + 该 token 的 log p) 收集起来，一共 beam×k 个候选，排序后只留 beam 条。这里两个「beam」不能混：扩展用 k，保留用 beam 条；只取 top-1 就等于退化成贪心。人工 referenceSolution 的 stub 里明确写着「实际实现需要在此对 beam 做合并 + 按长度归一化 score / len^penalty 排序」，本解补的就是这一步合并。"
+        },
+        {
+          "step": "正确写法关键设计二：用 score / len^penalty 作为一切跨长度比较的 key",
+          "detail": "对数概率都是负数，序列越长累加的负项越多，raw 累计分数天然偏向短序列；一旦在长度不同的候选之间直接比 raw 分数（finished 池里长度参差，最终选优时更是如此），就会系统性输出过短的结果，甚至一有机会就吐 EOS。因此比较 key 用 score / len^penalty（人工 keyPoints 原话）：penalty=0 退化为不归一化，penalty 越大越鼓励长句，这就是 GNMT 里 lp(Y)=(5+|Y|)^α/6^α 的简化形式。长度只数新生成的 token（含 EOS），并用 max(len, 1) 兜住 len=0。"
+        },
+        {
+          "step": "正确写法关键设计三：EOS 与终止条件——finished 池参与最终选优，全部结束就提前退出",
+          "detail": "命中 eos_id 的候选既不能丢掉、也不能继续扩展：把它连同分数存进 finished 池（人工 keyPoints：已结束的序列要单独存起来并保留它的分数），并在候选元组上带 finished 标记；每轮开头如果所有 beam 都已结束就直接退出循环，不再做无意义的前向。最终返回 (finished ∪ 活跃 beam) 中归一化分数最高的序列——这正是人工 pitfalls 第三条「结束时未把 finished 序列纳入最终候选」的正面写法。边界还要处理：k 夹到 [1, V]（beam > 词表大小时 topk 会直接报错）、max_new=0 时原样返回 prompt、非 [1, T0] 输入显式报错而不静默算错。"
+        },
+        {
+          "step": "题干要求的定性说明：beam search 为什么会退化（为什么聊天模型不用它）",
+          "detail": "beam search 优化的是整句累计对数概率，而「累计概率最高」并不等于「人觉得好」：重复片段往往既能贴合语言模型的自我强化倾向、又能稳定拿到很高的逐步 log p，于是高分序列常常是重复串或空洞的功能词堆叠；再加长度归一化会把这类可无限延长的重复串进一步推高。本解自带的玩具模型上 beam=4 就返回了 [1,4,5,2,1,4,5,2,1] 这样的 4 周期自循环，是这种退化的最小复现。开放式生成（对话、创作）里 beam 还会抹掉多样性、输出千人一面，所以聊天模型默认用采样（温度 / top-k / top-p）；beam 更适合答案相对唯一、可对拍的场景：机器翻译、语音识别、约束解码、代码补全的候选生成。这正与人工 keyPoints 第四条一致。"
+        }
+      ],
+      "complexity": {
+        "time": "O(max_new · (beam·C + beam·k·log(beam·k)))，C 为「单步增量前向」的代价：每步 beam 条活跃序列各前向 1 个 token，再对 beam×k 个候选排序取 top-beam。若不复用 KV cache、每步重算整条序列，则每步代价变成 O(beam·L·d) 且随步数增长，总体约 O(beam·max_new²·d)。",
+        "space": "O(beam · (L + KV))：每条 beam 一份 token 序列 [1, L] 和一份属于自己的 KV cache（约 层数 × 2 × L_ctx × d_head 个元素），外加 finished 池与 beam×k 个候选的临时列表；另需 logits/log_softmax 的 [1, 1, V] 临时张量。",
+        "why": "代价来自「beam 份前向 + 候选排序」：beam 宽度把解码算力放大 beam 倍来换取搜索宽度，排序是 beam·k 个候选的小规模排序；KV cache 让每步只前向 1 个新 token 而不是重算整条序列，这是 beam search 能落地的关键。"
+      },
+      "code": {
+        "language": "python",
+        "source": "import torch\nimport torch.nn.functional as F\n\n\ndef normalized_score(logprob_sum, gen_len, length_penalty=0.6):\n    # 长度归一化：score / len^penalty（penalty=0.0 退化为不归一化）\n    return logprob_sum / float(max(gen_len, 1)) ** length_penalty\n\n\n@torch.no_grad()\ndef beam_search(model, input_ids, beam=4, max_new=32, eos_id=None,\n                length_penalty=0.6):\n    # 教学版 beam search（单条样本；model 支持 KV cache 增量解码）\n    #   input_ids: LongTensor [1, T0]，prompt（含 bos）\n    #   model(tokens, past) -> (logits [1, T, V], new_past)，每次返回全新 cache\n    #   返回 (best_tokens [1, L], best_score)，best_score 已按 len^penalty 归一化\n    if input_ids.dim() != 2 or input_ids.size(0) != 1:\n        raise ValueError(\"教学版只处理单条样本：input_ids 必须是 [1, T0]\")\n    prompt_len = input_ids.size(1)\n    # 每条 beam 是四元组：(tokens [1, L], 累计 logprob, 自己的 KV cache, finished 标记)\n    beams = [(input_ids, 0.0, None, False)]\n    finished = []                      # 已结束的序列单独存，并保留它的分数\n    for _ in range(max_new):\n        if all(done for _, _, _, done in beams):\n            break                      # 所有 beam 都已结束：提前退出，不再空转\n        cands = []\n        for tokens, score, past, done in beams:\n            if done:\n                continue               # 已结束的 beam 不再做前向\n            logits, new_past = model(tokens[:, -1:], past)        # [1, 1, V]\n            logp = F.log_softmax(logits[:, -1].float(), dim=-1)   # 对数域相加，避免概率连乘下溢\n            k = max(1, min(beam, logp.size(-1)))                  # 边界：k 不能超过词表大小\n            topv, topi = logp.topk(k, dim=-1)                     # [1, k]\n            for v, i in zip(topv[0].tolist(), topi[0].tolist()):\n                nxt = torch.cat([tokens, tokens.new_tensor([[int(i)]])], dim=1)\n                cands.append((nxt, score + v, new_past,\n                              eos_id is not None and int(i) == eos_id))\n        if not cands:\n            break\n        # 按 score / len^penalty 排序（同一时刻各候选等长，但 finished 池里长度不同，\n        # 统一用归一化分数作 key，才能公平比较短句与长句）\n        cands.sort(key=lambda c: normalized_score(c[1], c[0].size(1) - prompt_len,\n                                                  length_penalty), reverse=True)\n        beams = []\n        for cand in cands:\n            if len(beams) >= beam:\n                break                  # beam 名额已满\n            if cand[3]:\n                finished.append((cand[0], cand[1]))   # 结束的序列进 finished 池，保留分数\n            beams.append(cand)         # 每条 beam 带自己的 cache 与 finished 标记\n    # 最终候选必须是 finished 池 ∪ 活跃 beam，否则已结束的高分序列会被丢掉\n    pool = finished or [(t, s, p) for t, s, p, _ in beams]\n\n    def choose(pair):\n        return normalized_score(pair[1], pair[0].size(1) - prompt_len, length_penalty)\n\n    best_tokens, best_raw = max(((t, s) for t, s, *_ in pool), key=choose)\n    return best_tokens, choose((best_tokens, best_raw))\n\n\nclass ToyLM:\n    # 玩具打分模型：logits 只由最后一个 token 决定，cache 记录历史形状，便于离线自测\n    def __init__(self, vocab=6, seed=0):\n        g = torch.Generator().manual_seed(seed)\n        self.vocab = vocab\n        self.table = torch.randn(vocab, vocab, generator=g) * 1.5\n\n    def __call__(self, tokens, past=None):\n        # tokens: [1, T]（增量解码时 T=1）；past: [1, L, V] 或 None\n        logits = self.table[tokens]                                  # [1, T, V]\n        cache = logits if past is None else torch.cat([past, logits], dim=1)\n        return logits, cache        # 返回新 cache，绝不原地改写：beam 之间共享才安全\n\n\nif __name__ == \"__main__\":\n    torch.manual_seed(0)\n    lm = ToyLM(vocab=6, seed=0)\n    prompt = torch.tensor([[1]])\n    seq, sc = beam_search(lm, prompt, beam=4, max_new=8)\n    print(\"beam=4 ->\", seq.tolist(), round(sc, 4))\n    assert seq.size(0) == 1 and prompt.size(1) < seq.size(1) <= prompt.size(1) + 8\n\n    # 边界：beam=1 必须与贪心逐字相同\n    greedy, past = prompt.clone(), None\n    for _ in range(8):\n        logits, past = lm(greedy[:, -1:], past)\n        greedy = torch.cat([greedy, logits[:, -1].argmax(-1, keepdim=True)], dim=1)\n    one, _ = beam_search(lm, prompt, beam=1, max_new=8)\n    assert one.tolist() == greedy.tolist(), (one.tolist(), greedy.tolist())\n\n    # 边界：beam > 词表大小时不报错\n    big, _ = beam_search(lm, prompt, beam=99, max_new=4)\n    assert big.size(1) <= prompt.size(1) + 4\n\n    # 边界：命中 eos 后提前结束，且 finished 序列进入最终候选\n    eos = int(lm.table[1].argmax())\n    seq2, sc2 = beam_search(lm, prompt, beam=3, max_new=8, eos_id=eos)\n    assert seq2[0, -1].item() == eos and seq2.size(1) <= prompt.size(1) + 8\n    print(\"eos 终止 ->\", seq2.tolist(), round(sc2, 4))\n\n    # 边界：max_new=0 直接返回 prompt，分数为 0\n    seq3, sc3 = beam_search(lm, prompt, beam=2, max_new=0)\n    assert seq3.tolist() == prompt.tolist() and sc3 == 0.0\n\n    # 长度归一化：penalty=0.6 时 len=4 的长句反超 len=2 的短句；penalty=0 时不会\n    short, long_ = normalized_score(-3.0, 2, 0.6), normalized_score(-4.2, 4, 0.6)\n    print(\"归一化:\", round(short, 4), round(long_, 4))\n    assert long_ > short and normalized_score(-4.2, 4, 0.0) < -3.0\n\n    # 边界：batch > 1 与非法形状要显式报错，而不是静默算错\n    try:\n        beam_search(lm, torch.tensor([[1], [2]]), beam=2)\n        raise AssertionError(\"应当拒绝 batch>1 的输入\")\n    except ValueError as exc:\n        print(\"已拒绝非法输入形状:\", exc)\n    print(\"all self-tests passed\")\n",
+        "walkthrough": [
+          {
+            "note": "依赖说明：整份实现只用 PyTorch（import torch 与 torch.nn.functional as F），没有其它第三方库；算法与人工 referenceSolution 一致——同一套签名 beam_search(model, input_ids, beam=4, max_new=32, eos_id=None, length_penalty=0.6)、@torch.no_grad() 推理、F.log_softmax 之后 topk 取候选、对数域累加、命中 eos 就停、score 按 len^penalty 归一化。差别只在于把 stub 里注明「需要在此对 beam 做合并」的那一步真正写出来，并补上防御性边界。为什么用张量算子而不是 Python 逐 token 循环：log_softmax/topk 是整行一次算完的核函数，逐 token 循环既慢又容易漏掉归一化。"
+          },
+          {
+            "note": "normalized_score 是长度归一化的唯一定义处：score / len^penalty，其中分母用 max(gen_len, 1) 兜住 gen_len=0（例如 max_new=0 时只解码了 prompt），避免 0 的负次幂除零。penalty=0.0 时它原样返回 raw 累计 logprob，方便对比「不归一化」的行为；penalty 越大越奖励长句。"
+          },
+          {
+            "note": "beam_search 开头先校验形状：输入必须是 [1, T0]（单条样本）。这不是形式主义——batch>1 时不做 repeat_interleave 与 cache 重排就会算出错的结果，所以宁可显式抛 ValueError 也不静默算错；批量版本的做法写在 followUps 里。prompt_len 被记下来，后面所有长度归一化都只数「新生成的 token 数」。"
+          },
+          {
+            "note": "核心状态是每条 beam 的四元组 (tokens [1, L], 累计 logprob, 自己的 KV cache, finished 标记)，初始只有一条 prompt；finished 是独立的池子，用来放已经命中 EOS 的序列并保留它们的原始分数。把 cache 放进每条 beam 里，正是人工 pitfalls 第二条「所有 beam 共享同一份 KV cache」的正面设计：不同 beam 的前缀不同，cache 必须各归各的。"
+          },
+          {
+            "note": "循环开头 all(done) 的提前退出是终止条件之一：所有 beam 都已结束时没必要再前向。因为 finished 标记就是四元组里的第四项，这个判断直接读 beam 自身状态，不需要额外维护计数器。"
+          },
+          {
+            "note": "对每条未结束的 beam 只喂 tokens[:, -1:]（最后一个 token）并复用它的 past，得到 logits [1, 1, V]：这是增量解码，每步只为 1 个新 token 计算注意力，而不是把整条序列重算一遍。已结束的 beam 用 continue 跳过，既不浪费前向，也不会在 EOS 之后继续长出 token。"
+          },
+          {
+            "note": "log_softmax 之后在对数域累加 score + v，把「概率连乘」变成「对数相加」，这是人工 keyPoints 第一条防下溢的写法；topv/topi 的前 k 个就是本条序列的 top-k 扩展。k = max(1, min(beam, logp.size(-1))) 是边界处理：torch.topk 要求 k ≤ V，beam > 词表大小时不夹住会直接抛错，k=0 则得到空候选集。"
+          },
+          {
+            "note": "每个候选把新 token 拼到父序列尾部（torch.cat），并带上父候选的 new_past；eos_id is not None and i == eos_id 得到 finished 标记。这里子候选之间共享同一份 new_past 是安全的，因为 new_past 覆盖的正是「父前缀」这段公共上下文，且 ToyLM 每次返回全新张量、绝不原地改写——真机上若用 HF 的 DynamicCache（原地 append），就必须为每条 beam 复制或按 beam 索引重排 cache。"
+          },
+          {
+            "note": "排序 key 用 normalized_score(c[1], c[0].size(1) - prompt_len, length_penalty)，即 score / len^penalty，长度只算新生成的 token。同一时刻的各候选长度相同，所以这一步的惩罚项对排序是等比例的；它真正决定胜负的地方是之后与 finished 池里长度不同的序列比较（以及最终选优），这就是人工 pitfalls 第一条「忘记长度归一化导致输出过短」的因果链。"
+          },
+          {
+            "note": "排序后重建 beams：按名次取前 beam 条（len(beams) >= beam 就 break），其中带 finished 标记的候选同时被追加进 finished 池并保留原始分数。注意保留的是 raw 分数而不是归一化分数：归一化只在「跨长度比较」的那一刻施加，这样同一个序列在不同比较里口径一致。"
+          },
+          {
+            "note": "循环结束后 pool = finished or 活跃 beam：只要有任何序列正常结束，就只在 finished 池里选最终答案，否则退化到活跃 beam（例如 eos_id=None 或步数用尽）。这句 or 正是人工 pitfalls 第三条的正面实现——如果只从活跃 beam 里选，已结束的高分序列会被整批丢掉。最后用 choose 按各自的归一化分数取最大值，并把同一个 key 作为返回的分数，保证「返回的分数」与「选它的理由」是同一个量。"
+          },
+          {
+            "note": "ToyLM 是纯离线自测用的玩具打分模型：logits 只由最后一个 token 决定（self.table[tokens]，形状 [1, T, V]），cache 只是把历史 logits 沿长度维拼起来（[1, L, V]），用来演示「每条 beam 各持一份、只增不改」的 cache 语义；它没有注意力、也不代表真实语言模型，只保证整个 beam search 可以在没有权重文件的情况下真跑起来。"
+          },
+          {
+            "note": "__main__ 把边界行为钉成断言：beam=4 的形状与长度上界；beam=1 必须与手写贪心逐字相同（topk 的 k=1 与只保留 1 条 beam 的极限）；beam=99 > 词表 6 时靠 k 夹取不报错；eos_id 命中后序列在 max_new 之前就结束；max_new=0 原样返回 prompt 且分数为 0；长度归一化的算术（penalty=0.6 时 len=4 的 -4.2 反超 len=2 的 -3.0，penalty=0 时不会）；以及 batch>1 必须抛 ValueError。实跑输出还顺带露出了退化现象：beam=4 得到 [1,4,5,2,1,4,5,2,1]。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "max_new=0：循环一次都不进，pool 回落到活跃 beam（就是 prompt），gen_len=0 由 max(gen_len,1) 兜住，返回 prompt 与分数 0.0。",
+        "beam=1：topk(k=1) 且只保留 1 条，等价于贪心解码，必须与手写 argmax 循环逐字一致（自测里做了对拍）。",
+        "beam > 词表大小 V：torch.topk 会直接报错，必须 k = max(1, min(beam, V))，此时每条序列的候选集就是整个词表。",
+        "eos_id=None：永远不会产生 finished 序列，finished 池为空，最终从活跃 beam 里选优——这是「不设停止符、按固定步数生成」的常见用法。",
+        "第一步就命中 EOS：候选全部带 finished 标记，下一轮开头 all(done) 为真直接退出，返回最短的已结束序列。",
+        "所有 beam 同时结束：循环在下一轮开头提前退出，不会再多算一次前向。",
+        "prompt 很长或只剩一个 token：只喂 tokens[:, -1:] 保证增量解码只算 1 个位置；prompt_len 用于扣掉 prompt 长度，长度归一化不被 prompt 稀释。",
+        "logits 里有被上游 mask 成 -inf 的 token：log_softmax 后它们的 log p 趋于 -inf，排序后自然落在最后，不会被 topk 选中（除非 k 大到把整行都取进来）。",
+        "score 出现的并列：排序是稳定的偏序，并列时候选按原顺序保留；若要求严格确定性，应在 key 里加一个 tie-breaker（如 token id）。",
+        "输入不是 [1, T0]（例如 batch>1 或 1-D 张量）：显式抛 ValueError；要真正支持 batch 就得 repeat_interleave 展开 beam 并按索引重排 cache。",
+        "fp16/bf16 下的 logits：log_softmax 与长序列累加都会损失精度，工程上常把分数留在 fp32；本解显式把 logits 转成 float 再做 log_softmax。",
+        "长度惩罚取值极端：penalty=0 完全不归一化（偏向短句），penalty=1 与长度线性抵消，penalty 过大时归一化分数随长度趋近 0、几乎只按长度排序。",
+        "eos 之后模型仍会产出 token：本解通过 finished 标记跳过前向，保证 EOS 之后不再长出内容。"
+      ],
+      "pitfalls": [
+        "忘记长度归一化导致输出过短（人工 pitfalls 原话）：对数概率全是负数，越加越小，跨长度比较时必然偏向短句，甚至一有机会就吐 EOS。",
+        "所有 beam 共享同一份 KV cache（人工 pitfalls 原话）：每条 beam 前缀不同，cache 必须各持一份；[state] * beam 这类浅复制、或让模型原地改写同一份 cache，会让不同 beam 的上下文互相污染。",
+        "结束时未把 finished 序列纳入最终候选（人工 pitfalls 原话）：命中 eos 的序列要存进 finished 池并保留分数，最终比较的是 finished ∪ 活跃 beam。",
+        "在概率域连乘而不是对数域累加：几十步后乘积下溢为 0，所有候选分数都变成 0，排序失效（人工 keyPoints 原话）。",
+        "扩展候选时只取 top-1：人工 referenceSolution 的 stub 自注「实际实现需要在此对 beam 做合并 + 按长度归一化排序」，只取最大就退化成贪心，beam 宽度形同虚设。",
+        "topk 的 k 没有夹到 [1, V]：beam 宽度大于词表时 torch.topk 直接抛错，k=0 则候选集为空、后续选取崩溃。",
+        "命中 EOS 后仍继续扩展该 beam：白白多做前向，序列还会在 EOS 之后再长出新 token，最终答案里混进尾部垃圾。",
+        "归一化长度把 prompt 算进去：len 应该只数新生成的 token（含 EOS），否则惩罚项被 prompt 长度稀释，长短句差异被抹平。",
+        "混用 raw 分数与归一化分数：一边用 raw 排名一边用归一化选优，等价于两套标准，长句短句不可比；本解统一以 score/len^penalty 为跨长度比较的 key。",
+        "finished 池里的序列被当成「不需要再记录分数」：只存 token 不存分数，最终选优时无法比较，只能随便取一条。",
+        "所有 beam 都结束后没有提前退出：还在按 max_new 空转循环，白跑若干次前向。",
+        "beam 宽度只在最后一步生效（每步只留 1 条、最后再取 top-beam）：搜索宽度必须每一步都保持，否则中途一旦剪错就再也回不来。",
+        "把 batch 维直接当 beam 维展开却忘记重排 cache：topk 给出的是全局下标，cache 顺序必须跟着 beam 重排（reorder_cache），否则 cache 与序列错位，输出变差且不报错。",
+        "以为 beam search 一定优于采样：开放式生成上 beam 容易重复/空洞且完全没有随机性，聊天模型默认用采样（人工 keyPoints 原话）。"
+      ],
+      "followUps": [
+        "长度归一化的标准形式是什么？Google NMT 用 lp(Y) = (5+|Y|)^α / 6^α，比本题的 len^penalty 多了平滑常数，避免极短句被惩罚到离谱；α=0 完全不惩罚长度，α=1 完全按长度归一化。本题的 score/len^penalty 是它的简化版，两者都是长度归一化。",
+        "early stopping 怎么影响结果？有三种口径：never（一定要跑满 max_new）、heuristic（当前最优已结束序列的分数优于所有活跃 beam 上界时停）、always/保守（beam 条最优假设都结束才停）。启发式早停快，但可能丢掉后面才出现的高分序列，所以要和长度惩罚一起调。",
+        "batch 里多条样本怎么做 beam search？把 prompt 沿 batch 维 repeat_interleave(beam) 展开，cache 也按同样的索引重排；每步 logits 是 [B·beam, V]，reshape 成 [B, beam, V] 后与分数矩阵 [B, beam] 相加（广播 log_softmax 的结果）得到 [B, beam·V]，再 topk(beam) 才是正确的全局候选排序。",
+        "为什么必须 reorder_cache？topk 返回的是 (beam_idx, token_idx) 的全局下标，新的 beam 顺序与旧顺序不同，cache 必须按 beam_idx 重排（HF 的 past_key_values.reorder_cache / _reorder_cache）；漏掉这一步，cache 与序列错位，输出会莫名变差且不报错。",
+        "长度惩罚应该在哪一步生效？本解把它当作所有跨长度比较的 key（与 finished 池比较、最终选优）；也可以直接把归一化分数当作运行分数，但同一时刻等长候选的排序不变，改变的是「与更早结束的序列比」的口径——回答时要说清你的实现把归一化用在哪个比较上。",
+        "diverse beam search 怎么提高多样性？把 beam 分成若干组，组内正常搜索，组间加多样性惩罚（对其它组已选过的 token 降权或减去相似度），代价是多一组超参（组数、多样性强度）。",
+        "约束解码 / 前缀约束怎么嵌入？每步在 logits 上把不允许的 token 置 -inf 再 topk；要强制某段文本出现，就把 beam 的状态从「一条序列」扩展成「序列 + 前缀树/自动机状态」，只保留能继续匹配约束的候选。",
+        "beam search 能求全局最优吗？不能，它是启发式剪枝：只有 beam 宽到接近 词表^步数 才退化成穷举（指数级）。要精确 top-k 序列，得用 Viterbi（模型满足条件独立时）或基于堆的 best-first / A* 搜索。",
+        "与对比搜索、典型解码的关系？contrastive search 用「模型置信度 − 退化惩罚」的对比目标专门对抗 beam 的重复退化；typical sampling 从信息量 |−log p − H| 角度保留典型 token，都是针对同一类退化问题的不同解法。",
+        "KV cache 的显存怎么估？约 层数 × 2（K/V）× L_ctx × d_head × dtype 字节数；beam 宽度会让这部分显存放大 beam 倍，所以 beam=8 时显存压力常常先于算力成为瓶颈。"
+      ],
+      "variations": [
+        "贪心（argmax）与纯采样（温度 / top-k / top-p）：说明 beam=1 就是贪心，而采样用随机性换多样性。",
+        "机器翻译式的 length penalty（GNMT 公式）与 coverage penalty（惩罚漏译），体会归一化项如何改变输出长度。",
+        "diverse / group beam search：beam 分组 + 组间多样性惩罚。",
+        "prefix beam search：CTC/ASR 里把「同前缀、不同对齐」的路径合并计分，beam 的状态是前缀而不是完整对齐。",
+        "对比搜索（contrastive search）与典型解码（typical sampling）：专门对抗重复退化。",
+        "用 numpy 重写同一套候选合并逻辑，cache 改成手工维护的字典，对比两者的数值与速度差异。",
+        "约束 / 前缀树 beam search：强制输出符合 JSON schema 或包含指定关键词。",
+        "与 HuggingFace generate(num_beams=..., length_penalty=..., early_stopping=...) 对拍，验证自己实现的合并与选优口径。",
+        "best-first / A* 搜索与精确 top-k 序列解码：用优先队列代替固定宽度剪枝。",
+        "批量化 beam search：repeat_interleave + reorder_cache 的工程实现，考察吞吐与显存。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "一步 beam 扩展与分数重排",
+        "caption": "记住一步 beam search 的四件事：每条序列各自扩展 top-k（这里是 2）、分数在对数域相加、跨长度比较统一用 score/len^penalty（2^0.6≈1.516）、命中 EOS 的序列进 finished 池保留分数并停止扩展。图中 -1.6 与 -2.0 是 len=2 的 raw 累计 logprob，除 1.516 后得到 -1.06 与 -1.32，于是 A 的两支胜过 B 的两支；A→EOS 虽然结束了，它的分数仍留在 finished 池里参与最终选优。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='8' y='10' width='464' height='30' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='20' y='30' font-size='14' fill='currentColor'>上一步的 beam：A=[BOS 猫] raw -1.2 ｜ B=[BOS 狗] raw -2.4</text><path d='M240 40 L240 48' stroke='currentColor' stroke-width='1.5'/><rect x='8' y='48' width='464' height='70' rx='6' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='20' y='66' font-size='13' fill='currentColor'>每条序列扩展 top-2，对数域相加（len=2，2^0.6≈1.516）</text><text x='20' y='86' font-size='13' fill='currentColor'>A→跑 -1.6 ⇒ -1.06　｜　A→EOS -2.0 ⇒ -1.32</text><text x='20' y='106' font-size='13' fill='currentColor'>B→叫 -2.9 ⇒ -1.91　｜　B→EOS -3.5 ⇒ -2.31（⇒ 后为归一化分）</text><path d='M240 118 L240 126' stroke='currentColor' stroke-width='1.5'/><rect x='8' y='126' width='464' height='30' rx='6' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='20' y='146' font-size='13' fill='currentColor'>按 -score/len^0.6 降序取 top-2：A 的两支胜出，B 的两支被淘汰</text><path d='M120 156 L120 176' stroke='currentColor' stroke-width='1.5'/><path d='M358 156 L358 176' stroke='currentColor' stroke-width='1.5'/><rect x='8' y='176' width='228' height='44' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='18' y='194' font-size='13' fill='currentColor'>进 beam：A→跑 [BOS 猫 跑]</text><text x='18' y='212' font-size='13' fill='currentColor'>带自己的 KV cache，继续扩展</text><rect x='244' y='176' width='228' height='44' rx='6' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='254' y='194' font-size='13' fill='currentColor'>进 finished：A→EOS，raw -2.0</text><text x='254' y='212' font-size='13' fill='currentColor'>保留分数，不再前向扩展</text><text x='240' y='234' text-anchor='middle' font-size='13' fill='var(--fg-1)'>beam 之间绝不共享 cache；最终在 finished ∪ 活跃 beam 里选优</text></svg>",
+        "alt": "图：一步 beam search 的流程。上一步两条 beam A=[BOS 猫] raw -1.2、B=[BOS 狗] raw -2.4；每条序列扩展 top-2 并在对数域相加，候选为 A→跑 -1.6、A→EOS -2.0、B→叫 -2.9、B→EOS -3.5，长度归一化（len=2，2^0.6≈1.516）后分别是 -1.06、-1.32、-1.91、-2.31；按归一化分数降序取 top-2，A 的两支胜出、B 的两支被淘汰；A→跑 带着自己的 KV cache 进入 beam 继续扩展，A→EOS 进入 finished 池并保留原始分数、不再前向；底部注明 beam 之间绝不共享 cache，最终在 finished 与活跃 beam 的并集里选优。"
+      },
+      "selfTest": [
+        "把 beam 设成 1，你的实现为什么必须与手写贪心逐字相同？是哪两处（topk 的 k、保留条数）同时保证了这一点？",
+        "raw 分数 -3.0（len=2）与 -4.2（len=4）谁更优？penalty=0.6 与 penalty=0 的答案为什么相反？（提示：2^0.6≈1.516、4^0.6≈2.297）",
+        "为什么每条 beam 必须有自己的 KV cache？如果所有 beam 共用一份，会出现什么现象、为什么可能不报错？子候选可以共享父候选的 cache 吗，为什么？",
+        "命中 EOS 的序列去哪了？如果最终只在「还在跑的 beam」里选结果，会发生什么？请结合人工 pitfalls 第三条回答。",
+        "beam search 最常见的退化现象是什么？为什么同一份人工 keyPoints 会说聊天模型应该用采样而不是 beam？",
+        "beam=8 而词表 V=5 时你的实现怎么处理？如果不处理，会在哪一行、以什么形式失败？",
+        "长度归一化的 len 到底该不该算上 prompt 的长度？如果算上，长短句的分数差距会被怎样影响？"
+      ],
+      "keyPoints": [
+        "用累计 logprob（对数域相加）而不是概率相乘，避免下溢（人工 keyPoints 原话）。",
+        "score 需按长度归一化（score / len^penalty），否则偏向短句（人工 keyPoints 原话）。",
+        "每条 beam 要维护自己的 KV cache 与 finished 标记；已结束的序列要单独存起来并保留其分数（人工 keyPoints 原话）。",
+        "beam search 在开放式生成上容易退化为重复/空洞文本，因此聊天模型常用采样而不是 beam（人工 keyPoints 原话）。",
+        "每步的候选是 beam×k 个（每条序列各自 top-k），按累计分数排序后只留 beam 条；漏掉合并与排序这一步就退化成贪心。"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（beam-search）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题干要求：每步为 beam 中的每条序列扩展 top-k 候选，按累计对数概率排序保留 beam 条，并说明为什么要长度归一化以及 beam search 的退化问题。",
+          "人工 keyPoints 四条已逐条落进本解：对数域相加避免下溢、score / len^penalty 长度归一化、每条 beam 自持 KV cache 与 finished 标记且已结束序列单独存并保留分数、开放式生成上 beam 易退化为重复/空洞文本所以聊天模型用采样。",
+          "人工 pitfalls 三条原文保留在 pitfalls 前三条，并各自给出了因果与正面写法。",
+          "人工 referenceSolution 的算法与开关被完整沿用：签名 beam_search(model, input_ids, beam=4, max_new=32, eos_id=None, length_penalty=0.6)、@torch.no_grad()、F.log_softmax 后 topk 取候选、score 对数域累加、命中 eos 停止、按 len^penalty 归一化。",
+          "本解相对人工 referenceSolution 只做了两类改动：把 stub 中自注「实际实现需要在此对 beam 做合并 + 按长度归一化 score / len^penalty 排序」的那步补全（收集 beam×k 候选、排序、保留 beam 条、finished 池、最终选优）；以及防御性边界（k 夹到 [1, V]、形状校验、max(gen_len, 1)、max_new=0）。没有引入新算法或改变人工观点。",
+          "代码在本机 Python 3.12.9 + torch 2.12.1+cpu 上实跑通过，输出 beam=4 -> [1, 4, 5, 2, 1, 4, 5, 2, 1]（toy 模型上的 4 周期重复，用于演示退化）、eos 终止 -> [1, 4]，全部断言通过。",
+          "图解中的算术是 2^0.6=1.5157 的直接结果：-1.6/1.5157=-1.0556、-2.0/1.5157=-1.3196、-2.9/1.5157=-1.9133、-3.5/1.5157=-2.3092，因此排序为 A→跑 > A→EOS > B→叫 > B→EOS。",
+          "图解里的形状流转（prompt [1, T0] → 每步增量前向 [1, 1, V] → beam×k 个候选 → 保留 beam 条 → 输出 [1, L]）与代码逐句对应。",
+          "复杂度结论的「每步 beam 次单步前向 + beam·k 个候选排序」来自代码结构；KV cache 让每步只前向 1 个新 token 是增量解码的直接结论。"
+        ],
+        "uncertain": [
+          "人工题干未给词表大小 V、prompt 长度、beam 宽度与任何样例期望输出，因此本解只有形状自检与边界断言（beam=1 对拍贪心、beam=99、eos 终止、max_new=0、形状校验），没有逐 token 对拍结果。",
+          "人工 referenceSolution 的 docstring 提到「只做一次编码」与「对每个 batch 展开 beam」，但同一段代码自注「简化：仅演示单条样本逻辑」，代码体也只有单条样本的解码循环；本解沿用单条样本 + decoder-only 增量循环，未实现 encoder 侧与 batch/reorder_cache，只把这些做法写进 followUps/variations。",
+          "人工 referenceSolution 没有规定 finished 序列在后续步骤是否继续占用 beam 名额；本解选择「存进独立 finished 池、候选元组保留 finished 标记、不再前向、全部结束即提前退出」，并在 followUps 里给出 HF 风格（用下一个未结束候选补位）的变体口径。",
+          "长度归一化施加的位置（作为排序 key 还是直接作为运行分数）人工只给了公式 score/len^penalty，未规定时机；本解统一把它当作一切跨长度比较的 key，理由是人工 pitfalls 第一条把「忘记长度归一化」与「输出过短」直接关联，而输出长度正是最终选优的产物。",
+          "本解依赖 PyTorch（torch / torch.nn.functional），未提供纯 numpy 版本；也未在 GPU 与 fp16/bf16 下验证，log_softmax 与长序列累加的数值差异只作定性说明。",
+          "退化现象的示例（toy 模型 beam=4 得到 4 周期重复）来自本解自带的玩具打分模型，只用于演示「累计概率最高的序列未必是好文本」，不代表真实语言模型的退化程度。",
+          "复杂度公式里的 C（单步前向代价）与 KV cache 尺寸取决于具体模型结构，人工题干未定义模型，本解按通用约定（层数 × 2 × L_ctx × d_head）表述。",
+          "「penalty 越大越鼓励长句」是在归一化分数为负（log p ≤ 0）的前提下成立的直觉；若分数可达正值这一直觉需要重新表述，本解按对数概率恒非正讨论。",
+          "候选并列时的确定性未处理：本解依赖 Python sort 的稳定性，若需要严格可复现的 tie-breaker（如按 token id 排序）人工题干未作要求。"
+        ]
+      }
+    }
+  ]
+}

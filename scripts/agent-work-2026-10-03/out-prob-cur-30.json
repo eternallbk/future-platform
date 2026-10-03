@@ -1,0 +1,148 @@
+{
+  "batchId": "prob-cur-30",
+  "entries": [
+    {
+      "id": "deepseek-mha-full",
+      "tldr": "完整 MHA 六步：投影→拆头→缩放点积→先掩码后 softmax→合头→输出投影；形状、掩码语义、数值稳定三处最易错。",
+      "restated": "题面只有一句：手写完整的 Multi-Head Attention，并明确要求「不能只写四个线性层」，必须把张量形状、缩放点积、掩码语义、数值稳定性和输出投影都讲清楚。据此确定接口：query/key/value 为 [B,S,d_model]，num_heads 整除 d_model，每头维度 dh=d_model/H，拆分头得到 [B,H,S,dh]，缩放点积得到 [B,H,Sq,Sk]，支持因果掩码与 key padding 掩码，合并头后返回 [B,Sq,d_model]。题面未给出 B/S/d_model/H/dropout/dtype 的取值与样例输入输出（题面未截断）。",
+      "approach": [
+        {
+          "step": "只写四个线性层：为什么拿不到分",
+          "detail": "把 w_q/w_k/w_v/w_o 四个 nn.Linear 堆起来、中间调一次 torch.softmax(q @ k.transpose(-2,-1) @ v)，代码能跑但三处关键语义全丢：一是没有拆头，[B,S,D] 直接打分等价于 H=1 的单头注意力，多头带来的子空间分解根本没发生；二是没除以 sqrt(dh)，dh 个乘积求和使 logits 标准差正比于 sqrt(dh)（本机实测 dh=128 时未缩放的随机点积标准差 10.98，与 sqrt(128)=11.31 吻合），logits 顶到十几会让 softmax 接近 one-hot、梯度趋零；三是掩码缺失或位置错误，因果与 padding 语义直接不成立。笔试题要的正是这三处，所以框架式写法必然被判为「没写完整」。"
+        },
+        {
+          "step": "形状流水线：拆头必须 view→transpose，合头必须 transpose→contiguous→view",
+          "detail": "投影后每个张量都是 [B,S,D]，拆头分两步：先 view(B,S,H,dh)，这一步只把最后一维切成 H 个连续的 dh 子块，第 h 块就是第 h 个头在该 token 上的投影（行主序下 S 维必须排在 H 维之前，顺序写反不报错但分组语义静默错位）；再 transpose(1,2) 把头维提到 S 前面得到 [B,H,S,dh]。之后 q @ k.transpose(-2,-1) 一次完成 B×H 个 Sq×Sk 的批量矩阵乘法，头之间完全并行、不写 Python 循环，也不把 S 写死，Cross-Attention 时 Sq≠Sk 自然成立。合头是逆操作：transpose(1,2) 得到 [B,Sq,H,dh] 但只改了 stride，内存里仍是按头分组的乱序布局，必须先 contiguous() 落成连续内存再 view(B,Sq,H*dh)，否则 view 直接报 incompatible view size。"
+        },
+        {
+          "step": "掩码语义：keep-mask、先掩码后 softmax、padding 只作用在 key 维",
+          "detail": "统一用布尔 keep-mask 表示「True=保留」，因果掩码取 tril（query i 只能看 key j≤i），key padding 掩码形状取 [B,1,1,Sk] 只屏蔽 key 维，两者用逻辑与合并成同一张 keep 矩阵后再广播到 scores。两个容易写反的点：一是 padding 掩码不能用 [B,S] 直接广播，那样会被当成「屏蔽第 i 行 query」，整段输出变味；二是掩码必须发生在 softmax 之前，softmax 之后再置零会破坏行和为 1，被屏蔽位置也可能仍拿到非零权重。屏蔽值用 torch.finfo(dtype).min 而不是 -inf 或 -1e9：-inf 会让整行全屏蔽的 query 变成 0/0=nan，-1e9 在 fp16 下根本装不下（fp16 的 finfo.min 只有 -65504，本机实测这类越界转换直接抛 overflow RuntimeError）。"
+        },
+        {
+          "step": "数值稳定与输出投影：手写减最大值的 softmax，最后用 W_o 混合各头",
+          "detail": "不调用 torch.softmax 而是手写：先在最后一维减行最大值再 exp，把指数项压到 1 以内，避免 fp16/bf16 下 exp 溢出；再对 exp 乘一次 keep-mask 并把分母 clamp 到 finfo.tiny，这样「整行全被屏蔽」得到的是零权重行（输出退化为输出投影的 bias），而不是 nan，也不是普通 masked_fill 写法下各位置相等的均匀分布。归一化统一在 float32 上做（scores.float() 再回落到原 dtype），这是低精度训练的常规策略，代价是一次 dtype 转换的显存与带宽。最后 self.dropout(attn) @ v 得到 [B,H,Sq,dh]，合头回 [B,Sq,D] 再做输出投影 W_o——这一步才是各头信息第一次线性混合，去掉它多头就只是拼在一起的 H 个独立子空间。"
+        }
+      ],
+      "complexity": {
+        "time": "O(B·H·Sq·Sk·dh + B·S·d_model²)，即 O(B·Sq·Sk·d_model + B·S·d_model²)",
+        "space": "O(B·H·Sq·Sk + B·S·d_model)；峰值是 [B,H,Sq,Sk] 的 scores，FlashAttention 可压到 O(B·S·d_model)",
+        "why": "两个 Sq×Sk 批量矩阵乘法共 B·H·Sq·Sk·dh 次乘加，四个投影各 B·S·d_model²；显存峰值来自注意力矩阵，随 Sk 平方增长。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''手写 Multi-Head Attention：投影 -> 拆头 -> 缩放点积 -> 先掩码后 softmax -> 合头 -> 输出投影。\n\n输入 query/key/value 为 [B, S, d_model]（Cross-Attention 时 Q 与 K/V 的 S 可以不同），\n返回 [B, S_q, d_model]。代码含 key padding 掩码、因果掩码与手写稳定 softmax，需要 torch。\n'''\nimport math\n\nimport torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\n\ndef stable_softmax(scores, keep_mask=None, dim=-1):\n    '''稳定 softmax：减去行最大值再 exp；整行被屏蔽时返回全 0，而不是 nan。\n\n    keep_mask 是 keep-mask（True=保留），需能广播到 scores。被屏蔽位置先压到\n    finfo(dtype).min（fp16 下是 -65504，不能写 -1e9），再乘一次 keep_mask 把 exp\n    结果清零，这样「整行全屏蔽」得到的是零权重，不会退化成均匀分布。\n    '''\n    if keep_mask is not None:\n        scores = scores.masked_fill(~keep_mask, torch.finfo(scores.dtype).min)\n    row_max = scores.max(dim=dim, keepdim=True).values\n    row_max = torch.where(torch.isfinite(row_max), row_max, torch.zeros_like(row_max))\n    exp = torch.exp(scores - row_max)\n    if keep_mask is not None:\n        exp = exp * keep_mask.to(exp.dtype)\n    denom = exp.sum(dim=dim, keepdim=True).clamp_min(torch.finfo(exp.dtype).tiny)\n    return exp / denom\n\n\nclass MultiHeadAttention(nn.Module):\n    def __init__(self, d_model, num_heads, dropout=0.0):\n        super().__init__()\n        if num_heads <= 0 or d_model % num_heads != 0:\n            raise ValueError('d_model=%d 必须能被 num_heads=%d 整除' % (d_model, num_heads))\n        self.d_model = d_model\n        self.num_heads = num_heads\n        self.dh = d_model // num_heads                       # 每个头的维度\n        self.w_q = nn.Linear(d_model, d_model)\n        self.w_k = nn.Linear(d_model, d_model)\n        self.w_v = nn.Linear(d_model, d_model)\n        self.w_o = nn.Linear(d_model, d_model)               # 输出投影，混合各头\n        self.dropout = nn.Dropout(dropout)\n\n    def _split_heads(self, t):\n        b, s, d = t.shape\n        if d != self.d_model:\n            raise ValueError('最后一维 %d 与 d_model=%d 不符' % (d, self.d_model))\n        return t.contiguous().view(b, s, self.num_heads, self.dh).transpose(1, 2)   # [B,H,S,dh]\n\n    def _merge_heads(self, t):\n        b, h, s, dh = t.shape\n        return t.transpose(1, 2).contiguous().view(b, s, h * dh)                   # [B,S,D]\n\n    def forward(self, query, key, value, key_padding_mask=None, is_causal=False):\n        for name, t in (('query', query), ('key', key), ('value', value)):\n            if t.dim() != 3 or t.shape[-1] != self.d_model:\n                raise ValueError('%s 必须是 [B,S,%d]，实际 %s' % (name, self.d_model, tuple(t.shape)))\n        b, sq, _ = query.shape\n        sk = key.shape[1]\n        q = self._split_heads(self.w_q(query))\n        k = self._split_heads(self.w_k(key))\n        v = self._split_heads(self.w_v(value))\n\n        scores = q @ k.transpose(-2, -1) / math.sqrt(self.dh)      # [B,H,Sq,Sk]\n\n        keep = torch.ones(sq, sk, dtype=torch.bool, device=query.device)\n        if is_causal:\n            keep = keep & torch.tril(torch.ones(sq, sk, dtype=torch.bool, device=query.device))\n        if key_padding_mask is not None:\n            keep = keep & key_padding_mask.to(torch.bool)[:, None, None, :]\n\n        attn = stable_softmax(scores.float(), keep).to(scores.dtype)\n        out = self.dropout(attn) @ v                               # [B,H,Sq,dh]\n        return self.w_o(self._merge_heads(out))\n\n\ndef reference_sdpa(mha, q, k, v, keep, is_causal):\n    '''用 F.scaled_dot_product_attention 走同一条链路，供对拍。'''\n    qq, kk, vv = (mha._split_heads(p(x)) for p, x in ((mha.w_q, q), (mha.w_k, k), (mha.w_v, v)))\n    ref = F.scaled_dot_product_attention(qq, kk, vv, attn_mask=keep, is_causal=is_causal)\n    return mha.w_o(mha._merge_heads(ref))\n\n\nif __name__ == '__main__':\n    torch.manual_seed(0)\n    mha = MultiHeadAttention(d_model=16, num_heads=4).eval()        # eval：关掉 dropout 才能对拍\n    x = torch.randn(2, 5, 16)\n\n    # 1) 形状与有限性\n    y = mha(x, x, x, is_causal=True)\n    assert y.shape == x.shape and torch.isfinite(y).all()\n\n    # 2) 因果性：只扰动最后一个 token，前面各行输出不变\n    x2 = x.clone()\n    x2[:, -1, :] += 3.0\n    assert torch.allclose(y[:, :-1], mha(x2, x2, x2, is_causal=True)[:, :-1], atol=1e-6)\n\n    # 3) padding 掩码屏蔽的是 key 维：被屏蔽位置的值怎么改都不影响可见行\n    pad = torch.ones(2, 5, dtype=torch.bool)\n    pad[0, -1] = False\n    base = mha(x, x, x, key_padding_mask=pad)\n    x3 = x.clone()\n    x3[0, -1, :] += 5.0\n    assert torch.allclose(base[0, :-1], mha(x3, x3, x3, key_padding_mask=pad)[0, :-1], atol=1e-6)\n\n    # 4) 与 F.scaled_dot_product_attention 对拍（无掩码 / 因果 / padding）\n    keep = pad[:, None, None, :].expand(2, 4, 5, 5)\n    worst = 0.0\n    for mask, causal in ((None, False), (None, True), (keep, False)):\n        got = mha(x, x, x, key_padding_mask=None if mask is None else pad, is_causal=causal)\n        worst = max(worst, (got - reference_sdpa(mha, x, x, x, mask, causal)).abs().max().item())\n    assert worst < 1e-6\n\n    # 5) 整行 key 全被屏蔽：零权重，输出等于输出投影的 bias，有限且不出 nan\n    y5 = mha(x, x, x, key_padding_mask=torch.zeros(2, 5, dtype=torch.bool))\n    assert torch.isfinite(y5).all() and torch.allclose(y5, mha.w_o.bias.expand_as(y5), atol=1e-6)\n\n    # 6) 非法头数 / 非法特征维必须显式报错，不能静默算错\n    for bad in (lambda: MultiHeadAttention(10, 3), lambda: mha(x, x, torch.randn(2, 5, 8))):\n        try:\n            bad()\n        except ValueError:\n            continue\n        raise AssertionError('应当报错')\n\n    print('shapes ok, sdpa maxdiff=%.3e' % worst)\n",
+        "walkthrough": [
+          {
+            "note": "stable_softmax 是本题唯一的自写算子：先把被屏蔽位压到 finfo.min，再减去行最大值（这一步是低精度不溢出的关键），exp 后乘一次 keep-mask 把被屏蔽位的指数项清零，分母 clamp 到 finfo.tiny。整行全屏蔽时分子分母都是 0，clamp 后返回全 0 权重行——有限、可反传，不会污染整个 batch。"
+          },
+          {
+            "note": "初始化只做一件事：校验 num_heads>0 且整除 d_model。不校验的话 dh 取整会静默丢维度，模型照跑但语义已错；四个 nn.Linear(d_model,d_model) 分别是 Q/K/V 与输出投影，Dropout 单独持有并作用在注意力权重上。"
+          },
+          {
+            "note": "_split_heads：view(b,s,H,dh) 只把最后一维切成 H 个连续子块（第 h 块即第 h 个头），再 transpose(1,2) 把头维提到 S 前。contiguous() 是防御性写法：nn.Linear 输出本就连续，但外部传入的切片/转置张量不连续时 view 会直接报错。"
+          },
+          {
+            "note": "forward 开头对 query/key/value 逐个校验维数与最后一维；早失败比让 nn.Linear 抛 mat1 and mat2 shapes cannot be multiplied 更容易定位。sq 与 sk 分开取，因此 Cross-Attention 时 Q 长 Sq、K/V 长 Sk 天然可用。"
+          },
+          {
+            "note": "缩放点积：q @ k.transpose(-2,-1) 一次算完 B×H 个 Sq×Sk 相似度矩阵，除以 sqrt(dh) 把 logits 标准差拉回 ≈1。为什么是 dh 而不是 d_model：点积是 dh 个乘积之和，方差正比于求和项数，d_model 是 dh 的 H 倍，用它会多缩 sqrt(H) 倍。"
+          },
+          {
+            "note": "掩码合并：先造全 True 的 [Sq,Sk]，is_causal 时与 tril 相与（query i 看不到 j>i），key_padding_mask 经 [:,None,None,:] 变成只屏蔽 key 维的 [B,1,1,Sk] 再相与。合并成一张 keep 矩阵后广播到 scores，两路掩码的先后顺序不影响结果。"
+          },
+          {
+            "note": "_merge_heads 与 dropout：dropout 加在 softmax 后的权重 attn 上而不是输出上；attn @ v 得到 [B,H,Sq,dh] 后必须 transpose→contiguous→view 三步齐全才能回到 [B,Sq,D]，漏掉 contiguous 会报 incompatible view size。最后 w_o 做输出投影，各头的信息在这一步才真正混合。"
+          },
+          {
+            "note": "main 里放了六组自测：形状与有限性；因果性（只扰动最后一个 token，前面各行输出不变）；padding 屏蔽 key 维（被屏蔽位置的数值怎么改都不影响可见行）；与 F.scaled_dot_product_attention 的三种配置对拍；整行全屏蔽时输出等于 w_o 的 bias 且无 nan；非法头数与非法特征维必须抛 ValueError。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "S=1：tril 只剩 (0,0)，因果掩码等价于无掩码，输出仍为 [B,1,D]；但若把唯一的 key 也标成 padding，就变成整行全屏蔽。",
+        "某行 query 的 key 全被屏蔽：本实现返回全 0 权重行，输出退化为输出投影的 bias（有限、无 nan）；普通 masked_fill(finfo.min) 写法会得到均匀分布。两种都有限，但语义不同。",
+        "fp16/bf16 输入：屏蔽值必须走 torch.finfo(scores.dtype).min 自动跟随 dtype（fp16 下是 -65504），硬编码 -1e9 会溢出，写 -inf 会让全屏蔽行变 nan。",
+        "缩放因子是 sqrt(dh) 而不是 sqrt(d_model)：两者差 sqrt(H) 倍，H=8 时 logits 就被多缩了 2.8 倍，softmax 过于平坦。",
+        "num_heads 不整除 d_model：必须显式报错，否则 dh 向下取整后静默丢维度、H*dh≠d_model，合头时形状对不上。",
+        "输入不是 3 维或最后一维 ≠ d_model：在 forward 入口抛 ValueError，比让 nn.Linear 报矩阵乘法形状错更好定位。",
+        "Cross-Attention 的 Sq≠Sk：因果掩码要按 [Sq,Sk] 造 tril，直接复用方阵 mask 会形状报错。",
+        "x 非连续（来自切片/转置/permute）：拆头处的 contiguous() 保证 view 不报错；没有它 .view 会抛错，改成 .reshape 则会静默拷贝并可能保留错误的分头语义。",
+        "dropout>0 且在 train() 模式下：两次前向结果不同，任何对拍或自测前必须先 eval() 或设 dropout=0。",
+        "key_padding_mask 全 True（等价无屏蔽）与传 None：本实现都走同一条掩码路径，全 True 时结果与不传一致。"
+      ],
+      "pitfalls": [
+        "忘记除以 sqrt(dh)，或误写成 sqrt(d_model)：前者 softmax 饱和、梯度趋零，后者过度缩放（差 sqrt(H) 倍）。",
+        "拆头顺序写反：先 transpose 再 view，或直接 reshape(B,H,S,dh)，不报错但头的分组语义静默错位，只有拆头这一步最容易「编译通过、结果错」。",
+        "合头时漏掉 contiguous()：transpose 只改 stride，view 会抛 incompatible view size。",
+        "屏蔽值写成 -1e9 或 -inf：fp16 的 finfo.min 只有 -65504，-1e9 直接溢出报错；-inf 在全屏蔽行上 softmax 得 nan。正确做法是 torch.finfo(dtype).min。",
+        "先 softmax 再乘掩码：权重不再归一化（行和 < 1），输出幅度被压低，被屏蔽位置仍可能拿到非零权重。",
+        "key padding 掩码形状写成 [B,S] 直接广播：会被当成屏蔽 query 行，等于把整条序列的输出作废；应写成 [B,1,1,Sk] 只屏蔽 key 维。",
+        "keep-mask 语义写反：把 True 当成「屏蔽」，正好把该看的位置遮掉；与 torch 的 bool attn_mask 约定（True=参与）保持一致才不会踩。",
+        "把因果掩码 on/off 弄反：is_causal=True 时必须是下三角「保留」，写成上三角就变成「只看未来」。",
+        "dropout 加在输出上而不是注意力权重上：正则化对象就错了，注意力分布没有被随机丢弃。",
+        "把序列长度写死成常量、或假设 Sq==Sk：Cross-Attention 与增量推理时直接崩。",
+        "手写 softmax 忘记减行最大值：fp16/bf16 下 exp 会溢出成 inf，再除以 inf 得到 nan。"
+      ],
+      "followUps": [
+        "给出缩放因子 sqrt(dh) 的方差推导：q、k 各维独立、均值 0、方差 1 时，点积方差为什么正好是 dh？",
+        "手写 softmax 里为什么要减去行最大值？不减时在 fp16/bf16 上会发生什么？为什么归一化要在 fp32 上做？",
+        "整行 key 全被屏蔽时，你希望返回全 0、均匀分布，还是直接报错？各自的利弊与上层怎么处理？",
+        "把这套实现换成 F.scaled_dot_product_attention：它的 is_causal 语义、bool 掩码与加性 float 掩码的差异是什么？会省掉哪几步？",
+        "自回归推理时如何只算最后一个 query？KV cache 存什么、形状怎么变、为什么能把复杂度从 O(S²) 降到 O(S)？",
+        "GQA/MQA 怎么改？K/V 的头数小于 Q 的头数时，scores 之前要做哪种 expand 或 repeat_interleave？",
+        "FlashAttention 的分块在线 softmax 怎么做到不落地 [B,H,S,S] 矩阵？显存与带宽各降在哪里？",
+        "多头真的必要吗？H=1 与 H>1 在参数量、表达力和显存带宽上分别差多少？去掉输出投影 W_o 会怎样？",
+        "训练稳定性：怎么用 logits 最大值和注意力熵诊断熵塌缩（entropy collapse）？"
+      ],
+      "variations": [
+        "Cross-Attention：Q 来自解码器、K/V 来自编码器，Sq≠Sk，只需把 forward 的输入拆成两份并分别投影。",
+        "因果自注意力 + KV cache 的增量推理版：每步只喂一个 token 的 Q，K/V 追加到缓存尾部，注意力矩阵退化成一行。",
+        "GQA/MQA：多个 Q 头共享一组 K/V 头，让 K/V 的头数 H_kv<H，在打分前对 K/V 做 expand 或 repeat_interleave。",
+        "相对位置注意力（T5 relative bias / ALiBi）：在 scores 上先加一个 [H,Sq,Sk] 的偏置，再掩码、再 softmax。",
+        "nn.MultiheadAttention 的官方接口：batch_first 约定、独立的 kdim/vdim、以及它 True=屏蔽 的掩码语义差异。",
+        "完整 Transformer block：MHA + 残差 + LayerNorm/RMSNorm + FFN，并区分 Pre-LN 与 Post-LN 的稳定性差异。",
+        "掩码用加性 float 掩码（-inf 表示屏蔽）而不是布尔 keep-mask 的写法，以及两种写法混用时的常见 bug。",
+        "FlashAttention 式分块实现在线 softmax：不落地 S×S 矩阵，显存从 O(S²) 降到 O(S)。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "MHA 前向形状与掩码顺序",
+        "caption": "记住这条链和两个顺序：[B,S,D] 经四层投影拆成 [B,H,S,dh] 打分得 [B,H,Sq,Sk]；掩码必须在 softmax 之前，合头必须是 transpose→contiguous→view 三步。",
+        "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 240' role='img' aria-label='MHA 前向流程图：从 x [B,S,D] 经投影拆头、缩放点积、掩码、softmax、加权求和、合头与输出投影回到 [B,S,D]'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='18' font-size='13' fill='currentColor'>MHA 前向：形状与掩码顺序</text><rect x='10' y='28' width='150' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='45' font-size='13' fill='currentColor'>x [B,S,D]</text><rect x='10' y='62' width='150' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='79' font-size='13' fill='currentColor'>q,k,v [B,H,S,dh]</text><rect x='10' y='96' width='150' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='113' font-size='13' fill='currentColor'>scores [B,H,Sq,Sk]</text><rect x='10' y='130' width='150' height='24' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='18' y='147' font-size='13' fill='currentColor'>掩码 finfo.min</text><rect x='10' y='164' width='150' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='181' font-size='13' fill='currentColor'>attn [B,H,Sq,Sk]</text><rect x='10' y='198' width='150' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='215' font-size='13' fill='currentColor'>o(out) [B,S,D]</text><line x1='85' y1='53' x2='85' y2='58' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,62 81,56 89,56' fill='var(--line-1)'/><text x='172' y='61' font-size='13' fill='currentColor'>四个 Linear 投影</text><line x1='85' y1='87' x2='85' y2='92' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,96 81,90 89,90' fill='var(--line-1)'/><text x='172' y='95' font-size='13' fill='currentColor'>拆头 + QK^T/sqrt(dh)</text><line x1='85' y1='121' x2='85' y2='126' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,130 81,124 89,124' fill='var(--line-1)'/><text x='172' y='129' font-size='13' fill='currentColor'>先掩码，别用 -inf</text><line x1='85' y1='155' x2='85' y2='160' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,164 81,158 89,158' fill='var(--line-1)'/><text x='172' y='163' font-size='13' fill='currentColor'>再 softmax 减最大值</text><line x1='85' y1='189' x2='85' y2='194' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,198 81,192 89,192' fill='var(--line-1)'/><text x='172' y='197' font-size='13' fill='currentColor'>@V 后合头 contiguous</text><text x='172' y='226' font-size='13' fill='currentColor'>W_o 混合各头输出</text></svg>",
+        "alt": "六个形状节点的纵向流程图：x [B,S,D] 经四个 Linear 投影并拆头得 q,k,v [B,H,S,dh]，缩放点积得 scores [B,H,Sq,Sk]，先掩码（用 finfo.min 而非 -inf）再 softmax（减最大值）得 attn [B,H,Sq,Sk]，乘 V 并合头后经输出投影 W_o 回到 [B,S,D]。"
+      },
+      "selfTest": [
+        "为什么缩放因子是 sqrt(dh) 而不是 sqrt(d_model)？（答：点积是 dh 个乘积之和，方差正比于项数 dh，除以 sqrt(dh) 才把 logits 标准差拉回 ≈1；d_model=H·dh，用 sqrt(d_model) 会多缩 sqrt(H) 倍。本机实测 dh=128 时未缩放点积标准差 10.98，与 sqrt(128)=11.31 吻合。）",
+        "掩码应该在 softmax 之前还是之后？屏蔽值写什么？（答：之前。之前屏蔽才是「这些 key 不参与归一化」，行和仍为 1；写 torch.finfo(dtype).min，-1e9 在 fp16 下溢出、-inf 会让全屏蔽行得 nan。）",
+        "合头为什么必须 contiguous？漏掉会怎样？（答：transpose(1,2) 只改 stride，[B,Sq,H,dh] 的内存布局与 view 要求的连续布局不符，view(B,Sq,D) 会报 incompatible view size；必须 transpose→contiguous→view。）",
+        "key padding 掩码该是什么形状？写成 [B,S] 会怎样？（答：应写成 [B,1,1,Sk] 的 bool keep-mask，只屏蔽 key 维；写成 [B,S] 直接广播会被当成屏蔽 query 行，把整条输出作废。）",
+        "不写输出投影 W_o 行不行？（答：不行。合头后的 [B,Sq,D] 只是 H 个头拼接，各头之间没有任何线性交互；W_o 才是跨头混合信息的那一步。）"
+      ],
+      "keyPoints": [
+        "四个投影 + 拆头 view(B,S,H,dh)→transpose(1,2)，得到 [B,H,S,dh]；合头必须 transpose→contiguous→view 三步齐全",
+        "scores = QKᵀ/sqrt(dh)，缩放因子是每头维度 dh 而不是 d_model，用来把点积方差拉回 1",
+        "掩码在 softmax 之前，屏蔽值取 finfo(dtype).min（不是 -1e9、不是 -inf），因果掩码用 tril、padding 掩码只屏蔽 key 维",
+        "softmax 手写时先减行最大值再 exp，并在 fp32 上归一化以保证数值稳定",
+        "Cross-Attention 时 Q 与 K/V 的序列长度可以不同，Sq 与 Sk 必须分开取"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "题干（人工整理 research/jobs_kb.json，origin=curated、sourceUrl=null）明确：题目为手写完整的 Multi-Head Attention，且「不能只写四个线性层」，需把张量形状、缩放点积、掩码语义、数值稳定性和输出投影讲清楚。",
+          "题目元信息：id=deepseek-mha-full，kind=exam，marker=笔试场景，difficulty=medium，topics=[深度学习实现]，sourceName=人工整理（research/jobs_kb.json）；题面本身没有截断。",
+          "因为 origin=curated 且 sourceUrl=null，sources 写成空数组，正文、代码与图解中不出现任何链接。",
+          "本文件 code.source 已在本机 python 3.12.9 + torch 2.12.1+cpu 上实机运行通过：输出形状 (2,5,16)，与 F.scaled_dot_product_attention 的最大绝对误差 5.960e-08，因果性、padding 屏蔽、全屏蔽行无 nan、非法头数与非法特征维报错共六组断言全部通过。",
+          "本机实测：dh=128 时随机正态 Q/K 点积的标准差为 10.98，与 sqrt(128)=11.31 吻合，支撑「除以 sqrt(dh) 把点积方差拉回 ≈1」这一结论。",
+          "本机实测：torch.finfo(torch.float16).min=-65504；对整行都是 finfo.min 的 fp32 行做普通 softmax 得到均匀分布（4 列时为 0.25），对整行 -inf 做 softmax 得到 nan，把超出 fp16 范围的值转成 fp16 直接抛 RuntimeError（overflow）。"
+        ],
+        "uncertain": [
+          "题面未给出 B、S、d_model、num_heads、dropout、dtype 的具体取值，也没有样例输入输出，代码里的 (2,5,16,4) 与 fp32 只是自测用的通用取值，不代表题目约束。",
+          "人工题库中该题只有 answerOutline=true，没有随题面给出参考实现与函数签名；本解采用「query/key/value 分开传、bool keep-mask（True=保留）、is_causal 开关」的接口，若笔试卷面另有签名（例如像 nn.MultiheadAttention 那样 True=屏蔽），需要按卷面约定对齐。",
+          "「整行 key 全被屏蔽」的语义题面未定义：本实现返回全 0 权重（输出退化为 W_o 的 bias），而常见的 masked_fill(finfo.min)+softmax 写法会得到均匀分布；两者都是有限值、都不出 nan，最终选哪种需人工确认。",
+          "手写 softmax 与 torch.softmax 在极端 logits 下可能存在浮点差异（本机对拍最大 5.960e-08），未在 fp16/bf16 大 batch 长序列下做压力测试。",
+          "题目来源只有面经文字描述，没有可引用的链接，因此 sources 为空数组，未编造任何来源。"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "batchId": "prob-cur-25",
+  "entries": [
+    {
+      "id": "doubao-agent-multiagent-design",
+      "tldr": "1 主 3 子：主智能体只做路由/校验/汇总，3 个子各占一条互斥边界，按依赖分波并行，脏产物被契约拦下后带反馈重试。",
+      "restated": "字节 AI 数据运营实习生（自动化方向）一面的场景题，要求讲清七件事：多智能体项目的背景与要解决的问题、为什么选这个架构、为什么是 1 个主智能体带 3 个子智能体而不是 4 个、为什么不用串行、如何让不同 Agent 的边界清晰、你的校验是什么、评测工作怎么做。题面没有给具体业务数据、子任务清单与样例，属于开放设计题，因此下面给出一套可运行的最小模型 + 判断标准，而不是唯一正确答案。",
+      "approach": [
+        {
+          "step": "先定边界：把流程切成互斥的 kind，而不是切成「几个聪明人」",
+          "detail": "3 个子智能体分别只认一种 kind：检索子只负责取数（产出 rows 与 n）、分析子只负责算指标（吃上游的 rows，产出 mean/p95/n）、写作子只负责把结构化结果转成报告（产出 report）。边界清晰的判据是三条：每个 kind 只被一个子智能体认领（否则路由歧义）、每个子智能体的输入输出都有可校验的字段契约、任何跨阶段的信息只能通过契约字段传递而不能靠共享上下文。主智能体不产出业务数据，只做路由、校验、重试与汇总，这样它的失误面最小。"
+        },
+        {
+          "step": "再定拓扑：按依赖分波，同波并行",
+          "detail": "为子任务建 DAG（t1/t2 取数 → t3 分析 → t4 写作），每轮挑出依赖已满足的任务组成一波，用线程池并发执行。墙钟延迟从串行的「所有子任务耗时相加」变成「每波取最慢者再相加」；但依赖链本身是串行的，并行只能压缩同波宽度，所以不能承诺「加 agent 就一定更快」。用成本模型算一下就更清楚：本例串行 3+3+2+2=10 个单位，分波并行 3+2+2=7 个单位。"
+        },
+        {
+          "step": "校验与重试：每个产物过契约，失败带反馈回流",
+          "detail": "校验分两层：结构层检查字段是否存在且类型正确（rows 是 list、n 是 int、mean 是 float、report 是 str），规则层检查语义约束（n 必须等于 rows 的长度、样本数必须为正、报告非空）。校验不过不让下游拿到脏数据，而是把错误清单作为 feedback 塞回同一个子智能体重试；超过 max_retry 就整条链路失败并上报，绝不降级成「先跑通再说」。代码里的脏数据用例正是靠这一层自愈：检索子第一次把 n 报成 len(rows)+1，被规则层拦下，第二次修正。"
+        },
+        {
+          "step": "回答「为什么不是 4 个」：新子智能体必须先证明自己独占一条边界",
+          "detail": "加第 4 个子智能体的收益只有两种来源——要么它独占一条现有 3 个都不覆盖的新边界（例如独立的合规审核或人审升级），要么它把某个现有子智能体内部真正可并行的部分拆出来。如果只是把「分析」再拆成「清洗 + 统计」，那清洗与分析之间仍是强串行依赖，吞吐不变，却多出一份上下文传递、一套契约、一组评测用例；k 个子智能体之间的接口数是 O(k²)，从 3 个变 4 个就是把 3 组接口变成 6 组。结论：3 是「当前边界划分下最小完备」的数量，第 4 个必须是新边界或新并行度，否则就是重复建设。"
+        },
+        {
+          "step": "回答「为什么不是串行」与「评测怎么做」",
+          "detail": "不串行的理由有三：独立子任务（两个数据源）可以同波并发，延迟取 max 而非 sum；每个子智能体只带自己那一段的上下文，避免长上下文互相污染；单点失败可重试、可替换，而不必重跑整条链。评测则用金标集固定住：每条用例给出输入、期望的结构化产物与允许的重试次数，跑完统计三项指标——端到端通过率、边界违规次数（是否有任务无人归口或两个子智能体抢同一 kind）、平均重试次数；再补反向用例（重复 kind 必须报冲突、无归口 kind 必须报错、不允许重试时脏数据必须让链路失败），保证校验层不是摆设。"
+        }
+      ],
+      "complexity": {
+        "time": "调度 O(V+E)（V 个子任务、E 条依赖边）；墙钟 ≈ Σ 各波 max(子智能体耗时)，本例 7 个单位 vs 串行 10 个",
+        "space": "O(V) 中间产物 + O(K) 并发上下文（K=3）；子智能体两两接口 O(K²)",
+        "why": "开销来自跨波依赖同步与每步契约校验：并行只压缩同一波内的耗时，依赖链本身仍是串行，串行方案则把每段耗时直接相加。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''1 主 + 3 子多智能体编排的最小可运行模型（纯标准库）。\n\n链路：边界互斥注册 -> 按依赖分波并行 -> 契约校验 -> 带反馈重试 -> 汇总 -> 金标评测。\n第 4 个子智能体的取舍：k 个 agent 两两接口是 O(k^2)，新增一个必须先拿出它独占的边界，\n否则路由歧义、协调成本上升，吞吐却不变。\n'''\nimport statistics\nfrom concurrent.futures import ThreadPoolExecutor\nfrom dataclasses import dataclass, field\n\n\nclass BoundaryError(RuntimeError):\n    '''任务无人认领，或两个子智能体争抢同一类边界。'''\n\n\n@dataclass\nclass Task:\n    tid: str\n    kind: str\n    payload: dict = field(default_factory=dict)\n    deps: tuple = ()\n\n\nclass SubAgent:\n    kind, name, cost = '', '', 1\n\n    def accepts(self, task):\n        return task.kind == self.kind\n\n    def run(self, task):\n        raise NotImplementedError\n\n\nclass Retriever(SubAgent):\n    kind, name, cost = 'retrieve', '检索子', 3\n\n    def run(self, task):\n        rows = [int(v) for v in task.payload.get('rows', [])]\n        if not rows:\n            raise ValueError('检索子拿到空数据源')\n        drift = 1 if task.payload.get('poison') and not task.payload.get('feedback') else 0\n        return {'rows': rows, 'n': len(rows) + drift}\n\n\nclass Analyzer(SubAgent):\n    kind, name, cost = 'analyze', '分析子', 2\n\n    def run(self, task):\n        parts = task.payload.get('inputs') or []\n        for p in parts:\n            if 'rows' not in p:\n                raise ValueError('上游产物缺少 rows 字段')\n        rows = [v for p in parts for v in p['rows']]\n        if not rows:\n            raise ValueError('分析子拿到空数据，拒绝产出')\n        return {'mean': round(statistics.fmean(rows), 3),\n                'p95': sorted(rows)[min(len(rows) - 1, int(0.95 * len(rows)))],\n                'n': len(rows)}\n\n\nclass Writer(SubAgent):\n    kind, name, cost = 'write', '写作子', 2\n\n    def run(self, task):\n        m = (task.payload.get('inputs') or [{}])[0]\n        return {'report': '样本 %s 条，均值 %s，P95 %s' % (m['n'], m['mean'], m['p95'])}\n\n\nCONTRACT = {'retrieve': {'rows': list, 'n': int},\n            'analyze': {'mean': float, 'p95': int, 'n': int},\n            'write': {'report': str}}\nRULES = {'retrieve': lambda o: [] if o['n'] == len(o['rows']) else ['n 与 rows 长度不一致'],\n         'analyze': lambda o: [] if o['n'] > 0 else ['样本数必须为正'],\n         'write': lambda o: [] if str(o['report']).strip() else ['报告为空']}\n\n\ndef validate(kind, out):\n    if not isinstance(out, dict):\n        return ['%s 的输出不是 dict' % kind]\n    errs = ['缺少或类型错误的字段 %s' % k for k, t in CONTRACT[kind].items()\n            if not isinstance(out.get(k), t)]\n    return errs or RULES[kind](out)\n\n\nclass Orchestrator:\n    def __init__(self, agents, max_retry=1):\n        self.max_retry, self.retries, self.violations = int(max_retry), 0, []\n        self.agents, self.by_kind = list(agents), {}\n        for a in agents:\n            if a.kind in self.by_kind:\n                raise BoundaryError('%s 与 %s 的边界重叠：%s' % (a.name, self.by_kind[a.kind], a.kind))\n            self.by_kind[a.kind] = a.name\n\n    def route(self, task):\n        for a in self.agents:\n            if a.accepts(task):\n                return a\n        raise BoundaryError('任务 %s 的 kind=%s 没有归口' % (task.tid, task.kind))\n\n    def _one(self, task, upstream):\n        agent, feedback = self.route(task), None\n        for attempt in range(self.max_retry + 1):\n            payload = dict(task.payload, inputs=upstream, feedback=feedback)\n            try:\n                out = agent.run(Task(task.tid, task.kind, payload, task.deps))\n                errs = validate(task.kind, out)\n            except Exception as exc:\n                out, errs = None, ['执行异常：%s' % exc]\n            if not errs:\n                return out\n            feedback = errs\n            if attempt < self.max_retry:\n                self.retries += 1\n                self.violations.append((task.tid, errs))\n        raise BoundaryError('%s 重试 %d 次仍不合契约：%s' % (task.tid, self.max_retry, feedback))\n\n    def run_plan(self, tasks):\n        pending, done, waves = {t.tid: t for t in tasks}, {}, []\n        while pending:\n            ready = [t for t in pending.values() if all(d in done for d in t.deps)]\n            if not ready:\n                raise ValueError('依赖成环或指向不存在的上游')\n            waves.append([t.tid for t in ready])\n            with ThreadPoolExecutor(max_workers=len(ready)) as pool:\n                futs = {t.tid: pool.submit(self._one, t, [done[d] for d in t.deps])\n                        for t in ready}\n            for t in ready:\n                done[t.tid] = futs[t.tid].result()\n                pending.pop(t.tid)\n        return done, waves\n\n\nCOST = {'retrieve': 3, 'analyze': 2, 'write': 2}\n\n\ndef build_plan(a, b, poison=False):\n    return [Task('t1', 'retrieve', {'rows': a, 'poison': poison}),\n            Task('t2', 'retrieve', {'rows': b}),\n            Task('t3', 'analyze', {}, ('t1', 't2')),\n            Task('t4', 'write', {}, ('t3',))]\n\n\ndef makespan(waves, plan):\n    kinds = {t.tid: t.kind for t in plan}\n    serial = sum(COST[kinds[i]] for w in waves for i in w)\n    parallel = sum(max(COST[kinds[i]] for i in w) for w in waves)\n    return serial, parallel\n\n\nGOLD = [('双源合并', [3, 9, 27, 81], [5], False, 5, 25.0, 81),\n        ('单条样本', [7], [7], False, 2, 7.0, 7),\n        ('脏数据自愈', [1, 2, 3, 4, 5], [7], True, 6, 3.667, 7)]\n\n\ndef evaluate(cases):\n    passed, retries = 0, 0\n    for name, a, b, poison, n, mean, p95 in cases:\n        orc = Orchestrator([Retriever(), Analyzer(), Writer()], max_retry=1)\n        done, _ = orc.run_plan(build_plan(a, b, poison))\n        hit = (done['t3']['n'], done['t3']['mean'], done['t3']['p95']) == (n, mean, p95)\n        passed, retries = passed + int(hit), retries + orc.retries\n        print('[%s] %s 重试=%d' % ('PASS' if hit else 'FAIL', name, orc.retries))\n    return passed, len(cases), retries\n\n\nif __name__ == '__main__':\n    plan = build_plan([3, 9, 27, 81], [5])\n    orc = Orchestrator([Retriever(), Analyzer(), Writer()], max_retry=1)\n    done, waves = orc.run_plan(plan)\n    assert waves == [['t1', 't2'], ['t3'], ['t4']], waves\n    assert done['t4']['report'] == '样本 5 条，均值 25.0，P95 81', done['t4']\n    assert orc.retries == 0 and orc.violations == []\n    print('波次:', waves, '串行/并行耗时:', makespan(waves, plan))\n    bad = 0\n    try:\n        Orchestrator([Retriever(), Analyzer(), Analyzer()])\n    except BoundaryError:\n        bad = 1\n    assert bad == 1, '同类边界必须报冲突'\n    try:\n        orc.route(Task('t9', 'translate'))\n    except BoundaryError:\n        bad = 2\n    assert bad == 2, '无归口任务必须报错'\n    hard = Orchestrator([Retriever(), Analyzer(), Writer()], max_retry=0)\n    try:\n        hard.run_plan(build_plan([1, 2, 3, 4, 5], [7], poison=True))\n    except BoundaryError:\n        bad = 3\n    assert bad == 3, '不允许重试时脏数据必须让整条链路失败'\n    print('评测:', evaluate(GOLD))",
+        "walkthrough": [
+          {
+            "note": "契约层（CONTRACT + RULES + validate）：CONTRACT 只声明每个 kind 的输出字段与类型，RULES 声明语义约束（n 与 rows 等长、样本数为正、报告非空）。validate 先查结构再查规则，返回错误清单而不是布尔值——因为这份清单要当作 feedback 回传给子智能体，让它知道自己错在哪。"
+          },
+          {
+            "note": "三个子智能体：Retriever 只把 payload 里的原始行转成 int 并回报 n，poison 开关模拟「第一次上报的 n 与 rows 对不上」这种脏产物；Analyzer 只吃上游产物列表，先逐份检查有没有 rows 字段，再拍平算均值与 P95；Writer 只把结构化结果拼成一句话。三者互不 import、互不调用，唯一的耦合是字段契约，这就是「边界清晰」在代码里的形态。"
+          },
+          {
+            "note": "Orchestrator.__init__：注册时如果两个子智能体声明了同一个 kind 就直接抛 BoundaryError，把「职责重叠」这类架构问题提前到启动期暴露，而不是等线上路由随机命中。"
+          },
+          {
+            "note": "_one 是「执行 + 校验 + 带反馈重试」的闭环：每轮把上游产物 inputs 与上一轮的错误清单 feedback 一起塞进 payload，调用子智能体后立刻 validate；通过就返回，不通过就把错误当成下一轮的输入。超过 max_retry 抛 BoundaryError 让整条链路失败——宁可显式失败，也不把脏数据放给下游。"
+          },
+          {
+            "note": "run_plan 是分波调度器：每轮选出依赖已满足的任务作为一波（waves 记录下来），用线程池并发跑同一波；依赖没满足就不进入 ready，因此天然满足拓扑序。若某一轮无人就绪，说明依赖成环或引用了不存在的上游，直接抛错而不是死循环。"
+          },
+          {
+            "note": "makespan 用固定的成本表回答「为什么不是串行」：串行是所有子任务成本相加（10 个单位），分波并行是每波取最慢者再相加（7 个单位）。这只压缩同波内的耗时，依赖链本身依旧串行，所以它是可量化的收益而不是口号。"
+          },
+          {
+            "note": "evaluate 是评测骨架：每条金标用例给定输入、是否注入脏数据、期望的 n/mean/p95，跑完统计通过条数与重试总量；main 里再补三类反向用例——重复 kind 必须冲突、无归口 kind 必须报错、max_retry=0 时脏数据必须让整条链路失败，确保校验层真的拦得住而不是摆设。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "空数据源：检索子对空列表直接抛 ValueError，让任务失败而不是产出一个 n=0 的「成功」结果。",
+        "脏产物：n 与 rows 长度不一致这类静默错误必须由规则层拦下，否则会一路传到报告里。",
+        "同一波内任务数多于子智能体数：同一种 kind 可以有多个并发任务（如两个数据源），线程池按 ready 数量开 worker 即可。",
+        "依赖成环或引用了不存在的上游：某一轮 ready 为空，run_plan 抛 ValueError，避免死循环。",
+        "重复 kind / 无归口 kind：启动期或路由期就抛 BoundaryError，这是架构级错误，不该靠重试解决。",
+        "重试次数用尽：整条链路失败并上报，不降级、不带病往下走。",
+        "子智能体内部抛异常（不是返回错值）：_one 把它包成「执行异常」错误清单，同样走反馈重试这条路。"
+      ],
+      "pitfalls": [
+        "把「多智能体」讲成「多个人设」，说不出每个子智能体独占的输入输出契约与判据",
+        "回答「为什么是 3 个」时只说「够用」，没有量化依据（接口数 O(k²)、边界是否重叠、吞吐是否真的变化）",
+        "声称并行一定更快：依赖链本身串行，加 agent 只压缩同波宽度，收益要按「每波 max」而不是「总任务数」估算",
+        "边界靠共享上下文粘合而不是契约：子智能体互相读取对方的中间态，改一个就崩一片",
+        "校验只做类型检查不做语义规则（如 n 与 rows 是否一致），脏数据照样流到下游",
+        "校验失败直接重试同一个输入：没有把错误清单当反馈回传，重试必然复现同样的错误",
+        "失败就降级成「先跑通」：脏数据进了最终报告，评测指标再好看也没意义",
+        "评测只有正向用例：不测重复边界、无归口任务、不允许重试时的失败路径，校验层形同虚设",
+        "主智能体自己也产出业务数据：职责混在一起后再也说不清到底谁对结果负责"
+      ],
+      "followUps": [
+        "如果业务量翻十倍，你会先加子智能体数量还是加同波内的并发任务数？判断依据是什么？",
+        "新增一个「合规审核」子智能体时，你会把它放在写作之前还是之后？它对现有契约要改哪些字段？",
+        "子智能体之间出现循环依赖（写作要求补充数据、补充数据又要先看报告）时怎么打破？",
+        "如何给「边界清晰」写一条可自动化的检测规则，让架构评审不靠人嘴说？",
+        "上游产物部分正确（4 条里错 1 条）时，是整波重试还是只修那一条？代价分别是什么？",
+        "多智能体相比「一个大模型多轮提示」到底赢在哪？什么时候单智能体反而更好？",
+        "重试上限、退避策略、成本上限怎么定？如何避免重试把 token 预算打爆？"
+      ],
+      "variations": [
+        "把线程池换成 asyncio 的事件循环，子智能体全部改成 async，波次调度逻辑不变。",
+        "引入人审升级：校验连续失败的子任务不再重试，而是转成待人工确认的工单。",
+        "给每个子智能体配独立评测集，做单元级回归，而不只跑端到端金标。",
+        "把固定 DAG 换成动态规划器：由主智能体根据中间结果决定下一波要派哪些子任务。",
+        "同 kind 多实例：两个检索子分别打不同数据源，用 kind 相同的两个任务表达而不是新增 kind。",
+        "加上成本与超时预算：单个子任务超时或超预算即判定失败，避免长尾拖垮整条链。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "1 主 3 子编排链路",
+        "caption": "主智能体只做路由、校验、重试与汇总；3 个子智能体各占一条互斥边界，产物统一过契约校验；同一波内并发、波与波之间串行，所以延迟是每波 max 之和而不是全任务相加。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='1 主 3 子多智能体编排链路：主智能体路由到检索/分析/写作三个子智能体，产物统一过契约校验，并给出边界与评测要点'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='18' font-size='13' fill='currentColor'>1 主 + 3 子的编排链路</text><rect x='12' y='30' width='120' height='44' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='20' y='50' font-size='13' fill='currentColor'>主智能体</text><text x='20' y='68' font-size='13' fill='currentColor'>路由·校验·汇总</text><rect x='176' y='26' width='150' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='184' y='44' font-size='13' fill='currentColor'>检索子：只取数</text><rect x='176' y='58' width='150' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='184' y='76' font-size='13' fill='currentColor'>分析子：只算指标</text><rect x='176' y='90' width='150' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='184' y='108' font-size='13' fill='currentColor'>写作子：只出报告</text><line x1='132' y1='52' x2='168' y2='41' stroke='var(--line-1)' stroke-width='1'/><polygon points='176,39 167,35 168,44' fill='var(--line-1)'/><line x1='132' y1='52' x2='168' y2='70' stroke='var(--line-1)' stroke-width='1'/><polygon points='176,71 167,66 168,75' fill='var(--line-1)'/><line x1='132' y1='52' x2='168' y2='102' stroke='var(--line-1)' stroke-width='1'/><polygon points='176,103 167,98 168,107' fill='var(--line-1)'/><rect x='350' y='40' width='118' height='58' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='358' y='64' font-size='13' fill='currentColor'>契约校验</text><text x='358' y='84' font-size='13' fill='currentColor'>字段 + 规则</text><line x1='326' y1='39' x2='345' y2='58' stroke='var(--line-1)' stroke-width='1'/><line x1='326' y1='71' x2='345' y2='68' stroke='var(--line-1)' stroke-width='1'/><line x1='326' y1='103' x2='345' y2='80' stroke='var(--line-1)' stroke-width='1'/><polygon points='350,66 341,61 343,72' fill='var(--line-1)'/><line x1='66' y1='74' x2='66' y2='133' stroke='var(--line-1)' stroke-width='1'/><polygon points='66,140 61,131 71,131' fill='var(--line-1)'/><rect x='12' y='140' width='456' height='32' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='20' y='160' font-size='13' fill='currentColor'>边界清晰 = 子智能体只认一种 kind，产物必须过契约校验</text><rect x='12' y='178' width='456' height='32' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='20' y='198' font-size='13' fill='currentColor'>为什么不是 4 个：拿不出独占边界的子智能体就是重复</text><rect x='12' y='216' width='456' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='20' y='232' font-size='13' fill='currentColor'>串行 = Σ 各段；并行 = Σ 各波 max；评测用金标集</text></svg>",
+        "alt": "流程图：主智能体向检索子、分析子、写作子三个子智能体分派任务，三者产物统一汇入契约校验层（字段 + 规则），下方三条要点说明边界清晰、为什么不是 4 个子智能体、串行与并行的延迟差别以及金标评测。"
+      },
+      "selfTest": [
+        "如果第 4 个子智能体只把「分析」拆成「清洗 + 统计」，你的吞吐会变吗？接口数会怎么变？（答：不会——清洗与统计仍是强串行依赖；k 个子智能体两两接口是 O(k²)，3→4 就是把 3 组接口变成 6 组，只增加协调与评测成本。）",
+        "校验失败了该重试还是该换输入？重试时到底要传什么？（答：把错误清单作为 feedback 回传给同一个子智能体，让它按错误修正；原样重试只会复现同样的错误，代码里的 poison 用例就是这样自愈的。）",
+        "为什么并行不能承诺「加 agent 就一定更快」？（答：DAG 的依赖链本身是串行的，并行只压缩同一波内的宽度；墙钟是每波 max 相加，串行是所有子任务相加，本例 7 vs 10。）",
+        "哪些错误属于架构级、不该靠重试解决？（答：两个子智能体声明同一个 kind、任务 kind 无人归口——这两类在注册期或路由期就抛 BoundaryError。）"
+      ],
+      "keyPoints": [
+        "背景与问题：先讲清要自动化的是哪条链路、原来卡在哪（人力/时延/一致性），再讲架构",
+        "为什么 1 主 3 子：每个子智能体独占一条互斥边界（取数/算指标/出报告），主智能体只做路由校验汇总",
+        "为什么不是 4 个：新子智能体必须带来新边界或新并行度，否则接口 O(k²) 涨而吞吐不变",
+        "为什么不是串行：同波并行取 max、上下文隔离、单点可重试；但依赖链仍串行，收益要量化",
+        "校验与评测：字段契约 + 语义规则双层校验，失败带 feedback 重试；金标集测通过率/边界违规/重试次数并覆盖失败路径"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "题干（人工整理的面经题 doubao-agent-multiagent-design）要求回答七件事：项目背景与要解决的问题、为什么选这个架构、为什么是一个主智能体带 3 个子智能体而不是 4 个、为什么不是串行、如何让不同 Agent 的边界清晰、你的校验是什么、评测工作如何做；本文件的 approach 与 keyPoints 逐条覆盖了这七问。",
+          "题干为开放设计题，没有给出业务数据、子任务清单、样例与规模，因此不存在唯一标准答案；本文件提供的是可运行的最小模型 + 可量化的判断标准（接口数 O(k²)、每波 max 的墙钟模型）。",
+          "本文件 code.source 是一个自包含的纯标准库 Python 程序（只用 statistics / concurrent.futures / dataclasses），已在本地 python 解释器上实际执行通过：波次为 [['t1','t2'],['t3'],['t4']]，串行与并行耗时 (10, 7)，写作子报告为「样本 5 条，均值 25.0，P95 81」，重复 kind、无归口 kind、max_retry=0 的脏数据三条失败路径均按预期抛 BoundaryError，金标评测 3/3 通过。",
+          "代码里的重试闭环可被直接观测：注入 poison 后检索子第一次返回 n = len(rows)+1，被规则层拦下并重试一次，最终指标与期望一致。",
+          "本文件 origin 为 curated（sourceUrl 为 null），因此 sources 为空数组，全篇没有出现任何链接文本。"
+        ],
+        "uncertain": [
+          "题面是面试官的开放追问，没有给出项目的真实业务数据、子任务数量与团队规模，「为什么是 3 而不是 4」在真实项目里应由边界重叠度、并行收益与评测成本的数据决定；本文件给出的是判断标准（是否独占新边界、接口 O(k²)、吞吐是否变化），不是该项目的既定事实。",
+          "题目要求「整理解答」而非提交代码，题面也没有要求可运行实现；代码是本人补充的最小可运行模型，用于把「边界互斥、分波并行、契约校验、带反馈重试、金标评测」落到可验证的形态，不代表面试官期望的答案形态。",
+          "代码中的耗时成本表（检索 3、分析 2、写作 2）是用于解释串行 10 与并行 7 的示意取值，不是实测性能数据。",
+          "校验规则（n 与 rows 等长、样本数为正、报告非空）是按本模型的字段契约设定的示例规则；真实项目的校验清单需要依据业务口径确定。",
+          "题面未说明该项目的子智能体是否使用同一模型、是否共享工具与记忆，本文件按「边界靠契约而非共享上下文」的假设展开，这一假设需要人工确认。"
+        ]
+      }
+    }
+  ]
+}

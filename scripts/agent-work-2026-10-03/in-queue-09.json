@@ -6,193 +6,202 @@
   "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
   "items": [
     {
-      "id": "a61bf1c90a479e68",
-      "title": "RLE-Bench: A Qualifying Exam for Coding Agents as Robot Learning Engineers",
-      "category": "worldmodel",
-      "channel": "hf_papers",
-      "url": "https://huggingface.co/papers/2609.34210",
+      "id": "8efe6e6f68558ea2",
+      "title": "cubist38/mlx-openai-server - A high-performance API server that provides OpenAI-compatible endpoints for MLX models. Developed using Python and powered by the FastAPI framework, it provides an efficient, scalable, and user-friendly solution for running MLX-based vision and language models locally with an OpenAI-compatible interface.",
+      "category": "multimodal",
+      "channel": "github",
+      "url": "https://github.com/cubist38/mlx-openai-server",
       "sources": [
         {
-          "url": "https://huggingface.co/papers/2609.34210",
-          "name": "hf_papers"
-        },
-        {
-          "url": "https://arxiv.org/abs/2609.34210",
-          "name": "canonical"
-        }
-      ],
-      "tags": [],
-      "summary": "Coding agents are beginning to move beyond purely digital tasks to tackle physical-world challenges, particularly in robotics. Existing robotics benchmarks, however, primarily focus on the performance of individual artifacts, such as policies or controllers, offering limited coverage of coding agents' broader engineering capabilities. Real-world robotics extends beyond control: agents must build, integrate, diagnose, and improve heterogeneous artifacts under resource constraints and reason from multimodal feedback. To evaluate these broader capabilities, we introduce RLE-Bench, a benchmark of robot-learning tasks spanning four representative robotics development workflows: interactive control, policy learning, perception and estimation, and mechanical design. We use diverse task-specific metrics to evaluate the artifacts submitted by the coding agents, from the success rate the agents achieved to the policy agents trained, the harness agent built, and the mechanical structures the agent designed. We aggregate these metrics into an overall RLE Index and report workflow-specific capability profiles, enabling systematic comparison of coding agents' capabilities across multiple capability dimensions. Beyond performance ranks, we also conduct in-depth case studies examining agent behavior on representative tasks, highlighting both current capabilities and limitations, and pointing to the opportunities robotics tasks have to offer for future agent training.",
-      "authors": [
-        "Haitong Ma",
-        "Chenxiao Gao",
-        "Rushi Qiang",
-        "Bo Dai",
-        "Na Li"
-      ],
-      "publishedAt": "2026-09-29T08:00:00+08:00",
-      "knowledgeType": "method",
-      "why": "归属「世界模型」方向；命中关键词 robot learning；社区热度 4",
-      "relevanceScore": 70.3,
-      "qualitySignals": {
-        "upvotes": 4
-      },
-      "peerReviewed": false,
-      "codeAvailable": false,
-      "planRelevanceScore": 70.3,
-      "planDepthScore": 60.89
-    },
-    {
-      "id": "44bfa5cd4d38d970",
-      "title": "RL-Guided PAC-NMPC for Probabilistically-Safe Perception-Based Navigation in Unknown Environments",
-      "category": "rl",
-      "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2609.39854v1",
-      "sources": [
-        {
-          "url": "https://arxiv.org/abs/2609.39854v1",
-          "name": "arxiv"
+          "url": "https://github.com/cubist38/mlx-openai-server",
+          "name": "github"
         }
       ],
       "tags": [
-        "cs.RO"
+        "apple-silicon",
+        "continuous-batching",
+        "fastapi",
+        "flux",
+        "image-generation",
+        "mlx",
+        "mlx-lm",
+        "mlx-vlm",
+        "Python"
       ],
-      "summary": "In this paper, we present an approach for combining stochastic nonlinear model predictive control (SNMPC) and reinforcement learning (RL) to enable probabilistically-safe perception-based navigation in unknown environments. Our method first uses RL to train probabilistic actor-critic and sensor prediction models. We then leverage these probabilistic models in a sampling-based SNMPC framework known as Probably Approximately Correct (PAC)-NMPC, which uses hard constraints to enforce finite-time statistical guarantees on the probability of collision and value function improvement. By ensuring that our finite-horizon SNMPC policies decrease the value function in expectation, we can approach the long-horizon performance of the RL approach while satisfying probabilistic safety constraints. Through simulation experiments, we show that our approach can improve the safety of perception-based RL navigation policies and scale to high dimensional systems with large sensor input spaces and complex nonlinear dynamics. We also demonstrate our approach through hardware experiments, showing improved performance for vision-based navigation with an agile fixed-wing aerial vehicle in unknown environments.",
+      "summary": "A high-performance API server that provides OpenAI-compatible endpoints for MLX models. Developed using Python and powered by the FastAPI framework, it provides an efficient, scalable, and user-friendly solution for running MLX-based vision and language models locally with an OpenAI-compatible interface.",
       "authors": [
-        "Adam Polevoy",
-        "Dillon Capalongo",
-        "Katherine Tang",
-        "Mark Gonzales",
-        "Marin Kobilarov",
-        "Joseph Moore"
+        "cubist38"
       ],
-      "publishedAt": "2026-09-30T02:43:18+08:00",
-      "knowledgeType": "method",
-      "why": "归属「强化学习」方向；命中关键词 reinforcement learning、actor-critic",
-      "relevanceScore": 74.4,
-      "qualitySignals": {},
+      "publishedAt": "2026-09-29T02:33:48+08:00",
+      "knowledgeType": "project",
+      "why": "归属「多模态算法」方向；命中关键词 vlm；GitHub 362 stars；疑似附带开源实现；领域核心工作",
+      "relevanceScore": 69.7,
+      "qualitySignals": {
+        "stars": 362,
+        "forks": 69,
+        "codeAvailable": true
+      },
       "peerReviewed": false,
-      "codeAvailable": false,
-      "planRelevanceScore": 74.4,
-      "planDepthScore": 59.96
+      "codeAvailable": true,
+      "planRelevanceScore": 69.7,
+      "planDepthScore": 63.97
     },
     {
-      "id": "b23fa633aed23b9e",
-      "title": "Riemannian Flow Models with Reinforcement Learning for Molecular Crystal Structure Prediction",
-      "category": "rl",
-      "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2609.39773v1",
+      "id": "e8f4a2385a007c81",
+      "title": "worldbench/awesome-vla-for-ad - 🌐 Vision-Language-Action Models for Autonomous Driving: Past, Present, and Future",
+      "category": "worldmodel",
+      "channel": "github",
+      "url": "https://github.com/worldbench/awesome-vla-for-ad",
       "sources": [
         {
-          "url": "https://arxiv.org/abs/2609.39773v1",
-          "name": "arxiv"
+          "url": "https://github.com/worldbench/awesome-vla-for-ad",
+          "name": "github"
         }
       ],
       "tags": [
-        "cs.LG",
-        "physics.comp-ph"
+        "3d",
+        "autonomous-driving",
+        "awesome-list",
+        "embodied-ai",
+        "large-language-models",
+        "llm",
+        "multi-modal",
+        "multimodal-large-language-models",
+        "HTML"
       ],
-      "summary": "Crystal structure governs material properties, making crystal structure prediction (CSP) a fundamental problem in materials science. Generative models are a promising approach for solving this problem, but the prevalence of polymorphism, coupled with large unit cells and complex packing geometry, makes the molecular CSP task challenging for existing models. To address this, we introduce Coarse-Grained Open Materials Generation (CG-OMatG), an equivariant Riemannian flow-based generative model. CG-OMatG predicts molecular crystal structures \\textit{via} a coarse-grained, hierarchical representation. CG-OMatG treats molecules as rigid bodies---performing both inter- and intra-molecular message passing to construct a geometric representation for molecular packings---and learns to reconstruct molecule centroid positions, orientations, and lattice parameters, conditioned on chemical species and conformer geometry. We train the model on subsets of the Open Molecular Crystals (OMC25) and Cambridge Structural Database (CSD) datasets. Further, we fine-tune the model \\textit{via} policy gradient reinforcement learning to steer the model towards generating low-energy candidate structures. We validate the generated structures on the CSP blind test benchmark, assessing agreement with experimentally determined crystals using COMPACK packing-similarity analysis. CG-OMatG exhibits strong performance for generative molecular crystal structure prediction, paving the way for accelerated polymorph screening and organic solid-state materials discovery.",
+      "summary": "🌐 Vision-Language-Action Models for Autonomous Driving: Past, Present, and Future",
       "authors": [
-        "Thomas Egg",
-        "Harry Winston Sullivan",
-        "Maya M. Martirossyan",
-        "Philipp Höllmer",
-        "Cheng Zeng",
-        "Adrian Roitberg",
-        "Mingjie Liu",
-        "Richard Hennig",
-        "Sapna Sarupria",
-        "Ellad B. Tadmor",
-        "Stefano Martiniani"
+        "worldbench"
       ],
-      "publishedAt": "2026-09-30T02:00:39+08:00",
-      "knowledgeType": "method",
-      "why": "归属「强化学习」方向；命中关键词 reinforcement learning、policy gradient",
-      "relevanceScore": 74.4,
-      "qualitySignals": {},
-      "peerReviewed": false,
-      "codeAvailable": false,
-      "planRelevanceScore": 74.4,
-      "planDepthScore": 59.96
-    },
-    {
-      "id": "b1dbc9cc24709fe3",
-      "title": "Systematically Exploring the Capabilities of GPT-6 Astra as Embodied Policies",
-      "category": "worldmodel",
-      "channel": "hf_papers",
-      "url": "https://huggingface.co/papers/2609.38537",
-      "sources": [
-        {
-          "url": "https://huggingface.co/papers/2609.38537",
-          "name": "hf_papers"
-        },
-        {
-          "url": "https://arxiv.org/abs/2609.38537",
-          "name": "canonical"
-        }
-      ],
-      "tags": [],
-      "summary": "GPT-6 Astra exhibits a remarkable ability to generate numerical robot actions, extending its role beyond high-level planning. To assess Astra's capabilities as general-purpose embodied policies, we conduct comprehensive evaluations across six domains, examining direct control, cooperation with learned policies, and feedback-driven adaptation. In gripper manipulation, Astra can correct task targets and prepare contact conditions for subsequent policy execution; hybrid control with π0.5 achieves 48% success on the evaluated RoboDojo subset. In dexterous manipulation, hybrid control achieves 50% success in ten experience-guided DexJoCo trials, while direct in-hand control struggles to coordinate finger contacts. In mobile manipulation, hybrid control reaches 38.7% success on the evaluated RoboCasa365. In navigation, Astra leads our local comparisons, reaching 92% success on RxR instruction following and 82% on HM3D object search, although search incurs substantial detours. In locomotion, dense motion-reference generation remains unreliable: none of five sequential attempts on a single obstacle course reaches the goal, despite improvements in stability and forward progress. In humanoid loco-manipulation, Astra exceeds baseline methods on 13 of 30 HumanoidBench tasks with pretrained whole-body controllers. These findings reveal a gap between useful task decisions and reliable physical control. Inference latency further constrains practical control: across 50 RoboDojo instances per condition, policy-assisted and direct control consume 624.8 million and 1.132 billion tokens. A 30-second locomotion run requires 250 model calls averaging 39.86 seconds each, with physics paused during inference.",
-      "authors": [
-        "Galbot Team",
-        "Xuchuan Chen",
-        "Xiaoqian Cheng",
-        "Yu Deng",
-        "Lihe Ding",
-        "Shaocong Dong",
-        "Xiangjun Gao",
-        "Haozhe Jia",
-        "Zekai Li",
-        "Zhoujian Li",
-        "Yunrui Lian",
-        "Sikai Liang"
-      ],
-      "publishedAt": "2026-09-28T12:00:00+08:00",
-      "knowledgeType": "method",
-      "why": "归属「世界模型」方向；命中关键词 embodied；社区热度 12",
-      "relevanceScore": 67.1,
+      "publishedAt": "2026-09-23T16:26:13+08:00",
+      "knowledgeType": "project",
+      "why": "归属「世界模型」方向；命中关键词 vla、vision-language-action、embodied；GitHub 483 stars；疑似附带开源实现；领域核心工作",
+      "relevanceScore": 78.3,
       "qualitySignals": {
-        "upvotes": 14
+        "stars": 484,
+        "forks": 42,
+        "codeAvailable": true
       },
       "peerReviewed": false,
-      "codeAvailable": false,
-      "planRelevanceScore": 67.1,
-      "planDepthScore": 59.67
+      "codeAvailable": true,
+      "planRelevanceScore": 78.3,
+      "planDepthScore": 63.48
     },
     {
-      "id": "d6bcc8f5d8cb2993",
-      "title": "RASteer: Retain-Aware Activation Steering for Concept Erasure in Diffusion Models",
-      "category": "generative",
+      "id": "091fedf2566cfb0a",
+      "title": "Asking the World: Generalist Physical Reasoning through Agentic World Modeling and Probing",
+      "category": "agent",
       "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2610.01969v1",
+      "url": "https://arxiv.org/abs/2609.39135v1",
       "sources": [
         {
-          "url": "https://arxiv.org/abs/2610.01969v1",
+          "url": "https://arxiv.org/abs/2609.39135v1",
           "name": "arxiv"
         }
       ],
       "tags": [
         "cs.CV"
       ],
-      "summary": "Concept erasure aims to remove a target concept, such as a copyrighted style, a recognizable character, or unsafe content, from a pretrained text-to-image diffusion model while preserving its ability to generate other content. Existing activation steering methods build an erasure direction mainly from the target concept and adjust model activations along it at inference time. However, target and retained concepts often overlap in the model's representation space, so this direction also contains shared components that retained concepts rely on. Steering directly along this direction can therefore suppress retained concepts and harm the generation of non-target content. To address this issue, we propose Retain-aware Activation Steering (RASteer), a training-free method. RASteer first builds a retain subspace from the concepts to preserve. Retain-Orthogonal Steering (ROS) then removes components aligned with this subspace from the erasure direction, making steering more specific to the target. Since fully removing the shared components can weaken erasure, we further introduce Overlap-Adaptive Calibration (OAC). At each layer and denoising step, OAC uses the overlap between the erasure direction and the retain subspace to control how much of each shared component is removed, balancing target erasure and concept preservation. Experiments on unsafe-content, instance, and artistic-style erasure across multiple backbones and benchmarks show that RASteer matches or outperforms the activation steering and weight editing baselines we evaluate, achieving a better balance between erasure and preservation.",
+      "summary": "Physical reasoning from video requires inferring latent physical properties and dynamics beyond direct observation. Direct VLM inference remains unreliable on complex physical tasks without explicit modeling and validation, while predefined tool pipelines rely on task- and domain-specific priors that limit generalization across materials, dynamics, and reasoning tasks. We introduce Asking the World (ATW), a generalist agent that constructs and interrogates task-relevant executable worlds through two adaptive stages: World Modeling calibrates a world from video, while World Probing queries, simulates, and intervenes on it to obtain question-relevant evidence. Rather than prescribing the operations in either stage, ATW determines how to model and probe according to the scene and question. We develop PolyWorld Engine, a lightweight and highly programmable Warp-based multiphysics simulator for constructing and probing worlds with rigid bodies, soft bodies, cloth, ropes, fluids, and their coupled interactions. CEM-based system identification recovers task-relevant dynamics during World Modeling. The resulting world becomes an active workspace for question-directed physical experiments rather than a predetermined downstream tool. We evaluate ATW on CLEVRER, ContPhy, and three real-world scenarios. Using Gemini-3-Flash as its base VLM, ATW achieves 80.82% overall per-question accuracy on CLEVRER, improving direct Gemini-3-Flash by 46.50 points, GPT-5.5 by 13.58 points, and PhysMind by 8.27 points. On ContPhy, it reaches 70.56% overall accuracy, surpassing Gemini-3-Flash by 28.10 points and GPT-5.5 by 3.53 points. Across the three real-world scenarios, ATW achieves 71.67% accuracy, 28.33 points above GPT-5.5. These results establish agentic world modeling and probing as an effe",
       "authors": [
-        "Yongliang Wu",
-        "Haori Lu",
-        "Yulun Wu",
-        "Jinqi Luo",
-        "Xingyu Zhu",
-        "Yaoyao Liu"
+        "Shenxiang Zeng",
+        "Chen Yang",
+        "Peiyao Chen",
+        "Guohui Zhang",
+        "Jiansheng Fan",
+        "Chen Wang"
       ],
-      "publishedAt": "2026-10-02T00:20:09+08:00",
+      "publishedAt": "2026-09-29T19:04:21+08:00",
       "knowledgeType": "method",
-      "why": "归属「生成式模型」方向；命中关键词 diffusion、text-to-image",
-      "relevanceScore": 75.4,
+      "why": "归属「Agent 理论与实践」方向；命中关键词 agent、agentic；领域核心工作",
+      "relevanceScore": 76.9,
       "qualitySignals": {},
       "peerReviewed": false,
       "codeAvailable": false,
-      "planRelevanceScore": 75.4,
-      "planDepthScore": 59.07
+      "planRelevanceScore": 76.9,
+      "planDepthScore": 63.27
+    },
+    {
+      "id": "43e251293f423815",
+      "title": "AutoGUIWorld: Image Generators as Visual World Models for GUI Agent",
+      "category": "agent",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2610.01215",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2610.01215",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.01215",
+          "name": "canonical"
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.01215v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.CV"
+      ],
+      "summary": "GUI agents require high-quality interaction trajectories to learn how software environments respond to actions, maintain state, and support multi-step workflows. However, the diversity of available trajectories is constrained by the applications, interface states, and workflows accessible in the underlying environments. Expanding this coverage requires deploying increasingly diverse and complex software, with specialized applications imposing additional installation, configuration, and runtime costs. We introduce AutoGUIWorld, a data generation framework that combines the visual priors of image generators with the task knowledge of a planner to synthesize GUI interaction trajectories without deploying or running the corresponding software environments. AutoGUIWorld samples initial GUI scenes from structured specifications of operating-system context, visual appearance, and interface state, and generates tasks conditioned on those scenes. A planner then specifies atomic actions and their intended visual consequences, while an image generator iteratively edits the current screenshot to produce subsequent observations. Action grounding and transition-level quality filtering yield 79,266 spatially annotated step-level training samples across Ubuntu, Windows, macOS, and Chrome. Fine-tuning Qwen3.5-35B-A3B on AutoGUIWorld trajectories improves the mean task score on OSWorld from 33.0% to 40.8% and the task success rate on ScienceBoard from 14.0% to 32.2%. These results show that generated trajectories improve GUI-agent performance on real desktop and scientific tasks.",
+      "authors": [
+        "Cheng Yang",
+        "Yifan Wu",
+        "Yutao Huang",
+        "Zhaohua Zhang",
+        "Beiduo Chen",
+        "Muxi Chen",
+        "Chenchen Zhao",
+        "Hexuan Deng",
+        "Haolin Yang",
+        "Geyuan Zhu",
+        "Sa Zhu",
+        "Jianhuan Zhuo"
+      ],
+      "publishedAt": "2026-10-01T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「Agent 理论与实践」方向；命中关键词 agent；社区热度 26；领域核心工作",
+      "relevanceScore": 76.8,
+      "qualitySignals": {
+        "upvotes": 26
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 76.8,
+      "planDepthScore": 63.24
+    },
+    {
+      "id": "6c670d26b9e72aaf",
+      "title": "Learning Commute-Time-Preserving World Models for Planning",
+      "category": "agent",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.01373v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.01373v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.LG"
+      ],
+      "summary": "World models allow agents to plan in latent space by choosing a sequence of actions that most reduces the distance to a given goal state. Thus, planning can benefit from latent representations whose distances mirror commute-times in the environment. The spectral embedding space of the graph Laplacian provides such a representation, if it obeys a specific eigenvalue-dependent scaling. Unfortunately, instantiating the graph Laplacian is intractable in large, continuous environments. Self-supervised learning offers a natural route to such commute-time-preserving embeddings at scale. However, here we show that existing methods, which commonly encourage isotropic representations to prevent representational collapse, tend to degrade the \"correct\" eigenvalue-dependent scaling, leading to an inaccurate representation of commute times. To address this problem, we introduce Commute-Time-Preserving World Models (CTWMs), combining a latent displacement predictor and a log-determinant regularizer that prevents collapse, which provably recover the correctly scaled Laplacian representation under reversible deterministic dynamics and at the predictor's fixed point. In numerical simulations, CTWM matches or outperforms LeWM, a task-agnostic baseline, on several complex, continuous goal-reaching benchmarks, while using half the parameters.",
+      "authors": [
+        "Michael Hauri",
+        "Peter Buttaroni",
+        "Fabian A. Mikulasch",
+        "Friedemann Zenke"
+      ],
+      "publishedAt": "2026-10-01T17:42:42+08:00",
+      "knowledgeType": "method",
+      "why": "归属「Agent 理论与实践」方向；命中关键词 planning；领域核心工作",
+      "relevanceScore": 75.8,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 75.8,
+      "planDepthScore": 62.91
     }
   ]
 }

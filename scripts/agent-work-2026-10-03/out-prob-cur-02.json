@@ -1,0 +1,140 @@
+{
+  "batchId": "prob-cur-02",
+  "entries": [
+    {
+      "id": "flashattention-concept",
+      "tldr": "按 K/V 块迭代，用 running max 与 running sum 在线归一化，attention 矩阵不落地，显存从 O(S^2) 降到 O(S)。",
+      "restated": "输入三个 [S, d] 张量 q、k、v（S 为序列长度、d 为 head 维），要求算出与标准注意力 softmax(qk^T/sqrt(d))v 等价的 [S, d] 输出，但全程不物化 S×S 注意力矩阵。做法是按 K/V 的行块（大小 block）迭代，用 running max m 与 running sum l 在线归一化；题面只要求解释显存为何从 O(S^2) 降到 O(S)，未规定 block 取值，也未规定 mask、多头与 batch 维。",
+      "approach": [
+        {
+          "step": "朴素写法：先算整块 S×S 分数矩阵",
+          "detail": "直接 S = q @ k.T、P = softmax(S)、out = P @ v 在数学上就是答案，但它必须同时持有 S（[S,S]）与 P（[S,S]）两份中间量。S=8192 时单份 fp32 就是 8192×8192×4B = 256MB，且这份矩阵要写进显存再读回来做 softmax、再读一次做 P@v，显存峰值与 HBM 流量都被 S^2 项主导。面试里更贴近人工 pitfall 的写法是「先用 exp(s - s.max()) 得到 P 再累加」：一旦把某个块的 exp 结果长期留在显存里，就等于把 S^2 落地了。"
+        },
+        {
+          "step": "关键观察：softmax 的分母可以逐块累加（online softmax）",
+          "detail": "softmax 需要整行的 max 与 exp 之和，而这两个量都是可结合归约：新块到来时把旧的 (m_old, l_old) 与块内 (m_blk, sum_blk) 用 m_new = max(m_old, m_blk) 合并即可。因为 exp(s - m_new) = exp(s - m_old)·exp(m_old - m_new)，历史累加量只需乘一个标量 alpha = exp(m_old - m_new) 就能被重新标定到新基准，不必重算旧块。"
+        },
+        {
+          "step": "正确写法：逐块维护 (m, l, out)，只载入一个 K/V 块",
+          "detail": "每个 K/V 块 kj、vj（各 [Bk, d]）只做三步：算出块内分数 s = (q @ kj.T)·scale（[S, Bk]）、用新 max 重标定出 p = exp(s - m_new)、再按 l = l·alpha + p.sum(-1)、out = out·alpha[:,None] + p @ vj 更新累加量。循环结束后 out/l 就精确等于 softmax 结果，峰值显存只剩 q、k、v、out 加一块 s、p（O(S·Bk)），与 S^2 无关。"
+        },
+        {
+          "step": "工程侧收益：真正降的是 IO 而不是 FLOPs",
+          "detail": "FLOPs 仍是 2·S^2·d 量级（算法上等价于标准注意力），降下来的是 HBM 读写次数：分块让 s、p 停留在 SRAM/片上，块大小由 SRAM 容量 tune（典型 64~256），太小则重复读 K/V 的开销升高、太大则溢出 SRAM 回落到 HBM。"
+        }
+      ],
+      "complexity": {
+        "time": "O(S^2 · d)（算法等价于标准注意力，FLOPs 不变）",
+        "space": "O(S · d) 附加显存（存 q、k、v、out 与 running 的 m、l），单块分数 s、p 为 O(S · Bk)",
+        "why": "时间上每个 (i, j) 对仍要算一次点积，分块只是改变了访问顺序，没有省掉乘加；空间上因为注意力矩阵被拆成逐块算完即弃，只留下逐行的 m、l 与累加的 out，所以峰值从 O(S^2) 降到 O(S·d)；省下的是 HBM 流量（少写少读一份 S×S 矩阵），这也是 IO-aware 的由来。"
+      },
+      "code": {
+        "language": "python",
+        "source": "import math\nimport torch\n\n\ndef flash_attention_concept(q, k, v, block=128):\n    \"\"\"FlashAttention 概念实现：分块 + 在线 softmax，不落地 SxS 矩阵。\n\n    q, k, v: [S, d]（单头、无 mask，与人工 referenceSolution 同一约定）\n    block  : K/V 按行分块的大小 Bk，需 > 0\n    返回    : out [S, d]，与 softmax(q @ k.T / sqrt(d)) @ v 数值等价\n\n    显存峰值：q/k/v/out 共 4·S·d 加 running 的 m、l 各 S，\n    再加一个块的 s、p 各 S×Bk —— 与 S^2 无关。\n    \"\"\"\n    if q.shape != k.shape or q.shape != v.shape:\n        raise ValueError(\"q/k/v 形状必须一致，都是 [S, d]\")\n    if block <= 0:\n        raise ValueError(\"block 必须为正整数\")\n    S, d = q.shape\n    if S == 0:\n        return torch.zeros((0, d), dtype=q.dtype, device=q.device)\n\n    scale = 1.0 / math.sqrt(d)\n    out = torch.zeros_like(q)                                 # 未归一化的累加输出\n    m = torch.full((S,), -float(\"inf\"), device=q.device, dtype=q.dtype)  # running max\n    l = torch.zeros((S,), device=q.device, dtype=q.dtype)     # running denom\n\n    for j in range(0, S, block):\n        kj, vj = k[j:j + block], v[j:j + block]       # 只载入一个 K/V 块 [Bk, d]\n        s = (q @ kj.T) * scale                        # 块内分数 [S, Bk]，不写回显存\n        m_new = torch.maximum(m, s.max(dim=-1).values)  # 合并旧 max 与块内 max\n        p = torch.exp(s - m_new[:, None])             # 用新基准重标定本块\n        alpha = torch.exp(m - m_new)                  # 修正历史累加项的系数\n        l = l * alpha + p.sum(dim=-1)                 # 分母逐步累加\n        out = out * alpha[:, None] + p @ vj           # 分子逐步累加\n        m = m_new\n\n    return out / l[:, None]                           # 最终一次性归一化\n\n\nif __name__ == \"__main__\":\n    torch.manual_seed(0)\n    S, d, Bk = 37, 8, 8\n    q, k, v = (torch.randn(S, d, dtype=torch.float64) for _ in range(3))\n    ref = torch.softmax((q @ k.T) / math.sqrt(d), dim=-1) @ v\n    got = flash_attention_concept(q, k, v, block=Bk)\n    print(\"max abs diff vs 标准注意力: %.3e\" % (got - ref).abs().max().item())\n    print(\"空序列:\", tuple(flash_attention_concept(\n        torch.zeros(0, d), torch.zeros(0, d), torch.zeros(0, d)).shape))\n    big = flash_attention_concept(q * 500, k * 500, v, block=Bk)\n    print(\"大数值输入全有限:\", bool(torch.isfinite(big).all()))\n",
+        "walkthrough": [
+          {
+            "note": "依赖与形状约定：这段代码需要 torch（在函数外 import，未安装 torch 时连定义都进不去；纯 numpy 读者可把 q @ kj.T 换成 q @ kj.T、exp/sum 换成 np 版本）。签名与人工 referenceSolution 一致：q/k/v 都是 [S, d] 的单头输入，输出也是 [S, d]；没有 mask、batch 与多头维，这一点决定了后面所有形状注释。"
+          },
+          {
+            "note": "入口守卫：先断言 q/k/v 形状一致、block 为正整数，再单独处理 S == 0 直接返回空张量 [0, d]。这两个检查不是装饰——S=0 时若不早退，空张量的 max 会抛错；而 dtype/device 跟随 q 复制，是为了让全 -inf 初始化不会因 fp16 的 -inf 表示问题变成 NaN 源。"
+          },
+          {
+            "note": "状态初始化：scale 只在算分数时乘一次（放在 qk^T 之后、exp 之前）。out 是未归一化的分子、l 是分母，m 用 -inf 起步——这样第一块进来时 m_new 一定等于块内 max，alpha = exp(-inf - m_new) = 0，恰好把「还没有历史」这件事表达成历史项被清零，不需要为第一块写特判分支。"
+          },
+          {
+            "note": "循环体是本算法的全部心脏，四行各管一件事：q @ kj.T 只和当前块相乘，得到 [S, Bk] 的块内分数，这个张量在下一轮迭代就被覆盖，所以永远不会出现 [S, S]；m_new 把 running max 与块内 max 取逐行最大，它是后面所有指数的新基准。"
+          },
+          {
+            "note": "在线 softmax 的重标定：p = exp(s - m_new) 算的是「以当前全局 max 为基准」的本块权重，alpha = exp(m - m_new) 是同一个基准变化对历史项的折扣系数（m_new ≥ m 保证 alpha ≤ 1，不会放大）。l 与 out 都先乘 alpha 再叠加本块贡献，等价于把之前所有块的 exp 结果统一换算到新基准；漏掉这两处乘 alpha，就是人工 pitfalls 里「结果全错」的那一条。"
+          },
+          {
+            "note": "收尾与等价性：循环结束时 m 是整行真实 max、l 是 exp(s - m) 的整行和、out 是 Σ exp(s - m)·v，因此 out / l[:, None] 就是精确的 softmax 加权和，不需要最后再减一次 max。与标准写法相比差别只在「exp 的基准是边算边刷新」以及浮点求和次序，验证脚本里 fp64 下的最大绝对误差在 1e-15 量级。"
+          },
+          {
+            "note": "数值与边界表现：把 q、k 各放大 500 倍后分数会到 1e6 量级，标准实现若先 exp(s) 再加会直接溢出成 inf，而这里因为每块都先减掉当前 max，输出仍然全部有限；这正是「把 exp 直接在大数上做导致溢出」这个 pitfall 的根治方式。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "空序列 S=0：函数直接返回 [0, d]，同时 q/k/v 的 d 维仍需一致；下游若继续做矩阵乘要注意空张量的广播语义。",
+        "S ≤ block（只有一块）：m_new 即整行 max、alpha 全为 0，输出应等于标准注意力，是验证实现是否写对的最快自测。",
+        "d=1：scale=1，softmax 退化成逐行的 sigmoid 式归一化，用来检查 scale 是否被重复乘或漏乘（乘两次会明显偏移）。",
+        "block 不整除 S：最后一块大小小于 block，切片 k[j:j+block] 自然处理，但若代码里手工假设每块都是 block 行（例如预分配固定形状缓冲）就会出错。",
+        "q 的某一行全相等 / 全为 0：分数全相等时 softmax 退化为均匀平均，输出应是 v 的行均值；这能暴露 l 里漏加某一块的错误。",
+        "数值极大或极小的输入（如 q、k 各乘 500）：标准实现会溢出，本实现在 fp32/fp64 下仍应给出有限结果；fp16 下若 max 与分数差距过大仍需留意 exp 下溢。",
+        "block 大于 S 或 block=1：前者等价于单块，后者退化成逐行处理，两个极端都应与标准注意力一致，可作为参数鲁棒性检查。"
+      ],
+      "pitfalls": [
+        "忘记对历史 out/l 乘 alpha 修正，结果全错——alpha = exp(m_old - m_new) 必须同时乘在 out 与 l 上，只乘一个会让归一化与分子不再同基准。",
+        "把 exp 直接在大数上做导致溢出——必须先减当前 running max（或块内 max）再 exp，不能先 exp 再考虑减 max。",
+        "以为 FlashAttention 能降低计算量（FLOPs 不变）——它降的是显存峰值与 HBM 读写，算法上仍要算 S^2 个分数。",
+        "scale 的位置放错：应该乘在 qk^T 之后、进入 online 累加之前；如果乘在 out 归一化之后（或忘记乘），结果整体偏移。",
+        "m 初始化成 0 而不是 -inf：分数全为负时 alpha 会大于 1，把历史项错误放大；全 0 行还会让 alpha 出现 0/0。",
+        "把 p（本块 exp 结果）留下来做后续归一化，等于又把 O(S·Bk) 的中间量长期持有；正确做法是让 s、p 在循环体内即用即弃。",
+        "对「分母 l」用块内 sum 直接累加而不做基准统一，等价于用不同基准的 exp 相加，数值上表现为不同块权重被错误缩放。",
+        "忽略 mask 场景：实现一旦引入 padding/因果 mask（分数置 -inf），整行全被 mask 时 l=0 会得到 NaN，需要显式回退或跳过该行。"
+      ],
+      "followUps": [
+        "要求显存再降：out 是 [S, d]，能否像 l、m 一样只保留一份而把 out 也分块（backward 重算 + 分块输出累加）？代价是什么？",
+        "反向传播怎么处理：FlashAttention 不存 S×S，backward 需要重算哪些中间量？为什么它的重算比显存里存下来更划算？",
+        "改成因果 mask（decoder 自回归）：块内与块间的 mask 分别在哪一步施加，能否对「完全在未来的块」直接 continue 来省一半算力？",
+        "加上 batch 与多头维 [B, H, S, d]：循环应该放在哪几维上？m、l 的形状变成什么？为什么通常把 S 分块、把 B×H 放进网格并行？",
+        "Bk 怎么 tune：从 SRAM 容量、K/V 重复读取次数、寄存器压力三个角度说明 block 太小的代价（重复读 K/V、循环开销）与太大的代价（溢出 SRAM 回落 HBM）；为什么生产实现用 autotune 而不是固定 128？",
+        "S 远大于单卡容量时如何进一步分块（序列并行 / ring attention）：把 K/V 块分给不同设备时，m、l、out 需要怎样跨设备合并？",
+        "与标准实现误差有多少：为什么即使数学等价，分块后的浮点求和次序不同仍会带来 1e-7 量级差异？对训练有什么影响？"
+      ],
+      "variations": [
+        "FlashAttention-2：把「先算完整个 S×Bk 再乘 V」的顺序调整为减少非矩阵乘 FLOPs 与重标定次数，并把并行维放到 S 之外，同机更省时间。",
+        "FlashAttention-3 / Hopper：用 TMA、异步 warp-specialization 与 fp8 进一步提吞吐，并做 softmax 的两级流水，算法骨架仍是 online softmax。",
+        "PagedAttention / vLLM：把 K/V 按 page 组织，注意力块循环变成 page 循环，针对推理时 KV cache 不连续的场景。",
+        "Ring / Striped Attention：把 K/V 块分布到多设备上，用环形传递 + 本地 online softmax 合并，等价于把这个循环拆到集群上。",
+        "分块版 softmax 本身（memory-efficient softmax / Welford 式归约）：不特指注意力，任何「无法一次装下整行」的归约都可以用同一套 running max/sum 重标定。",
+        "手写多流 / 双缓冲版本：在块循环里预取下一块 K/V 与当前块计算重叠，把「分块」从数学技巧变成 IO 调度技巧。",
+        "线性注意力、RWKV 等：换掉 softmax 内核以彻底摆脱 S^2，代价是表达力与长程建模效果，可与本题对照回答「为什么大家还在优化 FlashAttention 而不是都改成 linear attention」。"
+      ],
+      "diagram": {
+        "kind": "matrix",
+        "title": "分块在线 softmax 迭代",
+        "caption": "外层只取 K/V 的第 j 列块，行内用 running max m、running sum l 与修正系数 alpha 把历史累加项搬到新基准；S×S 矩阵从不出现。",
+        "svg": "<svg viewBox='0 0 480 260' xmlns='http://www.w3.org/2000/svg' font-size='13'><text x='16' y='24' font-size='14' fill='currentColor'>外层循环 j：一次只取 K/V 的一列块</text><line x1='16' y1='34' x2='464' y2='34' stroke='var(--line-1)' stroke-width='1'/><rect x='20' y='48' width='240' height='84' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='20' y='48' width='240' height='26' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='28' y='66' font-size='13' fill='var(--accent)'>s = (q @ kj.T) * scale   [S, Bk]</text><text x='28' y='92' font-size='13' fill='currentColor'>m_new = max(m, s.max(-1))</text><text x='28' y='112' font-size='13' fill='currentColor'>p = exp(s - m_new[:, None])</text><rect x='280' y='48' width='180' height='84' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='290' y='70' font-size='13' fill='var(--accent)'>alpha = exp(m - m_new)</text><text x='290' y='94' font-size='13' fill='currentColor'>l = l*alpha + p.sum(-1)</text><text x='290' y='118' font-size='13' fill='currentColor'>out = out*alpha + p @ vj</text><path d='M262 60 L276 60' stroke='currentColor' stroke-width='1'/><path d='M276 56 L283 60 L276 64 Z' fill='currentColor'/><text x='16' y='158' font-size='13' fill='currentColor'>状态：l、out 是 [S] 与 [S, d]，m 是 [S] —— 峰值显存 O(S)，不是 O(S^2)</text><rect x='20' y='176' width='132' height='62' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='28' y='200' font-size='13' fill='currentColor'>迭代 j = 0</text><text x='28' y='222' font-size='13' fill='currentColor'>alpha 全为 0</text><rect x='174' y='176' width='132' height='62' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='182' y='200' font-size='13' fill='currentColor'>迭代 j = 1</text><text x='182' y='222' font-size='13' fill='currentColor'>alpha 修正历史</text><rect x='328' y='176' width='132' height='62' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='336' y='200' font-size='13' fill='currentColor'>末块之后</text><text x='336' y='222' font-size='13' fill='currentColor'>return out / l</text><path d='M152 207 L168 207' stroke='currentColor' stroke-width='1'/><path d='M168 203 L175 207 L168 211 Z' fill='currentColor'/><path d='M306 207 L322 207' stroke='currentColor' stroke-width='1'/><path d='M322 203 L329 207 L322 211 Z' fill='currentColor'/><text x='16' y='256' font-size='13' fill='var(--fg-1)'>S×S 分数矩阵从不物化：kj、vj、s、p 都是 O(S·Bk) 的临时量</text></svg>",
+        "alt": "分块在线 softmax：对每个 K/V 列块计算 [S, Bk] 分数，用 m_new 重标定本块并乘 alpha 修正历史 l 与 out，末块后除以 l。"
+      },
+      "selfTest": [
+        "第一块进来时 m = -inf，alpha = exp(-inf - m_new) 是多少？为什么这让代码不需要为「还没有历史累加项」写特判分支？",
+        "如果只对 out 乘 alpha 而忘记对 l 乘 alpha，输出会偏大还是偏小？请用一个两块的最小例子（S=2、block=1、分数分别为 0 和 10）算一遍。",
+        "为什么说 FlashAttention 的 FLOPs 与标准注意力一样，但实际训练仍然更快？举出至少两个原因（提示：HBM 读写、SRAM 分块、反向重算）。",
+        "把 block 从 128 改成 1 和改成 S，输出应该分别变成什么？这两种极端值分别能暴露实现里的哪类 bug？",
+        "反向传播时如果完全不存 S×S，需要重算哪些量？为什么这种重算（recomputation）反而比把矩阵留在 HBM 更划算？"
+      ],
+      "keyPoints": [
+        "核心是 online softmax：每来一个新块就用新的 max 重标定历史累加项",
+        "alpha = exp(m_old - m_new) 用来修正已累积的 out 和 l",
+        "结果与标准注意力在数学上等价（除浮点误差），只是改变了 IO 与显存峰值",
+        "分块大小受 SRAM 限制，需要 tune"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（flashattention-concept）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工 prompt 原文：不落地 S×S 注意力矩阵，实现分块注意力：按 K/V 块迭代，用 running max 与 running sum 在线归一化。解释它为什么把显存从 O(S^2) 降到 O(S)。",
+          "人工 referenceSolution 的签名与语义：flash_attention_concept(q, k, v, block=128)，q/k/v 为 [S, d]，返回 [S, d]；核心是 running max m、running denom l 与 alpha = exp(m - m_new)。",
+          "人工 keyPoints 与 pitfalls 已逐条保留在本题解的 keyPoints 与原样保留并扩充的 pitfalls 里，未改写或反驳。",
+          "本次代码已实际运行（torch，CPU，fp64）：S=37、d=8、block=8 时与 torch.softmax((q @ k.T)/sqrt(d), -1) @ v 的最大绝对误差为 1.33e-15；S=0 返回形状 (0, 8)；q、k 各放大 500 倍后输出全部有限。",
+          "复杂度结论：时间是 O(S^2·d)（FLOPs 与标准注意力相同），附加显存 O(S·d)，另外每个块需要 O(S·Bk) 的临时量。"
+        ],
+        "uncertain": [
+          "人工题干只写了 [S, d]（由 referenceSolution 的 q.shape 与 zeros_like(q) 推出），没有给出具体 S、d、block 取值，也没有说明是否含 batch、多头、mask 或 dropout；本题解按单头、无 mask 的通用约定书写，块大小 128 也只是 referenceSolution 的默认值。",
+          "人工 referenceSolution 未声明 dtype 与设备；本题解在初始化 m 时显式带上 dtype/device，这是为可运行性做的补充，不改变算法，但严格来说超出了人工原文。",
+          "题面没有给样例输入输出，因此 selfCheck 中的数值等价性来自本次实际运行的对拍，而不是题目自带的样例。",
+          "「显存从 O(S^2) 降到 O(S)」是相对于不落地 S×S 矩阵这一前提；若把多头、batch、不同 dtype 都算进去，具体字节数是 O(B·H·S·d) 这一量级，题面未区分。",
+          "分块大小「受 SRAM 限制，需要 tune」沿用人工 keyPoints 的说法，但本文没有给出任何具体硬件（SRAM 容量、共享内存大小）参数，也没有实测不同 block 的吞吐。",
+          "mask 场景（padding mask / 因果 mask）题面完全未提；pitfalls 里关于「整行被 mask 导致 l=0 出现 NaN」属于对同类实现的通用提醒，不是本题面明确要求的边界。"
+        ]
+      }
+    }
+  ]
+}

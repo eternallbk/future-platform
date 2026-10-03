@@ -2,963 +2,655 @@
   "batchId": "queue-13",
   "entries": [
     {
-      "id": "23a2fc68ba96e9ac",
-      "tldr": "用熵最优传输把人体表面交互量迁到机器人与多物体几何，再用约束逆运动学逐帧联合求解，G1 上完成双手搬箱。",
+      "id": "c2a48520692a2a6a",
+      "tldr": "THU-ML 开源 ICML 2026 论文代码：把自回归扩散模型蒸馏成少步生成，服务实时交互视频。",
       "keyPoints": [
-        "用有符号距离、最近表面点、相对方向描述表面交互",
-        "熵最优传输在人体、机器人、物体几何之间迁移这些交互量",
-        "交互目标写入约束 IK，逐帧联合优化机器人与物体位姿",
-        "OMOMO 上交互 Jaccard 87%、深度误差 8.7mm",
-        "在实物 G1 人形上用强化学习全身策略完成双手搬箱"
+        "ICML 2026 论文 Causal Forcing 的官方代码库",
+        "主题是自回归扩散蒸馏，把多步扩散压成少步",
+        "面向高质量、实时、可交互的视频生成",
+        "仓库同时发布 Causal Forcing++ 版本",
+        "约 987 stars、57 forks，Python 实现"
       ],
-      "why": "机器人数据稀缺时，把人体动捕转成可训练的参考轨迹是 RL 全身控制的数据入口；最优传输加约束 IK 的跨形体迁移思路也是具身智能面试高频考点。",
+      "why": "生成式岗位常考扩散蒸馏与少步采样；自回归加扩散的因果对齐是实时交互视频的核心工程路线，这个仓库可直接复现。",
       "difficulty": "hard",
       "tags": [
-        "robotics",
-        "optimal-transport",
-        "retargeting",
-        "inverse-kinematics",
-        "humanoid",
-        "reinforcement-learning"
+        "diffusion",
+        "distillation",
+        "consistency-models",
+        "autoregressive-models",
+        "few-step-generation",
+        "generative-ai"
       ],
       "entities": [
-        "OTRetarget",
-        "OmniRetarget",
-        "OMOMO",
-        "G1 humanoid"
+        "thu-ml",
+        "Causal Forcing",
+        "Causal Forcing++",
+        "ICML 2026",
+        "Autoregressive Diffusion Distillation"
       ],
       "diagram": {
         "kind": "flow",
-        "title": "OTRetarget 流程",
-        "caption": "记住这条链：人 demonstration 的表面交互量先被最优传输搬到机器人几何，再交给约束 IK 联合求解。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='OTRetarget 四步流程图'><rect x='24' y='16' width='432' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>人体演示</text><text x='440' y='40' font-size='13' text-anchor='end' fill='currentColor'>骨架 + 物体接触</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='24' y='70' width='432' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>表面交互量</text><text x='440' y='94' font-size='13' text-anchor='end' fill='currentColor'>有符号距离 / 最近点 / 相对方向</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='24' y='124' width='432' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>熵最优传输</text><text x='440' y='148' font-size='13' text-anchor='end' fill='currentColor'>跨人体 / 机器人 / 物体几何</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='24' y='178' width='432' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>约束逆运动学</text><text x='440' y='202' font-size='13' text-anchor='end' fill='currentColor'>联合优化机器人 + 物体位姿</text></svg>",
-        "alt": "流程图：人体演示与物体接触先被提取为有符号距离、最近表面点和相对方向等表面交互量，经熵最优传输跨几何迁移后，作为约束逆运动学的目标，逐帧联合优化机器人与物体位姿。"
+        "title": "少步蒸馏的因果链路",
+        "caption": "记住这条链：多步扩散老师先教目标，再落到只看历史帧的少步学生，最后才是实时交互。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='竖排流程：多步扩散教师模型，经过一致性或分布匹配的蒸馏目标，训练出因果自回归的少步学生模型，用于实时交互视频生成。'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>教师：多步扩散</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>质量高但采样慢</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>蒸馏目标</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>少步追上多步</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>学生：因果自回归</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>逐帧可流式</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>实时交互视频</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>低延迟可响应</text></svg>",
+        "alt": "竖排流程：多步扩散教师模型，经蒸馏目标训练出因果自回归的少步学生模型，最终用于实时交互视频生成。"
       },
       "concepts": [
         {
-          "name": "Entropic Optimal Transport（熵最优传输）",
-          "readable": "在两个分布之间找总代价最小的搬运方案：给定人体表面点与机器人表面点以及两两代价，求一个联合分布使总代价最小，再加熵正则让解好算、不过度稀疏。",
-          "analogy": "搬家公司要把 A 小区所有家具搬到 B 小区，每件家具到每个房间的搬运费不同；最优传输给出总费用最低的分派方案，熵正则相当于要求分派别太极端——不要把所有家具都塞进同一间房。",
-          "analogyBreaksDown": "搬家公司搬的是整数件数、目的地明确，而这里搬运的是连续表面上的概率质量；熵正则让每个点被分到多个目标（软对应），所以「一件家具一个房间」的直觉不再成立，也读不出唯一的硬匹配。",
-          "mechanism": "用代价矩阵 C 编码人体与机器人、物体表面点对的距离和方向差，在行、列边缘约束下最小化传输代价减熵项；熵项把问题变成可用 Sinkhorn 交替归一化求解的矩阵缩放，可微、可批量，从而给逐帧约束优化提供稳定的接触对应。",
-          "visual": "横轴画人体表面采样点、纵轴画机器人表面采样点，格子的颜色深浅表示传输矩阵的取值；Sinkhorn 迭代多轮后，矩阵上逐渐浮现一条沿对角线的高亮带。",
+          "name": "自回归扩散蒸馏 (Autoregressive Diffusion Distillation)",
+          "readable": "把逐帧自回归生成的扩散模型当学生，用多步扩散老师监督它的少步去噪，使每帧只走一两步也能保住质量。",
+          "analogy": "像老师傅按十道工序打磨，徒弟要练到三道工序出同样的活；蒸馏就是把老师傅每一步的手感压进徒弟的直觉里。",
+          "analogyBreaksDown": "师徒类比忽略了误差在时间维的累积：视频学生逐帧自回归，前一帧的小偏差会被后一帧当成条件继续放大，而单帧图像蒸馏没有这条反馈回路。",
+          "mechanism": "关键设计是让学生在自己的生成分布上接受老师纠正，而不是只回归真值，并用因果掩码限制它只依赖历史帧，这样才能支撑流式与交互推理。",
+          "visual": "横轴为采样步数（1/2/4/8/32），纵轴为视觉质量：老师曲线在 32 步附近饱和，学生曲线尽量贴上去，再用一条虚线标出交互允许的延迟上限。",
           "prerequisites": [
-            "概率分布与边缘约束的概念",
-            "拉格朗日乘子与对偶的初步认识",
-            "PyTorch 张量运算与广播"
+            "扩散模型的前向加噪与反向采样",
+            "自回归生成与 teacher forcing",
+            "知识蒸馏与 EMA 目标网络"
           ],
           "selfTest": [
-            "熵正则系数取极小和极大分别会得到什么解？",
-            "Sinkhorn 迭代为什么只需交替做行、列归一化？",
-            "这里被传输的是关节角还是接触几何量？"
+            "为什么学生要只依赖历史帧？如果用未来帧做条件，推理时会出什么问题？",
+            "蒸馏目标为什么要用学生自己的生成分布，而不是只用真值帧？",
+            "少步蒸馏省下的是参数量还是采样步数？两者对显存与延迟的影响有何不同？"
           ],
-          "formula": "\\min_{P\\in U(a,b)}\\langle P,C\\rangle-\\varepsilon H(P)"
+          "formula": "\\mathcal{L}=\\mathbb{E}_{t}\\left[d\\!\\left(f_\\theta(x_{t},t),\\, f_{\\theta^-}(x_{t'},t')\\right)\\right],\\ t'<t"
         },
         {
-          "name": "Constrained Inverse Kinematics（约束逆运动学）",
-          "readable": "求一组机器人与物体位姿，使接触约束被满足（例如手与物体表面距离为零），同时尽量贴近演示的动作风格；接触写成约束而非软惩罚，避免风格项把接触拉坏。",
-          "analogy": "像给照片套模板：人物位置可以挪得更好看，但脚必须踩在地面线上、手必须贴在箱子上；模板（风格）可以商量，接触这类硬条件不能破。",
-          "analogyBreaksDown": "照片模板里地面线是死的几何约束，而机器人的接触约束可能与关节限位、自碰撞冲突，出现无可行解，需要放松或分层求解；真实接触还有摩擦锥与接触力，不只是几何贴合。",
-          "mechanism": "把最优传输得到的接触目标（表面距离、最近点、相对方向）写成每帧约束项，目标函数加权动作风格与平滑项，联合优化机器人关节与物体六自由度位姿；接触优先于风格，且物体可动，给新形体留出适应空间。",
-          "visual": "横轴为时间帧、纵轴为手与物体表面的有符号距离，用虚线画零线，距离曲线应贴在零线附近；另一张图同样以帧为横轴画关节角曲线，显示风格项只在约束允许范围内波动。",
+          "name": "一致性模型与少步采样 (Consistency Models)",
+          "readable": "训练模型把同一条扩散轨迹上的任意噪声点都映射到同一个干净样本，于是可以一步或几步直接出结果。",
+          "analogy": "同一条河的上游、中游、下游都通向同一个入海口，学生只要认出水流来自哪条河，就能直接报出终点位置。",
+          "analogyBreaksDown": "河流只有唯一入海口，扩散轨迹却依赖采样器与随机种子；老师轨迹一换，同一终点的假设就被打破，所以少步模型通常对采样器很敏感。",
+          "mechanism": "用自洽约束替代逐步去噪：相邻时间步的输出必须一致，再用边界条件把最小噪声处锚定为恒等映射，因此允许一步跳到底。",
+          "visual": "画多条从噪声指向同一数据点的轨迹曲线，学生网络表现为一个把任意时间步都拉向终点的箭头场，箭头越集中说明自洽性越强。",
           "prerequisites": [
-            "逆运动学与雅可比矩阵",
-            "带约束优化（KKT、投影梯度）",
-            "刚体变换与旋转表示"
+            "概率流 ODE 与 DDIM 采样",
+            "时间步条件网络",
+            "期望与滑动平均的基本概念"
           ],
           "selfTest": [
-            "接触写成约束还是惩罚项，两者失效模式有什么不同？",
-            "把物体位姿当优化变量带来哪些新自由度和风险？",
-            "约束不可行时你会怎么处理？"
+            "一致性约束为什么要求相邻时间步输出一致，而不是都等于真值？",
+            "边界条件 f(x, 0) = x 的作用是什么？去掉会怎样？",
+            "学生步数从 4 降到 1 时，质量下降主要来自哪里？"
           ],
-          "formula": "\\min_{q_r,T_o}\\;w_s E_{style}+w_c E_{contact}\\;\\text{s.t.}\\;d_s(S_r(q_r),S_o(T_o))=0"
+          "formula": "f_\\theta(x_{t},t) \\approx f_{\\theta^-}(x_{t'},t'),\\qquad t' < t"
+        },
+        {
+          "name": "实时交互式视频生成 (Real-Time Interactive Video Generation)",
+          "readable": "在用户持续改条件或下指令的场景里，模型边生成边响应，延迟要低到接近即时反馈。",
+          "analogy": "像直播导播：观众随时递纸条改台词，导播必须在下一帧就体现，而不是等整部片子剪完再重做一遍。",
+          "analogyBreaksDown": "导播改的是已有素材的取舍，而生成模型改条件会改变后续所有帧的分布，过去的帧无法回改，误差只能单向向前传播。",
+          "mechanism": "必须同时满足因果（只用历史帧）、少步（每帧算力有上限）与可中断（条件变化不重跑全片），三者共同决定架构与训练目标的选择。",
+          "visual": "横轴为时间即帧号，纵轴为帧延迟：把条件变更事件画成竖线，观察模型在几帧之内把新条件反映到画面上。",
+          "prerequisites": [
+            "视频生成的时空张量表示",
+            "流式推理与 KV 缓存",
+            "延迟与吞吐的基本权衡"
+          ],
+          "selfTest": [
+            "交互式生成里因果掩码为什么不是可选项？",
+            "条件中途变化时，为什么不能简单地重跑整段视频？",
+            "如果每帧延迟达标但整体漂移，应该先查训练的哪一环？"
+          ],
+          "formula": ""
         }
       ],
       "formulas": [
         {
-          "id": "f-entropic-ot-retarget",
-          "name": "熵正则最优传输（Entropic Optimal Transport）",
-          "category": "rl",
-          "latex": "\\min_{P\\in U(a,b)}\\langle P,C\\rangle-\\varepsilon H(P),\\quad K=\\exp(-C/\\varepsilon),\\quad P=\\mathrm{diag}(u)\\,K\\,\\mathrm{diag}(v)",
+          "id": "f-causal-forcing-consistency",
+          "name": "一致性蒸馏损失 (Consistency Distillation Loss)",
+          "category": "generative",
+          "latex": "\\mathcal{L}_{\\mathrm{CD}}(\\theta)=\\mathbb{E}_{t_{n+1},t_n}\\Big[\\,d\\!\\left(f_\\theta(x_{t_{n+1}},t_{n+1}),\\; f_{\\theta^-}(x_{t_n},t_n)\\right)\\Big]",
           "symbols": [
-            [
-              "P",
-              "传输计划，即行人与机器人表面点之间的联合分布"
-            ],
-            [
-              "C",
-              "代价矩阵，编码表面点对之间的距离与方向差"
-            ],
-            [
-              "a, b",
-              "人体与机器人（或物体）表面点的边缘分布"
-            ],
-            [
-              "ε",
-              "熵正则强度"
-            ],
-            [
-              "K",
-              "Gibbs 核 exp(-C/ε)"
-            ],
-            [
-              "u, v",
-              "Sinkhorn 的行、列缩放向量"
-            ],
-            [
-              "H(P)",
-              "传输计划的熵"
-            ]
+            ["x_{t_{n+1}}", "轨迹上更靠近数据的噪声样本"],
+            ["x_{t_n}", "同一轨迹上噪声更大的相邻样本"],
+            ["t_{n+1}, t_n", "相邻的两个扩散时间步，满足 t_n < t_{n+1}"],
+            ["f_\\theta", "在线学生网络（正在训练的参数）"],
+            ["f_{\\theta^-}", "目标网络，取学生参数的滑动平均"],
+            ["d(\\cdot,\\cdot)", "距离度量，如 L2、LPIPS 或感知距离"],
+            ["\\mathcal{L}_{\\mathrm{CD}}", "一致性蒸馏损失"]
           ],
           "derivation": [
-            "第 1 步：把跨形体接触对齐写成分布匹配——人体表面点质量 a 要搬到机器人表面点 b 上，搬运单价由几何差 C 给出。",
-            "第 2 步：原始最优传输是线性规划，解稀疏、不可微，直接塞进逐帧优化会不稳定且难以回传梯度。",
-            "第 3 步：加入熵正则项，问题变成严格凸，最优解必可写成 P 等于 diag(u) 乘 K 乘 diag(v)。",
-            "第 4 步：对 u、v 交替做 u 等于 a 除以 Kv、v 等于 b 除以 K 转置乘 u，即 Sinkhorn 迭代，十几步即可收敛。",
-            "第 5 步：由 P 读出每个表面点的软对应，转成约束逆运动学的接触目标（有符号距离、最近点、相对方向）。"
+            "第 1 步（动机）：扩散老师要几十步才能出一个样本，与交互场景的每帧延迟预算冲突，需要学生一步跨到轨迹终点。",
+            "第 2 步（约束）：同一条采样轨迹上的相邻两点应映射到同一个干净样本，于是要求学生在这两点上的输出彼此一致。",
+            "第 3 步（目标网络）：若目标也用学生自身，靶心会随学生同时移动导致震荡，改为对参数做 EMA 得到慢半拍的目标网络。",
+            "第 4 步（落地）：训练时学生只走 1 到 4 步，推理即少步采样；速度收益来自步数压缩，而参数量未必下降。"
           ],
-          "analogy": "像给两座城市的公交站点做配对：每对站点的通勤成本不同，还要求每站的出发量与到达量守恒；熵正则相当于「别把所有线路都堆到同一组配对上」，方案更平滑也更好迭代求解。",
+          "analogy": "像教徒弟收线：不管鱼在深水还是浅水，提竿都要落到同一个船位；目标网络就是慢半拍的老手，防止师徒同时改标准越练越偏。",
           "pitfalls": [
-            "把 ε 趋近 0 的硬分配当成默认做法，实际需要软对应来稳定梯度",
-            "忘了边缘约束的归一化，导致传输矩阵某行或某列全为零",
-            "以为最优传输直接重建接触，忽略最终接触仍由约束 IK 保证",
-            "把传输计划当成物理接触力来解读"
+            "把它当成普通回归去拟合老师的干净样本，忽略自洽性目标",
+            "目标网络不做 EMA 更新，训练在移动的靶心上震荡甚至发散",
+            "以为少步等于小模型：蒸馏省的是采样步数，不是参数量",
+            "视频里忽略时间维误差累积，单帧指标好看但整片漂移"
           ],
-          "code": "import torch\n\ndef sinkhorn(C, a, b, eps=0.05, iters=20):\n    K = torch.exp(-C / eps)\n    u = torch.ones_like(a)\n    for _ in range(iters):\n        v = b / (K.t() @ u + 1e-8)\n        u = a / (K @ v + 1e-8)\n    return torch.diag(u) @ K @ torch.diag(v)",
+          "code": "import torch\nimport torch.nn.functional as F\n\n@torch.no_grad()\ndef ema_update(student, target, decay=0.999):\n    for ps, pt in zip(student.parameters(), target.parameters()):\n        pt.mul_(decay).add_(ps.detach(), alpha=1.0 - decay)\n\ndef consistency_distill(student, target, x0, t_hi, t_lo, q_sample, distance=F.mse_loss):\n    # q_sample 为扩散前向加噪：x_t = sqrt(a_t) * x0 + sqrt(1 - a_t) * eps\n    x_hi = q_sample(x0, t_hi)\n    x_lo = q_sample(x0, t_lo)\n    pred_hi = student(x_hi, t_hi)\n    with torch.no_grad():\n        pred_lo = target(x_lo, t_lo)\n    return distance(pred_hi, pred_lo)",
           "sources": [
             {
-              "title": "OTRetarget: Joint Robot and Object Motion Retargeting via Optimal Transport",
-              "url": "https://huggingface.co/papers/2609.36602"
-            }
-          ]
-        },
-        {
-          "id": "f-retarget-joint-contact-ik",
-          "name": "接触保持的联合逆运动学（Contact-Preserving Joint IK）",
-          "category": "rl",
-          "latex": "\\min_{q_r,\\,T_o}\\;\\sum_t\\Big(w_{style}E_{style}(q_r)+w_{contact}E_{contact}(q_r,T_o)\\Big)\\quad \\text{s.t.}\\quad d_s\\big(S_r(q_r),S_o(T_o)\\big)=0,\\;\\;q_r\\in\\mathcal{Q}",
-          "symbols": [
-            [
-              "q_r",
-              "机器人关节位姿（逐帧）"
-            ],
-            [
-              "T_o",
-              "物体六自由度位姿（多物体时逐个给出）"
-            ],
-            [
-              "S_r, S_o",
-              "机器人与物体的表面点集"
-            ],
-            [
-              "d_s",
-              "近似有符号距离"
-            ],
-            [
-              "E_style",
-              "动作风格、参考轨迹贴合项"
-            ],
-            [
-              "E_contact",
-              "来自最优传输软对应的接触项"
-            ],
-            [
-              "w_*",
-              "风格与接触的平衡权重"
-            ],
-            [
-              "Q",
-              "关节限位、自碰撞等可行域"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：骨架重定向只输出关节角，无法表达手与物体表面的接触，必须显式引入接触变量。",
-            "第 2 步：用熵最优传输得到的人、机、物表面软对应，构造每帧的接触目标（有符号距离、最近点、相对方向）。",
-            "第 3 步：把接触写成约束、把风格与平滑写成目标，避免风格项把接触挤走。",
-            "第 4 步：物体位姿 T_o 一并作为优化变量逐帧联合求解，因此无需缩放场景即可容纳机器人-物体与物体-物体交互。"
-          ],
-          "analogy": "像给演员排双人舞：舞步可以按新演员的身高调整（风格项），但两人的手必须一直牵着（接触约束）；舞伴的位置也能一起挪，而不是钉死在原舞台上。",
-          "pitfalls": [
-            "把接触降级为软惩罚再加权重，结果接触仍会滑",
-            "只用最近点硬匹配，形体差异大时对应会跳变",
-            "忘了物体位姿可动，直接沿用人体演示里的物体轨迹导致可达性失败",
-            "忽略关节限位与自碰撞，优化出的接触姿态不可执行"
-          ],
-          "code": "import torch\n\ndef joint_ik_loss(q, q_ref, hand_pts, obj_pts, w_style=1.0, w_contact=10.0):\n    style = ((q - q_ref) ** 2).sum()\n    d = (hand_pts[:, None] - obj_pts[None]).norm(dim=-1).min(dim=1).values\n    contact = (d ** 2).mean()\n    return w_style * style + w_contact * contact",
-          "sources": [
-            {
-              "title": "OTRetarget: Joint Robot and Object Motion Retargeting via Optimal Transport",
-              "url": "https://arxiv.org/abs/2609.36602"
+              "title": "thu-ml/Causal-Forcing",
+              "url": "https://github.com/thu-ml/Causal-Forcing"
             }
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "骨架动作不足以完整描述与环境、物体的交互，固定物体轨迹会限制对新形体的适配",
-          "方法用有符号距离、最近表面点和相对方向表示表面交互",
-          "用熵最优传输在人体、机器人、物体几何之间迁移这些交互量",
-          "交互目标被写入约束逆运动学，在接触保持与动作风格之间权衡，并逐帧联合优化机器人与物体位姿",
-          "该形式同时支持机器人-物体与物体-物体交互，且不需要缩放场景或演示",
-          "在 OMOMO 上机器人-物体交互 Jaccard 为 87%、深度误差 8.7mm，OmniRetarget 对应为 28% 与 29.3mm",
-          "在实物 G1 人形上，用重定向参考训练强化学习全身策略，完成含双手搬箱放到桌面的动作"
+          "该仓库是 ICML 2026 论文 Causal Forcing 的官方代码库（来自标题）",
+          "论文主题为自回归扩散蒸馏，面向高质量实时交互式视频生成（来自标题）",
+          "仓库同时包含 Causal Forcing++ 版本（来自标题）",
+          "元数据给出约 987 stars、57 forks，代码可用"
         ],
         "uncertain": [
-          "摘要未给出约束逆运动学的精确目标函数与约束形式，本条目公式为按摘要重建的通用形式，需核对原文",
-          "熵最优传输的代价函数、正则系数取值与迭代细节摘要未说明，公式为通用形式",
-          "物体-物体交互缺少与机器人-物体交互同等级的量化指标（摘要只给了后者的 Jaccard 与深度误差）",
-          "实物 G1 实验的成功率、动作种类数量与训练成本摘要未提及"
+          "摘要只有一句仓库介绍，未给出真实蒸馏目标、教师模型与步数配置；此处的公式是按标题与标签重建的一致性蒸馏通用形式（待核实）",
+          "标题里的 causal forcing 与常见 teacher forcing 的具体差别，摘要未说明（待核实）",
+          "是否提供预训练权重、实测延迟与显存占用，摘要未说明（待核实）"
         ]
       },
       "teaching": {
         "progressive": [
-          {
-            "level": "一句话",
-            "text": "把人的动作连同手里的物体一起搬到机器人身上，接触关系不丢。"
-          },
-          {
-            "level": "入门",
-            "text": "人体演示往往只有骨架，抓取和地面接触描述不全。OTRetarget 用有符号距离、最近表面点和相对方向表示表面交互，用熵最优传输把这些量迁到机器人几何上，再放进约束逆运动学，逐帧同时求机器人和物体位姿。"
-          },
-          {
-            "level": "进阶",
-            "text": "关键设计有两处：一是用熵最优传输做跨形体软对应，避免按比例缩放场景，因此能同时支持机器人-物体与物体-物体交互；二是把交互目标写进带约束的逆运动学，在接触保持与动作风格之间加权权衡，每帧同时更新机器人和物体位姿。摘要报告 OMOMO 上交互 Jaccard 87%、深度误差 8.7mm，优于 OmniRetarget 的 28% 与 29.3mm。"
-          },
-          {
-            "level": "专家",
-            "text": "相比只重定向骨架或固定物体轨迹的做法，这里把物体位姿也当成优化变量，不会因为机器人比例不同而牺牲接触一致性；熵最优传输提供软对应，比最近点硬匹配更稳定。摘要没有给出约束具体形式与求解器细节，工程上要关注逐帧联合优化的实时性与接触约束的可行性。验证既有 OMOMO 的离线指标，也有实物 G1 上用强化学习全身策略完成双手搬箱，说明重定向结果能作为可跟踪的参考轨迹。"
-          }
+          {"level": "一句话", "text": "它把慢吞吞的视频扩散模型，教成一个几步就能出片的快模型。"},
+          {"level": "入门", "text": "自回归视频扩散按帧生成，质量好但每帧要几十步去噪，交互时延迟太高。Causal Forcing 用蒸馏把多步老师压成少步学生，并保证学生只看历史帧，于是能边生成边响应。"},
+          {"level": "进阶", "text": "关键取舍在『对齐谁』：可以让学生模仿老师的中间噪声，也可以用一致性或分布匹配对齐老师的采样轨迹；同时用因果掩码切断未来帧信息，否则学生训练时偷看未来，推理时无法流式。代价是学生容量受限，长视频误差会累积。"},
+          {"level": "专家", "text": "与图像蒸馏相比，视频蒸馏多了时间维：误差会在自回归条件上被反复引用并放大，所以要把训练分布对齐到学生自己的 rollout，而不是只依赖教师强制下的真实帧。与直接训练少步模型相比，蒸馏复用现成教师、样本效率更高，但学生上限被老师封顶。适用边界是交互与实时场景；离线高质量长片仍适合多步采样。（推断）"}
         ],
         "socratic": [
-          {
-            "q": "如果不联合优化物体位姿，固定物体轨迹会怎样？",
-            "a": "机器人比例与人体不同，手无法同时满足固定轨迹和接触点，接触会滑移或穿模，得到的轨迹下游策略也跟不住。"
-          },
-          {
-            "q": "为什么用熵最优传输，而不是按比例缩放场景？",
-            "a": "缩放会改变物体相对大小与可达范围，破坏接触几何；最优传输在各自几何上求软对应，能容忍形体差异并显式处理多物体匹配。"
-          },
-          {
-            "q": "为什么接触必须写成约束，不能只当惩罚项？",
-            "a": "惩罚项与风格项同处目标函数，风格权重稍大就会把接触拉离表面；约束把接触设为优先满足的不变量，失效模式更可控。"
-          }
+          {"q": "如果不用因果掩码，训练会更容易还是更难？", "a": "训练损失更低但推理更差：学生偷看未来帧，真正流式生成时拿不到这些信息，分布立刻错位。"},
+          {"q": "为什么不直接训练一个一次出帧的小模型？", "a": "小模型缺少教师的先验，同算力下质量与多样性都更差；蒸馏是把大模型知识搬进少步采样的更省样本路径。"},
+          {"q": "为什么还要用学生自己的生成分布做微调？", "a": "教师强制下的帧分布与学生推理时见到的分布不一致，暴露偏差会沿时间累积，on-policy 纠正才能压住漂移。"}
         ],
-        "mechanism": "必须这样设计的原因在于：接触是几何关系而非关节角关系，骨架重定向丢掉了表面法向与距离信息，直接迁移关节角会让手脚与物体表面错位；而固定物体轨迹又剥夺了适应新形体的自由度。作者于是先用表面量把交互显式参数化，再用最优传输跨几何对齐，使这些量变成可微可优化的目标，最后在约束逆运动学中与风格项共同求解，把接触当作优先满足的不变量。",
-        "boundary": "依赖高质量人体动捕与物体几何，例如 OMOMO 这类带物体标注的数据；物体几何缺失、接触极频繁或多物体遮挡严重时，表面量估计会不可靠。摘要只报告了两个离线指标和一类搬箱任务，接触力、柔性物体、动态物体没有涉及，实物部署还依赖下游强化学习策略能否跟踪参考。",
-        "analogyBoundary": "把交互量当成可搬运的点云对应，这个类比在刚体、形状规整的物体上成立；一旦物体可变形、接触面滑动或只在瞬间单点接触，最优传输给出的软对应就不再等价于真实物理接触。",
+        "mechanism": "为什么必须这样设计：交互式视频的延迟预算按帧计算，学生每帧只能走极少步，误差没有逐步修正的机会；只有让训练目标直接约束『少步输出等于多步轨迹终点』，学生才可能一步到位。同时因果结构决定了它不能依赖未来帧，训练与推理的依赖集合必须一致，否则性能在流式部署时直接崩塌。",
+        "boundary": "失效条件：需要长时一致性与高动态细节的离线成片，少步蒸馏容易糊掉运动纹理；教师本身质量不高时学生只会更差；显存不足以并行多帧时，逐帧因果推理的开销反而拖慢整体吞吐。",
+        "analogyBoundary": "『徒弟学师傅手感』的类比止于时间维：单帧任务里错误当场被纠正，而自回归视频中前一帧的瑕疵会被后一帧当成条件反复引用，误差不是被抹平而是被放大，所以视频蒸馏更依赖 on-policy 数据。",
         "misconceptions": [
-          "以为只是把人体关节角映射到机器人关节角；本文迁移的是表面交互量，物体位姿也是优化变量。",
-          "以为必须把场景和演示缩放到机器人尺寸；摘要明确说无需重缩放场景或演示。",
-          "把 87% Jaccard 当成通用任务成功率；它只是 OMOMO 上的机器人-物体交互指标。"
+          "以为蒸馏就是让学生拟合老师输出的干净样本，忽略轨迹自洽目标",
+          "把少步等同于小模型，混淆参数量与推理步数两件事",
+          "忽略训练与推理的依赖集合必须一致，用未来帧做条件造成错位"
         ],
-        "ownAnalysis": "把重定向从骨架映射升级为交互量传输，是近期人形机器人数据管线的一个明显方向（推断）：已有工作开始把物体纳入，而本文用熵最优传输统一处理人体、机器人、物体三方几何，思路更像把接触当作可对齐的分布。可疑处在评测：Jaccard 与深度误差只覆盖机器人-物体交互，物体-物体交互没有同等级的量化结果（推断）；8.7mm 的深度误差对尺寸只有厘米级的手部是否足够，也需要核对原文实验设置。",
+        "ownAnalysis": "把摘要与已知生态对照：图像一致性蒸馏与视频自回归的结合是实时视频生成的主线，常见做法是先做少步蒸馏、再用少量自回归微调对齐流式推理（推断）。可疑处在于标题强调 done right，暗示现有自回归扩散蒸馏在因果性与目标函数上有系统缺陷，但摘要没有给出具体修正；Causal Forcing++ 是增强版还是期刊扩展也需核实（待核实）。",
         "officialNotes": [
-          {
-            "position": "论文自称提出统一的人体到机器人加多物体联合重定向方法：用有符号距离、最近表面点、相对方向表示表面交互，用熵最优传输跨几何迁移，并写入约束逆运动学逐帧联合优化；在 OMOMO 上机器人-物体交互 Jaccard 87%、深度误差 8.7mm，优于 OmniRetarget 的 28% 与 29.3mm，并在实物 G1 上用强化学习全身策略完成含双手搬箱到桌面的动作。",
-            "source": "https://huggingface.co/papers/2609.36602"
-          }
+          {"position": "仓库自我介绍：ICML 2026 论文 Causal Forcing 的官方代码库，主题为高质量实时交互式视频生成的自回归扩散蒸馏，并包含 Causal Forcing++。", "source": "github: https://github.com/thu-ml/Causal-Forcing"}
         ],
-        "interviewAnswer": "我关注的是人形机器人的数据来源问题。OTRetarget 把人体演示里的表面交互，也就是有符号距离、最近表面点和相对方向，用熵最优传输迁到机器人几何上，再把结果当成约束逆运动学的目标，每帧同时优化机器人和多个物体的位姿，所以不需要缩放场景，也能保留机器人-物体和物体-物体的接触。它在 OMOMO 上把机器人-物体交互 Jaccard 从 28% 提到 87%、深度误差从 29.3mm 降到 8.7mm，并在实物 G1 上用强化学习全身策略完成了双手搬箱。",
+        "interviewAnswer": "我关注实时交互视频这条线。Causal Forcing 是 ICML 2026 的官方实现，核心是把多步扩散老师蒸馏成少步的自回归学生，并且让学生只依赖历史帧，这样推理可以流式、能响应条件变化。我会重点关注它的蒸馏目标怎么对齐学生自己的 rollout、因果结构怎么设计，以及少步之后质量与延迟的实测权衡。",
         "studyPath": {
           "prerequisites": [
-            "机器人学基础：正逆运动学与刚体变换",
-            "最优传输与 Sinkhorn 迭代",
-            "全身控制与强化学习策略训练基础"
+            "扩散模型前向加噪与 DDIM 或概率流 ODE 采样",
+            "自回归生成与 teacher forcing",
+            "知识蒸馏与 EMA 目标网络"
           ],
           "nextSteps": [
-            "对照 OmniRetarget 与 OMOMO 数据集论文，理解评测协议",
-            "复现约束逆运动学里接触约束的写法与求解器",
-            "研究 G1 全身策略的强化学习训练流程与参考轨迹跟踪"
+            "读仓库训练脚本，确认蒸馏目标与推理步数配置",
+            "对比一致性模型与分布匹配系蒸馏目标的差异",
+            "在小数据集上跑通少步视频采样并实测延迟"
           ]
         }
       }
     },
     {
-      "id": "3cc4365e8f7535f1",
-      "tldr": "C/C++ 面试八股汇总仓库，覆盖语言、数据结构与算法、系统、网络、链接装载及内推信息，3.8 万 stars。",
+      "id": "7c90ce0a4a70a53e",
+      "tldr": "Eyeline-Labs 开源 CineScale：不改权重、免微调，把视频生成提升到 4K。",
       "keyPoints": [
-        "C/C++ 技术面试基础知识总结，中文内容为主",
-        "覆盖语言、程序库、数据结构、算法、系统、网络、链接装载库",
-        "另含面试经验、招聘与内推信息",
-        "GitHub 38236 stars，最近更新 2026-09-17",
-        "主题标签含 algorithm、data-structures、database、interview"
+        "项目为 Eyeline-Labs/CineScale，Python 实现",
+        "主张 tuning-free：无需微调即可生成 4K 视频",
+        "方向是扩散式视频生成与高分辨率合成",
+        "元数据给出约 215 stars、6 forks"
       ],
-      "why": "岗位与招聘方向：找 C++ 或系统岗、补计算机基础八股时的索引清单；对多模态与后训练岗，操作系统、网络、算法题仍是笔试与基础面的硬门槛。",
-      "difficulty": "easy",
+      "why": "高分辨率视频是生成式岗位的硬需求；免微调方案决定了是换推断策略还是重训模型，也直接关联显存与延迟预算。",
+      "difficulty": "medium",
       "tags": [
-        "interview",
-        "cpp",
-        "algorithms",
-        "data-structures",
-        "computer-systems",
-        "job-prep"
+        "diffusion",
+        "video-generation",
+        "generative-ai",
+        "diffusion-models",
+        "python"
       ],
       "entities": [
-        "huihut/interview",
-        "C/C++",
-        "GitHub"
+        "Eyeline-Labs",
+        "CineScale",
+        "4K Video Generation"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "免微调 4K 的推断链路",
+        "caption": "记住一句话：tuning-free 是把成本从训练期搬到推断期，不是白拿 4K。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='竖排流程：复用预训练视频扩散模型权重，在推断阶段用免微调策略提升分辨率，输出 4K 视频，代价是显存与延迟上升且具体数字待核实。'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>预训练视频扩散</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>复用现成权重</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>免微调推断策略</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>不重训不加数据</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>4K 高分辨率输出</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>分辨率提升</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>代价：显存与延迟</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>数字待核实</text></svg>",
+        "alt": "竖排流程：复用预训练视频扩散权重，用免微调推断策略提升分辨率，输出 4K 视频，代价是显存与延迟上升。"
+      },
+      "concepts": [
+        {
+          "name": "免微调的推断期扩展 (Tuning-Free Inference-Time Scaling)",
+          "readable": "不在新分辨率上重新训练，而是在采样阶段用分块、插值或噪声重注入等技巧，让原模型直接生成更大画面。",
+          "analogy": "像用普通相机拍全景：不换镜头，而是多拍几张再拼接，靠拍摄与拼接流程而不是新硬件换来大视野。",
+          "analogyBreaksDown": "拼接照片的重叠区可以事后像素对齐，扩散采样没有唯一正确答案，不同分块各自去噪后交界处可能生成互相矛盾的内容，接缝只能靠重叠加权掩盖。",
+          "mechanism": "关键是把全局一致性与局部显存解耦：先在低分辨率潜空间定好全局结构，再对高分辨率潜变量分块去噪并重叠融合，避免一次性分配 4K 的注意力矩阵。",
+          "visual": "画两层网格：粗网格代表低分辨率潜变量，负责全局结构；细网格代表分块后的高分辨率潜变量，重叠区用加深阴影表示融合权重。",
+          "prerequisites": [
+            "扩散采样与潜空间表示",
+            "注意力复杂度与显存估算",
+            "图像或视频插值的基本方法"
+          ],
+          "selfTest": [
+            "免微调方案省掉了哪一部分成本，又把它转移到了哪里？",
+            "为什么分块去噪后必须做重叠融合，直接拼接会怎样？",
+            "原模型训练分辨率与目标分辨率差距过大时，推断技巧能补回尺度先验吗？"
+          ],
+          "formula": "\\mathrm{cost}_{\\mathrm{attn}}\\propto N^{2},\\quad N = T\\cdot\\frac{H}{p}\\cdot\\frac{W}{p}"
+        },
+        {
+          "name": "扩散式视频生成 (Diffusion Video Generation)",
+          "readable": "把视频当成时空潜变量序列，用扩散或流匹配从噪声逐步恢复成连续帧，条件是文本、图像或动作。",
+          "analogy": "像冲洗胶片：最初是一片浑浊，显影液逐步把潜影显现成画面，而且相邻画面必须连贯不能跳。",
+          "analogyBreaksDown": "胶片显影是物理过程，帧间连贯由介质保证；扩散视频的连贯是学出来的，采样步数一减少，时间维一致性往往最先崩。",
+          "mechanism": "关键设计是时间维注意力与时空位置编码：让去噪过程同时看到帧内与帧间关系，否则各帧独立去噪会出现闪烁与跳变。",
+          "visual": "把张量画成帧乘高乘宽的立方体，颜色深浅表示噪声量；随步数推进，立方体从均匀噪声变成带运动轨迹的结构。",
+          "prerequisites": [
+            "潜变量扩散与 VAE",
+            "3D 张量与注意力机制",
+            "视频编解码与帧采样基础"
+          ],
+          "selfTest": [
+            "视频扩散为什么不能简单把每帧当独立图像来去噪？",
+            "时间维注意力与帧间光流约束解决的是不是同一个问题？",
+            "分辨率提升对注意力 token 数的影响，为什么比帧数增加更剧烈？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-video-attention-token-cost",
+          "name": "视频注意力的 token 成本 (Video Attention Token Cost)",
+          "category": "generative",
+          "latex": "N = T\\cdot\\frac{H}{p}\\cdot\\frac{W}{p},\\qquad \\mathrm{FLOPs}_{\\mathrm{attn}} = O\\!\\left(N^{2}d\\right)",
+          "symbols": [
+            ["T", "视频帧数"],
+            ["H, W", "帧的高与宽（像素）"],
+            ["p", "切 patch 的边长"],
+            ["N", "参与注意力的 token 总数"],
+            ["d", "注意力通道维度"],
+            ["O(N^{2}d)", "注意力打分与加权的主导计算量"]
+          ],
+          "derivation": [
+            "第 1 步：把视频切成 patch，每个 patch 一个 token，于是 token 数等于帧数乘每帧 patch 数。",
+            "第 2 步：标准自注意力让每个 token 与所有 token 两两打分，分数矩阵是 N 乘 N。",
+            "第 3 步：因此算力与显存都随 N 的平方增长；分辨率翻倍使每帧 patch 数变 4 倍，注意力成本约变 16 倍。",
+            "第 4 步：这就是 4K 的直接障碍，也是分块注意力、稀疏注意力等免微调策略的动机所在。"
+          ],
+          "analogy": "像开会点名：人数翻一倍，两两握手的次数翻四倍；4K 相当于把会场人数再翻四倍，握手环节会最先崩掉。",
+          "pitfalls": [
+            "只数帧数不看分辨率，严重低估注意力成本",
+            "把 N 平方当成显存唯一来源，忽略 KV 缓存与激活值",
+            "以为分块注意力等价于全局注意力，忽略跨块一致性",
+            "忘记视频还有时间维注意力，成本与时间窗口长度成正比"
+          ],
+          "code": "def attention_cost(frames, height, width, patch=2, dim=1152):\n    tokens_per_frame = (height // patch) * (width // patch)\n    n = frames * tokens_per_frame\n    flops = 2 * n * n * dim          # 打分与加权两项\n    score_mem_gb = 4 * n * n / 1024 ** 3   # fp32 分数矩阵下界\n    return n, flops, score_mem_gb\n\nfor name, (h, w) in {'480p': (480, 854), '1080p': (1080, 1920), '4K': (2160, 3840)}.items():\n    n, flops, mem = attention_cost(16, h, w)\n    print(name, 'tokens=%.1fM' % (n / 1e6), 'flops=%.1fT' % (flops / 1e12), 'score_mem=%.1fGB' % mem)",
+          "sources": [
+            {
+              "title": "Eyeline-Labs/CineScale",
+              "url": "https://github.com/Eyeline-Labs/CineScale"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "仓库标题为 Tuning-Free 4K Video Generation，归属 Eyeline-Labs",
+          "摘要明确该仓库在做 4K 视频生成并欢迎贡献",
+          "元数据给出约 215 stars、6 forks，语言 Python，代码可用"
+        ],
+        "uncertain": [
+          "摘要未给出免微调的具体机制（分块、插值还是噪声重注入），需要进仓库核实（待核实）",
+          "是否支持文本条件、可生成时长与实测显存/速度，摘要未说明（待核实）",
+          "注意力 token 成本公式是扩散视频的通用估算，不是摘要中给出的公式"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "它想让现成的视频生成模型不重新训练，就输出 4K 画面。"},
+          {"level": "入门", "text": "主流视频扩散模型都在低分辨率上训练，直接跑 4K 会爆显存。CineScale 主张免微调：不重训权重，而是在采样阶段想办法把分辨率提上去，代价转移到推断期的显存与时间。"},
+          {"level": "进阶", "text": "免微调的共同思路是拆解矛盾：全局结构在低分辨率定好，局部细节分块去噪，再用重叠区融合保证接缝不露。不重训的收益是省掉数据与算力，风险是模型没见过这个尺度，纹理可能重复、边界可能不一致，只能靠采样技巧遮掩。"},
+          {"level": "专家", "text": "与重训、与后处理超分两条路线对比：重训能得到真正匹配分布的 4K 权重但成本高，超分上手容易却不增加生成的细节信息。免微调推断属于中间路线，理论上界受原模型先验限制，适合算力受限但需要快速验证高分辨率的场景。具体实现机制需看仓库（待核实）。"}
+        ],
+        "socratic": [
+          {"q": "既然不微调，4K 的显存问题从哪来？", "a": "注意力 token 数随像素线性增长、成本随平方增长，4K 的 token 数是低分辨率的几十倍，重训与否都要面对这张矩阵。"},
+          {"q": "为什么不能直接把低分辨率视频插值放大到 4K？", "a": "插值不会生成新的高频细节，只把已有像素摊平；扩散采样能在先验内补纹理，但必须保证补出来的细节帧间一致。"}
+        ],
+        "mechanism": "必须这样设计的原因在于显存与全局一致性不可兼得：一次性对 4K 潜变量去噪需要 N 平方的注意力矩阵，多数卡放不下；分块去噪把矩阵切小，却让各块不再共享同一份全局条件，于是只能用重叠区与跨块条件把一致性补回来。",
+        "boundary": "失效条件：需要精确物理细节或文字渲染时，免微调的高分辨率常出现纹理重复与结构漂移；原模型训练分布与目标分辨率差距过大时，任何推断技巧都补不出缺失的尺度先验；长视频还会叠加时间维误差累积。",
+        "analogyBoundary": "『多拍几张再拼接』的类比在扩散里失效：照片拼接有客观像素可对齐，扩散分块的结果带随机性，交界处可能生成互相矛盾的内容，重叠融合只降低可见度，并不能保证全局语义一致。",
+        "misconceptions": [
+          "以为 tuning-free 等于零成本，忽略推断期显存与时间大幅上升",
+          "把免微调与超分后处理混为一谈，前者在生成中提分辨率，后者在成片后放大",
+          "认为 4K 只是分辨率数字，忽略 token 数带来的平方级注意力开销"
+        ],
+        "ownAnalysis": "把摘要与已知生态对照：训练免费的高分辨率与长视频外推是视频生成近年的热点分支，典型手段包括潜变量分块去噪、尺度感知的噪声调度与低分辨率条件引导（推断）。该仓库只给了标题和一句介绍，可信度主要靠社区复现；值得注意的是 6 个 forks 对应 215 stars，可能说明代码刚放出或依赖较重，实际可用性待核实。",
+        "officialNotes": [
+          {"position": "仓库自我介绍：Tuning-Free 4K Video Generation，欢迎贡献。", "source": "github: https://github.com/Eyeline-Labs/CineScale"}
+        ],
+        "interviewAnswer": "我了解过 CineScale，它做免微调的 4K 视频生成：不重训权重，而是在采样阶段把高分辨率拆成可控的块来处理，避免 4K 下注意力的平方级开销。我会重点说清代价——省了训练成本，但推断显存与时间上升，跨块和跨帧一致性要额外设计。具体实现我会去仓库确认。",
+        "studyPath": {
+          "prerequisites": [
+            "扩散模型采样与潜空间表示",
+            "自注意力复杂度与显存估算",
+            "视频帧间一致性的常见问题"
+          ],
+          "nextSteps": [
+            "跑通仓库示例，记录低分辨率与 4K 的显存与耗时曲线",
+            "对比分块扩散与超分后处理的质量差异",
+            "把 token 成本估算写成脚本用于容量规划"
+          ]
+        }
+      }
+    },
+    {
+      "id": "12012beb2f76b18b",
+      "tldr": "showlab 维护的视频扩散资源清单，按生成、编辑、评测等方向收录论文与项目。",
+      "keyPoints": [
+        "精选视频扩散模型论文与项目的清单仓库",
+        "覆盖视频生成、视频编辑等多种应用方向",
+        "标签还含动作定制与视频生成评测",
+        "约 5792 stars、375 forks，社区关注度高"
+      ],
+      "why": "生成式求职需要一张领域地图：清单能快速定位视频生成、编辑与评测的代表工作和开源实现，适合面试前梳理脉络。",
+      "difficulty": "easy",
+      "tags": [
+        "awesome",
+        "diffusion-models",
+        "video-generation",
+        "video-editing",
+        "video-generation-evaluation"
+      ],
+      "entities": [
+        "showlab",
+        "Awesome-Video-Diffusion",
+        "video diffusion models"
       ],
       "diagram": {
         "kind": "matrix",
-        "title": "仓库知识模块",
-        "caption": "记住这张图：它是一份分类目录，六个模块构成 C/C++ 基础面的复习范围。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='仓库六大知识模块网格'><rect x='24' y='24' width='204' height='56' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='48' font-size='14' fill='currentColor' font-weight='bold'>C/C++ 语言</text><text x='40' y='68' font-size='13' fill='currentColor'>语法、指针、内存模型</text><rect x='252' y='24' width='204' height='56' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='268' y='48' font-size='14' fill='currentColor' font-weight='bold'>程序库</text><text x='268' y='68' font-size='13' fill='currentColor'>STL 与标准库</text><rect x='24' y='96' width='204' height='56' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='120' font-size='14' fill='currentColor' font-weight='bold'>数据结构与算法</text><text x='40' y='140' font-size='13' fill='currentColor'>链表、树、排序、查找</text><rect x='252' y='96' width='204' height='56' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='268' y='120' font-size='14' fill='currentColor' font-weight='bold'>系统与网络</text><text x='268' y='140' font-size='13' fill='currentColor'>进程线程、TCP/IP</text><rect x='24' y='168' width='204' height='56' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='192' font-size='14' fill='currentColor' font-weight='bold'>链接装载库</text><text x='40' y='212' font-size='13' fill='currentColor'>编译、链接、动态库</text><rect x='252' y='168' width='204' height='56' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='268' y='192' font-size='14' fill='currentColor' font-weight='bold'>面试经验与内推</text><text x='268' y='212' font-size='13' fill='currentColor'>面经、招聘、内推</text></svg>",
-        "alt": "六格矩阵图：仓库内容分为 C/C++ 语言、程序库、数据结构与算法、系统与网络、链接装载库、面试经验与内推六个模块。"
+        "title": "清单的四类收录",
+        "caption": "记住它不是一篇论文，而是一张分类地图：先定位方向，再顺着链接读原始工作。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='2×2 分类图：视频生成、视频编辑、动作定制、生成质量评测四类收录方向。'><text x='56' y='30' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>视频扩散研究地图</text><text x='424' y='30' font-size='13' text-anchor='end' fill='currentColor'>按主题收录</text><rect x='56' y='44' width='176' height='80' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='78' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>视频生成</text><text x='72' y='102' font-size='13' text-anchor='start' fill='currentColor'>文生与图生视频</text><rect x='248' y='44' width='176' height='80' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='264' y='78' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>视频编辑</text><text x='264' y='102' font-size='13' text-anchor='start' fill='currentColor'>改内容与风格</text><rect x='56' y='136' width='176' height='80' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='170' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>动作定制</text><text x='72' y='194' font-size='13' text-anchor='start' fill='currentColor'>按动作驱动生成</text><rect x='248' y='136' width='176' height='80' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='264' y='170' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>质量评测</text><text x='264' y='194' font-size='13' text-anchor='start' fill='currentColor'>生成结果评估</text></svg>",
+        "alt": "2×2 分类图：视频生成、视频编辑、动作定制、生成质量评测四类收录方向。"
       },
       "concepts": [
         {
-          "name": "Linking and Loading（链接与装载）",
-          "readable": "把多个编译好的目标文件和库拼成一个可执行程序，并在运行时把它映射进内存、解析符号地址的过程；静态链接在编译期完成，动态链接推迟到加载或运行时。",
-          "analogy": "像组装家具：每个目标文件是一块板子，链接器负责对孔位（符号）并拧上螺丝（重定位），装载器则在你要用的时候把成品搬进房间（内存）并接好电源（动态库）。",
-          "analogyBreaksDown": "家具组装不会出现同一孔位被两个零件争用，而链接会遇到符号重名、弱符号、符号可见性与版本问题；动态库还可能在运行时缺失或被替换，造成「组装好却装不上」的延迟错误。",
-          "mechanism": "关键设计是把编译与链接分离：编译器只需保证单个翻译单元内的符号引用，链接器负责跨单元解析与重定位，动态链接再通过全局偏移表与过程链接表把地址解析推迟到加载或首次调用；这样能减小可执行文件体积并让多进程共享同一份库代码，代价是启动与首次调用的额外开销。",
-          "visual": "画一条横向流水线：源文件、目标文件（符号未解析）、链接器（合并段与重定位）、可执行文件、装载器（映射段并解析动态符号）、运行中的进程；未解析符号画成空心圆，已解析画成实心圆。",
+          "name": "综述型清单仓库 (Curated Awesome List)",
+          "readable": "用 README 把某方向的论文、代码与评测按主题分类聚合的仓库，价值在分类标准与维护频率，而不是代码本身。",
+          "analogy": "像图书馆门口的主题书单：书不在书单里，但书单告诉你先读哪本、哪几本互为替代，省掉自己在书架间乱翻的时间。",
+          "analogyBreaksDown": "书单是单向的，读者不会回写；GitHub 清单靠 PR 与 issue 持续修订，分类随热度漂移，star 高的清单一度停更，收录标准也可能被营销性提交稀释。",
+          "mechanism": "机制是把检索成本前置：维护者用目录结构与标签把同一问题的代表工作聚在一起，读者按主题跳转；代价是它几乎不提供对比结论，质量判断仍要自己读原文。",
+          "visual": "画一棵两层目录树：根是 video diffusion，第一层是生成、编辑、动作定制、评测，第二层挂代表方法与年份。",
           "prerequisites": [
-            "编译流程的基本概念",
-            "虚拟内存与地址空间",
-            "汇编与符号表初步"
+            "扩散模型的基础概念",
+            "阅读 GitHub README 的习惯",
+            "按关键词检索论文的能力"
           ],
           "selfTest": [
-            "静态链接与动态链接在可执行文件体积和升级方式上有什么区别？",
-            "为什么动态库调用需要全局偏移表或过程链接表这样的间接跳转？",
-            "同一个符号在多个目标文件里都被定义会发生什么？"
+            "清单类仓库的价值来自代码还是来自分类结构？",
+            "为什么高 star 清单也可能已经过时？",
+            "用清单选题时，除了标题还应该核对哪些信息？"
           ],
           "formula": ""
         },
         {
-          "name": "Asymptotic Complexity（复杂度分析）",
-          "readable": "用输入规模增长时操作次数的量级来描述算法代价，忽略常数与低阶项；它回答的是规模翻倍时耗时怎么变，是面试里判断算法能否在时限内跑完的第一道门槛。",
-          "analogy": "像估算搬家时间：不管打包快慢（常数），决定总时长的是箱数的增长方式——线性增长像一箱箱搬，对数增长像每次都把剩余量减半，指数增长则很快变得不可行。",
-          "analogyBreaksDown": "搬家估算里常数几乎不影响结论，但工程中常数可能差几个数量级：规模很小时 O(n²) 常比 O(n log n) 更快，缓存友好性也会让纯量级分析失真。",
-          "mechanism": "以递推关系刻画分治算法，再用主定理或展开法求量级：它把实现细节抽象掉，让不同算法可以公平比较，也是判断方案能否在时限内完成、以及排序或建表等预处理是否划算的依据。",
-          "visual": "横轴为输入规模（对数刻度）、纵轴为操作次数（对数刻度），画常数、对数、线性、线性对数、平方五条曲线，斜率越陡代表增长越快。",
+          "name": "视频生成评测 (Video Generation Evaluation)",
+          "readable": "用自动指标与人类偏好衡量生成视频的画质、时序一致性与条件贴合度，是选型与复现实验的公共尺子。",
+          "analogy": "像电影节评审表：画面、剪辑连贯、是否符合命题各占一栏，分数低不代表没人喜欢，但能筛掉明显不合格的片子。",
+          "analogyBreaksDown": "评审标准可以在评奖前写清，视频指标却常与人类偏好不一致：分布距离类指标对纹理敏感、对语义不敏感，同一段视频换个指标排名就会翻转。",
+          "mechanism": "关键设计是成对比较而非绝对打分：让评测聚焦 A 比 B 好这类相对判断，降低评委与指标的尺度漂移，但结果也更依赖采样集与参考集。",
+          "visual": "横轴为时序一致性，纵轴为画质，每个点是一个模型在固定提示集上的得分，用误差棒表示不同提示下的方差。",
           "prerequisites": [
-            "递推关系与求和",
-            "对数运算",
-            "常见数据结构操作的代价"
+            "生成模型的常见评价指标",
+            "实验设计与方差来源",
+            "基本统计与置信区间"
           ],
           "selfTest": [
-            "二分查找需要什么前提，复杂度为什么是对数级？",
-            "快速排序最坏与平均复杂度分别是多少，差在哪里？",
-            "线性对数与平方复杂度在十万规模下差多少量级？"
+            "为什么视频评测要比图像评测多考虑时间维？",
+            "自动指标与人类偏好不一致时应该怎么办？",
+            "固定的提示集对评测结论有什么影响？"
           ],
-          "formula": "T(n)=T(n/2)+O(1)\\;\\Rightarrow\\;T(n)=O(\\log n)"
+          "formula": ""
         }
       ],
-      "formulas": [
-        {
-          "id": "f-binary-search-complexity",
-          "name": "二分查找的时间复杂度（Binary Search Complexity）",
-          "category": "foundation",
-          "latex": "T(n)=T(n/2)+O(1)\\quad\\Rightarrow\\quad T(n)=O(\\log_2 n)",
-          "symbols": [
-            [
-              "n",
-              "有序数组长度，即问题规模"
-            ],
-            [
-              "T(n)",
-              "规模为 n 时的比较次数"
-            ],
-            [
-              "T(n/2)",
-              "每次折半后的子问题"
-            ],
-            [
-              "O(1)",
-              "一次中点比较与区间更新的常数代价"
-            ],
-            [
-              "\\log_2 n",
-              "最多折半次数，即比较次数的量级"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：二分查找要求数据有序，每次取中点比较，直接排除一半区间。",
-            "第 2 步：于是规模 n 的问题化为规模 n/2 的子问题，再加上一次常数比较，得到 T(n)=T(n/2)+O(1)。",
-            "第 3 步：最多折半 log₂n 次就只剩一个元素，递推展开得 T(n)=O(log₂ n)。",
-            "第 4 步：与顺序查找的线性复杂度相比，百万规模下比较次数从百万级降到约 20 次，代价是必须先排序并支持随机访问。"
-          ],
-          "analogy": "像查纸质字典：每次翻开中间一页，判断目标词在前面还是后面，一次淘汰一半；字典越厚优势越明显，一千页只需约十次翻页。",
-          "pitfalls": [
-            "忽略数组必须有序这个前提，直接在无序数据上二分",
-            "中点写成 (low+high)/2 在大数组上可能溢出，应写 low+(high-low)/2",
-            "循环边界用闭区间却写 while(low<high)，产生差一错误",
-            "把对数复杂度说成与底数有关；渐近意义下底数只是常数因子"
-          ],
-          "code": "def bsearch(a, x):\n    lo, hi = 0, len(a) - 1\n    while lo <= hi:\n        mid = lo + (hi - lo) // 2\n        if a[mid] == x:\n            return mid\n        if a[mid] < x:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1",
-          "sources": [
-            {
-              "title": "huihut/interview",
-              "url": "https://github.com/huihut/interview"
-            }
-          ]
-        }
-      ],
+      "formulas": [],
       "selfCheck": {
         "claims": [
-          "该仓库是 C/C++ 方向求职者与初学者的基础知识总结",
-          "内容覆盖语言、程序库、数据结构、算法、系统、网络、链接装载库",
-          "还包含面试经验、招聘、内推等信息",
-          "GitHub 上 38236 stars，最近更新日期为 2026-09-17，主要语言为 C++",
-          "仓库主题包含 algorithm、c、cpp、data-structures、database、interview、interview-practice、interview-preparation"
+          "仓库为 showlab/Awesome-Video-Diffusion，自述为近期视频扩散模型的精选清单",
+          "覆盖视频生成、视频编辑及其它多种应用",
+          "标签包含 motion-customization、video-generation-evaluation 等主题",
+          "元数据给出约 5792 stars、375 forks"
         ],
         "uncertain": [
-          "该仓库为知识汇总类资料，摘要没有给出具体公式，所给公式取自其覆盖的通用算法知识点，为按摘要重建的通用形式，需核对仓库实际内容",
-          "仓库各章节的深度、准确性与是否含过时结论未核实",
-          "38236 stars 与更新日期为采集时快照，可能随后变化"
+          "摘要未说明收录条目数量、目录结构与最近更新时间（待核实）",
+          "清单是否附代码实现与基准对比，摘要未说明（待核实）",
+          "动作定制与评测分类依据来自仓库标签，不是摘要正文；FVD、CLIP 等指标名是通用领域知识"
         ]
       },
       "teaching": {
         "progressive": [
-          {
-            "level": "一句话",
-            "text": "一份把 C/C++ 面试要背的基础知识整理成目录的中文仓库。"
-          },
-          {
-            "level": "入门",
-            "text": "仓库把 C/C++ 岗位面试常考内容分类汇总：语言语法与内存、程序库、数据结构与算法、操作系统、网络、链接与装载，另外附面试经验、招聘和内推信息，适合当检索目录，而不是系统教材。"
-          },
-          {
-            "level": "进阶",
-            "text": "它属于索引型资料：知识点覆盖面广、更新到 2026-09-17、约 3.8 万 stars，说明在中文求职语境下流传度很高。用法上建议先按目标岗位筛章节，例如系统岗重点看进程线程、TCP/IP、链接装载，再回到权威教材补细节，因为仓库本身是汇总，深度依赖其引用的外部资料。"
-          },
-          {
-            "level": "专家",
-            "text": "对多模态与大模型方向的求职者，这类八股仓库的价值集中在笔试与基础面：C++ 内存模型、虚函数、智能指针、进程与线程、TCP/IP、编译链接流程仍是硬门槛，算法题与复杂度分析也在其中。它的局限是缺少深度推导与最新工程实践；建议把它当检查清单，配合刷题与具体项目经验使用，避免只背结论而答不出为什么。"
-          }
+          {"level": "一句话", "text": "这是一个把视频扩散模型论文和项目分类整理好的收藏仓库。"},
+          {"level": "入门", "text": "它不训练模型，也不提供推理代码，价值在于按主题把视频生成、编辑、动作定制与评测的近期工作聚在一起，读者顺着目录就能找到代表论文与开源实现，适合入门时先建立领域地图。"},
+          {"level": "进阶", "text": "用这类清单要注意两点：分类标签会随社区热度漂移，同一工作可能同时被归到生成与编辑；收录也不等于认可，清单里既有顶会论文也有刚放出的预印本，需要自己按会议、复现情况与代码质量再筛一遍。"},
+          {"level": "专家", "text": "与综述论文相比，清单更新快、覆盖广，但不给方法间的定量对比与统一结论；与直接检索论文库相比，它省掉筛选成本却引入了维护者偏差。合理用法是把它当检索入口与术语表，再回到原文核对指标、训练数据与实现细节。"}
         ],
         "socratic": [
-          {
-            "q": "为什么这类仓库不能替代系统学习？",
-            "a": "它给的是结论式要点，缺少推导与边界条件；面试追问原因时只背结论容易卡住，需要回到教材或源码补底层机制。"
-          },
-          {
-            "q": "如果只刷算法题，跳过计算机基础会怎样？",
-            "a": "基础面和项目追问常考进程线程、内存管理、网络与链接，缺失会被判定为计算机基础薄弱，算法表现难以弥补。"
-          },
-          {
-            "q": "为什么星标高不等于内容权威？",
-            "a": "stars 反映流传度与收藏意愿，不等于每条结论都经过校验；仓库是二手汇总，错误与过时内容仍可能存在。"
-          }
+          {"q": "为什么高 star 清单也可能过时？", "a": "star 是历史累积，不反映最近维护；分类与链接会随领域迁移失效，引用前应看最近提交时间与目录完整度。"},
+          {"q": "为什么不能只看清单就下结论？", "a": "清单不提供受控对比，各篇的评测集、指标与训练数据都不同，直接横向比较论文里的数字会得出错误排序。"}
         ],
-        "mechanism": "它存在的理由是降低面试准备的信息检索成本：C/C++ 知识面极宽，散落在教材、博客与面经中，仓库用统一目录把语言、库、数据结构、算法、系统、网络、链接装载串起来，并附招聘与内推入口，让求职者按岗位快速定位复习范围。价值主要来自组织方式，即分类加清单，而不是内容的原创研究。",
-        "boundary": "仓库是二手汇总，深度与正确性依赖其引用来源，也难以覆盖具体公司的最新题型；内容偏 C/C++ 与系统方向，对大模型、多模态岗位的专业知识帮助有限。最近更新是 2026-09-17，之后的新考点不会自动收录。",
-        "analogyBoundary": "把仓库当考试大纲的类比在范围梳理上成立，但大纲承诺覆盖全部考点，而汇总仓库的条目是作者选择的结果，冷门或新出现的考点可能缺失，配套深度也不等同于大纲教材。",
+        "mechanism": "清单类仓库必须持续对抗信息熵：领域每天新增论文，分类只有足够粗才不至于爆炸，所以它天然牺牲方法细节与可比性。它的定位是降低检索成本，而不是替代阅读或评测，这正是它不提供结论的原因。",
+        "boundary": "失效条件：需要定量对比或复现细节时清单无能为力；细分方向（如某个编辑任务的损失设计）信息密度低；维护停滞时链接腐坏，还可能让新人按旧热度选题。",
+        "analogyBoundary": "书单类比在权威性上失效：图书馆书单由馆员按馆藏标准筛选，清单则由维护者与提交决定，收录可能受作者自荐或热度影响，把在清单里当成质量背书是常见误读。",
         "misconceptions": [
-          "以为 stars 高就等于内容权威；3.8 万 stars 反映的是流传度，不是每条的正确性。",
-          "以为背完清单就能过大厂面试；缺少推导与项目细节，追问环节仍会失分。",
-          "把它当成通用求职资料；它面向 C/C++ 与计算机基础，不含大模型岗位专业内容。"
+          "把 awesome 清单当综述论文，期待它给出方法对比与结论",
+          "用 star 数代替维护活跃度，判断清单是否仍然有用",
+          "以为清单收录的项目都经过复现验证"
         ],
-        "ownAnalysis": "这类中文八股仓库在国内求职链路里的作用接近索引加检查清单（推断）：覆盖面广、更新活跃、星标高，但内容多为要点摘录，深度参差。对准备多模态或后训练岗位的人，合理用法是把其中系统、网络、C++ 语言部分当基础面清单，再用项目与论文补齐专业面；需要注意摘要只给了主题与统计信息，仓库各章节质量与是否存在过时结论仍需人工抽查（推断）。",
+        "ownAnalysis": "把摘要与已知生态对照：showlab 是视频理解与生成方向的活跃团队，这类清单常与团队自己的综述或基准互相导流（推断）。约 5792 stars 但只有 375 forks，说明多数使用者是读者而非贡献者，更新可能集中在少数维护者手上（推断）。对求职者的用法是：先按清单挑 8 到 10 篇建立时间线，再顺着引用链补前沿，而不是通读全表。",
         "officialNotes": [
-          {
-            "position": "仓库自述为 C/C++ 技术面试基础知识总结，涵盖语言、程序库、数据结构、算法、系统、网络、链接装载库，并包含面试经验、招聘、内推等信息；GitHub 38236 stars，最近更新 2026-09-17。",
-            "source": "https://github.com/huihut/interview"
-          }
+          {"position": "仓库自我介绍：近期视频扩散模型的精选清单，面向视频生成、编辑及其它多种应用。", "source": "github: https://github.com/showlab/Awesome-Video-Diffusion"}
         ],
-        "interviewAnswer": "我把它当成 C/C++ 岗位基础面的检查清单。它把语言与内存模型、STL、数据结构与算法、操作系统、网络、链接装载整理成目录，还带面经和内推入口，3.8 万 stars 说明在中文求职圈流传很广。我的用法是先用它定位薄弱章节，再回到教材和源码补推导，最后用算法题和项目经验验证；它本身是汇总资料，深度和时效性要以原始资料为准。",
+        "interviewAnswer": "我把 Awesome-Video-Diffusion 当作视频扩散的检索入口：它按生成、编辑、动作定制和评测分类汇总近期工作。我不会只报清单，而是从中挑出文生视频与视频编辑两条线各三篇代表工作，说明它们的条件注入方式与训练目标差异，再给出值得复现的仓库。清单本身不提供对比结论，这点我会说清楚。",
         "studyPath": {
           "prerequisites": [
-            "C/C++ 语法与指针基础",
-            "数据结构与算法入门",
-            "操作系统与网络基本概念"
+            "扩散模型与视频生成的基本概念",
+            "读英文 README 与论文摘要的习惯",
+            "了解常见生成评测指标的用途"
           ],
           "nextSteps": [
-            "按目标岗位筛选章节，做检查清单式自测",
-            "用高频算法题验证数据结构与算法章节",
-            "读深入理解计算机系统等教材补齐链接装载与内存模型细节"
+            "按清单挑 8 到 10 篇建立时间线并精读一到两篇",
+            "复现其中一个开源实现的推理流程",
+            "建立自己的笔记，标注每篇的条件注入与训练目标"
           ]
         }
       }
     },
     {
-      "id": "09f51ee819492fa5",
-      "tldr": "把 IndexTTS2 的自回归语义解码换成掩码非自回归，用 ReFlow 蒸馏渲染器，5 秒以上语句快 10 倍以上。",
+      "id": "736d6d6aef93f413",
+      "tldr": "阿里开源的高性能 LLM 推理引擎 RTP-LLM，服务多样化在线应用场景。",
       "keyPoints": [
-        "从 IndexTTS2 蒸馏，参考侧不需要转写文本",
-        "用掩码非自回归生成替代自回归文本到语义解码",
-        "引入免训练的声学长度估计",
-        "用 ReFlow 蒸馏加速 flow-matching 渲染器",
-        "两个英语、两个中文数据集上质量有竞争力，5 秒以上语句快 10 倍以上"
+        "阿里巴巴开源的高性能大模型推理引擎",
+        "定位是支撑多样化应用场景的服务后端",
+        "标签覆盖 GPT、Llama 等模型与 serving",
+        "约 1357 stars、279 forks，含 Python 代码"
       ],
-      "why": "工程与系统方向：它示范了如何把自回归高质量 TTS 蒸馏成低延迟非自回归系统，去掉参考转写依赖，这类延迟与条件设计的取舍在多模态生成岗位面试里很实用。",
-      "difficulty": "medium",
+      "why": "推理引擎是 LLM 岗位高频考点；看成熟引擎能理解组批、KV 缓存与调度如何决定线上吞吐与延迟，是工程面试的硬通货。",
+      "difficulty": "hard",
       "tags": [
-        "tts",
-        "voice-cloning",
-        "non-autoregressive",
-        "knowledge-distillation",
-        "flow-matching",
-        "latency"
+        "llm-serving",
+        "inference",
+        "llmops",
+        "model-serving",
+        "gpt"
       ],
       "entities": [
-        "Tacit-TTS",
-        "IndexTTS2",
-        "ReFlow distillation",
-        "masked non-autoregressive generation"
+        "alibaba",
+        "RTP-LLM",
+        "GPT",
+        "Llama"
       ],
       "diagram": {
-        "kind": "flow",
-        "title": "Tacit-TTS 流水线",
-        "caption": "记住这条链：参考音频不做转写，语义用掩码并行生成，渲染器用 ReFlow 蒸馏换速度。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Tacit-TTS 四步流水线图'><rect x='24' y='16' width='432' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>参考语音 + 文本</text><text x='440' y='40' font-size='13' text-anchor='end' fill='currentColor'>参考侧无需转写</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='24' y='70' width='432' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>掩码非自回归语义生成</text><text x='440' y='94' font-size='13' text-anchor='end' fill='currentColor'>替代自回归解码</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='24' y='124' width='432' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>免训练声学长度估计</text><text x='440' y='148' font-size='13' text-anchor='end' fill='currentColor'>不额外训练预测时长</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='24' y='178' width='432' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>ReFlow 蒸馏渲染器</text><text x='440' y='202' font-size='13' text-anchor='end' fill='currentColor'>flow-matching 加速出波形</text></svg>",
-        "alt": "流程图：参考语音与文本进入系统，参考侧不做转写；随后是掩码非自回归语义生成、免训练声学长度估计，最后由 ReFlow 蒸馏过的 flow-matching 渲染器输出波形。"
+        "kind": "architecture",
+        "title": "推理引擎的关键路径",
+        "caption": "这是通用引擎骨架：调度、复用、缓存、流式解码；RTP-LLM 的具体实现需进仓库核对。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='竖排架构：请求进入调度器组批，复用相同前缀的 KV，分页管理 KV 缓存，最后自回归逐 token 流式返回。'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>请求调度</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>组批与优先级</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>前缀复用</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>相同前缀共享 KV</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>KV 缓存管理</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>分页与非连续存放</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>自回归解码</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>逐 token 流式返回</text></svg>",
+        "alt": "竖排架构图：请求进入调度器组批，复用相同前缀的 KV，分页管理 KV 缓存，最后自回归逐 token 流式返回。"
       },
       "concepts": [
         {
-          "name": "Masked Non-Autoregressive Generation（掩码非自回归生成）",
-          "readable": "先让模型看到一部分语义 token，把其余位置用掩码盖住，然后一次性并行预测所有被盖住的位置；相比逐 token 的自回归解码，步数从序列长度降到迭代轮数。",
-          "analogy": "像做填空题：自回归是每次只写一个字、写完才能想下一个；掩码预测是先把整页空都挖好，一次填一批最有把握的，填不满再填一轮，几轮就交卷。",
-          "analogyBreaksDown": "填空题各空的答案彼此独立，而语音语义 token 之间有强时序依赖；并行预测会把错误在已填位置上固化，因此需要多轮迭代与置信度筛选，质量上限仍可能低于自回归。",
-          "mechanism": "把文本到语义的解码改写成掩码语言建模式的迭代去掩码：每轮并行预测全部掩码位置，按置信度保留一部分、其余继续掩码，从而把推理步数与序列长度解耦，这正是 5 秒以上语句能比 IndexTTS2 快 10 倍以上的原因。",
-          "visual": "画一个 token 网格，行是迭代轮次、列是时间位置：第一行大部分格子被掩码覆盖，之后每轮融掉一批高置信格子，最后一行为全亮；旁边再画一条推理耗时随语句长度变化的曲线，自回归线性上升而掩码方法接近平坦。",
+          "name": "连续批处理 (Continuous Batching)",
+          "readable": "不等整批请求全部结束，每生成一步就重排批次，把完成的序列换出、等待的序列换入，让 GPU 尽量不空转。",
+          "analogy": "像旋转门而不是整点发车的班车：有人下车就立刻补人上车，车永远坐满，而不是等一车人全到终点才发下一班。",
+          "analogyBreaksDown": "旋转门里的人互不影响，批里的序列却共享一次前向：新序列加入会改变 KV 缓存布局与显存占用，长短序列混批还会让短请求被长请求拖住，形成队头延迟。",
+          "mechanism": "关键设计是把 batch 维度做成每步可变：调度器在每次解码迭代重新决定成员，用分页 KV 缓存容纳非连续内存，从而把利用率从按请求变成按 token 计算。",
+          "visual": "横轴为时间步，纵轴为 batch 槽位：用色块表示各请求占用槽位的区间，完成即让出，直观看到槽位几乎没有空洞。",
           "prerequisites": [
-            "Transformer 与注意力机制",
-            "掩码语言模型的训练目标",
-            "TTS 中文本、语义 token、声学特征的基本流水线"
+            "Transformer 前向计算与注意力",
+            "KV 缓存的基本原理",
+            "GPU 显存与带宽瓶颈的概念"
           ],
           "selfTest": [
-            "掩码非自回归为什么能减少推理步数？",
-            "多轮迭代中按什么准则决定哪些位置保留下来？",
-            "它与知识蒸馏在 Tacit-TTS 里分别解决什么问题？"
+            "连续批处理相比静态批处理，主要提升的是吞吐还是单请求延迟？",
+            "为什么长短序列混批会造成队头阻塞，怎么缓解？",
+            "分页 KV 缓存与连续批处理为什么经常一起出现？"
           ],
-          "formula": "\\mathcal{L}=-\\sum_{i\\in\\mathcal{M}}\\log p_\\theta(y_i\\mid y_{\\setminus\\mathcal{M}},x)"
+          "formula": "R(B) = \\frac{B}{\\mathrm{TTFT}(B) + (n-1)\\,\\mathrm{TPOT}(B)}"
         },
         {
-          "name": "Transcript-Free Conditioning（免转写条件）",
-          "readable": "克隆音色时不要求提供参考语音的文字转写，只把参考音频作为条件；这样跨语言、婴儿咿呀、无意义语音都能当参考，也不会因为语音识别转写错误而退化。",
-          "analogy": "像学口音：你可以只听一段录音就模仿，不需要先有人把录音逐字写成稿子；没有稿子也能学，反而不会被错别字带偏。",
-          "analogyBreaksDown": "模仿口音只需要音色与韵律，而 TTS 还必须知道要说什么内容；免转写只解除了参考侧的文字依赖，目标文本仍然必须给出，参考与目标语言差异过大时韵律迁移也可能失败。",
-          "mechanism": "参考侧只用音频特征做条件，省掉了语音识别环节引入的错误与额外延迟；摘要显示系统在 8 种其他语言、婴儿咿呀与合成乱语参考上仍可工作，而依赖转写的系统在这些场景常因转写不可靠而退化甚至失败。",
-          "visual": "画两条并列流水线：上面一条是参考音频经语音识别得到转写再作条件，在乱语和婴儿音处标出断裂；下面一条是参考音频直接提取声学特征作条件，全程连通。",
+          "name": "KV 缓存显存账 (KV Cache Footprint)",
+          "readable": "解码时把每层注意力的键值向量缓存下来复用，缓存大小随层数、KV 头数、头维、序列长度与批量线性增长。",
+          "analogy": "像做长除法时把中间结果写在草稿纸上：不缓存就得每步重算，缓存让每步变快，但纸的面积随题目长度线性变大，纸不够就写不下。",
+          "analogyBreaksDown": "草稿纸是纯成本，KV 缓存却直接决定吞吐上限：显存里要与权重、激活共享空间，一旦放不下就触发换出与重算，延迟不是缓慢上升而是断崖式变差。",
+          "mechanism": "关键设计是用分页把 KV 拆成固定大小的块并登记映射表，让不同序列的块非连续存放，从而消除预留连续显存造成的内部碎片，并支持前缀共享。",
+          "visual": "画一根显存条：权重占固定一段，其余按块切给各请求，用不同纹理区分活跃块与已回收块，直观看到碎片率。",
           "prerequisites": [
-            "零样本语音克隆的基本设定",
-            "说话人与音色嵌入",
-            "自监督语音表征的基本概念"
+            "多头注意力的张量形状",
+            "字节与显存容量换算",
+            "批处理调度的基本概念"
           ],
           "selfTest": [
-            "参考侧去掉转写后，模型还需要哪些信息才能合成目标文本？",
-            "为什么依赖语音识别的系统在非词汇参考上会失效？",
-            "免转写对跨语言克隆有什么直接好处？"
+            "把序列长度和批量各翻一倍，KV 缓存各变成几倍？",
+            "为什么分页能减少显存碎片，而连续预留不行？",
+            "量化权重之外，量化 KV 缓存对并发数有什么影响？"
           ],
-          "formula": ""
-        },
-        {
-          "name": "ReFlow Distillation（ReFlow 蒸馏）",
-          "readable": "把一个已训好的多步流匹配生成器重新蒸馏成少步生成器：用教师生成的配对端点训练学生速度场去拟合直线路径，从而把采样步数压到很少。",
-          "analogy": "像把一条弯弯曲曲的山路改直：先让老师傅走一遍并记录起点终点，再训练新手沿着两点之间的直线走，几步就到。",
-          "analogyBreaksDown": "把山路改直不会改变目的地，但 ReFlow 的直线化只在模型容量与数据分布匹配时成立；若教师轨迹本身误差大，蒸馏只是把误差更快复现，一步生成在复杂分布上仍可能糊。",
-          "mechanism": "用教师模型构造从噪声到数据的端点配对，训练学生速度场在插值点上回归终点减起点；因为目标速度与时间无关，学生可用极少步甚至一步完成采样，这正是渲染器被加速的关键。",
-          "visual": "画二维平面上的一团数据散点与高斯噪声，教师的多段折线轨迹和学生的一条直线轨迹并列；另一张图横轴为采样步数、纵轴为音质指标，画步数质量曲线显示学生前几步就接近教师。",
-          "prerequisites": [
-            "流匹配或扩散模型基础",
-            "常微分方程采样与欧拉求解",
-            "知识蒸馏的基本思想"
-          ],
-          "selfTest": [
-            "ReFlow 蒸馏的回归目标为什么是终点减起点？",
-            "蒸馏后步数减少，质量损失会体现在哪里？",
-            "它与从零训练一个少步模型有什么区别？"
-          ],
-          "formula": "\\mathcal{L}=\\mathbb{E}\\big\\|v_\\theta(x_t,t)-(x_1-x_0)\\big\\|^2,\\;x_t=(1-t)x_0+t x_1"
+          "formula": "M_{\\mathrm{KV}} = 2\\,L\\,H_{kv}\\,d_h\\,S\\,B\\,b"
         }
       ],
       "formulas": [
         {
-          "id": "f-masked-nar-semantic-loss",
-          "name": "掩码非自回归语义预测目标（Masked NAR Semantic Objective）",
-          "category": "generative",
-          "latex": "\\mathcal{L}=-\\sum_{i\\in\\mathcal{M}}\\log p_\\theta\\big(y_i\\mid y_{\\setminus\\mathcal{M}},x\\big)",
+          "id": "f-decode-bandwidth-roofline",
+          "name": "解码显存带宽上限 (Decode Bandwidth Roofline)",
+          "category": "engineering",
+          "latex": "R_{\\max} \\approx \\frac{\\mathrm{BW}_{\\mathrm{HBM}}}{P_w\\, b + 2\\,L\\,H_{kv}\\,d_h\\,S\\,b}",
           "symbols": [
-            [
-              "x",
-              "输入文本（音素或字符序列）"
-            ],
-            [
-              "y",
-              "目标语义 token 序列"
-            ],
-            [
-              "M",
-              "被掩码的位置集合"
-            ],
-            [
-              "y_{\\setminus M}",
-              "可见的、未掩码的语义 token"
-            ],
-            [
-              "p_\\theta",
-              "模型在给定可见 token 与文本下的预测分布"
-            ],
-            [
-              "\\mathcal{L}",
-              "只统计被掩码位置的交叉熵"
-            ]
+            ["R_{\\max}", "单序列每秒可解码的 token 数上限"],
+            ["\\mathrm{BW}_{\\mathrm{HBM}}", "显存带宽（字节/秒）"],
+            ["P_w", "模型权重参数量"],
+            ["b", "每个参数的字节数（fp16 为 2）"],
+            ["L", "Transformer 层数"],
+            ["H_{kv}", "KV 头数"],
+            ["d_h", "每个注意力头的维度"],
+            ["S", "当前上下文长度"]
           ],
           "derivation": [
-            "第 1 步：自回归 TTS 按顺序预测每个语义 token，推理步数等于序列长度，长句延迟高。",
-            "第 2 步：改成非自回归后必须解决没有左侧上下文的问题，于是引入掩码：训练时随机盖住部分位置，只根据可见位置预测被盖位置。",
-            "第 3 步：推理时所有位置先全部掩码，并行预测一轮，再按置信度保留一部分，其余进入下一轮，形成迭代去掩码。",
-            "第 4 步：损失只统计被掩码位置，使模型学会在任意可见子集下补全，从而把推理步数与序列长度解耦。"
+            "第 1 步：解码每生成一个 token，都要把全部权重从显存搬进计算单元，权重字节数为 P_w 乘 b。",
+            "第 2 步：同时要读出该序列历史 token 的 KV 缓存，字节数为 2 乘 L 乘 H_kv 乘 d_h 乘 S 乘 b。",
+            "第 3 步：单步的计算量很小而访存量很大，所以解码受带宽限制，每 token 时间约等于访存字节除以带宽。",
+            "第 4 步：取倒数得到单序列 token 每秒上限；批处理能摊薄权重读取，所以吞吐随批量上升，直到算力成为新瓶颈。"
           ],
-          "analogy": "像玩填字游戏：不是从左到右一格一格写，而是先把整行空着，凭已知字母一次填一批最有把握的，再根据新填入的字母补剩下的，几轮填完。",
+          "analogy": "像从仓库搬货：计算单元是工人，显存是仓库，工人再快也要等叉车把货送到；每出一个 token 就要把整仓货过一遍，上限由叉车速度决定。",
           "pitfalls": [
-            "以为非自回归等于一次前向就出结果，实际需要多轮迭代去掩码",
-            "把损失算在所有位置上，等于泄漏被掩码位置的答案",
-            "忽略掩码比例调度，导致训练与推理时的可见比例不匹配",
-            "把语义 token 的并行预测当成声学波形也能一次并行生成"
+            "把解码当算力受限去堆 FLOPS，忽略带宽才是瓶颈",
+            "算 KV 字节时漏掉 K 与 V 两份，或忘记乘批量",
+            "把 prefill 与 decode 混在一起估：prefill 通常算力受限",
+            "忽略量化同时压低权重与 KV 字节，会抬高这条上限"
           ],
-          "code": "import torch\n\ndef masked_nar_loss(logits, target, mask):\n    # logits: [B, L, C], target: [B, L], mask: [B, L] bool\n    loss = torch.nn.functional.cross_entropy(\n        logits.reshape(-1, logits.size(-1)),\n        target.reshape(-1), reduction='none').view(target.shape)\n    return (loss * mask).sum() / mask.sum().clamp(min=1)",
+          "code": "def decode_tokens_per_sec(params_b, bytes_per_param, layers, kv_heads, head_dim, seq_len, bw_gbps=3350):\n    weight_bytes = params_b * 1e9 * bytes_per_param\n    kv_bytes = 2 * layers * kv_heads * head_dim * seq_len * bytes_per_param\n    bytes_per_token = weight_bytes + kv_bytes\n    return bw_gbps * 1e9 / bytes_per_token\n\n# 7B fp16、32 层、8 个 KV 头、头维 128\nfor s in (1024, 4096, 16384):\n    r = decode_tokens_per_sec(7, 2, 32, 8, 128, s)\n    print('seq', s, 'max tok/s per sequence = %.1f' % r)",
           "sources": [
             {
-              "title": "Tacit-TTS: From Autoregressive Decoding to Masked Prediction for Efficient Transcript-Free Voice Cloning",
-              "url": "https://huggingface.co/papers/2609.38658"
+              "title": "alibaba/rtp-llm",
+              "url": "https://github.com/alibaba/rtp-llm"
             }
           ]
         },
         {
-          "id": "f-tts-reflow-distill",
-          "name": "ReFlow 蒸馏目标（ReFlow Distillation Objective）",
-          "category": "generative",
-          "latex": "\\mathcal{L}=\\mathbb{E}_{x_0\\sim\\pi_0,\\,x_1\\sim\\pi_1,\\,t\\sim U[0,1]}\\big\\|v_\\theta(x_t,t)-(x_1-x_0)\\big\\|_2^2,\\quad x_t=(1-t)x_0+t\\,x_1",
+          "id": "f-batching-latency-tradeoff",
+          "name": "连续批处理的吞吐延迟折衷 (Continuous Batching Throughput)",
+          "category": "engineering",
+          "latex": "R(B) = \\frac{B}{\\mathrm{TTFT}(B) + (n-1)\\,\\mathrm{TPOT}(B)}",
           "symbols": [
-            [
-              "x_0",
-              "噪声端点，如高斯噪声样本"
-            ],
-            [
-              "x_1",
-              "教师模型生成的数据端点，如梅尔或声学表征"
-            ],
-            [
-              "x_t",
-              "噪声与数据之间的直线插值点"
-            ],
-            [
-              "v_\\theta",
-              "学生速度场，即被蒸馏的渲染器"
-            ],
-            [
-              "t",
-              "插值时间，一般均匀采样"
-            ],
-            [
-              "\\pi_0, \\pi_1",
-              "噪声分布与教师数据分布"
-            ]
+            ["B", "同一批中并发解码的序列数"],
+            ["\\mathrm{TTFT}(B)", "首 token 延迟"],
+            ["\\mathrm{TPOT}(B)", "每输出一个 token 的平均时间"],
+            ["n", "输出序列长度（token 数）"],
+            ["R(B)", "系统每秒完成的序列数"]
           ],
           "derivation": [
-            "第 1 步：流匹配渲染器原本需要多步数值积分才能从噪声走到声学表征，长句上耗时明显。",
-            "第 2 步：用教师模型生成噪声到数据的端点配对。",
-            "第 3 步：在两端点之间做直线插值，训练学生速度场直接回归终点减起点。",
-            "第 4 步：目标速度与时间无关，学生可以少步甚至一步采样，从而拿到加速效果。"
+            "第 1 步：单个请求的端到端延迟等于首 token 延迟加上剩余 n 减 1 个 token 的解码时间。",
+            "第 2 步：B 个请求在同一批里并发推进，总时间近似仍是这个端到端延迟。",
+            "第 3 步：于是系统每秒完成的序列数约为 B 除以延迟；加大 B 抬高分子，但也抬高 TTFT 与 TPOT。",
+            "第 4 步：存在一个最优批量，再往上加只让延迟线性增长而吞吐饱和，因为显存与算力已经到顶。"
           ],
-          "analogy": "像把老师傅多次试错画出的曲线轨迹改教成一条直线：先记录起点和终点，再让新手只学沿直线走，于是几步就能从起点到终点。",
+          "analogy": "像自助餐厅出餐：同时开 B 个灶能提高每小时出餐数，但灶太挤时每个人的等餐时间变长，翻台率就不再上升。",
           "pitfalls": [
-            "以为蒸馏后质量必然与教师一致，少步采样在复杂分布上会有损失",
-            "把配对端点当成真实数据标签，忽略它们来自教师、会继承教师误差",
-            "忘记插值点的构造方式，导致回归目标与采样路径不一致",
-            "把加速归因于模型变小，实际主要来自步数减少"
+            "把吞吐与延迟当成可同时最优，忽略二者是帕累托权衡",
+            "忽略 TTFT 与 TPOT 随批量非线性增长，只把 B 当线性因子",
+            "用离线批量推理的吞吐数字回答在线低延迟场景的问题",
+            "以为批量越大越好，忽略显存装不下时的排队与换出"
           ],
-          "code": "import torch\n\ndef reflow_loss(v_theta, x0, x1, t):\n    # x0: noise, x1: teacher endpoint, t: [B, 1, ...]\n    xt = (1 - t) * x0 + t * x1\n    target = x1 - x0\n    return ((v_theta(xt, t) - target) ** 2).mean()",
+          "code": "def throughput(batch, ttft_ms, tpot_ms, out_len):\n    latency_ms = ttft_ms + (out_len - 1) * tpot_ms\n    return batch / (latency_ms / 1000.0), latency_ms\n\n# TTFT 与 TPOT 随批量变差的简化模型\nfor b in (1, 4, 16, 64, 128):\n    ttft = 40 + 2.5 * b\n    tpot = 8 + 0.12 * b\n    rps, lat = throughput(b, ttft, tpot, 256)\n    print('B=%3d rps=%.2f e2e=%.0fms' % (b, rps, lat))",
           "sources": [
             {
-              "title": "Tacit-TTS: From Autoregressive Decoding to Masked Prediction for Efficient Transcript-Free Voice Cloning",
-              "url": "https://arxiv.org/abs/2609.38658"
+              "title": "alibaba/rtp-llm",
+              "url": "https://github.com/alibaba/rtp-llm"
             }
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "自回归语义建模的 TTS 零样本克隆强、表现力丰富，但顺序解码延迟高；非自回归更快，却常要求推理时提供参考语音的转写",
-          "Tacit-TTS 是从 IndexTTS2 蒸馏得到的免转写零样本语音克隆系统",
-          "用掩码非自回归生成替代自回归的文本到语义解码",
-          "引入免训练的声学长度估计",
-          "通过 ReFlow 蒸馏加速 flow-matching 渲染器",
-          "在两个英语和两个中文数据集上，零样本质量有竞争力，5 秒以上语句生成速度比 IndexTTS2 快 10 倍以上",
-          "免转写条件支持跨语言与非词汇参考：8 种其他语言的参考、婴儿咿呀与合成乱语；依赖转写的系统在这些场景常因识别转写不可靠而退化或失败"
+          "仓库为阿里巴巴开源的 RTP-LLM 高性能大模型推理引擎",
+          "定位是服务多样化应用场景",
+          "标签包含 inference、llm-serving、llmops、GPT、Llama 等",
+          "元数据给出约 1357 stars、279 forks，代码可用"
         ],
         "uncertain": [
-          "摘要未给出掩码非自回归的训练损失、掩码调度与迭代轮数细节，公式为按摘要重建的通用形式，需核对原文",
-          "ReFlow 蒸馏的具体实现（配对数、步数、教师信号）摘要未说明，公式为通用形式",
-          "免训练声学长度估计的具体做法摘要未给出",
-          "主观质量评测的具体指标与数值（如相似度、自然度分数）摘要未报告"
+          "摘要只有一句话介绍，未说明支持哪些模型结构、量化方案、并行策略与调度实现（待核实）",
+          "是否具备连续批处理、前缀缓存、分页注意力等特性，摘要未说明，此处按同类引擎通用能力叙述（待核实）",
+          "仓库的性能数字与对标基线，摘要未给出（待核实）"
         ]
       },
       "teaching": {
         "progressive": [
-          {
-            "level": "一句话",
-            "text": "把慢的自回归语音克隆改成并行掩码生成，并蒸馏渲染器来提速。"
-          },
-          {
-            "level": "入门",
-            "text": "自回归 TTS 逐 token 解码，长句很慢；非自回归虽然快，但常要求提供参考语音的转写文本。Tacit-TTS 从 IndexTTS2 蒸馏，用掩码非自回归生成语义、免训练估计声学长度、用 ReFlow 蒸馏渲染器，做到免转写且 5 秒以上语句快 10 倍以上。"
-          },
-          {
-            "level": "进阶",
-            "text": "三个提速点各有分工：掩码非自回归把语义解码步数从序列长度降为迭代轮数；免训练声学长度估计省掉一个需要单独训练的时长预测器；ReFlow 蒸馏把 flow-matching 渲染器的多步积分压成很少步。免转写条件还让跨语言、婴儿咿呀、合成乱语这类无法可靠转写的参考也能使用，摘要报告在 8 种其他语言参考上仍可工作。"
-          },
-          {
-            "level": "专家",
-            "text": "这条技术路线的核心取舍是：自回归保证质量与表现力，代价是顺序解码延迟；非自回归快，但过去依赖更强的参考条件，例如参考转写。本工作用蒸馏绕开从零训练，把教师的能力迁到掩码生成与少步渲染器上，并去掉参考转写依赖，从而同时改善延迟与条件限制。摘要没有给出质量指标的具体数值与步数，只给了四数据集上质量有竞争力、5 秒以上快 10 倍以上的结论，因此实际质量与延迟的平衡仍需核对原文。"
-          }
+          {"level": "一句话", "text": "它是阿里开源的大模型推理引擎，目标是把模型跑得又快又省显存。"},
+          {"level": "入门", "text": "训练框架负责把模型练出来，推理引擎负责把模型高效服务出去。RTP-LLM 属于后者：接请求、组批、管显存、把 token 一个个流式吐回，性能瓶颈通常在显存带宽与调度而不是算力。"},
+          {"level": "进阶", "text": "这类引擎的三个核心杠杆是：连续批处理提高 GPU 利用率，分页 KV 缓存消除显存碎片并支持前缀共享，量化压缩权重与缓存。三者互相牵制：批量变大延迟升高，缓存换出引发重算，量化可能掉点，取舍取决于线上是延迟敏感还是吞吐敏感。"},
+          {"level": "专家", "text": "与同档开源引擎比较时，要看的不是支持哪些特性，而是调度与显存管理的实现：请求优先级、抢占与换出、前缀共享命中率、以及 prefill 与 decode 是否分离部署。RTP-LLM 由阿里在自身业务里打磨，理论上更贴近电商与搜索类混合负载（推断），但具体实现与性能需看仓库并压测（待核实）。"}
         ],
         "socratic": [
-          {
-            "q": "如果不换成掩码非自回归，会损失什么？",
-            "a": "语义解码步数随句长线性增长，长句延迟居高不下；这正是 5 秒以上语句提速 10 倍以上的来源。"
-          },
-          {
-            "q": "为什么去掉参考转写这一条件很重要？",
-            "a": "跨语言、婴儿咿呀、合成乱语等参考无法得到可靠转写，依赖转写的系统会退化或失败；免转写让这些参考可用。"
-          },
-          {
-            "q": "已经有快速非自回归方案，为什么还要从 IndexTTS2 蒸馏？",
-            "a": "从零训练少步模型成本高且质量难保证；蒸馏能继承教师的表现力与克隆质量，同时改变解码方式与采样步数。"
-          }
+          {"q": "如果只堆算力，解码会变快吗？", "a": "通常不会：解码每步访存远大于计算，瓶颈在显存带宽，堆算力对延迟几乎没有帮助。"},
+          {"q": "为什么要专门管理 KV 缓存？", "a": "它随序列长度与批量线性增长，是显存的主要变量；管理得好能多放请求，管理不好就换出重算，延迟断崖式上升。"},
+          {"q": "连续批处理是不是批量越大越好？", "a": "不是：吞吐随批量上升后会饱和，而 TTFT 与 TPOT 持续变差，线上要在延迟约束下挑最优批量。"}
         ],
-        "mechanism": "必须这样设计的原因在于延迟瓶颈的位置：自回归语义建模的能力来自逐 token 依赖，但也把推理串行化，步数与句长绑定。要提速又不能牺牲克隆质量，就需要一是不改变建模能力，只改解码方式，于是用掩码并行生成加迭代去掩码；二是渲染阶段的流匹配采样步数多，于是用 ReFlow 把多步轨迹直线化；三是条件侧去掉语音识别转写这一额外且脆弱的环节，使参考条件只依赖音频本身。",
-        "boundary": "免转写只解决参考侧的文字依赖，目标文本仍需给出；教师模型的能力上限与偏差会被蒸馏继承。摘要在两个英语和两个中文数据集上验证，8 种其他语言、婴儿咿呀、合成乱语只作为参考条件使用，不代表系统自身支持这些语言的合成。质量指标的具体数值与失败案例摘要未报告。",
-        "analogyBoundary": "填字游戏的类比忽略了 token 间的强时序依赖：真实语义 token 需要连贯的韵律与时间结构，并行填错的位置会污染后续轮次的上下文，因此轮数与置信度阈值仍需调参，不能像填空那样一次填完就结束。",
+        "mechanism": "必须这样设计的原因在于解码的访存计算比极高：单步计算少、要读的权重与缓存多，硬件自然受带宽限制。于是引擎的一切设计都围绕每字节访存产出更多 token 展开——组批摊薄权重读取、分页减少碎片以容纳更多并发、前缀共享避免重复计算，本质都是提高算术强度或减少无效访存。",
+        "boundary": "失效条件：单请求低并发场景下批处理没有收益，延迟由模型大小决定；超长上下文时 KV 缓存挤占显存，只能换出或压缩，吞吐与延迟同时恶化；对输出格式与确定性有严格要求的任务，引擎层优化帮不上模型能力本身。",
+        "analogyBoundary": "旋转门与自助餐厅的类比忽略了共享计算：餐厅里每桌菜独立做，而同一批请求共享一次前向，长短序列混批时短请求会被长请求的解码步数拖住，这种队头阻塞在类比里看不出来。",
         "misconceptions": [
-          "以为非自回归就是一次前向出全部结果；实际是多轮迭代去掩码，每轮只保留高置信位置。",
-          "以为免转写意味着连目标文本也不需要；去掉的只是参考语音的转写。",
-          "把 10 倍加速当成所有语句长度上的通用倍数；摘要限定为 5 秒以上的语句。"
+          "把吞吐与延迟当成可同时优化的目标，忽略帕累托前沿",
+          "以为推理优化就是量化与算子融合，忽略调度与显存管理",
+          "用离线批量推理的吞吐数字回答在线低延迟场景的问题"
         ],
-        "ownAnalysis": "把自回归生成器蒸馏成非自回归加少步渲染器，是当前低延迟生成系统的常见组合（推断）：掩码预测负责并行化，ReFlow 负责压缩采样步数，免转写条件顺带解决跨语言与无文本参考的可用性。值得追问的是质量代价的分布：摘要只说质量有竞争力，没有给出相似度、自然度或错误率的具体数值，因此加速 10 倍以上是否以部分长句表现为代价仍需核对原文（推断）。另外免训练长度估计在语速差异极大的语言上是否稳定，摘要也未说明。",
+        "ownAnalysis": "把摘要与已知生态对照：国内大厂开源推理引擎通常先服务内部业务再对外开源，特性优先级会偏向自身负载（推断）。该仓库约 1357 stars，明显低于最流行的开源引擎一档，说明影响力主要在阿里内部与中文社区（推断）。对求职者来说，值得学的是它的调度与显存管理取舍，而不是背特性列表；一句话摘要不足以判断它与主流引擎的工程差异（待核实）。",
         "officialNotes": [
-          {
-            "position": "论文自称提出 Tacit-TTS：从 IndexTTS2 蒸馏的高效免转写零样本语音克隆系统，用掩码非自回归生成替代自回归文本到语义解码，引入免训练声学长度估计，并用 ReFlow 蒸馏加速 flow-matching 渲染器；在两个英语与两个中文数据集上质量有竞争力，5 秒以上语句生成速度比 IndexTTS2 快 10 倍以上，免转写条件支持跨语言与非词汇参考。",
-            "source": "https://huggingface.co/papers/2609.38658"
-          }
+          {"position": "仓库自我介绍：RTP-LLM 是阿里巴巴面向多样化应用的高性能大语言模型推理引擎。", "source": "github: https://github.com/alibaba/rtp-llm"}
         ],
-        "interviewAnswer": "我关注的是 TTS 的延迟与条件约束。自回归语义建模克隆质量好，但顺序解码很慢；非自回归快，却常要求提供参考语音的转写。Tacit-TTS 从 IndexTTS2 蒸馏，用掩码非自回归生成语义 token，用免训练的方式估计声学长度，并用 ReFlow 蒸馏把 flow-matching 渲染器的采样步数压下来，参考侧完全不需要转写。摘要在两个英语和两个中文数据集上报告质量有竞争力，5 秒以上语句比 IndexTTS2 快 10 倍以上，还能拿其他语言、婴儿咿呀甚至合成乱语当参考。",
+        "interviewAnswer": "我研究过阿里开源的 RTP-LLM，它是一个高性能 LLM 推理引擎。我会从解码的访存特性讲起：每出一个 token 都要读全部权重和历史 KV，所以延迟受显存带宽限制，引擎价值在调度与显存管理——连续批处理摊薄权重读取，分页 KV 降低碎片并支持前缀复用。评估时我会看延迟约束下的最优批量，而不是只看峰值吞吐。",
         "studyPath": {
           "prerequisites": [
-            "Transformer 与注意力机制",
-            "流匹配与扩散模型采样基础",
-            "TTS 的语义 token 与声学特征流水线"
+            "Transformer 注意力与 KV 缓存",
+            "显存层级与带宽的基本概念",
+            "批处理与排队论基础"
           ],
           "nextSteps": [
-            "读 IndexTTS2 了解教师模型的设计与条件方式",
-            "实现 Sinkhorn 之外的掩码迭代去掩码推理循环并测延迟",
-            "复现 ReFlow 蒸馏并对比不同采样步数下的质量"
-          ]
-        }
-      }
-    },
-    {
-      "id": "3a84cc26c0af785b",
-      "tldr": "提出 SAGO：按样本比较同一输入多种表述下的行为波动，发现常见 LLM 普遍存在泛化不稳定。",
-      "keyPoints": [
-        "把泛化定义为同一输入不同表述下输出一致且语义稳定",
-        "批评用单一 prompt 格式的聚合准确率衡量泛化，混淆鲁棒性与基准成绩",
-        "SAGO 在样本级别跨变体、跨行为维度度量行为变化",
-        "维度含生成一致性、内部激活、置信度、回答镜像",
-        "常见模型普遍泛化不稳定，各轴失效独立、排名可反转"
-      ],
-      "why": "基础理论方向：它给出按波动而非均值评估泛化的可操作框架，做后训练与多模态评测的人可以直接用来设计更稳的评测口径，避免被单一 prompt 的准确率误导。",
-      "difficulty": "medium",
-      "tags": [
-        "llm-evaluation",
-        "generalization",
-        "robustness",
-        "stability",
-        "benchmarking",
-        "foundation-models"
-      ],
-      "entities": [
-        "SAGO",
-        "Stability-Aware Generalization Objective",
-        "LLMs"
-      ],
-      "diagram": {
-        "kind": "flow",
-        "title": "SAGO 评估流程",
-        "caption": "记住这条链：同一输入的多种表述先被生成，再在多个行为轴上量波动，最后得到不稳定结论。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='SAGO 四步评估流程图'><rect x='24' y='16' width='432' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>同一输入</text><text x='440' y='40' font-size='13' text-anchor='end' fill='currentColor'>多种表述变体</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='24' y='70' width='432' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>样本级比较</text><text x='440' y='94' font-size='13' text-anchor='end' fill='currentColor'>不聚合成单一准确率</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='24' y='124' width='432' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>四个行为轴</text><text x='440' y='148' font-size='13' text-anchor='end' fill='currentColor'>一致性 / 激活 / 置信度 / 镜像</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='24' y='178' width='432' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='40' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>结论</text><text x='440' y='202' font-size='13' text-anchor='end' fill='currentColor'>无模型一致泛化，排名可反转</text></svg>",
-        "alt": "流程图：同一输入的多种表述变体先被生成，再在样本级别跨变体比较行为，接着在生成一致性、内部激活、置信度、回答镜像四个行为轴上量化波动，最终得到没有模型能一致泛化、跨数据集排名可反转的结论。"
-      },
-      "concepts": [
-        {
-          "name": "Stability-Aware Generalization Objective（稳定性感知的泛化目标）",
-          "readable": "不再用单一 prompt 格式下的聚合准确率衡量泛化，而是在样本级别比较同一输入被不同方式表述时模型行为的变化，用波动大小刻画泛化好坏。",
-          "analogy": "像体检不看单项平均分，而看同一指标反复测几次是否稳定：血压一次 120 一次 180 的人，比始终 135 的人更危险，即使平均分相同。",
-          "analogyBreaksDown": "体检波动多来自测量误差或生理噪声，而模型输出波动正是要衡量的对象本身；有些任务允许多个语义等价的正确答案，波动不必然等于泛化差，需要先区分语义等价的多样性。",
-          "mechanism": "关键设计是把评测拆成三层：以单个样本为分析单位、以多种输入变体为对照组、以多个行为轴为观测量，最后用离散度而不是均值汇总；这样能暴露被聚合准确率掩盖的不稳定，并避免用窄域训练刷分。",
-          "visual": "画一个矩阵：行是样本、列是输入变体，格子颜色深浅表示某个行为轴的读数；同一行颜色越杂说明该样本越不稳定，右侧再按行为轴画条形图汇总。",
-          "prerequisites": [
-            "LLM 评测基础：prompt 设计与样本级指标",
-            "方差、标准差等离散度统计",
-            "模型内部激活的可访问性与探针方法"
-          ],
-          "selfTest": [
-            "为什么聚合准确率会把鲁棒性和整体能力混在一起？",
-            "样本级评估相比数据集级平均能多发现什么？",
-            "跨数据集比较时模型排名反转说明什么？"
-          ],
-          "formula": "\\mathrm{SAGO}=\\frac{1}{|\\mathcal{A}|}\\sum_{a\\in\\mathcal{A}}\\mathrm{disp}_a\\big(s_a(f_\\theta(T_v(x)))\\big)"
-        },
-        {
-          "name": "Behavioral Axes（行为轴）",
-          "readable": "把模型行为是否稳定拆成几条互相独立、可分别测量的维度，例如生成结果一致性、内部激活、置信度与回答镜像，避免用一个总分掩盖不同的失效模式。",
-          "analogy": "像评估客服：不能只看答对率，还要分别看他同一问题换种问法答得是否一致、是否被用户的措辞带偏、语气自信度是否稳定——不同维度坏在不同地方。",
-          "analogyBreaksDown": "客服的多个维度可以人为加权成一个总分，而摘要指出这些轴对应独立的失效模式，加权求和会重新把信息压平，因此分轴报告比合并成单分更有意义。",
-          "mechanism": "每个轴对应一种可测观测量：生成一致性看输出是否语义等价，内部激活看表示是否漂移，置信度看概率是否稳定，回答镜像看模型是否照抄输入措辞；分开测量才能定位模型在哪一类变化下失效。",
-          "visual": "画雷达图：四条轴分别是生成一致性、内部激活、置信度、回答镜像，不同模型画成不同多边形；形状越不规则说明失效越集中在某几条轴上。",
-          "prerequisites": [
-            "模型输出分布与置信度的概念",
-            "表征相似度度量",
-            "评测统计与显著性检验"
-          ],
-          "selfTest": [
-            "为什么行为轴之间应当对应独立失效模式？",
-            "回答镜像偏高反映模型什么倾向？",
-            "内部激活不稳定可以怎样测量？"
-          ],
-          "formula": ""
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-sago-stability-dispersion",
-          "name": "稳定性感知的泛化离散度（Stability-Aware Generalization Dispersion）",
-          "category": "foundation",
-          "latex": "\\mathrm{SAGO}(x)=\\frac{1}{|\\mathcal{A}|}\\sum_{a\\in\\mathcal{A}}\\frac{\\mathrm{std}_{v\\in\\mathcal{V}}\\big(s_a(f_\\theta(T_v(x)))\\big)}{\\overline{|s_a|}+\\epsilon}",
-          "symbols": [
-            [
-              "x",
-              "原始输入样本"
-            ],
-            [
-              "T_v",
-              "第 v 种表述变体，如改写、格式变化"
-            ],
-            [
-              "\\mathcal{V}",
-              "变体集合"
-            ],
-            [
-              "\\mathcal{A}",
-              "行为轴集合：生成一致性、内部激活、置信度、回答镜像"
-            ],
-            [
-              "s_a",
-              "第 a 个行为轴上的打分函数"
-            ],
-            [
-              "f_\\theta",
-              "被测模型"
-            ],
-            [
-              "\\mathrm{std}",
-              "变体间标准差，即波动大小"
-            ],
-            [
-              "\\epsilon",
-              "数值稳定项"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：泛化不应被压成一个准确率，而要衡量同一语义输入在不同表述下行为是否稳定。",
-            "第 2 步：对每个样本生成多种变体，分别前向得到各行为轴的读数。",
-            "第 3 步：在每个轴上求变体间的离散度并做量纲归一化，避免不同轴的尺度互相淹没。",
-            "第 4 步：对行为轴（必要时再对样本）取平均得到 SAGO，分数越高表示泛化越不稳定，可跨数据集比较模型。"
-          ],
-          "analogy": "像把同一道题换成五种问法考同一个学生：不是看他平均考了多少分，而是看五种问法下答案是否一致；平均分很高但换个说法就翻车的，才是真正不稳的那个。",
-          "pitfalls": [
-            "把 SAGO 当成准确率叠加使用；它衡量波动，不是能力上限",
-            "只在单一变体集合上算离散度，会低估跨数据集的不稳定",
-            "不同行为轴分数直接相加而不做归一化",
-            "忘了区分语义等价的多解与真正的行为漂移"
-          ],
-          "code": "import torch\n\ndef sago(outputs_per_variant, eps=1e-6):\n    # outputs_per_variant: [V, B, C] 同一批样本在 V 种表述下的 logits\n    p = torch.softmax(outputs_per_variant, dim=-1)\n    conf = p.max(dim=-1).values            # [V, B]\n    return (conf.std(dim=0) / (conf.mean(dim=0).abs() + eps)).mean()",
-          "sources": [
-            {
-              "title": "Generalization Is Stability, Not Accuracy: Multi-Axis Evaluation of LLMs",
-              "url": "https://huggingface.co/papers/2610.01428"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "论文把 LLM 的泛化定义为：同一输入用不同方式表述时，输出保持一致且语义稳定的能力",
-          "现有工作通常用单一 prompt 格式、单一任务或单一变体集合上的聚合准确率评估泛化，把鲁棒性与整体基准表现混在一起",
-          "本文主张在单个样本层面、跨多种输入变体、跨模型行为的不同侧面做评估，关注变异性而非可被窄域训练刷高的分数",
-          "提出 SAGO 框架，度量同一输入在不同变体和不同基准下模型行为的变化量",
-          "度量的维度包括生成一致性、内部激活、置信度和回答镜像",
-          "实验发现许多常用模型存在统计显著且一致的泛化不稳定：没有模型能一致泛化，行为轴反映独立失效模式，跨数据集变化可以反转模型排名"
-        ],
-        "uncertain": [
-          "摘要未给出 SAGO 的精确定义式，本条目公式为按摘要重建的通用形式（离散度加归一化再按轴平均），需核对原文",
-          "具体被测模型清单、变体构造方式与统计检验方法摘要未说明",
-          "各行为轴的测量实现（例如内部激活用什么相似度）摘要未给出",
-          "回答镜像的确切判定标准摘要未说明"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "同一个问题换个问法，模型答案是否还一致，这才是泛化。"
-          },
-          {
-            "level": "入门",
-            "text": "以往评估泛化常只看某一种 prompt 格式下的平均准确率，这会把鲁棒性和整体成绩混在一起。SAGO 改成看单个样本在不同表述下的行为波动，并分别观察生成一致性、内部激活、置信度和回答镜像四条轴，结果显示常见模型普遍存在显著的泛化不稳定。"
-          },
-          {
-            "level": "进阶",
-            "text": "三个设计选择很关键：分析单位降到单个样本，对照组是同一语义的多种表述变体，观测量拆成多个行为轴，最后用离散度而非均值汇总。这样既避免用窄域训练把分数刷高，也能看出模型在哪类变化下失效。论文的结论是没有任何模型能一致泛化，不同行为轴对应独立失效模式，跨数据集比较时甚至能反转模型排名。"
-          },
-          {
-            "level": "专家",
-            "text": "与常见的鲁棒性基准相比，这套框架的差别在评价对象：鲁棒性基准通常给一个变体集合上的分数，仍然可以靠针对性训练提升，而 SAGO 直接度量同一输入跨变体的行为离散度，并要求分轴报告。适用边界是它衡量稳定性而非能力上限，需要与准确率结合看；另外语义等价的多解会造成假波动，必须先做等价性判定。跨数据集排名反转这一发现也提醒：单数据集上的模型排序结论不宜外推。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "如果不改评测口径，只看聚合准确率会漏掉什么？",
-            "a": "会漏掉同一语义换表述后的行为漂移；高分可能来自窄域训练或对特定格式的过拟合，掩盖真实的不稳定。"
-          },
-          {
-            "q": "为什么不把多个行为轴合成一个总分？",
-            "a": "摘要显示各轴对应独立失效模式，合成会重新压平信息，无法定位模型是在激活、置信度还是一致性上失效。"
-          },
-          {
-            "q": "跨数据集排名反转为什重要？",
-            "a": "说明模型优劣结论依赖数据集选择，单一基准上的排名不能当作泛化能力的稳定证据。"
-          }
-        ],
-        "mechanism": "必须这样设计的原因在于被测量对象的性质：泛化是同一语义在表层形式变化下的不变性，因此对照组必须是同一样本的多变体而非不同样本的平均；而不变性的信息保存在方差里，用均值汇总会把它抹掉。再加上行为可以从输出、内部表示、置信度、措辞依赖多个层面失效，合并成单分就会掩盖具体失效模式，所以框架同时要求在样本级、变体维、多轴向上分别度量。",
-        "boundary": "它衡量稳定性而非能力上限，低波动可能只说明模型对变化不敏感，仍需与准确率结合解读；语义等价的多解若不剔除会产生假波动。摘要给出的结论来自所测的常用模型与数据集集合，换领域、换语言或换变体构造方式后结论是否保持需要重新验证。",
-        "analogyBoundary": "体检类比在「看波动而非看均值」这一点上成立，但体检的波动多为测量噪声与生理波动，而模型波动往往正是要评价的行为本身，且其中还混有合法的多样性；把两者等同会误判正常的表达多样为泛化差。",
-        "misconceptions": [
-          "把 SAGO 理解成一个更高的准确率指标；它衡量的是行为波动，不能替代能力评测。",
-          "以为波动大就是模型差；波动需要区分语义等价的多样性还是真正的不一致。",
-          "以为结论是某个模型泛化最好；摘要明确说没有模型能一致泛化。"
-        ],
-        "ownAnalysis": "这套口径与后训练评测的痛点对得上（推断）：用单一 prompt 格式选模型容易被格式过拟合误导，而按变体波动评估更接近「换个说法还能不能答对」的真实诉求。可疑之处在于变体构造与等价性判定会显著影响结论：变体难度不同会让波动混入难度差异，语义等价判定若由模型自动完成又会引入评测者偏差（推断）。另外摘要未给出 SAGO 的具体定义式与检验方法，实际复现时需核对原文。",
-        "officialNotes": [
-          {
-            "position": "论文主张泛化评估应关注稳定性而非准确率：按单个样本、跨多种输入变体、跨行为的不同侧面度量变异，提出 SAGO 框架，涵盖生成一致性、内部激活、置信度与回答镜像等维度；并报告许多常用模型存在统计显著且一致的泛化不稳定，无模型一致泛化，行为轴对应独立失效模式，跨数据集变化可反转模型排名。",
-            "source": "https://huggingface.co/papers/2610.01428"
-          }
-        ],
-        "interviewAnswer": "我理解这篇的核心是把泛化从准确率问题改成稳定性问题。以往用单一 prompt 格式的聚合准确率评估泛化，会把鲁棒性和整体基准成绩混在一起。SAGO 在样本级别比较同一输入在多种表述变体下的行为，并分四条轴看：生成一致性、内部激活、置信度和回答镜像，用离散度而不是均值汇总。它的结论是常用模型普遍存在统计显著的泛化不稳定，没有模型能一致泛化，各行为轴对应独立失效模式，跨数据集甚至能反转模型排名。",
-        "studyPath": {
-          "prerequisites": [
-            "LLM 评测流程与样本级指标",
-            "方差与显著性检验等统计基础",
-            "模型内部激活与探针方法"
-          ],
-          "nextSteps": [
-            "读原文确认 SAGO 的精确定义与变体构造方式",
-            "在自己的评测集上实现多变体波动统计并与准确率对照",
-            "复现跨数据集排名比较，检查结论是否稳定"
+            "读仓库的调度与缓存管理代码，画出请求生命周期",
+            "压测不同批量下的 TTFT 与 TPOT 曲线",
+            "对比主流开源引擎的调度与显存策略差异"
           ]
         }
       }

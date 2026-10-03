@@ -1,0 +1,168 @@
+{
+  "batchId": "prob-cur-18",
+  "entries": [
+    {
+      "id": "top-k-top-p-sampling",
+      "tldr": "top-k 用第 k 大值作阈值置 -inf；top-p 用 cum-prob>p 保留最小核；都要重新归一化再采样。",
+      "restated": "题意澄清：输入是一个 batch 的未归一化 logits，形状 [B, V]（单样本即 [V]），V 为词表大小；温度 T 先做 logits/T。要实现两个函数 top_k_sampling(logits, k, T) 与 top_p_sampling(logits, p, T)，各返回采样出的 token id，形状 [B]（单样本为标量），取值必须是原词表的合法下标 [0, V)。另外要口头说明温度如何影响分布熵、以及 top-p 为什么比固定 top-k 更自适应。人工题干未给样例数值与具体 V。",
+      "approach": [
+        {
+          "step": "朴素/易错写法：先 softmax 再按概率排序截断，且把边界条件写成 cum > p",
+          "detail": "常见的第一版是：probs = softmax(logits)；把排序后累计概率超过 p 的尾部直接乘 0；然后 multinomial(probs)。它有三个致命点。第一，截断后剩余概率质量小于 1（例如只剩 0.87），而 torch.multinomial 要求输入是合法的（非负且和为正的）概率权重，不重新归一化时轻则采样分布被整体缩放、重则直接报错或语义错。第二，丢弃条件写成 cum > p 会连“首次让累计概率超过 p”的那个 token 一起丢掉：因为在该 token 处 cum 刚好首次越过 p，条件成立，于是候选集比 p 规定的还小一个，恰好“累计覆盖 p”的语义被破坏——这就是人工 pitfalls 里点名要写成 cum - prob > p 的原因。第三，先 softmax 再截断要多算一次归一化，如果截断用 -inf 而整行都被置 -inf，softmax 会给出 nan/nan；而 top-k 在 logits 域截断后 softmax 天然完成重新归一化，一步到位。"
+        },
+        {
+          "step": "正确写法关键设计一：在 logits 域截断，再让归一化各自归位",
+          "detail": "top-k 走“阈值 + masked_fill(-inf)”：v, _ = torch.topk(logits, k, dim=-1) 拿到第 k 大的值 v[..., -1]，令 thresh = v[..., -1, None] 得到 [B, 1]，再 logits.masked_fill(logits < thresh, -inf)。因为阈值本身取自这一行，所以每行至少有 k 个元素不小于阈值，置 -inf 后必然还剩元素，随后的 torch.softmax 既是数值稳定的，又自动完成了“重新归一化”。top-p 则必须在概率域比较累计质量，所以先 softmax、再 sort(descending=True) 得 sorted_probs / sorted_idx，用 cum = sorted_probs.cumsum(-1) 累加，最后 sorted_probs / sorted_probs.sum(-1, keepdim=True) 显式重新归一化。"
+        },
+        {
+          "step": "正确写法关键设计二：top-p 的边界条件写成 cum - prob > p，保证“含边界元素”",
+          "detail": "drop = cum - sorted_probs > p 的读法是“把当前 token 自己去掉之后，累计概率仍然大于 p，才允许丢弃它”。等价地 keep = cum - sorted_probs <= p，也就是保留所有“去掉自己后累计还没超过 p”的位置，那第一个让 cum 跨过 p 的 token 必然满足 cum - prob <= p，于是它一定被保留下来——这正是人工 keyPoints 说的“保留累计概率首次超过 p 的最小集合（注意含边界元素）”。如果写成 cum > p，跨界的那个 token 会被错杀，p=0.5 时甚至可能只留 1 个 token，分布比设定更尖锐、更接近贪心。"
+        },
+        {
+          "step": "正确写法关键设计三：采样后再用 gather 把排序下标还原成原词表 id",
+          "detail": "torch.sort 返回的 sorted_idx 是“降序排列后每个位置对应原词表的哪个下标”，而 multinomial 返回的是排序后位置上的下标。必须 sorted_idx.gather(-1, choice) 才能把采样结果翻译回原词表 id，否则输出的是名次（0,1,2……）而不是 token id，对拍时表现为“采样分布看起来对、id 全错”。top-k 因为在原顺序上截断，不需要这一步。另外两个函数都要在截断之前做 logits / temperature：温度放在截断之后会改变候选集本身，与“先缩放再做 top-k/top-p”的通行语义不符。"
+        },
+        {
+          "step": "正确写法关键设计四：边界与稳健性检查",
+          "detail": "k 必须夹到 [1, V]（k > V 时 torch.topk 会直接报错，k = 0 会得到空的候选集）；p 必须落在 (0, 1]（p <= 0 会一行都不保留、导致 multinomial 拿到全 0 权重）;temperature <= 0 要么报错、要么明确退化为 argmax 贪心，不能悄悄做除零或负数除法；重新归一化时给分母 clamp_min(1e-12) 兜住极端情况。最后，torch.multinomial 只支持浮点输入且要求权重非负、和为正，所以两个函数返回前都不应该出现 inf/nan 残留。"
+        }
+      ],
+      "complexity": {
+        "time": "O(B·V log V)：top-k/top-p 都要选出候选集并归一化；用 sort 的 top-p 是 O(V log V)/行，top-k 用 topk 选择平均 O(V)",
+        "space": "O(B·V)：需要保存排序后的概率、累计和与下标；top-k 额外一份 logits 副本",
+        "why": "代价来自“逐行排序 + 逐行归一化 + 逐行采样”，每行 V 个元素各读写常数次；采样本身是 O(V) 的逆变换/别名步骤。"
+      },
+      "code": {
+        "language": "python",
+        "source": "import torch\n\n\ndef _scaled(logits, temperature):\n    \"\"\"温度缩放：T→0 退化为贪心，T 增大分布更平坦（熵更大）。\"\"\"\n    if temperature <= 0:\n        raise ValueError(\"temperature 必须 > 0；T→0 请直接走 argmax 贪心\")\n    return logits / temperature\n\n\ndef top_k_sampling(logits, k=50, temperature=1.0, generator=None):\n    \"\"\"logits: [B, V]（单样本也可 [V]）；返回 token id [B]（或标量）。\n\n    top-k：取第 k 大作为阈值，小于阈值的置 -inf 后重新 softmax 采样。\n    \"\"\"\n    logits = _scaled(logits, temperature)\n    vocab = logits.size(-1)\n    k = max(1, min(int(k), vocab))                     # 边界：k 夹到 [1, V]\n    v, _ = torch.topk(logits, k, dim=-1)               # [B, k]，第 k 大在 v[..., -1]\n    thresh = v[..., -1, None]                          # [B, 1]，用于广播\n    logits = logits.masked_fill(logits < thresh, -float(\"inf\"))\n    probs = torch.softmax(logits, dim=-1)              # 重新归一化：-inf 处概率为 0\n    return torch.multinomial(probs, 1, generator=generator).squeeze(-1)\n\n\ndef top_p_sampling(logits, p=0.9, temperature=1.0, generator=None):\n    \"\"\"nucleus sampling：保留累计概率首次超过 p 的最小集合（含边界元素），归一化后再采样。\"\"\"\n    logits = _scaled(logits, temperature)\n    if not 0.0 < p <= 1.0:\n        raise ValueError(\"p 必须落在 (0, 1]\")\n    probs = torch.softmax(logits, dim=-1)                          # [B, V]\n    sorted_probs, sorted_idx = torch.sort(probs, dim=-1, descending=True)\n    cum = sorted_probs.cumsum(dim=-1)                              # [B, V]\n    # 丢弃条件 cum - prob > p：去掉自己后累计仍超 p 才丢，\n    # 于是“首次让累计概率超过 p”的那个 token 一定被保留（含边界元素）\n    drop = cum - sorted_probs > p\n    sorted_probs = sorted_probs.masked_fill(drop, 0.0)\n    denom = sorted_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)  # 防全零除\n    sorted_probs = sorted_probs / denom                            # 重新归一化\n    choice = torch.multinomial(sorted_probs, 1, generator=generator)  # [B, 1]\n    return sorted_idx.gather(-1, choice).squeeze(-1)               # 还原成原词表 id\n\n\ndef nucleus_keep_size(logits, p=0.9, temperature=1.0):\n    \"\"\"诊断用（不改采样逻辑）：返回每个样本被 top-p 保留的候选数，\n    用来验证“含边界元素”以及候选集大小随分布锐利度自适应。\"\"\"\n    probs = torch.softmax(_scaled(logits, temperature), dim=-1)\n    sorted_probs, _ = torch.sort(probs, dim=-1, descending=True)\n    cum = sorted_probs.cumsum(dim=-1)\n    return (cum - sorted_probs <= p).sum(dim=-1)       # 与 drop 互为反面\n\n\nif __name__ == \"__main__\":\n    torch.manual_seed(0)\n    logits = torch.randn(2, 8)                         # [B=2, V=8] 教学用小词表\n    logits[0, 3] = 8.0                                 # 样本 0：尖峰分布\n    logits[1] = logits[1] * 0.1                        # 样本 1：平坦分布\n    for T in (0.5, 1.0, 2.0):\n        probs = torch.softmax(logits / T, dim=-1)\n        entropy = -(probs * probs.clamp_min(1e-12).log()).sum(-1)   # 分布熵\n        print(\"T=%.1f top-k=%s top-p=%s 候选数=%s 熵=%s\" % (\n            T,\n            top_k_sampling(logits, k=3, temperature=T).tolist(),\n            top_p_sampling(logits, p=0.9, temperature=T).tolist(),\n            nucleus_keep_size(logits, p=0.9, temperature=T).tolist(),\n            [round(e, 3) for e in entropy.tolist()],\n        ))\n\n    # 边界自测：k > V 被夹住、p=1.0 保留全词表、p 极小仍至少留 1 个 token\n    assert top_k_sampling(logits, k=99).shape == (2,)\n    assert int(nucleus_keep_size(logits, p=1.0).min()) == logits.size(-1)\n    assert int(nucleus_keep_size(logits, p=1e-9).min()) >= 1\n    print(\"边界自测通过\")\n",
+        "walkthrough": [
+          {
+            "note": "依赖说明：本实现只用 PyTorch（import torch），与人工 referenceSolution 的算法完全一致——top-k 用 torch.topk 取第 k 大阈值再 masked_fill(-inf) 后 softmax；top-p 用 sort(descending) + cumsum + “cum - prob > p” 掩码后重新归一化，再 multinomial + gather。为什么用张量算子而不是 Python 循环：topk/sort/cumsum/softmax 都是一次核函数里的批量操作，天然支持 [B, V] 的整批处理，逐行循环会把 B 次小算子拼起来、既慢又难保证与框架一致。"
+          },
+          {
+            "note": "_scaled 是温度的唯一定义处：logits / temperature。它必须在任何截断之前调用，因为温度只改变分布形状；T < 1 让分布更尖锐（熵变小、top-p 候选集变小），T > 1 让分布更平坦（熵变大、候选集变大），T→0 极限是 one-hot 即贪心解码。temperature <= 0 直接抛错，避免除零或负温度把最高分 token 压成最低分这类隐性 bug。"
+          },
+          {
+            "note": "top_k_sampling 的第一件事是把 k 夹到 [1, V]：torch.topk 在 k > V 时会抛错，k = 0 会得到空候选集，两者都是面试现场真会遇到的输入。v[..., -1] 是每一行第 k 大的 logit，用 [..., None] 变成 [B, 1] 后与 [B, V] 广播，masked_fill(logits < thresh, -inf) 就只留下“不小于第 k 大”的元素——注意用的是 <，所以与第 k 大并列的 token 都会被保留，这也是“至少保留 k 个 token”的来源。"
+          },
+          {
+            "note": "masked_fill 之后的 torch.softmax 同时承担两件事：把 -inf 变成概率 0（不是 nan，因为每行至少还有一个有限值），以及重新归一化（分母自动只累计保留项）。这一步是“过滤后忘记重新归一化”这个坑的正面写法：不用手动除和，softmax 保证输出严格是概率分布，torch.multinomial 也就能正常工作（它要求权重非负且和为正）。"
+          },
+          {
+            "note": "top_p_sampling 先在概率域 softmax 再排序：因为 top-p 的定义是“累计概率质量”，必须在归一化后的概率上比较，而不是在 logits 上。sort(descending=True) 拿到的 sorted_idx 是“名次 → 原词表下标”的映射表，后面还原 id 要用它。cumsum(-1) 得到每行的前缀累计概率，形状仍是 [B, V]。"
+          },
+          {
+            "note": "drop = cum - sorted_probs > p 是本题的核心一行：只有“去掉当前这个 token 后累计仍然超过 p”的位置才被置 0。等价说法是 keep = cum - prob <= p，保留到累计刚好跨过 p 的那个 token 为止，因此该 token 一定留下（含边界元素）。写成 cum > p 会把跨界 token 也丢掉，候选集偏小，人工 pitfalls 第一条说的就是这个错误。masked_fill 用 0.0 而不是 -inf：概率域里 0 表示不可能，-inf 会污染后续求和。"
+          },
+          {
+            "note": "重新归一化的分母用 sum(dim=-1, keepdim=True) 得到 [B, 1] 再广播相除，并 clamp_min(1e-12) 兜底。随后 torch.multinomial(sorted_probs, 1) 在“名次空间”上采样得到 choice 形状 [B, 1]，最后 sorted_idx.gather(-1, choice) 把名次翻译回原词表 id 再 squeeze(-1) 得到 [B]。少了 gather 就会返回名次而非 token id，是最隐蔽的一类错误。"
+          },
+          {
+            "note": "nucleus_keep_size 是纯诊断函数，不参与采样但复用同一条边界规则（keep = cum - prob <= p，与 drop 互为反面），把“保留几个候选”这件事变成可打印的数字：尖峰样本候选数少、平坦样本候选数多，正好验证人工 keyPoints 里“top-p 候选集大小随分布锐利程度自适应，top-k 固定”。__main__ 里还断言 k=99 被夹住后仍返回 [2]、p=1.0 时保留整个词表、p 极小时至少留 1 个 token，把三条边界行为固定下来。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "k >= V：torch.topk 会直接报错，必须先 min(k, V)；此时 top-k 退化成“全词表采样”，等价于只有温度、没有截断。",
+        "k = 1：候选集只剩最大值，top-k 退化成贪心解码（与 T→0 的极限一致）；实现里 max(1, ...) 防止 k=0 产生空候选集。",
+        "p = 1.0：drop 条件 cum - prob > 1 恒不成立（累计概率不超过 1），保留整个词表，等价于纯温度采样——这是验证实现没有多丢 token 的好用例。",
+        "p 极小（如 1e-9）：只有 top-1 满足 cum - prob = 0 <= p，至少保留 1 个 token，multinomial 不会面对全 0 权重；这也是 pitfalls 里“保证至少保留一个 token”的具体体现。",
+        "分布极尖锐（某个 logit 远大于其它）：softmax 后最大概率≈1，top-p 的候选集只有 1 个，退化成贪心；这与“自适应”预期一致，不是 bug。",
+        "分布完全均匀（所有 logits 相等）：softmax 后每个概率都是 1/V，cum 线性上升，top-p 保留 ⌈p·V⌉ 个候选（例如 V=8、p=0.9 时保 8 个），此时候选数由 V 而非分布形状决定。",
+        "并列值：top-k 用 logits < thresh 判断，与阈值并列的 token 会一起保留，因此保留数可能 > k；如果要求严格 k 个，必须改用索引掩码而不是阈值掩码。",
+        "B = 1 或输入是 [V]（无 batch 维）：topk/sort/cumsum(dim=-1) 在这些形状上都能工作，返回值分别是标量而非 [1]；需要固定输出形状时在调用侧 unsqueeze/reshape。",
+        "logits 含 -inf（例如被上游 mask 掉的 token）：softmax 后概率为 0，sort 后排在尾部，天然不会被保留；但整行全是 -inf 时 softmax 会产出 nan，需要在调用方保证每行至少一个有限值。",
+        "fp16/bf16 下的 logits：cumsum 的累加与 softmax 的 exp 都可能损失精度，工程上常把概率计算升到 fp32 再降回；本题按 fp32 语义讲解。",
+        "temperature <= 0 或 p 越界：显式抛 ValueError 而不是静默算出错误分布；temperature 极小（如 1e-6）时 logits/T 可能上溢，等价于贪心，建议直接走 argmax 分支。"
+      ],
+      "pitfalls": [
+        "top-p 的边界处理写成 cum > p 而不是 cum - prob > p，导致多丢弃一个 token（人工 pitfalls 原话：会“多保留一个 token”的反面表述即此处的错杀，正确写法是保留累计概率首次超过 p 的那个位置）。",
+        "过滤后忘记重新归一化：top-p 掩码后剩余概率之和小于 1，直接交给 torch.multinomial 会报错或得到被缩放过的权重（人工 pitfalls 原话）。",
+        "对 -inf 做 softmax 产生 nan：整行都被置 -inf 时 softmax 给出 nan；必须保证至少保留一个 token（top-k 用行内第 k 大做阈值即可自动保证）（人工 pitfalls 原话）。",
+        "忘记温度缩放、或把 logits / T 放在截断之后：温度必须在 top-k/top-p 之前生效，否则候选集本身与提问的语义不符。",
+        "k 没有夹到 [1, V]：k > V 时 torch.topk 抛错，k = 0 时候选集为空、后面 softmax 全 -inf 得到 nan。",
+        "top-p 排序后忘记用 sorted_idx.gather(-1, choice) 还原：返回的是名次而不是词表 id，numpy/torch 侧不一定报错，是最隐蔽的错误之一。",
+        "把 top-p 的掩码写成 cum >= p 或 sorted_probs 上做 cumsum 的顺序搞错（先 mask 后 cumsum）：累计和必须在原始完整分布上算，先截断再累计会连锁改变边界位置。",
+        "对概率做掩码时用 -inf 而不是 0：概率域里后续要 sum 与 multinomial，-inf 会污染求和结果。",
+        "p = 0 或 p < 0 未校验：一行都不保留，分母为 0，multinomial 报错或返回 nan 索引（用 clamp_min 与显式校验兜住）。",
+        "在调用 multinomial 前忘了 detach/no_grad：采样本身不可导，带梯度的 logits 直通会浪费显存；推理时应放在 torch.no_grad() 下。",
+        "误以为 top-k + top-p 是“取交集里随便一个”：两者串联时先 top-k 再 top-p（或反之）会得到不同候选集，HF generate 的默认顺序是 top-k → top-p，回答时应明确顺序。",
+        "把温度对熵的影响说反：T 增大分布更平坦、熵更大；T→0 熵趋 0、退化为贪心（人工 keyPoints 原话）。"
+      ],
+      "followUps": [
+        "温度与熵的定量关系是什么？对 logits/T 求 softmax 后，熵 H(T) 随 T 单调不减；T→0 时 H→0（贪心），T→∞ 时 H→log V（均匀分布），这正是“T 增大分布更平坦”的形式化说法。",
+        "top-p 为什么比固定 top-k 更自适应？因为 p 约束的是“保留多少概率质量”而不是“保留几个 token”：分布尖锐时候选集自动变小（避免引入长尾垃圾），分布平坦时自动变大（避免过早起截断掉合理候选）；而 top-k 的候选数固定，遇到平坦分布会过度截断、遇到尖锐分布又会保留过多噪声（人工 keyPoints 原话）。",
+        "top-k 与 top-p 同时开启时哪个先做？会怎样？通常先 top-k 再 top-p。先 top-k 会改变概率分布（重新归一化后累计曲线变陡），因此同一个 p 在串联时保留的 token 数一般少于单独用 top-p；如果顺序反了结果不同，面试时要主动说明顺序。",
+        "如何保证可复现？torch.multinomial 接受 generator 参数，固定 torch.Generator 的种子即可；另外 GPU 上 multinomial/topk 的原子操作可能有非确定性，需要固定设备与种子并接受跨设备不可复现。",
+        "除了 top-k/top-p 还有哪些截断？min-p（按相对最高概率的比例截断）、typical sampling（按信息量/熵偏离度保留）、epsilon sampling、Mirostat 等；它们的共同点都是“在概率域定义一个自适应候选集”。",
+        "能不能不排序实现 top-p？可以：top-p 的候选集等价于找一个概率阈值 τ，使保留集合的累计质量刚过 p；可以用二分搜索 τ 配一次求和逼近（框架里典型采样/某些 kernel 就是这么做的），代价从 O(V log V) 降到 O(V log(1/ε))，但边界“含该元素”的语义要额外小心。",
+        "top-k/top-p 能不能和 KV cache 一起高效实现？采样只发生在最后一步的 logits（[B, V]）上，与 KV cache 无关；但真正的推理瓶颈常是 V 很大时的 softmax/sort，工程上会做 fused top-k/top-p，或在排序前用部分选择（partial sort）只求需要的名次。",
+        "如果要求批量里不同样本用不同的 k 或 p（例如按样本动态调温），代码要怎么改？把 k 变成张量并使用 torch.topk 的批量语义无法直接支持“每行不同 k”，常见做法是按 k 分组（如 k=1/8/64 分桶）批量计算，或退化为逐样本循环。",
+        "采样类解码与 beam search 该如何取舍？采样（含 top-k/top-p）多样性高、适合开放对话与创作；beam search 追求高概率序列、容易退化成重复/空洞文本，因此聊天模型默认 do_sample=True 而不是 beam。",
+        "如何验证实现与 HuggingFace generate 一致？在同一 logits 与同一 seed 下对比 do_sample=True、top_k/top_p/temperature 的输出；注意 HF 的实现里 temperature 在 logits 处理阶段之后、top-k/top-p 之前生效，且对 -inf 用 add 负无穷大 mask，边界语义与本题一致。"
+      ],
+      "variations": [
+        "只写贪心解码（argmax）与纯温度采样（softmax(logits/T) 后 multinomial），说明它们分别是 top-k 的 k=1 与 p=1 特例。",
+        "手写 beam search：每步扩展 top-k 候选、用累计 logprob 与长度归一化排序，对比“采样截断”与“搜索”两种解码范式。",
+        "实现 min-p 采样：保留 p_max·max_prob 以上的 token，体会它相对 top-p 在尖峰分布下更不激进的行为。",
+        "实现 typical sampling：按 |−log p − H| 排序保留最小集合，说明它优化的是“信息量典型性”而非概率质量。",
+        "实现 repetition penalty / presence penalty：在 logits 上对已出现 token 做惩罚，再走同一套 top-k/top-p 流程。",
+        "把温度做成 scheduled（如按步数线性下降或余弦下降），从采样逐渐过渡到贪心。",
+        "给 top-k/top-p 加上返回候选集与候选概率的接口，用于可视化每一步的候选质量分布。",
+        "用 numpy 重写 top-k/top-p（np.argsort + np.random.choice），并对比两者的数值与随机性差异。",
+        "写一个“批内不同 k”的实现（按 k 分桶批量算），体会采样算子对 batch 内异构参数的支持边界。",
+        "实现约束解码（如强制某些 token 不可出现）的 mask 与 top-k/top-p mask 的合并顺序。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "两条截断路径与形状流转",
+        "caption": "logits [B, V] 先除温度 T；top-k 在 logits 域取第 k 大作阈值并把更小的置 -inf，靠 softmax 重新归一化；top-p 在概率域降序累加，用 cum - prob > p 决定丢弃哪些尾部，再显式归一化。两条路的候选集大小一个固定、一个自适应，最终都在归一化概率上 multinomial 采样（top-p 还需 gather 还原原词表 id），输出 [B]。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='8' y='12' width='464' height='28' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='240' y='31' text-anchor='middle' font-size='14' fill='currentColor'>logits [B, V] ÷ T（T→0 趋贪心，T↑ 更平坦）</text><path d='M240 40 L120 54' stroke='currentColor' stroke-width='1.5'/><path d='M240 40 L360 54' stroke='currentColor' stroke-width='1.5'/><rect x='8' y='56' width='228' height='72' rx='6' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='20' y='76' font-size='14' fill='currentColor' font-weight='bold'>top-k：候选数固定为 k</text><text x='20' y='96' font-size='13' fill='currentColor'>阈值 = 第 k 大的 logit</text><text x='20' y='114' font-size='13' fill='currentColor'>更小的置 -inf，重新 softmax</text><rect x='244' y='56' width='228' height='72' rx='6' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='256' y='76' font-size='14' fill='currentColor' font-weight='bold'>top-p：候选数自适应</text><text x='256' y='96' font-size='13' fill='currentColor'>概率降序 + cumsum</text><text x='256' y='114' font-size='13' fill='currentColor'>丢弃 cum - prob &gt; p（含边界）</text><path d='M120 128 L120 138 L240 138 L240 146' stroke='currentColor' stroke-width='1.5'/><path d='M360 128 L360 138 L240 138' stroke='currentColor' stroke-width='1.5'/><rect x='8' y='146' width='464' height='30' rx='6' fill='var(--accent)'/><text x='240' y='166' text-anchor='middle' font-size='14' fill='currentColor'>multinomial 采样 → gather 还原原词表 id → 输出 [B]</text><text x='240' y='196' text-anchor='middle' font-size='13' fill='currentColor'>top-k 候选数不随分布变化；top-p 越尖锐候选数越少</text><text x='240' y='216' text-anchor='middle' font-size='13' fill='currentColor'>过滤后必须重新归一化；阈值与边界保证至少留 1 个</text><text x='240' y='234' text-anchor='middle' font-size='13' fill='var(--fg-1)'>截断在 logits 域做，采样在归一化后的概率域做</text></svg>",
+        "alt": "图：输入 logits [B, V] 先除以温度 T，随后分成两条截断路径。左路 top-k：候选数固定为 k，阈值取第 k 大的 logit，更小的置 -inf 后重新 softmax。右路 top-p：候选数自适应，概率降序做 cumsum，丢弃条件是 cum - prob > p（含边界元素）。两路合并到归一化概率上做 multinomial 采样，top-p 额外用 gather 把排序名次还原成原词表 id，输出形状 [B]。下方注明 top-k 候选数不随分布变化、top-p 越尖锐候选数越少，过滤后必须重新归一化，以及截断在 logits 域、采样在概率域。"
+      },
+      "selfTest": [
+        "把 drop = cum - sorted_probs > p 改成 cum > p，用 probs = [0.6, 0.3, 0.1]、p = 0.9 手算两种写法各保留哪些 token；哪种写法符合“保留累计概率首次超过 p 的最小集合”？",
+        "为什么 top-k 里 masked_fill 用 -inf 再 softmax 是安全的（不会 nan），而 top-p 里掩码用 0.0 而不是 -inf？两处为什么可以不同？",
+        "k = V 时 top-k 采样与只有温度的纯 softmax 采样在数值上完全相同吗？为什么？",
+        "temperature = 0.1 与 temperature = 2.0 下，同一组 logits 的分布熵与 top-p 候选数各往哪个方向变？如果题干要求“T→0 退化为贪心”，你的实现要额外加什么分支？",
+        "top-p 采样输出的 id 如果忘记 gather，会出现什么现象？为什么这个 bug 在小词表上也可能“看起来正常”？"
+      ],
+      "keyPoints": [
+        "top-k：取第 k 大作为阈值，小于阈值的置 -inf 后重新 softmax（人工 keyPoints 原话）。",
+        "top-p：按概率降序累加，保留累计概率首次超过 p 的最小集合（注意含边界元素），再归一化采样（人工 keyPoints 原话）；实现上就是 drop = cum - prob > p。",
+        "温度 T：logits/T，T→0 退化为贪心，T 增大分布更平坦（人工 keyPoints 原话）。",
+        "top-p 的候选集大小随分布锐利程度自适应，top-k 固定（人工 keyPoints 原话）。",
+        "两个截断都必须重新归一化，并保证至少保留一个 token，否则 multinomial 会拿到非法权重或产生 nan。"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（top-k-top-p-sampling）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题干明确要求：实现 top-k 采样与 nucleus（top-p）采样，并说明温度缩放如何影响分布熵、为什么 top-p 比固定 top-k 更自适应。",
+          "人工 keyPoints 明确给出 top-k 的写法：取第 k 大作为阈值，小于阈值的置 -inf 后重新 softmax。",
+          "人工 keyPoints 明确给出 top-p 的写法：按概率降序累加，保留累计概率首次超过 p 的最小集合（注意含边界元素），再归一化采样。",
+          "人工 keyPoints 明确温度语义：logits/T，T→0 退化为贪心，T 增大分布更平坦。",
+          "人工 pitfalls 明确指出三个扣分点：top-p 边界写成 cum > p、过滤后忘记重新归一化、对 -inf 做 softmax 产生 nan（应保证至少保留一个 token）。",
+          "本实现的算法与人工 referenceSolution 一致：top_k_sampling 用 torch.topk 取 v[..., -1] 作阈值 + masked_fill(-inf) + softmax + multinomial；top_p_sampling 用 softmax + sort(descending) + cumsum + (cum - sorted_probs > p) 掩码 + 重新归一化 + multinomial + sorted_idx.gather。",
+          "除“分母 clamp_min(1e-12)”“k 夹到 [1, V]”“p 与 temperature 显式校验”这三处防御性边界外，本实现的采样逻辑与人工 referenceSolution 逐句对应，没有引入新算法。",
+          "复杂度结论的时间部分 O(B·V log V) 来自 top-p 的 sort 与 top-k 的选择，空间 O(B·V) 来自概率、累计和与下标副本。",
+          "图解中的形状流转（[B, V] → 阈值 [B, 1] / 排序概率 [B, V] → 归一化概率 → 输出 [B]）是 torch.topk、torch.sort、cumsum 与 gather 语义的直接推论。"
+        ],
+        "uncertain": [
+          "人工题干未给具体张量形状与词表大小 V，本解按通用约定写成 logits: [B, V]，单样本为 [V]；若面试要求写成 [B, T, V]（逐位置采样）或 [1, V] 需自行改名，语义不变。",
+          "人工题干未给任何样例数值或期望输出，因此本解只能给出形状自检与边界断言（k=99、p=1.0、p=1e-9），没有逐元素对拍结果。",
+          "本解保证了 API 语义正确（topk/sort/cumsum/softmax/multinomial/gather 与广播），但未在真实 GPU 上验证；已知 GPU 上 multinomial 与 topk 的原子实现可能带来非确定性，跨设备不可复现。",
+          "人工 pitfalls 原文写“top-p 的边界处理写成 cum > p 而不是 cum - prob > p，导致多保留一个 token”；按 cum 的构造，cum > p 实际是丢掉了首次跨过 p 的那个 token（保留更少），本解按“正确写法 = cum - prob > p、错误写法 = cum > p”这一致性描述实现与讲解，未改写人工结论本身。",
+          "代码依赖 PyTorch；本解未给出纯 numpy 版本，也未验证 fp16/bf16 下的数值表现（cumsum 与 exp 的精度问题只作定性提示）。",
+          "“温度与熵单调关系”“T→∞ 时熵趋 log V”是数学结论的定性引用，本解未附推导或数值验证曲线。",
+          "温度缩放的默认值、eps/clamp 量级（1e-12）为本解自选，人工 referenceSolution 未规定；实际项目常按 dtype 调整。",
+          "题干未说明 top-k 与 top-p 是否串联使用；本解按两个独立函数实现，串联顺序（通常 top-k 先、top-p 后）只在 followUps 里讨论，未体现在代码中。"
+        ]
+      }
+    }
+  ]
+}

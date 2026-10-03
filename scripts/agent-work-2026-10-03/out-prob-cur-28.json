@@ -1,0 +1,142 @@
+{
+  "batchId": "prob-cur-28",
+  "entries": [
+    {
+      "id": "jd-agentic-rl-longhorizon",
+      "tldr": "长程任务=多轮 MDP：稀疏末端奖励 + 折扣/组内基线做信用分配；组内全败则优势恒 0，靠势函数式过程奖励与先短后长课程救。",
+      "restated": "题面是一段实习自述，不是带输入输出的算法题：京东人才计划实习生（北大 AI 博士，方向 Agentic RL）自述主要做「怎么通过强化学习，让模型完成长程任务」，工作方式是先和负责人讨论方向，再自己搭训练环境、调整算法、训练、看结果、汇报。题面没有给出明确提问、环境类型、模型规模、算法名与评价指标，也没有样例数据；按笔试场景题处理，应答「如何用 RL 让模型完成长程任务」的方法论与可落地的训练闭环。",
+      "approach": [
+        {
+          "step": "建模：把长程任务写成多轮 MDP，而不是一条长问答",
+          "detail": "状态 = 上下文 + 环境观测 + 工具返回，动作 = 一次工具调用 / 一个子目标 / 一段代码，horizon H 可达几十到几百步，奖励往往只在终局出现（测试通过、订单提交成功）。为什么必须显式拆出 turn 与环境 step：只有拆开才能给每步记奖励、做 turn-level 优势、并在环境里做可重现的 reset 与自动判分——可验证性是长程 RL 的地基，环境判不了分就只能退回偏好对齐。同时要先把终止条件写死（成功 / 失败 / 超时 / 最大步数），否则坏策略会无限调用工具，rollout 直接挂死。"
+        },
+        {
+          "step": "环境与数据：先搭可复现、可扩展、可判分的训练场，再谈算法",
+          "detail": "环境要满足四点：可 reset、可复现（固定 seed / 容器镜像 / 快照）、自动判分（单元测试、断言、最终状态校验）、难度可调（题目难度、工具数量、干扰项）。自建 simulator 与 mock 工具比直连真实系统可控得多，真实环境只留少量做最终验证。rollout 吞吐才是长程 RL 的真瓶颈：一次 update 可能要几千条几十步的轨迹，因此要异步采样、批量并发工具调用、缓存只读工具结果。训练集与评测环境必须严格隔离，否则等于把答案练进模型。"
+        },
+        {
+          "step": "奖励设计：稀疏结果奖励打底，过程奖励必须不改变最优策略",
+          "detail": "结果奖励只用可验证真值（测试通过 / 最终状态正确），最干净但 H 大时信号指数衰减：本机玩具实验里每步 3 个动作、组大小 64 时，H=4 尚有一半以上的组能采到成功轨迹（单条走对 1.23e-2，组内至少一条走对 5.48e-1），H=10 掉到 1.69e-5 / 1.08e-3，H=12 只剩 1.88e-6 / 1.20e-4，于是绝大多数组全 0、优势恒 0。所以要补过程信号：势函数式 shaping r_t = γΦ(s_{t+1}) − Φ(s_t)（Φ 取已正确完成的子目标比例）理论上不改变最优策略（Ng et al. 1999），比手写过程奖励安全；或者训一个 PRM / 规则校验器给中间步骤打分，但要防奖励攻击（只看最终状态真值、留 held-out、过程奖励人工抽检）。"
+        },
+        {
+          "step": "信用分配与算法：折扣 / GAE，或者用组内基线省掉 critic",
+          "detail": "长程下 value critic 的 bootstrap 误差沿 H 步累积、方差极大，这正是 GRPO 这类组内相对基线流行的原因：同一 prompt 采 G 条轨迹，A_i = (r_i − mean) / std，免 critic、省掉一份 value 网络与优化器状态，代价是必须一次采一整组，对吞吐要求更高。折扣因子要按 H 选：本机实测 H=50 时 gamma=0.90 让末端奖励权重只剩 0.0057，等于几乎不学远端目标，gamma=0.99 还有 0.6111。另外工具返回与环境日志的 token 不参与 loss（loss mask），梯度只在模型自己产生的 action token 上算。"
+        },
+        {
+          "step": "长程稳定化与汇报：课程、KL、上下文管理、指标口径",
+          "detail": "先短后长 curriculum（H 从 2~3 步起步，成功率过阈值再加长）、KL 与 ratio 裁剪限制策略漂移、上下文压缩或摘要避免超窗、失败轨迹回炉与分层策略（先学子技能再串成长程）。评估不能只看平均奖励：要同时报成功率、平均步数、工具调用正确率、无效/重复调用率，并单列一个奖励攻击检测集（专门对照「改判分器 / 跳过断言就能拿高分」的捷径）。汇报时给出消融（有/无过程奖励、gamma、G 大小），证明涨点来自哪一项。"
+        }
+      ],
+      "complexity": {
+        "time": "每轮 O(G·H) 次模型前向（G=组大小、H=轨迹长度），外加环境与工具的墙钟时间；采样占绝对大头，参数更新只占小头",
+        "space": "O(G·H·上下文长度) 的轨迹与 logprob 缓存，加策略与参考模型权重；免 critic 的组内基线省掉一份 value 网络及其优化器状态",
+        "why": "代价来自长程 rollout 的步数与组采样数的乘积：H 越长、G 越大，总 token 越多；工具调用延迟使墙钟时间远高于纯算力估算。"
+      },
+      "code": {
+        "language": "python",
+        "source": "# 长程 Agentic RL 最小可跑骨架：稀疏末端奖励 -> 轨迹级回报 -> 组内相对优势（GRPO 风格）。\n#\n# 面试问「怎么用 RL 让模型完成长程任务」，要能讲清三件事：\n#   1) 任务建模：多轮 MDP，horizon H 大，奖励稀疏且只在末尾（或工具校验时才有）；\n#   2) 信用分配：折扣回报 / GAE；或丢掉 critic，用同一 prompt 的组内基线（GRPO）；\n#   3) 长程真坑：全失败组优势恒为 0（当轮零梯度）、过程奖励必须不改变最优策略。\n# 本脚本用 4 步 x 4 动作的玩具环境把这条链路真跑一遍，只用标准库。\nimport math\nimport random\n\nHORIZON = 4                  # 必须连续做对的步数，越长越难\nN_ACTIONS = 4                # 每步可选动作数\nTARGET = (0, 2, 1, 3)        # 唯一正确序列，代表长程任务的终局真值\nGAMMA = 0.99                 # 折扣因子：太小会把末端奖励抹掉（见表）\n\n# 按当前策略采样一条完整轨迹，返回 (动作序列, 是否成功)\ndef sample_episode(policy, rng):\n    actions = []\n    for t in range(HORIZON):\n        u, acc, pick = rng.random(), 0.0, N_ACTIONS - 1\n        for i, p in enumerate(policy[t]):\n            acc += p\n            if u <= acc:\n                pick = i\n                break\n        actions.append(pick)\n    actions = tuple(actions)\n    return actions, actions == TARGET\n\n# 从后往前算回报 G_t = r_t + gamma * G_{t+1}；末端奖励按 gamma^(T-1-t) 衰减\ndef discounted_returns(rewards, gamma=GAMMA):\n    out, running = [0.0] * len(rewards), 0.0\n    for t in range(len(rewards) - 1, -1, -1):\n        running = rewards[t] + gamma * running\n        out[t] = running\n    return out\n\n# GRPO：同一 prompt 采 G 条轨迹，用组内均值/标准差当 baseline，省掉 value critic\ndef group_advantages(rewards, eps=1e-6):\n    n = len(rewards)\n    if n == 0:\n        raise ValueError('组内至少要有一条轨迹')\n    mean = sum(rewards) / n\n    var = sum((r - mean) ** 2 for r in rewards) / n\n    std = math.sqrt(var + eps)          # eps 只防除零；全同奖励时优势仍为 0\n    return mean, var, [(r - mean) / std for r in rewards]\n\n# 势函数式过程奖励：Phi(s) = 已做对步数 / H，r_t = gamma*Phi(s+1) - Phi(s)，再叠末端结果奖励。\n# 势函数 shaping 不改变最优策略（Ng et al. 1999），比手写过程奖励安全，还能给出稠密信号。\ndef shaped_rewards(actions, done_bonus=1.0):\n    rewards = []\n    for t in range(len(actions)):\n        phi_now = sum(1 for i in range(t) if actions[i] == TARGET[i]) / HORIZON\n        phi_next = sum(1 for i in range(t + 1) if actions[i] == TARGET[i]) / HORIZON\n        rt = GAMMA * phi_next - phi_now\n        if t == HORIZON - 1 and tuple(actions) == TARGET:\n            rt += done_bonus\n        rewards.append(rt)\n    return rewards\n\n# 稀疏奖励下「一组 rollout 里至少有一条走对」的概率：p = 1 / N_ACTIONS**H\ndef group_signal(H, n_actions=N_ACTIONS, group=64):\n    p = 1.0 / (n_actions ** H)\n    return p, 1.0 - (1.0 - p) ** group\n\n# REINFORCE + 组内基线；shaping=False 就是「只有末端对错」的稀疏奖励对照组\ndef train(iterations=400, group=64, lr=0.05, shaping=False, seed=0):\n    rng = random.Random(seed)\n    policy = [[1.0 / N_ACTIONS] * N_ACTIONS for _ in range(HORIZON)]\n    dead, first_solve = 0, None\n    for it in range(iterations):\n        batch, traj_rewards = [], []\n        for _ in range(group):\n            actions, ok = sample_episode(policy, rng)\n            if shaping:\n                per_step = shaped_rewards(actions)\n            else:\n                per_step = [0.0] * (HORIZON - 1) + [1.0 if ok else 0.0]\n            ret = discounted_returns(per_step)\n            batch.append((actions, ret))\n            traj_rewards.append(ret[0])       # 轨迹标量回报：整条轨迹压成一个数\n        _, var, advs = group_advantages(traj_rewards)\n        if var < 1e-12:                       # 全失败或全成功组：优势恒 0，当轮没有梯度\n            dead += 1\n        for (actions, ret), A in zip(batch, advs):\n            for t, a in enumerate(actions):\n                g = A * ret[t]                # 轨迹优势按步回报再分配（简化版信用分配）\n                for i in range(N_ACTIONS):\n                    # d log pi(a|s) / d p_i = 1{i==a} - p_i，即 softmax 策略梯度\n                    policy[t][i] += lr * g * ((1.0 if i == a else 0.0) - policy[t][i])\n                total = sum(max(p, 1e-9) for p in policy[t])   # 夹住并重归一化，保持合法分布\n                policy[t] = [max(p, 1e-9) / total for p in policy[t]]\n        if first_solve is None and greedy(policy) == TARGET:\n            first_solve = it\n    return policy, dead, first_solve\n\n# 贪心解码：每步取 argmax，长程任务最终只看整条轨迹是否完成\ndef greedy(policy):\n    return tuple(max(range(N_ACTIONS), key=lambda i: policy[t][i]) for t in range(HORIZON))\n\nif __name__ == '__main__':\n    for shaping in (False, True):\n        pol, dead, first = train(shaping=shaping)\n        print('shaping=%-5s 贪心解出轮次=%s 空梯度轮次=%3d/400 贪心动作=%s'\n              % (shaping, first, dead, greedy(pol)))\n    print('稀疏信号随 H 衰减（组大小 64，每步 3 个动作）：')\n    for H in (4, 6, 8, 10, 12):\n        p, hit = group_signal(H, n_actions=3, group=64)\n        print('  H=%2d 单条走对 p=%.2e  组内至少一条走对=%.2e' % (H, p, hit))\n    print('末端奖励的折扣权重 gamma^(H-1)：H=50 时 gamma=0.90 -> %.4f，gamma=0.99 -> %.4f'\n          % (0.90 ** 49, 0.99 ** 49))\n    print('全失败组的优势：', group_advantages([0.0] * 8)[2][:3])\n",
+        "walkthrough": [
+          {
+            "note": "常量区就是题眼：HORIZON=4 代表长程程度，TARGET 是唯一正确动作序列（长程任务里通常由环境判分给出真值），GAMMA 是折扣因子。把这三个量显式写出来，是为了让「H 变大 / gamma 变小会怎样」可以一行代码改出来看，而不是停留在口头。"
+          },
+          {
+            "note": "sample_episode 用累积概率做逆变换采样，一次跑完整条 H 步轨迹——这对应真实 agent 的一次多轮 rollout（每步一次工具调用）。注释里强调「采样一条完整轨迹」是因为信用分配的信息全部来自这条轨迹，而轨迹只能在环境里跑出来，跑得慢是长程 RL 的第一瓶颈。"
+          },
+          {
+            "note": "discounted_returns 从后往前递推 G_t = r_t + gamma·G_{t+1}，末端奖励因此在第 0 步只保留 gamma^(H-1)。这不是装饰：H=50 时 gamma=0.90 只剩 0.0057，等于远端目标被彻底抹掉，这就是长程任务里「折扣不能照抄短任务」的量化理由。"
+          },
+          {
+            "note": "group_advantages 是 GRPO 的核心：同一个 prompt 的 G 条轨迹互相做基线，A_i=(r_i−mean)/std。mean 与 std 都从组内估计，所以不需要 value critic；eps 只用来防止除零，奖励全同（全失败或全成功组）时分子恒为 0，优势仍是全 0——函数返回 var 就是为了让调用方能显式检测这种「这一轮没有梯度」的情况。"
+          },
+          {
+            "note": "shaped_rewards 给出势函数式过程奖励：Phi 是「已正确完成的步数占比」，r_t = gamma·Phi(s+1) − Phi(s)，再在最后一步叠上真实结果奖励。它把稀疏的末端信号摊成逐步信号，同时因为势函数差分的望远镜求和性质，不改变最优策略，比手写「做到某子目标 +1」的过程奖励更不容易被刷分。"
+          },
+          {
+            "note": "train 是完整的 REINFORCE + 组内基线循环：先采样一组轨迹、把每条压成标量回报，再算组内优势，然后按 softmax 策略梯度更新（d log pi / d p_i = 1{i==a} − p_i），每步更新后夹住下界并重归一化以保持合法分布。dead 统计方差为 0 的轮次，用来量化「稀疏奖励下有多少轮白跑」。"
+          },
+          {
+            "note": "主程序做三组自测：稀疏与过程奖励的对照（本机 python 3.12.9 实测 shaping=False 第 3 轮贪心解出、空梯度 382/400；shaping=True 第 0 轮解出、空梯度 265/400）；稀疏信号随 H 的指数衰减表（H=4 时组内至少一条走对 5.48e-1，H=12 只剩 1.20e-4）；以及 gamma=0.90/0.99 在 H=50 时的末端权重对比。所以「长程必须补过程信号 + 课程学习」这句话在本脚本里是可复现的数字，不是口号。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "组内奖励全相同（全失败或全成功）：优势恒为 0，本机 400 轮里稀疏设置有 382 轮如此；要显式检测 var≈0，过滤空组、或退化成子任务/SFT 信号，而不是让这轮悄悄空转。",
+        "H=1：退化成上下文老虎机，折扣与 GAE 都失去意义，此时 GRPO 与单步 bandit 写法等价。",
+        "轨迹长度不等：必须 padding 加 loss mask，否则长轨迹的工具返回文本会主导梯度，长度偏置非常严重。",
+        "工具报错 / 超时 / 环境崩溃：要当成可观测状态喂回模型并记录失败原因分布，而不是让训练脚本直接抛异常。",
+        "环境不可自动判分（写作、开放域问答）：只能退回偏好或 LLM-judge，噪声大，需要多次评判与人工校准，且要防判分器被攻击。",
+        "奖励攻击：代理指标存在捷径（改测试、跳过断言、重复无意义调用），必须留 held-out 任务与人工抽检，并把「捷径检测集」写进评测。",
+        "gamma 太小：H=50、gamma=0.90 时末端奖励权重只剩 0.0057，长程目标基本学不到。",
+        "上下文超窗：长程 rollout 很容易爆窗口，截断策略要保证截断后仍可判分，否则奖励与观测对不上。"
+      ],
+      "pitfalls": [
+        "把长程任务当成单轮 prompt 训练，不给每步记奖励、不做 turn-level 优势，等于没有任何信用分配信息",
+        "拿一组全失败的 rollout 去算优势：组内奖励相同、标准差为 0，优势全是 0，这一轮完全白跑（本机实测 400 轮里 382 轮空梯度）",
+        "折扣因子沿用短任务的 0.9：H=50 时末端奖励权重只剩 0.0057，等于只优化前几步",
+        "忘了 loss mask，把工具返回与环境日志的 token 也算进策略损失，让模型去「预测」本不属于它的动作",
+        "以为手写过程奖励一定安全：显式规则容易被刷分（反复完成同一个便宜的子目标），只有势函数式 shaping 才保证不改最优策略",
+        "只报平均奖励不报成功率与步数：奖励被 hack 时平均奖励反而上涨，指标必须成组看",
+        "没有终止条件与最大步数上限，坏策略无限调用工具，rollout 挂死拖垮训练",
+        "训练与评测共用同一批环境或题目，等于把测试集练进去，离线指标虚高"
+      ],
+      "followUps": [
+        "什么时候用 PPO 的 critic，什么时候用 GRPO 的组内基线？在 H 很长、奖励稀疏时两者的方差与显存代价各是什么？",
+        "过程奖励怎么设计才不被刷分？势函数式 shaping 与学出来的 PRM 各有什么风险？",
+        "rollout 长度不一致时，优势怎么归一化：整条轨迹一个标量，还是按 turn 分别归一化？",
+        "训练环境和真实部署环境有 gap，怎么做 domain randomization 与在线校正？",
+        "长程任务的失败大多是「中间某步错、后面全崩」，怎么用失败轨迹做 credit assignment（例如回溯定位首个错误步）？",
+        "怎么判断模型真的学会了长程规划，而不是记住了训练任务里的捷径？给出几个诊断实验。",
+        "异步 rollout + off-policy 数据（staleness）会带来什么问题，怎么用重要性采样或裁剪控制？",
+        "如果奖励只能在真实系统里拿到（不能反复试错），怎么把离线数据与少量在线交互结合？"
+      ],
+      "variations": [
+        "把玩具环境换成真正的代码修复环境（跑单元测试给奖励），H 就是「读文件—改代码—跑测试」的轮数。",
+        "工具调用型 agent：每步产生一次 function call，动作空间是「工具 + 参数」，需要按 turn 做 loss mask。",
+        "分层 RL / 选项框架：上层选子目标、下层执行子技能，用来缓解单一策略在超长 H 上的探索困难。",
+        "课程学习：从 H=2~3 的短任务开始，成功率过阈值再把 H 加倍，配合重放旧难度防遗忘。",
+        "过程奖励模型（PRM）+ 结果奖励的加权组合，以及用 MCTS / 树搜索做推理时的价值估计。",
+        "多智能体或人机混合：环境里还有另一个 agent / 人类反馈，奖励来自偏好比较而非可验证真值。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "长程 Agentic RL 闭环",
+        "caption": "六步闭环：先把长程任务写成多轮 MDP，再搭可判分环境，设计结果+过程奖励，做信用分配（折扣/GAE/组内基线），更新策略，最后按成功率与步数汇报并迭代回炉。最容易漏的是第三步与第四步之间的耦合：奖励越稀疏，信用分配越退化成「全组零优势」。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='长程 Agentic RL 训练闭环：任务建模、环境搭建、奖励设计、信用分配、策略更新、评估汇报，并回到任务建模迭代'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='12' y='18' font-size='13' fill='currentColor'>长程 Agentic RL 训练闭环</text><rect x='10' y='34' width='132' height='40' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='52' font-size='13' fill='currentColor'>① 任务建模</text><text x='18' y='68' font-size='13' fill='currentColor'>多轮 MDP，H 步</text><rect x='174' y='34' width='132' height='40' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='182' y='52' font-size='13' fill='currentColor'>② 环境搭建</text><text x='182' y='68' font-size='13' fill='currentColor'>可重置·可判分</text><rect x='338' y='34' width='132' height='40' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='346' y='52' font-size='13' fill='currentColor'>③ 奖励设计</text><text x='346' y='68' font-size='13' fill='currentColor'>结果 + 过程奖励</text><line x1='142' y1='54' x2='168' y2='54' stroke='var(--line-1)' stroke-width='1'/><polygon points='174,54 166,50 166,58' fill='var(--line-1)'/><line x1='306' y1='54' x2='332' y2='54' stroke='var(--line-1)' stroke-width='1'/><polygon points='338,54 330,50 330,58' fill='var(--line-1)'/><line x1='404' y1='74' x2='404' y2='124' stroke='var(--line-1)' stroke-width='1'/><polygon points='404,130 400,122 408,122' fill='var(--line-1)'/><rect x='338' y='130' width='132' height='44' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='346' y='150' font-size='13' fill='currentColor'>④ 信用分配</text><text x='346' y='167' font-size='13' fill='currentColor'>GAE / 组内基线</text><rect x='174' y='130' width='132' height='44' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='182' y='150' font-size='13' fill='currentColor'>⑤ 策略更新</text><text x='182' y='167' font-size='13' fill='currentColor'>策略梯度 + KL</text><rect x='10' y='130' width='132' height='44' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='150' font-size='13' fill='currentColor'>⑥ 评估汇报</text><text x='18' y='167' font-size='13' fill='currentColor'>成功率 · 步数</text><line x1='338' y1='152' x2='312' y2='152' stroke='var(--line-1)' stroke-width='1'/><polygon points='306,152 314,148 314,156' fill='var(--line-1)'/><line x1='174' y1='152' x2='148' y2='152' stroke='var(--line-1)' stroke-width='1'/><polygon points='142,152 150,148 150,156' fill='var(--line-1)'/><line x1='76' y1='130' x2='76' y2='80' stroke='var(--accent)' stroke-width='1'/><polygon points='76,74 72,82 80,82' fill='var(--accent)'/><text x='86' y='104' font-size='13' fill='currentColor'>迭代：失败轨迹回炉</text><text x='12' y='198' font-size='13' fill='currentColor'>瓶颈：rollout 吞吐与信用分配</text><text x='12' y='220' font-size='13' fill='currentColor'>H 越长，越要先短后长补过程信号</text></svg>",
+        "alt": "六步闭环流程图：① 任务建模（多轮 MDP，H 步）→② 环境搭建（可重置·可判分）→③ 奖励设计（结果+过程奖励），③ 向下到 ④ 信用分配（GAE / 组内基线）→⑤ 策略更新（策略梯度 + KL）→⑥ 评估汇报（成功率·步数），再从 ⑥ 沿左侧箭头回到 ① 迭代（失败轨迹回炉）。"
+      },
+      "selfTest": [
+        "长程任务里为什么不能把折扣因子设成 0.9？（答：末端奖励在第 0 步只保留 gamma^(H-1)，本机实测 H=50 时 gamma=0.90 只剩 0.0057，几乎等于不学远端目标；0.99 还有 0.6111。）",
+        "一组 rollout 全部失败时，GRPO 的优势是什么，会发生什么？（答：组内奖励全相同，mean=每个 r，分子恒为 0，优势全 0，这一轮没有梯度；必须显式检测并处理，否则训练看起来在跑其实在空转。）",
+        "为什么推荐势函数式过程奖励而不是手写「完成子目标 +1」？（答：r_t = γΦ(s_{t+1}) − Φ(s_t) 的望远镜求和只与首末势有关，不改最优策略；手写加分容易被刷分，可以反复完成廉价子目标来堆奖励。）",
+        "工具有返回内容时，凭什么要把这些 token 从策略损失里 mask 掉？（答：它们不是模型自己采样的动作，算进 log-prob 等于让模型去拟合环境文本，既无意义又会让梯度被长文本主导。）",
+        "只看平均奖励会漏掉什么？（答：奖励攻击。策略可能靠捷径抬高平均奖励，正确口径应是成功率 + 平均步数 + 工具调用正确率 + 捷径检测集的组合。）"
+      ],
+      "keyPoints": [
+        "长程任务先形式化成多轮 MDP：状态含环境观测与工具返回，动作是每步的工具调用/子目标，必须定义终止条件与最大步数",
+        "可复现、可自动判分、难度可调的环境是长程 RL 的地基，rollout 吞吐（而非算法）通常才是工程瓶颈",
+        "奖励=稀疏结果奖励打底 + 势函数式过程奖励补稠密信号；过程奖励必须保证不改变最优策略、并防奖励攻击",
+        "信用分配用折扣/GAE，或去掉 critic 用同 prompt 的组内基线（GRPO）；折扣因子要按 H 选，工具 token 要 loss mask",
+        "评估必须报成功率与步数等成组指标，并用先短后长课程、KL 约束、上下文管理保证长程训练不崩"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "题干明确写：该实习生研究方向是「怎么通过强化学习，让模型完成长程任务」，工作方式是「先和负责人讨论方向，再自己搭训练环境、调整算法、训练、看结果、汇报」；本条目正是围绕这条工作链展开。",
+          "输入文件为本条目的唯一依据：id=jd-agentic-rl-longhorizon、origin=curated、kind=exam、marker=笔试场景、difficulty=hard、topics=[大模型与RL]、sourceUrl=null；因此 sources 必须为空数组，本条目 sources=[]，全篇未出现任何链接。",
+          "题面没有给出环境类型、模型规模、算法名、评价指标与样例，本条目只输出方法论与可落地的训练闭环，未编造任何题面细节（所有具体数值都标注为本机玩具实验或理论公式）。",
+          "code.source 已在本机 python 3.12.9 上实际运行通过，且只用标准库（math、random）：shaping=False 时第 3 轮贪心解出、空梯度 382/400、最终贪心动作 (0,2,1,3)；shaping=True 时第 0 轮解出、空梯度 265/400。",
+          "本机实测的稀疏信号衰减（每步 3 个动作、组大小 64）：H=4 单条走对 p=1.23e-2、组内至少一条走对 5.48e-1；H=6 为 1.37e-3 / 8.41e-2；H=8 为 1.52e-4 / 9.71e-3；H=10 为 1.69e-5 / 1.08e-3；H=12 为 1.88e-6 / 1.20e-4。",
+          "本机实测：H=50 时末端奖励的折扣权重 gamma^(H-1) 在 gamma=0.90 下为 0.0057、在 gamma=0.99 下为 0.6111；对全失败组 [0.0]*8 调用组内优势函数得到全 0 优势（组的方差为 0）。",
+          "势函数式奖励 shaping 不改变最优策略这一结论来自 Ng、Harada、Russell 1999 的 potential-based reward shaping 结论，本条目只引用其结论并给出对应实现，未声称独立证明。"
+        ],
+        "uncertain": [
+          "题面是一段实习自述而不是提问，没有明确的问题要求；本条目按 marker=笔试场景 把它理解为「请阐述如何用 RL 让模型完成长程任务」的方案题。若出题人本意是问某个具体取舍（如 PPO 与 GRPO 的对比、过程奖励的具体形式），题面需要人工补充。",
+          "题面未给环境类型（代码/网页/GUI/工具链）、模型规模、H 的量级与奖励来源，本条目给的是通用方法论；代码里的 HORIZON=4、N_ACTIONS=4、group=64、lr=0.05 只是本机玩具实验设置，不代表题目约束。",
+          "「空梯度轮次」这个指标把「策略已收敛成确定性后奖励恒定」的轮次也算进去了，所以它不能直接等同于「没有学习信号」；它只能说明稀疏设置下出现零方差组的频次显著更高（382/400 对 265/400）。",
+          "本机玩具环境只有 4 步且完全可验证，稀疏奖励对照组第 3 轮就解出来了；「H 很大时稀疏奖励会失败」这一结论来自本机的组合概率估计（1/N^H 与组内命中率），不是真实长程任务的训练结果，真机结论需要在真实环境上复现。",
+          "本条目没有外部可引用链接（人工题 sourceUrl=null），sources 为空数组，未编造任何来源或引用。"
+        ]
+      }
+    }
+  ]
+}

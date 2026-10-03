@@ -1,0 +1,146 @@
+{
+  "batchId": "prob-cur-23",
+  "entries": [
+    {
+      "id": "bytedance-rag-chunking",
+      "tldr": "分块先按标题切父块、父块内按句切子块；召回子块补父块；相邻块重合 10%~20%；1000/400 剩 200 不硬凑，低于最小块阈值才回退满块。",
+      "restated": "字节 Agent 秋招二面的 RAG 分块连环追问（题面是问句串，没有样例、没有输入输出格式）：Markdown 文档怎么分块？是否先按标题结构划分模块、再在模块内拆小 chunk？检索时是否召回小 chunk 再补上对应父模块？相邻块要不要重合？一段内容 1000 个 token、chunk size 为 400，最后剩余 200 怎么处理，会不会向前补充内容凑成 400？要求给出可落地的分块与召回方案，并明确这组数值的处理方式。",
+      "approach": [
+        {
+          "step": "先按标题结构切父块（parent block）",
+          "detail": "Markdown 的一级到六级标题本身就是作者给出的语义大纲，所以第一刀一定落在标题上：用标题栈扫全文，遇到 # 就收掉上一段、按 (级别, 标题) 维护面包屑路径，每个标题下的完整内容就是一个父块（section），并记住它的标题路径。这样做的收益有三：一是任何子块的定位天然带上层级语义（「召回 > 重排参数」比正文里孤零零一句「top_k 取 20」信息量大得多）；二是命中子块时可以顺着路径精确回填父块，不会串到别的章节；三是标题路径可以免费拼进 embedding 文本，相当于给每个子块打了一个高置信度的标签。实现上要注意两个工程细节：代码围栏（``` / ~~~）里的 # 是注释不是标题，必须用一个 in_fence 开关跳过；首个标题之前的前言（文档摘要、背景）也要单独成一个父块，不能丢。父块是「检索的粒度」而不是「检索的单元」——它太长、语义太杂，直接拿去算相似度会被稀释，所以下一步还要在父块内拆子块。"
+        },
+        {
+          "step": "父块内按句子边界切子块 + 相邻块重叠",
+          "detail": "拆子块的原则是「宁可按语义边界对齐、也不切断句子」：先按空行分段，再按中英句末标点（。！？；.?!;）断成最小不可切单元，然后从头贪心累加单元直到再加下一个就超过 chunk_size（例子里是 400 token）为止。单个句子本身就超过 400 时允许它独占一块并略微超标，因为从中间切断一句话造成的语义损失远大于块长多几十个 token。相邻块之间要留重叠，常规是 10%~20%，即 chunk_size=400 时重叠 50~80 token，滑窗步长 = chunk_size - overlap（不是 chunk_size）。重叠的作用是防止答案正好横跨块边界——用户的问题落在一块结尾和下一块开头之间时，没有重叠就会两边都检索不全。代价是索引膨胀：块数从 T/400 变成约 T/(400-80)，多出约 25% 的向量与存储，召回侧还会出现重复命中，需要在后面按 parent_id 去重。重叠也必须落在句子边界上，不能按 token 硬回退半个词。"
+        },
+        {
+          "step": "尾块处理：1000 / 400 剩 200 的判定",
+          "detail": "1000 token、chunk size 400 的无重叠前向切分结果是 400 + 400 + 200，最后剩 200。正确处理不是「一律丢弃」也不是「一律硬凑」，而是引入一个最小块阈值 min_chunk_size（经验值取 chunk_size 的一半，即 200）：尾块 token 数 ≥ 阈值就保留成独立的小 chunk（本例 200 正好达标，就保留 200 的尾块，不向前补），因为它语义完整、检索得到；只有尾块 < 阈值（例如设成 300，或文档恰好剩 80）时才回退，从文档末尾往前取满一块 chunk_size，此时最后一块是 [600, 1000)，与上一块（[400, 800)）重叠 200 个 token，重叠量恰好等于 chunk_size - 尾块长度。这就是「向前补充内容凑成 400」的正确形态：补充的是上一块已有的真实内容，而不是补空 token、补零向量或复制粘贴文本凑长度。绝不做硬 padding，因为那会在向量空间里造出一个语义不存在的块；也绝不能把 200 直接扔掉，否则文档结尾（通常是结论、参数表）永远检索不到。"
+        },
+        {
+          "step": "召回：子块检索、父块回填、按 parent 去重",
+          "detail": "索引里存的是子块（embed_text = 标题路径 + 子块正文），检索也只用子块算相似度：小块向量聚焦、噪声少、命中率高。命中之后不把小块直接喂给 LLM，而是用 parent_id 取出对应父块正文（或父块 + 相邻子块组成的上下文窗口）一起送进去——这就是 small-to-big / 父子块召回，解决「小块检索准但上下文不足、大块上下文全但语义被稀释」的两难；父块是拼上下文用的，不进向量索引。同一父块的多个子块同时命中是常态（重叠又加剧了这一点），必须按 parent_id 去重（保留最高分那条，或按分数排序取前 k 个不同父块），否则上下文窗口会被同一个章节的重复内容挤满。最后还要做 token 预算控制：父块本身可能超过模型上下文，超了就按子块位置截断，或改为只回填父块的标题 + 摘要 + 命中子块前后各一块。"
+        }
+      ],
+      "complexity": {
+        "time": "O(T)，T 是文档 token 数：分块、数 token、建索引都是对全文单向扫一遍；检索是向量近邻，取决于索引",
+        "space": "O(T · chunk_size / (chunk_size - overlap)) 存父子块文本与向量；单次问答还要 O(k · 父块长度) 的上下文",
+        "why": "代价来自 token 线性扫描与重叠带来的块数放大：重叠 80、块长 400 时步长 320，块数从 T/400 涨到约 T/320（多约 25%），召回端则被父块长度主导。"
+      },
+      "code": {
+        "language": "python",
+        "source": "\"\"\"RAG Markdown 分块：标题父块 -> 句级子块（可重叠）-> 尾块阈值处理 -> 父子块索引。\n\n运行：python rag_chunking.py\n只用标准库；token 数由 count_tokens 估算，真实场景换成模型自带 tokenizer。\n\"\"\"\nfrom __future__ import annotations\n\nimport re\nfrom dataclasses import dataclass\n\nCJK_RE = re.compile(r\"[\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff]\")\nWORD_RE = re.compile(r\"[A-Za-z0-9_]+\")\nPUNCT_RE = re.compile(r\"[^\\sA-Za-z0-9_\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff]\")\nHEADING_RE = re.compile(r\"^(#{1,6})\\s+(.*\\S)\\s*$\")\nFENCE_RE = re.compile(r\"^\\s*(```|~~~)\")\nSENT_RE = re.compile(r\"[^。！？!?；;\\n]+[。！？!?；;]?\")\n\n\ndef count_tokens(text: str) -> int:\n    \"\"\"粗略 token 估计：1 个 CJK 字≈1，1 个西文词≈1，标点各算 1。\"\"\"\n    if not text:\n        return 0\n    return len(CJK_RE.findall(text)) + len(WORD_RE.findall(text)) + len(PUNCT_RE.findall(text))\n\n\n@dataclass(frozen=True)\nclass Unit:\n    \"\"\"最小不可切单元（一句话），分块只在单元边界上落刀。\"\"\"\n\n    text: str\n    tokens: int\n\n\n@dataclass(frozen=True)\nclass Section:\n    \"\"\"父块：一个标题下的完整内容，path 是标题面包屑。\"\"\"\n\n    path: tuple\n    body: str\n\n\ndef split_sections(md: str) -> list:\n    \"\"\"按标题层级切父块；代码围栏里的 # 不算标题；首个标题前的内容单独成块。\"\"\"\n    sections, stack, buf = [], [], []\n    in_fence = False\n    for line in md.splitlines():\n        if FENCE_RE.match(line):\n            in_fence = not in_fence\n            buf.append(line)\n            continue\n        m = None if in_fence else HEADING_RE.match(line)\n        if m is None:\n            buf.append(line)\n            continue\n        body = \"\\n\".join(buf).strip()\n        if body or stack:\n            sections.append(Section(tuple(t for _, t in stack), body))\n        level, title = len(m.group(1)), m.group(2)\n        while stack and stack[-1][0] >= level:\n            stack.pop()\n        stack.append((level, title))\n        buf = []\n    body = \"\\n\".join(buf).strip()\n    if body or not sections:\n        sections.append(Section(tuple(t for _, t in stack), body))\n    return sections\n\n\ndef split_units(text: str) -> list:\n    \"\"\"段落 -> 句子单元；空段落直接丢弃。\"\"\"\n    units = []\n    for para in re.split(r\"\\n\\s*\\n\", text):\n        for sent in SENT_RE.findall(para):\n            sent = sent.strip()\n            if sent:\n                units.append(Unit(sent, count_tokens(sent)))\n    return units\n\n\ndef chunk_units(units: list, chunk_size: int = 400, overlap: int = 0, min_chunk_size=None) -> list:\n    \"\"\"把单元切成 [(start, end)] 半开区间。\n\n    前向贪心装满 chunk_size，滑窗步长 = 本块 token 数 - overlap，保证相邻块正好重合 overlap；\n    尾块小于 min_chunk_size 时改从末尾往前取满一块，与前一块重合 chunk_size - 尾块长度。\n    \"\"\"\n    if chunk_size <= 0:\n        raise ValueError(\"chunk_size 必须为正\")\n    if not 0 <= overlap < chunk_size:\n        raise ValueError(\"overlap 必须落在 [0, chunk_size)\")\n    if min_chunk_size is None:\n        min_chunk_size = chunk_size // 2\n    if not 0 < min_chunk_size <= chunk_size:\n        raise ValueError(\"min_chunk_size 必须落在 (0, chunk_size]\")\n    n = len(units)\n    if n == 0:\n        return []\n    spans, start = [], 0\n    while start < n:\n        end, used = start, 0\n        while end < n and (used == 0 or used + units[end].tokens <= chunk_size):\n            used += units[end].tokens\n            end += 1\n        spans.append((start, end))\n        if end >= n:\n            break\n        advance = used - overlap\n        nxt, acc = start, 0\n        while nxt < end and acc < advance:\n            acc += units[nxt].tokens\n            nxt += 1\n        start = nxt if nxt > start else start + 1\n    if len(spans) >= 2:\n        s, e = spans[-1]\n        tail = sum(u.tokens for u in units[s:e])\n        if tail < min_chunk_size:\n            spans.pop()\n            i, acc = n, 0\n            while i > 0 and acc + units[i - 1].tokens <= chunk_size:\n                i -= 1\n                acc += units[i].tokens\n            spans.append((i, n) if i < spans[-1][1] else (s, e))\n    return spans\n\n\ndef build_index(md: str, chunk_size: int = 400, overlap: int = 0, min_chunk_size=None) -> list:\n    \"\"\"产出父子块索引：子块用于向量检索，父块用于命中后回填上下文。\"\"\"\n    records = []\n    for si, sec in enumerate(split_sections(md)):\n        units = split_units(sec.body)\n        spans = chunk_units(units, chunk_size, overlap, min_chunk_size)\n        path = \" > \".join(sec.path) or \"(无标题)\"\n        for ci, (s, e) in enumerate(spans):\n            prev_end = spans[ci - 1][1] if ci else s\n            text = \"\".join(u.text for u in units[s:e])\n            records.append(\n                {\n                    \"parent_id\": \"sec-%d\" % si,\n                    \"parent_title\": path,\n                    \"parent_text\": sec.body,\n                    \"child_id\": \"sec-%d-c%d\" % (si, ci),\n                    \"child_text\": text,\n                    \"embed_text\": path + \"\\n\" + text,\n                    \"tokens\": sum(u.tokens for u in units[s:e]),\n                    \"overlap_prev\": sum(u.tokens for u in units[s:prev_end]) if s < prev_end else 0,\n                }\n            )\n    return records\n\n\ndef _synthetic(total: int = 1000, unit: int = 100) -> list:\n    \"\"\"等长合成单元，用来复现题干的 1000 / 400 / 200 这组数值。\"\"\"\n    return [Unit(\"句%03d。\" % i, unit) for i in range(total // unit)]\n\n\nif __name__ == \"__main__\":\n    units = _synthetic()\n    assert sum(u.tokens for u in units) == 1000\n\n    keep = chunk_units(units, chunk_size=400, overlap=0, min_chunk_size=200)\n    assert keep == [(0, 4), (4, 8), (8, 10)], keep\n    assert [sum(u.tokens for u in units[s:e]) for s, e in keep] == [400, 400, 200]\n\n    back = chunk_units(units, chunk_size=400, overlap=0, min_chunk_size=300)\n    assert back == [(0, 4), (4, 8), (6, 10)], back\n    assert [sum(u.tokens for u in units[s:e]) for s, e in back] == [400, 400, 400]\n    assert sum(u.tokens for u in units[6:8]) == 200\n\n    slide = chunk_units(units, chunk_size=400, overlap=100, min_chunk_size=200)\n    assert slide == [(0, 4), (3, 7), (6, 10)], slide\n    assert [sum(u.tokens for u in units[s:e]) for s, e in slide] == [400, 400, 400]\n\n    md = \"\\n\".join(\n        [\n            \"# 检索增强生成\",\n            \"\",\n            \"本文介绍 RAG 的基本流程。\",\n            \"\",\n            \"## 分块策略\",\n            \"\",\n            \"先按标题切父块。再在父块内按句子切子块，chunk size 取 400 token。\",\n            \"\",\n            \"## 召回\",\n            \"\",\n            \"命中子块后回填父块上下文。\",\n        ]\n    )\n    recs = build_index(md, chunk_size=40, overlap=8)\n    assert len(recs) == 3 and all(r[\"tokens\"] <= 40 for r in recs), recs\n    assert recs[2][\"parent_title\"] == \"检索增强生成 > 召回\"\n    print(\"数值自测通过：\", keep, back, slide)\n    for r in recs:\n        print(r[\"child_id\"], \"|\", r[\"parent_title\"], \"|\", r[\"tokens\"], \"token | overlap\", r[\"overlap_prev\"])\n",
+        "walkthrough": [
+          {
+            "note": "count_tokens：把 CJK 字、西文词、标点分别计数再相加，得到与真实 tokenizer 同量级的估计值（中文 1 字≈1 token、英文 1 词≈1 token 是工程上够用的近似）。真实项目里换成 tiktoken 或模型自带 tokenizer，调用点不变。"
+          },
+          {
+            "note": "split_sections：用标题栈切父块。遇到 # 标题就把缓冲区收成一个 Section，路径取当前栈的标题序列（面包屑）；FENCE_RE 维护 in_fence 开关，代码围栏里的 # 不当标题；首个标题前的前言也会成块（此时 path 为空，后面统一显示成「(无标题)」）。"
+          },
+          {
+            "note": "split_units：先按空行分段，再按中英句末标点断句，得到最小不可切单元。所有切分都只在这些单元边界上发生，这就是「不切断句子」的落点。"
+          },
+          {
+            "note": "chunk_units 的装满循环：从 start 起累加单元，直到再加下一个就超过 chunk_size；used == 0 时无条件吃一个单元，所以超长句子会独占一块并略微超标，而不是死循环。"
+          },
+          {
+            "note": "chunk_units 的滑窗：advance = used - overlap，按单元往前走，使下一块起点正好回退 overlap 个 token（overlap=0 即无重叠前向切分）。nxt > start 的兜底保证每轮至少前进一个单元，overlap 接近 chunk_size 时也不会原地打转。"
+          },
+          {
+            "note": "chunk_units 的尾块分支：若最后一块 token 数 < min_chunk_size，就撤掉它，从文档末尾往前取满不超过 chunk_size 的一整块——1000/400/200、阈值 300 时得到 [600, 1000)，与上一块 [400, 800) 重合 200；若前一句本身太长装不下（i 没能退到上一块结束点之前），则退回原来的短尾块，绝不超过 chunk_size 硬拼。"
+          },
+          {
+            "note": "build_index：每个子块记录 parent_id / parent_title / parent_text、token 数 overlap_prev，并把 embed_text 设成「标题路径 + 子块正文」——标题语义对小块的向量贡献很大，只放进 metadata 不拼进文本是白扔信息。父块正文留在记录里，命中后直接取用。"
+          },
+          {
+            "note": "main：用 10 个 100 token 的合成单元复现题干的 1000 / 400 / 200，断言三种策略的结果（保留 200 尾块 / 回退成 400 + 重叠 200 / overlap=100 滑窗三块各 400），再跑一遍 Markdown 端到端样例，验证标题路径与重叠字段。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "文档没有标题、或首个标题前有前言：前言单独成一个父块，parent_title 退化成「(无标题)」，此时子块只靠正文语义检索。",
+        "某个句子本身就超过 chunk_size：让它独占一块并允许略微超标（used == 0 的无条件吃一个），比从句子中间切断更好。",
+        "尾块恰好等于 min_chunk_size（本例 200 == 200）：边界取 >= 保留独立尾块；写成严格小于或大于都会在临界值上做出反直觉的合并。",
+        "空文档、只有标题没有正文：切出零个单元就返回空索引，不要造出零长度的 chunk 去污染向量库。",
+        "上一句太长（例如 350 token）导致无法回退凑满 chunk_size：保留原来的短尾块，不做超长拼接（代码里的 i < spans[-1][1] 判定）。",
+        "overlap 非法（负数、>= chunk_size）：直接抛 ValueError，而不是滑窗步长算成 0 后陷入死循环。",
+        "代码围栏里的 # ：必须当普通文本，否则一个 shell 注释就能把文档切成错误的父块。",
+        "Markdown 表格、多级列表、LaTeX 公式：按句号切会切断表格行与公式，需要给这些结构单独的行级规则（本实现未覆盖，属于已知缺口）。",
+        "父块本身超过模型上下文：回填时截断，或退化成「标题 + 摘要 + 命中子块及其前后邻居」。",
+        "同一父块被多个子块命中：按 parent_id 去重，否则重复内容把上下文窗口挤满。"
+      ],
+      "pitfalls": [
+        "按固定字符数或固定 token 数硬切，把句子、表格行、公式从中间切断，检索出来的块读不通。",
+        "用空 token / 零向量 / 复制粘贴重复文本把剩下的 200 硬凑成 400：向量空间里凭空多出一个语义不存在的块，还会污染近邻检索。",
+        "尾块一律丢弃，导致文档结尾（通常是结论与参数表）永远检索不到。",
+        "overlap 设成 0：答案横跨块边界时两边都检索不全；设成 50% 又让索引体积翻倍、重复召回严重，去重压力剧增。",
+        "滑窗步长写成 chunk_size 而不是 chunk_size - overlap，导致 overlap 名存实亡（或步长算错原地打转）。",
+        "只把标题路径放进 metadata 而不拼进 embedding 文本，小块丢了层级语义。",
+        "只做小块不做父块回填（或反过来只用大块）：前者上下文不足、答不出完整流程，后者语义被稀释、命中率低。",
+        "召回多个子块后不去重、不控 token 预算，同一章节的重复内容把上下文窗口撑爆。",
+        "用字符数近似 token 数而不做校正：中英混排时误差能到 2 倍以上，块长和 min_chunk_size 阈值都会失准。",
+        "把「按标题切父块」理解成「只按标题切」：标题下动辄几千 token 的正文章节不再拆子块，等于没分块。"
+      ],
+      "followUps": [
+        "chunk_size 怎么定？400 这个经验值的依据是什么，换成长文档问答、代码检索、客服 FAQ 该怎么调？",
+        "overlap 取多少合适？给出「答案跨边界概率」与「索引膨胀率」之间的量化权衡。",
+        "如何做语义分块（semantic chunking）：用相邻句向量相似度找断点，代价与收益分别是什么？",
+        "父子块之外还有什么方案：小块检索大块返回、句子窗口检索、Late Chunking、RAPTOR 摘要树，各自解决什么问题？",
+        "命中多个父块时的顺序怎么排？重排模型（rerank）放在子块级还是父块级？",
+        "分块策略怎么评测：命中率、召回率、答案完整性、上下文 token 成本，离线怎么构造测试集？",
+        "多模态与表格怎么分块？表格被切成两半的检索问题怎么解决？",
+        "增量更新：文档改了一段，怎么只重建受影响的父块与子块，而不全量重算向量？"
+      ],
+      "variations": [
+        "固定窗口滑窗分块（token 级，overlap=10%~20%），不依赖任何结构，作为结构感知分块的退化基线。",
+        "递归字符切分：按「标题 → 段落 → 句子 → 词」的优先级递归尝试分隔符，是工程里最常见的兜底实现。",
+        "语义分块：计算相邻句的 embedding 相似度，在相似度骤降处断开，不做固定长度。",
+        "父子块 + 摘要：子块做检索、父块摘要做回填，兼顾上下文完整与 token 成本。",
+        "Late Chunking：先让长上下文模型编码整篇文档，再在 token 向量上按块做池化，让每个块向量都带全局上下文。",
+        "按结构分块 + 元数据过滤：把标题路径做成可过滤字段，先按章节过滤再向量检索，缩小搜索空间。",
+        "表格 / 代码专用分块：表格按行组切并保留表头，代码按函数与类切并保留签名。",
+        "同一份文档建多粒度索引（句子级 + 段落级 + 章节级），检索时多路召回再融合。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "RAG 父子块与尾块处理",
+        "caption": "记住三件事：按标题切父块、父块内按句切子块（相邻重叠）；1000/400 剩 200 时先看阈值——够长就保留独立尾块，不够才从末尾往前取满 400（与上一块重合 200）；绝不用空 token 硬填充。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='RAG Markdown 分块流程与 1000 token 尾块处理示意'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='19' font-size='14' fill='currentColor'>RAG 分块：结构 → 子块 → 尾块</text><rect x='8' y='30' width='86' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='14' y='47' font-size='13' fill='currentColor'>Markdown</text><line x1='94' y1='42' x2='100' y2='42' stroke='var(--line-1)' stroke-width='1'/><polygon points='106,42 98,37 98,47' fill='var(--line-1)'/><rect x='106' y='30' width='96' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='112' y='47' font-size='13' fill='currentColor'>按标题切父块</text><line x1='202' y1='42' x2='208' y2='42' stroke='var(--line-1)' stroke-width='1'/><polygon points='214,42 206,37 206,47' fill='var(--line-1)'/><rect x='214' y='30' width='100' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='220' y='47' font-size='13' fill='currentColor'>父块内切子块</text><line x1='314' y1='42' x2='320' y2='42' stroke='var(--line-1)' stroke-width='1'/><polygon points='326,42 318,37 318,47' fill='var(--line-1)'/><rect x='326' y='30' width='94' height='24' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='332' y='47' font-size='13' fill='currentColor'>尾块判定</text><text x='14' y='74' font-size='13' fill='currentColor'>① 1000 token、chunk=400 → 400 + 400 + 200</text><rect x='24' y='86' width='173' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='197' y='86' width='173' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='370' y='86' width='86' height='22' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='92' y='102' font-size='13' fill='currentColor'>0~400</text><text x='265' y='102' font-size='13' fill='currentColor'>400~800</text><text x='382' y='102' font-size='13' fill='currentColor'>800~1000</text><text x='14' y='124' font-size='13' fill='currentColor'>② 阈值大于 200 时：尾块回退成满块 400</text><rect x='24' y='138' width='173' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='197' y='138' width='173' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='283' y='138' width='173' height='22' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='316' y='154' font-size='13' fill='currentColor'>尾块 [600,1000)</text><text x='252' y='172' font-size='13' fill='currentColor'>↑ 与上一块重合 200</text><text x='14' y='192' font-size='13' fill='currentColor'>③ 尾块从末尾往前取满，不填空 token</text><text x='14' y='212' font-size='13' fill='currentColor'>④ 相邻块重叠 10%~20%，按句边界对齐</text><text x='14' y='230' font-size='13' fill='currentColor'>⑤ 命中子块 → 回填父块，按 parent_id 去重</text></svg>",
+        "alt": "从 Markdown 出发的四步流程图：Markdown → 按标题切父块 → 父块内切子块 → 尾块判定；下方两条数轴对比 1000 token 前向切分得到的 400 + 400 + 200，以及尾块不足阈值时从 600 起回退成满块 [600,1000)、与上一块重合 200 的情形。"
+      },
+      "selfTest": [
+        "1000 token、chunk size 400、min_chunk_size 200，无重叠切分的结果是什么？（答：400 + 400 + 200，尾块 200 达到最小块阈值，保留成独立 chunk，不向前补。）",
+        "同一组数字，若 min_chunk_size 设成 300 呢？（答：尾块 200 < 300，从文档末尾往前取满 400，最后一块变成 [600, 1000)，与上一块 [400, 800) 重叠 200 = 400 - 200。）",
+        "重叠和「向前凑满」是一回事吗？（答：不是。重叠是每一对相邻块之间固定保留 10%~20% 的上下文，滑窗步长 = chunk_size - overlap；向前凑满只在尾块过短时发生，重叠量由 chunk_size - 尾块长度决定，两者都可能出现但触发条件与数值都不同。）",
+        "为什么检索用小 chunk、返回用父块？（答：小块向量聚焦、噪声少、命中率高；但小块本身上下文不足，单靠它 LLM 答不出完整流程，所以命中后按 parent_id 回填父块正文，兼顾精度与完整性。）",
+        "尾块能不能用空 token 或重复文本硬凑成 400？（答：不能。那会造出语义不存在的块污染向量空间；正确做法是回退取上一块的真实内容（重叠）或保留短块。）"
+      ],
+      "keyPoints": [
+        "先结构后语义：按标题切父块（保留标题路径），父块内再按句子边界切子块，绝不硬切。",
+        "相邻块重叠 10%~20%，滑窗步长 = chunk_size - overlap，重叠也落在句子边界上。",
+        "1000/400 剩 200：≥ min_chunk_size 就保留独立尾块，不足才从末尾回退成满块（与上一块重合 chunk_size - 尾块长度）。",
+        "绝不用空 token / 重复文本硬 padding 凑长度，也不丢弃尾块。",
+        "检索用子块、回填用父块，命中多个子块时按 parent_id 去重并控 token 预算。"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "题面是字节 Agent 秋招二面的 RAG 分块连环追问，共五个问题：Markdown 文档的分块逻辑、是否先按标题结构划分模块再拆小 chunk、检索时是否召回小 chunk 再补充对应父模块、相邻块是否重合、1000 token / chunk size 400 时最后剩余 200 如何处理以及是否会向前补充内容凑成 400。",
+          "题面明确给出了一组具体数值：一段内容 1000 个 token、chunk size 为 400、最后剩余 200，这是本题唯一可核对的量化条件。",
+          "本题输入里 origin = curated、sourceUrl = null，因此 sources 为空数组，本 entry 全篇不出现任何链接或域名文本。",
+          "本文件 code.source 只依赖 Python 标准库（re、dataclasses），已在本机实际运行通过：三种策略的切分结果断言为 [(0,4),(4,8),(8,10)]（400/400/200）、[(0,4),(4,8),(6,10)]（400/400/400，尾块与上一块重合 200）、[(0,4),(3,7),(6,10)]（overlap=100 时三块各 400），Markdown 端到端样例得到 3 个子块且标题路径为「检索增强生成 > 召回」。",
+          "题面没有给出任何标准答案、样例或评分口径，只有问句；本 entry 给的是业界常见做法（结构感知分块 + 父子块召回 + 固定比例重叠 + 最小块阈值），代码与文字自洽，但不代表字节官方的标准答案。"
+        ],
+        "uncertain": [
+          "题面是纯问句串，没有输入输出格式、没有样例、没有参考答案，因此「正确解」是按 RAG 工程通行做法（结构分块、父子块、重叠、尾块阈值）整理的，可能与面试官心里的具体口径有措辞差异。",
+          "1000/400 剩 200 这个例子在题面里没有说明相邻块是否已经开启重叠；本 entry 是按「先做无重叠前向切分得到 400+400+200，再讨论尾块」来解读的。若已开启 20% 重叠，滑窗步长为 320，最后一块会自然对齐到文档尾部（[600,1000)），尾块问题被重叠掩盖，这一点在正文里已分别说明。",
+          "min_chunk_size 取 chunk_size 的一半（本例 200）是经验值，题面未给阈值；阈值取多少直接决定「保留 200」还是「回退成 400」，是本题最需要向面试官确认的参数。",
+          "code.source 里的 count_tokens 是字符级近似（CJK 字 1≈1、西文词 1≈1、标点各 1），真实 tokenizer 的边界与计数会不同，块边界会有几个 token 的偏差，但 400/400/200 的比例结论不变；换 tokenizer 时只需替换该函数。",
+          "代码覆盖了 Markdown 标题、句子边界与代码围栏，未覆盖表格、多级列表缩进、LaTeX 公式等结构，这些位置按句切可能切断行内容，属于已知缺口。",
+          "本 entry 未运行任何外部 RAG 框架或真实向量库对比，父子块召回与去重的效果（命中率、上下文成本）来自通行工程结论，未做端到端评测。"
+        ]
+      }
+    }
+  ]
+}

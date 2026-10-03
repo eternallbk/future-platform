@@ -1,0 +1,129 @@
+{
+  "batchId": "prob-14",
+  "entries": [
+    {
+      "id": "pb-b951fea75a25ca89",
+      "itemId": "b951fea75a25ca89",
+      "tldr": "GSPO 把逐 token 连乘比率换成经长度归一化的序列级比率，正确答案是降低逐 token 比率引入的高方差、改善训练稳定性。",
+      "restated": "牛客单选题（标注 2026 年华为笔试题，题干在标题处被截断）：GSPO 使用经过长度归一化的序列级重要性采样比率，一个主要动机是什么？选项为：(1) 降低逐 token 比率引入的高方差问题，改善训练稳定性；(2) 仅为了增加随机探索次数；(3) 完全消除奖励模型的偏差；(4) 使算法必然变成离线策略算法。题干没有样例、没有数值约束，正确答案是 (1)。",
+      "approach": [
+        {
+          "step": "逐 token 比率的老做法：错在哪",
+          "detail": "PPO / GRPO 系的做法是在每个 token 上算 r_t = pi_new(o_t|s_t) / pi_old(o_t|s_t)，再让整条序列的比率等于连乘 Π_t r_t（等价于对数比率求和）。问题是对数比率之和的方差正比于序列长度：若单 token 对数比率的波动是 σ，整条序列的对数比率波动就是 σ√L，比率本身 exp(·) 因此随长度指数级抖动——同一个序列级 advantage 会被一个噪声极大的权重放大或缩小，梯度估计方差随之爆炸，长序列尤其明显。三个错项也都站不住：选项 2（增加随机探索次数）与比率归一化无关；选项 3 说「完全消除奖励模型的偏差」是过度承诺，GSPO 只改比率的构造，奖励模型自身的偏差与 reward hacking 一点没动；选项 4 说「必然变成离线策略算法」是概念错误，GSPO 依旧用当前策略采样、是 on-policy，只是把重要性比率定义在序列级。"
+        },
+        {
+          "step": "GSPO 的解法：序列级 + 长度归一化（正确项）",
+          "detail": "GSPO 把重要性比率整体定义在序列层：s_i(theta) = ( pi_theta(y_i|x) / pi_old(y_i|x) ) ** (1 / |y_i|) = exp( (1/|y_i|) * sum_t log r_t )，也就是逐 token 比率的几何平均；目标是 s_i 乘上整条序列的 advantage A_i，并在序列级做对称裁剪。收益有两个：一是几何平均把 σ√L 的抖动压回 σ/√L，长度不再放大噪声（我的模拟 σ=0.05 时 L=16 得 0.0126 ≈ 0.05/4、L=256 得 0.0031 ≈ 0.05/16，而连乘版本从 0.2073 涨到 1.2173）；二是比率尺度与长度解耦，长短序列的权重处在同一量级，不必为不同长度单独调裁剪阈值。要强调被归一化的是序列级比率，不是把每个 token 的比率取平均后仍连乘进 loss。"
+        },
+        {
+          "step": "裁剪位置：为什么必须放在序列级",
+          "detail": "GSPO 裁剪 clip(s_i, 1-eps, 1+eps) 的 eps 常用 3e-4 量级，比 PPO 的 0.2 小几个数量级——因为 s_i 是几何平均、尺度天然贴近 1，阈值可以取得极小。反过来，token 级裁剪作用在单个 token 上：一条长序列里只要有一个 token 的比率冲出区间，这次更新就被截断，L 越大几乎必然触发，梯度被频繁截断、有效信号被稀释，这正是「高方差 → 训练不稳定」的直接来源。实现上整条序列共享同一个序列级比率与同一个（GRPO 式组内归一化的）advantage。"
+        }
+      ],
+      "complexity": {
+        "time": "O(L)：每条序列累加 L 个 token 的对数比率",
+        "space": "O(1) 额外空间（单遍累加求均值）；若实现保留逐 token 比率数组则为 O(L)",
+        "why": "比值只要 L 次加法、一次除法与一次指数；真正的卖点是抖动从 σ√L 变成 σ/√L。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''GSPO 长度归一化序列级重要性比率：方差对比实验（可直接运行）。\n\n对应单选题的正确选项：降低逐 token 比率引入的高方差问题，改善训练稳定性。\n本脚本用随机模拟证实两件事：\n1. 逐 token 连乘比率 prod_t r_t 的抖动不随序列长度 L 收敛：对数比率之和的\n   标准差按 sqrt(L) 增长，比率本身因此指数级抖动；\n2. GSPO 的长度归一化序列级比率 s = exp(mean_t log r_t) 的标准差与 L 无关，\n   实测约为单 token 波动除以 sqrt(L)。\n运行：python gspo_ratio_variance.py\n'''\nimport math\nimport random\nimport statistics\n\nLOG_CLIP = 10.0\n\n\ndef token_log_ratios(rng, length, drift=0.0, noise=0.05):\n    '''模拟一条序列上每个 token 的对数比率 log(pi_new/pi_old)。'''\n    if length <= 0:\n        raise ValueError('length 必须为正整数')\n    vals = [rng.gauss(drift, noise) for _ in range(length)]\n    return [max(-LOG_CLIP, min(LOG_CLIP, v)) for v in vals]\n\n\ndef token_level_ratio(log_ratios):\n    '''逐 token 连乘：prod_t r_t = exp(sum_t log r_t)，长度越长越抖。'''\n    if not log_ratios:\n        raise ValueError('序列不能为空')\n    return math.exp(sum(log_ratios))\n\n\ndef gspo_sequence_ratio(log_ratios):\n    '''GSPO：s_i = (prod_t r_t) ** (1/L) = exp(mean_t log r_t)，几何平均即长度归一化。'''\n    if not log_ratios:\n        raise ValueError('序列不能为空')\n    return math.exp(sum(log_ratios) / len(log_ratios))\n\n\ndef clipped(ratio, eps=3e-4):\n    '''序列级对称裁剪：|s_i - 1| 超过 eps 的部分被截断，不再产生梯度。'''\n    if not 0.0 < eps < 1.0:\n        raise ValueError('eps 必须落在 (0, 1)')\n    return min(1.0 + eps, max(1.0 - eps, ratio))\n\n\ndef variance_table(lengths, trials, seed=0):\n    '''对每个长度重复 trials 次，返回 (长度, 连乘比率 std, GSPO 比率 std)。'''\n    rng = random.Random(seed)\n    rows = []\n    for length in lengths:\n        tok, gsp = [], []\n        for _ in range(trials):\n            lr = token_log_ratios(rng, length)\n            tok.append(token_level_ratio(lr))\n            gsp.append(gspo_sequence_ratio(lr))\n        st, sg = statistics.pstdev(tok), statistics.pstdev(gsp)\n        assert sg < st, '长度归一化应当降低比率抖动'\n        rows.append((length, st, sg))\n    return rows\n\n\ndef main():\n    print('长度 逐token连乘std GSPO序列级std 缩减倍数')\n    for length, st, sg in variance_table((16, 64, 256), trials=4000):\n        print('%4d %14.4f %13.4f %10.1f' % (length, st, sg, st / sg))\n    lr = token_log_ratios(random.Random(1), 1)\n    assert math.isclose(gspo_sequence_ratio(lr), token_level_ratio(lr))\n    print('L=1 时两者相等：', round(gspo_sequence_ratio(lr), 6))\n    print('极端比率被裁剪到 1 加减 eps：', clipped(1.0 + 1e-3, 3e-4))\n    try:\n        gspo_sequence_ratio([])\n    except ValueError as err:\n        print('空序列报错：', err)\n\n\nif __name__ == '__main__':\n    main()\n",
+        "walkthrough": [
+          {
+            "note": "token_log_ratios 造数据：用正态分布模拟单条序列每个 token 的对数比率，noise 是单 token 波动 σ，drift 可以模拟新旧策略的系统性偏移；末尾按 [-LOG_CLIP, LOG_CLIP] 截断，避免极端值把 exp 直接打爆。"
+          },
+          {
+            "note": "token_level_ratio 就是 PPO / GRPO 式写法：整条序列的比率 = exp(所有对数比率之和)，所以它的对数标准差随 L 按 √L 增长。gspo_sequence_ratio 只在求和后多除以一个 len(log_ratios)，即 exp(平均对数比率) = 逐 token 比率的几何平均，这正是「长度归一化的序列级比率」公式。"
+          },
+          {
+            "note": "clipped 演示 GSPO 的序列级对称裁剪：几何平均比率天然贴近 1，所以 eps 可以取 3e-4 这种极小值；实现里顺带校验 eps 落在 (0,1)，避免写出 0 或大于 1 的非法阈值导致梯度恒为 0。"
+          },
+          {
+            "note": "variance_table 对每个长度独立重复 trials 次：每次同时算连乘比率与 GSPO 比率，各自统计总体标准差。断言 sg < st 是本题结论的可执行版本——如果哪天长度归一化反而让抖动更大，这里会直接失败。"
+          },
+          {
+            "note": "main 打印长度-标准差对照表并做边界自测：L=1 时几何平均退化为逐 token 比率（断言两者相等，实测 1.066529）、极端比率被裁剪到 1.0003、空序列抛 ValueError 而不是 ZeroDivisionError；实测 L=16/64/256 时连乘 std 为 0.2073/0.4613/1.2173，GSPO 为 0.0126/0.0063/0.0031，与 0.05/√L 的 0.0125/0.00625/0.003125 吻合。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "L=1：几何平均退化为逐 token 比率，s_i = r_1，此时 GSPO 与连乘写法完全等价（自测里用 isclose 断言）。",
+        "序列长度为 0：GSPO 公式要除以 |y_i|，工程实现必须先过滤空序列或抛错，否则是 ZeroDivisionError。",
+        "极长序列：Σ log r_t 仍可能很大，累加建议用 float64 或对和做 clamp，否则 exp 会上溢成 inf。",
+        "eps 沿用 PPO 的 0.2：几何平均比率几乎总落在 0.8 到 1.2 之间，等于基本不裁剪，失去序列级裁剪的意义。",
+        "eps 取得太小（如 1e-6）：s_i 天然在 1 附近抖 ±σ/√L，正常样本也会被误裁，梯度直接归零。",
+        "整组 advantage 全为 0（GRPO 组内归一化分母为 0）：比率再稳也没有梯度信号，需要单独处理除零。",
+        "新旧策略完全同分布（σ=0）：s_i 恒等于 1，GSPO 与连乘写法没差别，方差问题被掩盖，模拟时要显式设定 noise。"
+      ],
+      "pitfalls": [
+        "把「长度归一化」理解成把 loss 除以长度：GSPO 归一化的是重要性比率（几何平均），不是 loss 的尺度。",
+        "把几何平均写成算术平均：s_i = (Π_t r_t)^(1/L) 与 (Σ_t r_t)/L 是两个不同的量，后者没有概率比率的含义。",
+        "说 GSPO 能消除奖励模型偏差：它只改比率构造，奖励模型偏差和 reward hacking 完全不受影响（错项 3）。",
+        "说 GSPO 让算法变成离线策略：它仍是 on-policy 采样，变化只在重要性比率的定义层级（错项 4）。",
+        "在 token 级而不是序列级裁剪：长序列几乎必然触发截断，有效梯度被反复丢掉，稳定性反而更差。",
+        "先连乘 r_t 再开 1/L 次方：数值上极易上溢或下溢，正确做法是在 log 空间先累加、再除以 L、最后 exp。",
+        "忘记同一序列内所有 token 共享一个序列级比率与一个 advantage，误把每个 token 的比率单独乘进 loss。",
+        "长度单位取错（用字符数、字节数而不是生成 token 数），长度归一化的尺度随之全错。"
+      ],
+      "followUps": [
+        "GSPO 的序列级裁剪与 PPO 的 token 级裁剪在梯度上具体差在哪里？给出期望梯度表达式。",
+        "为什么 GSPO 的 eps 能取到 3e-4 这么小，而 PPO 用 0.2？",
+        "若 advantage 是 token 级的（例如 GAE），GSPO 的序列级比率还能直接用吗？要做什么改造？",
+        "GSPO 与 GRPO、RLOO、DAPO、DPO 在比率定义与基线构造上的区别是什么？",
+        "长度归一化会不会让长序列的梯度贡献被系统性压低？如果会，怎么补偿？",
+        "分布式训练里 pi_old 是采样时的行为策略，陈旧性（staleness）如何影响序列级比率的有效性？"
+      ],
+      "variations": [
+        "GRPO：同样用组内相对 advantage，但序列级比率不做长度归一化、改用逐 token loss 平均。",
+        "DAPO：token 级归一化 + clip-higher 解耦上下裁剪界，和 GSPO 的序列级思路恰好相反。",
+        "RLOO：用 leave-one-out 基线代替组内均值，比率部分仍可套用 GSPO 的序列级定义。",
+        "DPO / SimPO：完全绕开重要性采样，直接用偏好对构造隐式奖励，没有比率方差问题。",
+        "GSPO-token 变体：保留逐 token 比率，但用序列级比率给每个 token 的梯度加权。",
+        "把硬裁剪换成 KL 惩罚或比率温度（ratio shaping），观察长序列上的稳定性差异。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "GSPO 长度归一化比率对比",
+        "caption": "两条支路的唯一区别是「连乘」还是「对 log 比率取平均再 exp」：上支路抖动随序列长度放大，下支路抖动约等于单 token 波动除以 sqrt(L)，这正是这道单选题的答案。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='GSPO 长度归一化序列级比率与逐 token 连乘比率的对比流程图'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='18' font-size='13' fill='currentColor'>两种重要性比率的对比</text><text x='12' y='44' font-size='13' fill='var(--fg-1)'>逐 token 连乘（PPO / GRPO）</text><rect x='12' y='52' width='150' height='30' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='20' y='72' font-size='13' fill='currentColor'>逐位置比率 r_t</text><line x1='162' y1='67' x2='182' y2='67' stroke='var(--line-1)' stroke-width='1'/><polygon points='186,67 180,63 180,71' fill='var(--line-1)'/><rect x='186' y='52' width='140' height='30' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='194' y='72' font-size='13' fill='currentColor'>连乘 r_1 到 r_L</text><line x1='326' y1='67' x2='346' y2='67' stroke='var(--line-1)' stroke-width='1'/><polygon points='350,67 344,63 344,71' fill='var(--line-1)'/><rect x='350' y='52' width='118' height='30' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='358' y='72' font-size='13' fill='var(--accent)'>抖动随 L 放大</text><text x='14' y='106' font-size='13' fill='currentColor'>GSPO：s_i = exp(mean_t log r_t)</text><text x='14' y='126' font-size='13' fill='currentColor'>即逐 token 比率的几何平均，与长度解耦</text><text x='12' y='158' font-size='13' fill='var(--fg-1)'>GSPO 长度归一化（序列级）</text><rect x='12' y='166' width='150' height='30' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='20' y='186' font-size='13' fill='currentColor'>mean_t log r_t</text><line x1='162' y1='181' x2='182' y2='181' stroke='var(--line-1)' stroke-width='1'/><polygon points='186,181 180,177 180,185' fill='var(--line-1)'/><rect x='186' y='166' width='140' height='30' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='194' y='186' font-size='13' fill='currentColor'>exp(mean) = s_i</text><line x1='326' y1='181' x2='346' y2='181' stroke='var(--line-1)' stroke-width='1'/><polygon points='350,181 344,177 344,185' fill='var(--line-1)'/><rect x='350' y='166' width='118' height='30' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='358' y='186' font-size='13' fill='var(--accent)'>抖动约 σ 除以根号 L</text><text x='14' y='224' font-size='13' fill='currentColor'>几何平均替代连乘：比值不再随序列长度指数放大</text></svg>",
+        "alt": "上半部分流程：逐位置比率 r_t 经连乘 r_1 到 r_L 后比率抖动随长度 L 放大；中间给出 GSPO 公式 s_i = exp(mean_t log r_t)，即逐 token 比率的几何平均；下半部分流程：对 log r_t 求平均再 exp 得到 s_i，比率抖动约等于 σ 除以根号 L，与长度基本无关。"
+      },
+      "selfTest": [
+        "GSPO 的长度归一化序列级比率公式怎么写？（答：s_i = (Π_t r_t)^(1/|y_i|) = exp((1/|y_i|) Σ_t log r_t)，即逐 token 比率的几何平均。）",
+        "为什么它能降低方差？给出量级估计。（答：单 token 对数比率波动 σ 时，连乘版本的对数波动是 σ√L、GSPO 是 σ/√L；模拟里 σ=0.05、L=16 时 0.0126≈0.05/4、L=256 时 0.0031≈0.05/16。）",
+        "另外三个选项错在哪？（答：探索次数与比率归一化无关；GSPO 不消除奖励模型偏差；它依旧是 on-policy，只是比率定义在序列级。）",
+        "裁剪为什么放在序列级？（答：几何平均比率尺度天然贴近 1，可以用 1±3e-4 这种极小阈值；token 级裁剪在长序列上几乎必然触发，梯度被频繁截断。）"
+      ],
+      "keyPoints": [
+        "逐 token 连乘比率的对数方差正比于序列长度 L，长序列上比率指数级抖动，这是 GSPO 要治的病",
+        "GSPO：s_i = (Π_t r_t)^(1/L) = exp(mean_t log r_t)，几何平均就是长度归一化",
+        "归一化后抖动约为 σ/√L、与长度解耦，训练更稳——这是正确选项 (1) 的依据",
+        "序列级裁剪阈值可小到 1±3e-4；token 级裁剪在长序列上会被反复触发",
+        "GSPO 既不消除奖励模型偏差，也不改变 on-policy 性质"
+      ],
+      "sources": [
+        {
+          "title": "牛客题库",
+          "url": "https://nowcoder.com/questionTerminal/d98bbcf0b0a8483ba11b8ed44b1dfd9f"
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "题面（牛客单选题，标注来自 2026 年华为笔试）给出的四个选项原文为：降低逐 token 比率引入的高方差问题、改善训练稳定性；仅为了增加随机探索次数；完全消除奖励模型的偏差；使算法必然变成离线策略算法。",
+          "题面在标题处被截断（「一个主要__」之后直接接页面导航与页脚文本），采集到的内容里没有任何解析、样例或数值约束。",
+          "题目元信息自称考点为数组与矩阵、机器学习基础、大模型与 RL，难度 hard，人工判定其为单选题。",
+          "本文件 code.source 已在本机 python 上实际运行（从标准输入执行）：L=16/64/256 时逐 token 连乘比率的总体标准差为 0.2073 / 0.4613 / 1.2173，GSPO 为 0.0126 / 0.0063 / 0.0031，与 0.05/√L 的 0.0125 / 0.00625 / 0.003125 吻合，且满足断言 GSPO 抖动更小。",
+          "代码边界自测通过：L=1 时几何平均与逐 token 比率相等（1.066529），比率 1.001 被裁剪为 1.0003，空序列抛 ValueError。",
+          "正确项为 (1)：GSPO 的序列级比率 s_i = (Π_t r_t)^(1/|y_i|) 与「长度归一化」的字面定义一致，其动机是消除逐 token 比率连乘带来的高方差；其余三项与比率构造无因果关系。"
+        ],
+        "uncertain": [
+          "题面被采集页截断，「查看正确选项」是交互元素、未抓到官方解析文本；正确项由 GSPO 的公开定义与选项排除法确定，未见题库给出的答案原文，若题库判定不同请以题库为准。",
+          "题面里「一个主要__」缺词，我按 GSPO 的常见表述补成「一个主要动机是什么」，未改动任何选项原文。",
+          "题干未给出 eps、序列长度、采样温度、advantage 归一化方式等实现细节；正文中的 eps≈3e-4 与 σ=0.05 属于公开实现的常见配置和我自己的模拟设定，不是题面约束。",
+          "采集页面混入了「热门推荐」「相关试题」等导航文本，我按单选题主体解析，未把这些文本当作题面。",
+          "我没有可运行的 GSPO 官方实现，代码只验证方差量级关系（连乘版本对数波动 ∝ √L、几何平均 ∝ 1/√L），不代表真实训练超参下的具体数值。"
+        ]
+      }
+    }
+  ]
+}

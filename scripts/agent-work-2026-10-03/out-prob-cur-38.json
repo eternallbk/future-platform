@@ -1,0 +1,140 @@
+{
+  "batchId": "prob-cur-38",
+  "entries": [
+    {
+      "id": "deepseek-moe-comm",
+      "tldr": "MoE 每层两次 All-to-All：每卡载荷 V≈N·k·d·b，时间 t≈α+V/B；不均衡看 max/mean 与 CV，靠容量因子与偏置缓解。",
+      "restated": "给定专家数 E、设备数 D（专家并行，每卡 E/D 个专家）、每卡本步 token 数 N、top-k、隐藏维 d 与每元素 b 字节：要求（1）分析 MoE 一层的计算量与通信量，写出 dispatch/combine 两次 All-to-All 的每卡载荷与通信时间估算式，并说明延迟项 α 与有效带宽 B 的来源；（2）给出负载不均衡的度量方式与缓解手段。题面只有这一句，没有给任何符号定义、数值与样例，取值需要自己假设。",
+      "approach": [
+        {
+          "step": "先算计算量：按激活专家数算 FLOPs",
+          "detail": "每个 token 只激活 top-k 个专家，每个专家是两层 MLP，一次前向是 d×d_ff 的上投影加 d_ff×d 的下投影，各 2·d·d_ff FLOPs，所以一层 MoE 的乘加量是 4·N·D·k·d·d_ff（N·D 是全局 token 数）。要点是「计算量按激活的 k 个专家算、显存按全部 E 个专家算」：E=64、k=6 时每 token 只动用 9.4% 的专家参数，总参数涨了 E 倍而计算只涨 k 倍，这就是 MoE 省算力的地方。这一步答完要先给出结论量级（本机取 E=64、D=8、N=4096、k=6、d=2048、d_ff=4096，一层 6.60 TFLOPs，每卡 0.82 TFLOPs），再进入通信。"
+        },
+        {
+          "step": "再算通信量：用副本守恒律数载荷",
+          "detail": "关键观察：一个 token 选了 k 个专家就产生 k 份（token, 专家）副本，全局副本数恰为 N·D·k，与路由策略、专家怎么放都无关（守恒律）；变的只是这些副本落在哪张卡上。把副本按目标专家所在设备分桶：在专家均匀分布在 D 张卡、且路由选择与 token 所在卡独立的假设下，一份副本落到远端设备的概率是 (D-1)/D，于是每卡 dispatch 要发出的载荷 V ≈ N·k·(D-1)/D·d·b ≈ N·k·d·b 字节（D 大时），combine 再把专家输出按同量级搬回原卡，所以一层 MoE 每卡总通信 ≈ 2V ≈ 2·N·k·d·b 字节。这里三件事不能少：乘 k（副本数）、乘 b（dtype 字节数，bf16 是 2、fp8 是 1）、乘 2（dispatch+combine）。"
+        },
+        {
+          "step": "通信时间：α-β 模型 + 带宽语义 + 分层",
+          "detail": "All-to-All 是每张卡同时与 D-1 个对端收发，点对点带宽不能直接用，用 α-β 模型 t ≈ α + V/B_eff：α 是通信启动与延迟项（内核启动、网络往返，微秒量级），B_eff 是每卡出口的有效带宽。带宽语义必须说清：若 D-1 个对端共享一个出口 NIC，就按整段 V 串行算，时间 α + V/B；若假设每条对端链路独占带宽，则每对端只有 V/(D-1)，时间 α + (V/(D-1))/B——本机对同一个 87.96 MB 载荷，两种假设下 NVLink 单次 A2A 分别是 445 µs 与 68 µs，差 6.5 倍，所以「B_eff 到底是哪条带宽」是这题的隐藏考点。再补一层现实修正：B_eff 不是标称峰值（多对端竞争 + 小消息下通常只有峰值的 50%~70%），跨节点时还要分层 t ≈ α + V_intra/B_nvlink + V_inter/B_rdma，因为跨节点段要走 RDMA，比 NVLink 低一个数量级。"
+        },
+        {
+          "step": "负载不均衡：度量口径与三层缓解",
+          "detail": "不均衡的代价不是平均带宽不够，而是尾延迟：最忙的那个专家决定这一步什么时候算完，超出容量上限的 token 还会被直接丢掉。度量给四个数就够：每专家 token 数 load_e 的 max/mean（等于 1 是完美均衡，E=64 时最坏是 64），CV=std/mean 看整体离散度，maxVio=max/mean-1（论文里报的最大不均衡率），以及容量因子 c 下 cap=ceil(c·N·D·k/E) 的丢弃率 Σmax(0, load_e-cap)/(N·D·k)。缓解分三层回答：（a）损失层——Switch 式辅助损失 L_aux=α·E·Σ f_i·P_i 同时把「实际分配比例 f_i」和「平均路由概率 P_i」往均匀推，或 DeepSeek-V3 的无辅助损失偏置：给每个专家一个只加在 top-k 选择上的偏置 b_i，过载就下调、欠载就上调（步长 γ），不污染主损失梯度；（b）执行层——容量因子给最坏情况封顶，超出的 token 走残差旁路或丢弃；（c）路由层——分组/节点受限路由（每个 token 最多去 M 个节点，直接砍掉跨节点那一段流量）、专家与 token 的节点亲和、热点专家冗余复制。"
+        }
+      ],
+      "complexity": {
+        "time": "仿真 O(N·D·E + N·D·k)；真实一层前向 O(4·N·D·k·d·d_ff) FLOPs 与 O(N·k·d·b) 字节/卡通信",
+        "space": "仿真 O(N·D·k + E)；真实一层激活 O(N·k·d)，专家权重 O(E·d·d_ff)",
+        "why": "计算量来自每个 token 的 k 个专家各两次 d×d_ff 投影；通信量来自 k 份副本的跨卡搬运，dispatch 与 combine 各算一次。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''MoE 一层的通信开销与负载不均衡分析（纯标准库，可直接运行）。\n\n场景：E 个专家按专家并行（EP）均分到 D 个设备（每卡 E/D 个），每卡本步有 N 个\ntoken，每个 token 按 router logits 选 top-k 个专家；dispatch 与 combine 各一次\nAll-to-All，两次的载荷按同一量级计算。\n\n每卡载荷 V = 本卡要发出的 (token, 专家) 副本数 x d x b 字节，\n通信时间 t ~= alpha + V / B_eff（alpha 是启动与延迟项，B_eff 是有效出口带宽）。\n'''\nimport math\nimport random\n\n\n# ---------- 路由与负载统计 ----------\ndef topk_experts(logits, k, bias):\n    '''给 logits 加上路由偏置后取最大的 k 个专家下标；k 越界直接报错。'''\n    n_exp = len(logits)\n    if not 1 <= k <= n_exp:\n        raise ValueError('k 必须落在 [1, E]，实际 k=%d, E=%d' % (k, n_exp))\n    order = sorted(range(n_exp), key=lambda e: (-(logits[e] + bias[e]), e))\n    return sorted(order[:k])\n\n\ndef load_stats(loads):\n    '''每专家 token 数 -> 不均衡指标；全 0 时所有指标返回 0。'''\n    total, n_exp = sum(loads), len(loads)\n    if total == 0:\n        return {'mean': 0.0, 'max_over_mean': 0.0, 'cv': 0.0,\n                'max_vio': 0.0, 'top1_share': 0.0}\n    mean = total / n_exp\n    var = sum((x - mean) ** 2 for x in loads) / n_exp\n    peak = max(loads)\n    return {'mean': mean, 'max_over_mean': peak / mean, 'cv': math.sqrt(var) / mean,\n            'max_vio': peak / mean - 1.0, 'top1_share': peak / total}\n\n\ndef drop_rate(loads, capacity):\n    '''容量因子 c 给出每专家上限 capacity，超出的 token 只能丢弃或走残差。'''\n    total = sum(loads)\n    if total == 0:\n        return 0.0\n    return sum(max(0, x - capacity) for x in loads) / total\n\n\ndef simulate_step(n_tokens, n_dev, n_experts, k, d_model, elem_bytes,\n                  seed, hot=(), bias=None, capacity_factor=1.25):\n    '''跑一步路由：返回每专家负载、每卡出口副本数、载荷字节与各项统计量。'''\n    if n_dev < 1 or n_experts % n_dev != 0:\n        raise ValueError('专家数 E 必须能被设备数 D 整除，实际 E=%d, D=%d'\n                         % (n_experts, n_dev))\n    exp_per_dev = n_experts // n_dev\n    bias = [0.0] * n_experts if bias is None else bias\n    rng = random.Random(seed)\n    loads = [0] * n_experts\n    egress_pairs = [0] * n_dev\n    pairs = 0\n    for i in range(n_tokens * n_dev):\n        src = i // n_tokens                                  # 这个 token 落在哪张卡\n        logits = [rng.gauss(0.0, 1.0) + (1.2 if e in hot else 0.0)\n                  for e in range(n_experts)]\n        for e in topk_experts(logits, k, bias):              # 每个 token 产生 k 个副本\n            loads[e] += 1\n            pairs += 1\n            if e // exp_per_dev != src:                      # 跨卡才需要进 All-to-All\n                egress_pairs[src] += 1\n    stats = load_stats(loads)\n    stats['capacity'] = math.ceil(capacity_factor * n_tokens * n_dev * k / n_experts)\n    stats['drop_rate'] = drop_rate(loads, stats['capacity'])\n    stats['loads'] = loads\n    stats['pairs'] = pairs\n    stats['egress_pairs'] = egress_pairs\n    stats['bytes_per_card'] = [p * d_model * elem_bytes for p in egress_pairs]\n    return stats\n\n\n# ---------- 计算量 ----------\ndef moe_flops(n_tokens, n_dev, k, d_model, d_ff):\n    '''全局一层 MoE 的 FLOPs：每 token 每专家两次 d x d_ff 投影，各 2*d*d_ff。'''\n    return n_tokens * n_dev * k * 4 * d_model * d_ff\n\n\n# ---------- 通信时间估算 ----------\ndef a2a_time_us(payload_bytes, n_dev, bw_gbps, latency_us, dedicated=False):\n    '''alpha-beta 模型：dedicated=True 表示每个对端独占带宽，否则共享单口带宽。'''\n    peers = n_dev - 1\n    if peers <= 0 or payload_bytes <= 0:\n        return 0.0\n    chunk = payload_bytes / peers if dedicated else payload_bytes\n    return latency_us + chunk / (bw_gbps * 125.0)            # 1 Gbps = 125 字节/微秒\n\n\ndef hierarchical_time_us(payload_bytes, n_dev, intra_gbps, inter_gbps,\n                         latency_us, intra_frac=0.5):\n    '''分层 All-to-All：节点内一段 + 跨节点一段，两段串行叠加。'''\n    peers = n_dev - 1\n    if peers <= 0 or payload_bytes <= 0:\n        return 0.0\n    intra = payload_bytes * intra_frac\n    inter = payload_bytes - intra\n    return (latency_us + (intra / peers) / (intra_gbps * 125.0)\n            + (inter / peers) / (inter_gbps * 125.0))\n\n\n# ---------- 主流程 ----------\ndef main():\n    E, D, N, K, DMOD, BYTES = 64, 8, 4096, 6, 2048, 2\n    hot = (0, 1, 2)                                          # 三个「热点」专家\n    st = simulate_step(N, D, E, K, DMOD, BYTES, seed=7, hot=hot)\n    print('每卡 token=%d, 专家=%d, 卡=%d, top-k=%d, d=%d, 每元素 %d 字节'\n          % (N, E, D, K, DMOD, BYTES))\n    print('不均衡: max/mean=%.3f  CV=%.3f  maxVio=%.3f  Top1占比=%.3f  丢弃率=%.4f'\n          % (st['max_over_mean'], st['cv'], st['max_vio'],\n             st['top1_share'], st['drop_rate']))\n\n    per_card = sum(st['bytes_per_card']) / D\n    total_gb = sum(st['bytes_per_card']) / 1e9\n    print('dispatch: 每卡载荷 %.2f MB, %d 卡合计 %.3f GB'\n          % (per_card / 1e6, D, total_gb))\n    predicted = N * K * (D - 1) / D * DMOD * BYTES\n    print('解析式 N*k*(D-1)/D*d*b = %.2f MB（与仿真相差 %.3f%%）'\n          % (predicted / 1e6, abs(predicted - per_card) / predicted * 100))\n\n    d_ff = 2 * DMOD\n    flops = moe_flops(N, D, K, DMOD, d_ff)\n    print('计算量: d_ff=%d 时全局一层 %.2f TFLOPs（每卡 %.2f TFLOPs），'\n          '通信/计算 = %.2e 字节/FLOP'\n          % (d_ff, flops / 1e12, flops / D / 1e12, 2 * per_card / (flops / D)))\n\n    for name, bw, lat in (('NVLink 1600Gbps', 1600.0, 5.0),\n                          ('RDMA 400Gbps', 400.0, 15.0)):\n        print('%s: 共享出口单次 A2A %.0f us, dispatch+combine %.0f us'\n              % (name, a2a_time_us(per_card, D, bw, lat),\n                 2 * a2a_time_us(per_card, D, bw, lat)))\n    print('对端独占带宽(NVLink): 单次 %.0f us, 两次 %.0f us'\n          % (a2a_time_us(per_card, D, 1600.0, 5.0, dedicated=True),\n             2 * a2a_time_us(per_card, D, 1600.0, 5.0, dedicated=True)))\n    print('分层(节点内占 50%%): 单次 %.0f us, 两次 %.0f us'\n          % (hierarchical_time_us(per_card, D, 1600.0, 400.0, 15.0),\n             2 * hierarchical_time_us(per_card, D, 1600.0, 400.0, 15.0)))\n\n    for c in (1.0, 1.25, 1.5, 3.0):                           # 容量因子与丢弃\n        cap = math.ceil(c * N * D * K / E)\n        print('c=%.2f -> cap=%d/专家, 丢弃率=%.4f' % (c, cap, drop_rate(st['loads'], cap)))\n\n    gamma, bias, trace = 0.02, [0.0] * E, []                  # 无辅助损失偏置\n    for _ in range(20):\n        cur = simulate_step(N, D, E, K, DMOD, BYTES, seed=7, hot=hot, bias=bias)\n        trace.append(cur['max_over_mean'])\n        mean = cur['mean']\n        bias = [b - gamma if l > mean else b + gamma\n                for b, l in zip(bias, cur['loads'])]\n    print('偏置迭代 max/mean: 第0步 %.3f -> 第5步 %.3f -> 第19步 %.3f'\n          % (trace[0], trace[5], trace[19]))\n\n    # ---------- 自检 ----------\n    assert st['pairs'] == N * D * K, 'token-expert 副本总数必须守恒'\n    assert sum(st['loads']) == st['pairs'], '专家负载之和 = 副本总数'\n    assert sum(st['bytes_per_card']) == sum(st['egress_pairs']) * DMOD * BYTES\n    assert abs(sum(st['bytes_per_card']) / D - predicted) / predicted < 0.02\n    single = simulate_step(N, 1, E, K, DMOD, BYTES, seed=7)\n    assert sum(single['egress_pairs']) == 0 and sum(single['bytes_per_card']) == 0\n    dense = simulate_step(N, D, E, E, DMOD, BYTES, seed=7)\n    assert dense['cv'] < 1e-12 and dense['max_over_mean'] == 1.0\n    assert (drop_rate(st['loads'], math.ceil(1.0 * N * D * K / E))\n            >= drop_rate(st['loads'], math.ceil(3.0 * N * D * K / E)))\n    assert trace[-1] < trace[0], '偏置迭代应当降低 max/mean'\n    print('全部自检通过')\n\n\nif __name__ == '__main__':\n    main()\n",
+        "walkthrough": [
+          {
+            "note": "路由部分：topk_experts 把路由偏置加到 logits 上再取前 k 个专家下标，偏置只影响「选谁」，不影响门控权重，这正是无辅助损失均衡的接口；k 越界直接抛错，避免切片静默返回错误结果。"
+          },
+          {
+            "note": "负载统计：load_stats 同时给出 max/mean、CV、maxVio=max/mean-1 与 Top-1 占比四个数，并显式处理全 0（空 batch）避免除零；drop_rate 计算容量因子上限 cap 之外被丢弃的 token 比例——它才是「不均衡真正花掉的算力」。"
+          },
+          {
+            "note": "simulate_step 是核心：对 N·D 个全局 token 逐个采样 router logits（用 hot 参数人为制造 3 个热点专家），取 top-k 得到 k 份副本；每份副本按 exp_per_dev 判断目标专家是否在别的卡上，跨卡就计进该卡的出口副本数。副本总数、专家负载之和、出口字节三者互相校验，对应「副本守恒」这条估算式的根据。"
+          },
+          {
+            "note": "时间模型：a2a_time_us 用 α-β 模型，dedicated=False 时按整段载荷除以共享出口带宽（一张卡一个 NIC 的现实模型），dedicated=True 时按每个对端 V/(D-1) 算（胖树每端口独占带宽的模型）；hierarchical_time_us 把载荷拆成节点内与跨节点两段、分别用 NVLink 与 RDMA 带宽串行相加，用来解释「分组路由为什么省通信」。"
+          },
+          {
+            "note": "main 里把三件事都算出来了：解析式与仿真对拍（88.08 MB vs 87.96 MB，差 0.133%）、计算量与通信量的比值（2.13e-04 字节/FLOP，说明这题为什么通信是瓶颈）、容量因子从 1.0 到 3.0 时丢弃率从 0.1613 降到 0.0676。最后用 20 步偏置迭代演示 max/mean 从 4.456 降到 1.966。"
+          },
+          {
+            "note": "自检的 8 条断言覆盖：副本总数守恒、专家负载之和等于副本总数、字节数与出口副本数一致、解析式与仿真误差 <2%、D=1 时零通信、k=E 时退化成完全均衡的稠密层、容量因子越大丢弃越少、偏置迭代确实降低 max/mean。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "N=0（空 batch）：副本数为 0，load_stats 全返回 0，不能出现除零；真实系统这一步直接跳过 A2A。",
+        "D=1（专家与 token 都在一张卡上）：没有跨卡副本，载荷 V=0，All-to-All 时间为 0（本机实测出口副本与每卡载荷均为 0）。",
+        "k=E（每个 token 用全部专家）：退化成稠密层，所有专家负载完全相等，CV=0、max/mean=1.0（本机实测通过）。",
+        "k>E 或 k<1：必须显式报错；否则 top-k 切片会静默给出长度不对或空的专家列表，通信量估算跟着全错。",
+        "所有 token 都涌向同一个专家：max/mean 达到上界 E、CV 最大，容量因子下的丢弃率也最大，这就是路由崩塌（routing collapse）的极端情形。",
+        "E 不能被 D 整除（专家无法均分到设备）：本实现直接抛 ValueError，真实系统需要允许每卡专家数不等并取 max 作为慢卡。",
+        "容量因子 c 太小（<1）：丢弃率急剧上升；c 很大时丢弃率趋近 0，但每卡要按 cap 预留显存与算力（本机 c=3.0 时仍有 6.76% 的 token 超限，说明热点能把尾巴拉得很长）。"
+      ],
+      "pitfalls": [
+        "把 k 当成 1：一个 token 有 k 份专家副本，漏掉 k 直接把通信量少算 k 倍。",
+        "只算 dispatch 忘了 combine：专家算完还要把结果搬回原卡，一层是两个同量级的 All-to-All，漏一个少算一半。",
+        "用元素数而不是字节数：忘记乘 dtype 字节数 b（bf16=2、fp8=1、fp32=4），差 2~4 倍。",
+        "把每卡 token 数 N 和全局 token 数 N·D 混用：解析式里两者差一个 D，而 max/mean、容量因子的分母用的是全局量。",
+        "拿标称峰值带宽当 B_eff：All-to-All 里每张卡同时与 D-1 个对端竞争出口，加上小消息被延迟项主导，实测通常只有峰值的 50%~70%。",
+        "带宽语义不清：共享单口要按整段 V 算，只有对端独占链路才除以 D-1；本机同一个载荷两种假设差 6.5 倍（445 µs vs 68 µs），面试时先说清假设再报数。",
+        "只统计每专家负载、不看每张卡的出口字节：专家放置（节点亲和）会让流量在设备维度上分布完全不同，专家均衡不等于链路均衡。",
+        "忽略容量因子的丢弃：不均衡的代价是最忙专家的尾延迟和被丢掉的 token，不是平均利用率；只报 max/mean 不报丢弃率是不完整的。",
+        "把通信量说成常数或只跟参数量有关：它随 batch 与序列长度线性增长，必须和计算量放在一起给比例才有意义。"
+      ],
+      "followUps": [
+        "为什么 DeepSeek-V3 用无辅助损失的路由偏置而不是 Switch 式辅助损失？后者对主损失梯度的干扰体现在哪？",
+        "节点受限路由（每个 token 最多去 M 个节点）具体砍掉了哪一段流量？在分层带宽下能省多少时间？",
+        "通信与计算怎么重叠？micro-batch 切几份最优，怎么用「计算时间 vs 通信时间」推出份数？",
+        "dispatch 用 FP8 把 b 从 2 降到 1 省一半通信，代价是什么（量化误差、额外 kernel、路由 logits 精度）？",
+        "同一个模型用专家并行（EP）还是张量并行（TP）通信量更小？为什么 MoE 普遍选 EP？",
+        "训练中怎么在线监控不均衡：per-expert 直方图、maxVio 曲线、丢弃率、A2A 时间占比分别说明什么？",
+        "容量因子怎么选？把「丢弃率」和「padding 浪费」画成随 c 变化的曲线，最优点在哪？",
+        "共享专家（shared expert）为什么既能省通信又能稳训练？它和细粒度专家的组合动机是什么？"
+      ],
+      "variations": [
+        "稠密 FFN 与 MoE FFN 的对比：k=E 的退化情形，计算量涨 E 倍、通信量为 0。",
+        "DeepSeekMoE 的细粒度专家 + 共享专家：把大专家切成 m 个小专家，k 变大而总激活参数不变，通信量随 k 上升。",
+        "专家内部再做张量并行（EP×TP）：All-to-All 与 All-Reduce 两层通信叠加，需要分别估。",
+        "分层 All-to-All（节点内 NVLink + 节点间 RDMA）配合节点感知路由，把跨节点流量压到最低。",
+        "推理场景：单 token 解码时 All-to-All 变成纯 latency-bound，讨论连续批处理与专家本地化。",
+        "把 α-β 模型换成 Hockney/LogP 模型，用实测点拟合小消息下的启动开销。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "MoE 通信与负载均衡流程",
+        "caption": "记住这条链：全局 N·D 个 token 各选 k 个专家产生 N·D·k 份副本（守恒），按目标设备分桶后跨卡的部分形成 dispatch 载荷 V≈N·k·(D-1)/D·d·b，时间用 t≈α+V/B_eff 估，combine 再搬一次，所以一层通信 ≈2V；均衡看 max/mean 与 CV，靠容量因子和路由偏置压下去。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='MoE 一层从 token 路由到两次 All-to-All 的流程图：token 选 top-k 专家产生副本，按目标设备分桶后跨卡部分做 dispatch，专家 MLP 算完再 combine 回来，右侧标注副本守恒、远端概率、载荷公式与通信时间模型。'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='18' font-size='14' fill='currentColor'>MoE 一层：通信量从哪来</text><rect x='12' y='28' width='150' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='20' y='45' font-size='13' fill='currentColor'>本卡 N 个 token</text><rect x='12' y='62' width='150' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='20' y='79' font-size='13' fill='currentColor'>路由 top-k</text><rect x='12' y='96' width='150' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='20' y='113' font-size='13' fill='currentColor'>分桶：本卡/远端</text><rect x='12' y='130' width='150' height='26' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='20' y='147' font-size='13' fill='currentColor'>A2A dispatch</text><rect x='12' y='164' width='150' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='20' y='181' font-size='13' fill='currentColor'>专家 MLP 计算</text><rect x='12' y='198' width='150' height='26' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='20' y='215' font-size='13' fill='currentColor'>A2A combine</text><line x1='87' y1='54' x2='87' y2='58' stroke='var(--line-1)' stroke-width='1'/><polygon points='87,62 83,56 91,56' fill='var(--line-1)'/><line x1='87' y1='88' x2='87' y2='92' stroke='var(--line-1)' stroke-width='1'/><polygon points='87,96 83,90 91,90' fill='var(--line-1)'/><line x1='87' y1='122' x2='87' y2='126' stroke='var(--line-1)' stroke-width='1'/><polygon points='87,130 83,124 91,124' fill='var(--line-1)'/><line x1='87' y1='156' x2='87' y2='160' stroke='var(--line-1)' stroke-width='1'/><polygon points='87,164 83,158 91,158' fill='var(--line-1)'/><line x1='87' y1='190' x2='87' y2='194' stroke='var(--line-1)' stroke-width='1'/><polygon points='87,198 83,192 91,192' fill='var(--line-1)'/><text x='174' y='45' font-size='13' fill='currentColor'>全局 N·D 个 token</text><text x='174' y='79' font-size='13' fill='currentColor'>副本数 N·D·k（守恒）</text><text x='174' y='113' font-size='13' fill='currentColor'>远端概率 (D-1)/D</text><text x='174' y='147' font-size='13' fill='var(--accent)'>载荷 V ≈ N·k·d·b 字节</text><text x='174' y='181' font-size='13' fill='currentColor'>时间 t ≈ α + V / B_eff</text><text x='174' y='215' font-size='13' fill='currentColor'>再搬回一次，一层共 2V</text></svg>",
+        "alt": "MoE 一层流程图：本卡 N 个 token 经 top-k 路由产生 k 份副本，按目标设备分桶，跨卡部分做 dispatch All-to-All，专家 MLP 计算后再 combine 回来；右侧标注副本守恒 N·D·k、远端概率 (D-1)/D、每卡载荷 V≈N·k·d·b 字节与通信时间 t≈α+V/B_eff。"
+      },
+      "selfTest": [
+        "E=64、D=8、N=4096、k=6、d=2048、bf16（b=2）时，每卡 dispatch 载荷是多少？（答：V ≈ N·k·(D-1)/D·d·b = 4096×6×(7/8)×2048×2 ≈ 88 MB；本机仿真 87.96 MB，与解析式相差 0.133%。）",
+        "为什么一层 MoE 要算两次 All-to-All？（答：dispatch 把 token 送到专家所在卡，combine 把专家输出送回 token 原卡，两次载荷同量级，所以一层通信 ≈2V；漏掉任一次都少算一半。）",
+        "max/mean=4.456 说明了什么？它和 CV、maxVio、丢弃率是什么关系？（答：最忙专家的 token 数是平均值的 4.456 倍（maxVio=3.456），CV=0.763 描述整体离散度；容量因子 1.25 时有 14.96% 的 token 超过每专家上限被丢弃——不均衡的代价是尾延迟与丢弃，不是平均带宽。）",
+        "如果每个对端独占带宽而不是共享一个出口，A2A 时间怎么变？（答：每卡只发 V/(D-1) 给每个对端，t = α + (V/(D-1))/B；本机 NVLink 例子从 445 µs 降到 68 µs，差 6.5 倍，所以报数前必须说清 B_eff 的语义。）",
+        "怎么把 max/mean 从 4.456 降下来？（答：给每个专家一个只影响 top-k 选择的偏置，过载下调、欠载上调；本机 20 步迭代后 max/mean 降到 1.966。辅助损失、容量因子、节点受限路由是另外三条互补的路。）"
+      ],
+      "keyPoints": [
+        "计算量与通信量分开算：FLOPs = 4·N·D·k·d·d_ff（按激活专家），通信 = 2·N·k·d·b 字节/卡（dispatch+combine，按 k 份副本）。",
+        "副本守恒是估通信量的抓手：全局 N·D·k 份副本与路由策略无关，变的只是它落在哪张卡上。",
+        "通信时间用 t ≈ α + V/B_eff，并说明 α 是启动/延迟、B_eff 是有效出口带宽（共享单口还是对端独占、节点内还是跨节点）。",
+        "不均衡至少报 max/mean（或 maxVio）、CV、容量因子下的丢弃率三个数，并指出代价是尾延迟而非平均带宽。",
+        "缓解分三层：损失层（辅助损失 / 无辅助损失偏置）、执行层（容量因子与残差旁路）、路由层（分组与节点受限路由、专家亲和）。"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "人工题干（research/jobs_kb.json，id=deepseek-moe-comm，marker=笔试场景）只给出了一句要求：分析 MoE 的计算量与通信量、给出 All-to-All 载荷与通信时间的估算式、说明如何度量与缓解负载不均衡；题面没有符号定义、没有数值、没有样例。",
+          "通信量估算的根据是副本守恒：一个 token 选 k 个专家就产生 k 份（token, 专家）副本，全局恰为 N·D·k；本文件 simulate_step 的断言 pairs == N*D*K（196608）在本机通过。",
+          "本机运行 code.source（Python 3.12.9，纯标准库，seed=7）结果：不均衡 max/mean=4.456、CV=0.763、maxVio=3.456、Top-1 占比=0.070，容量因子 1.25 时丢弃率=0.1496。",
+          "本机实测：仿真得到每卡 dispatch 载荷 87.96 MB，与解析式 N·k·(D-1)/D·d·b = 88.08 MB 相差 0.133%，支撑「每卡载荷 ≈ N·k·d·b 字节」这一估算式。",
+          "本机实测计算量：N=4096、D=8、k=6、d=2048、d_ff=4096 时全局一层 6.60 TFLOPs（每卡 0.82 TFLOPs），通信/计算 = 2.13e-04 字节/FLOP。",
+          "本机实测通信时间（α-β 模型）：共享出口时 NVLink 1600Gbps 单次 A2A 445 µs、两次 890 µs，RDMA 400Gbps 单次 1774 µs、两次 3549 µs；若假设对端独占带宽，NVLink 单次只要 68 µs——同一载荷两种带宽语义差 6.5 倍。",
+          "本机实测偏置迭代（γ=0.02，20 步，固定同一批 router logits）：max/mean 4.456 → 3.720（第 5 步）→ 1.966（第 19 步），支撑「过载降偏置、欠载升偏置可缓解不均衡」。",
+          "本机实测边界：D=1 时出口副本与每卡载荷均为 0；k=E=64 时所有 token 选全部专家，CV=0、max/mean=1.0（退化成完全均衡的稠密层）；容量因子从 1.0 提到 3.0，丢弃率从 0.1613 降到 0.0676。",
+          "容量因子与丢弃率的定义：cap=ceil(c·N·D·k/E)，丢弃率 = Σ max(0, load_e - cap) / (N·D·k)；本机 c=1.0/1.25/1.5/3.0 对应 cap=3072/3840/4608/9216、丢弃率=0.1613/0.1496/0.1379/0.0676。"
+        ],
+        "uncertain": [
+          "题面只有一句话，没有定义 E/D/N/k/d/b/α/B 这些符号，也没有给任何取值与样例；本文件所有取值（E=64、D=8、N=4096、k=6、d=2048、d_ff=4096、bf16）都是为了把估算式算成数字而做的假设，不是题目约束。",
+          "通信时间模型是我选的：α-β 模型 t ≈ α + V/B_eff，并区分「出口共享」与「对端独占」两种带宽语义（本机算出来差 6.5 倍）；真实集群还取决于拓扑（胖树/NVLink 域/RDMA）、消息分块与拥塞，标称峰值与有效带宽可能差 30%~50%，需要按机器实测标定。",
+          "分层模型里节点内与跨节点的流量占比我按 intra_frac=0.5 假设，真实比例由专家放置与路由亲和决定，题面未给。",
+          "DeepSeek-V3 无辅助损失偏置的精确更新式与符号约定（偏置只加在 top-k 选择上；过载下调、欠载上调，步长 γ 论文量级约 0.001）我是按论文与实现常识复述的，题面与人工题库都没有给公式；本文件用 γ=0.02 只是为了让 20 步内看到明显效果。",
+          "辅助损失 L_aux = α·E·Σ f_i·P_i 的系数与符号约定在不同实现（Switch / GShard / 各家框架）里并不一致，这里只给形状与直觉，未逐项复现某个实现。",
+          "容量因子的取值（本机用 1.25）与「超出上限后是丢弃、还是走残差旁路」的策略，题面未规定；本文件按「丢弃」统计上界，真实系统常两者混用。",
+          "本文件只做了单步路由仿真与解析式对拍，没有在真实多机集群上跑 All-to-All；所有微秒级数字都是模型估算，不是实测。",
+          "本题是人工整理题，题干没有外部链接，sources 因此为空数组，正文里也没有写任何链接。"
+        ]
+      }
+    }
+  ]
+}

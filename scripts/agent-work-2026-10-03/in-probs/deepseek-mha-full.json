@@ -1,0 +1,24 @@
+{
+  "batchId": "prob-cur-30",
+  "problem": {
+    "id": "deepseek-mha-full",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "手写完整的 Multi-Head Attention，不能只写框架",
+    "topics": [
+      "深度学习实现"
+    ],
+    "difficulty": "medium",
+    "statement": "DeepSeek 大模型算法岗笔试第一题：手写完整的 Multi-Head Attention。题目明确要求“不能只写四个线性层”，需要把张量形状、缩放点积、掩码语义、数值稳定性和输出投影都讲清楚。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

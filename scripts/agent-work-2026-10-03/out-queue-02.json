@@ -2,257 +2,828 @@
   "batchId": "queue-02",
   "entries": [
     {
-      "id": "ca33c1c95f651461",
-      "tldr": "把 n 个盘从 left 经 mid 移到 right，按最优轨迹逐条返回 move from X to Y。",
+      "id": "1703f162fe0be3df",
+      "tldr": "x=(1,0,1) 与 y=(1,1,0) 的余弦相似度为 0.5，对应夹角 60°。",
       "keyPoints": [
-        "规则：一次只移动一个圆盘，大盘不能压在小盘上",
-        "输入 int n，输出 string 数组，格式 move from [leftmidright] to [leftmidright]",
-        "示例 n=2 返回三步：left→mid、left→right、mid→right",
-        "题目要求打印最优移动轨迹，摘要未给出复杂度的具体数值"
+        "定义：cos = xᵀy/(‖x‖‖y‖)，点积除以两模长之积",
+        "点积 xᵀy = 1×1 + 0×1 + 1×0 = 1",
+        "两个范数都是 √2，乘积为 2，故结果为 1/2 = 0.5",
+        "0.5 即 cos 60°，四个选项里选 0.5"
       ],
-      "why": "面试手撕常考的递归入门题，考的是把大问题拆成同构子问题，以及最优步数的复杂度直觉。",
+      "why": "余弦相似度是向量检索、对比学习与多模态对齐的默认相似度度量，面试高频考点。",
       "difficulty": "easy",
       "tags": [
-        "recursion",
-        "algorithm",
-        "hanoi",
-        "interview",
-        "java"
+        "cosine-similarity",
+        "vector",
+        "linear-algebra",
+        "interview"
       ],
       "entities": [
-        "汉诺塔",
-        "getSolution",
-        "Solution",
-        "牛客题霸"
+        "余弦相似度",
+        "xᵀy",
+        "‖x‖",
+        "牛客网"
       ],
       "diagram": {
         "kind": "flow",
-        "title": "汉诺塔递归三步拆解",
-        "caption": "搬 n 个盘的问题被拆成两次 n−1 的子问题，中间夹一次最大盘的搬运。",
-        "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 240' role='img' aria-label='汉诺塔递归三步拆解流程图'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>基例 n = 1</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>直接 left → right</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>步骤 1</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>n−1 个盘 left → mid</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>步骤 2</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>最大盘 left → right</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>步骤 3</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>n−1 个盘 mid → right</text>\n</svg>",
-        "alt": "从上到下四个方框：基例 n=1 直接搬运；n>1 时步骤 1 把 n−1 个盘从 left 移到 mid，步骤 2 把最大盘从 left 移到 right，步骤 3 把 n−1 个盘从 mid 移到 right。"
+        "title": "余弦相似度计算四步",
+        "caption": "只做两次求和、一次开方、一次除法，就能把方向相似度算出来。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='余弦相似度计算四步流程图'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>① 点积</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>xᵀy = 1×1+0×1+1×0 = 1</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>② 两个范数</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>‖x‖ = √2，‖y‖ = √2</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>③ 归一化相除</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>1 ÷ (√2 · √2) = 0.5</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>④ 读角度</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>cos θ = 0.5，θ = 60°</text></svg>",
+        "alt": "四步流程：先算点积得 1，再算两个范数都是 √2，相除得 0.5，最后读出夹角 60°。"
       },
       "concepts": [
         {
-          "name": "递归分解 (Recursive Decomposition)",
-          "readable": "把搬 n 个盘拆成三个动作：先把上面 n−1 个盘搬到中转柱，再把最大的盘搬到目标柱，最后把 n−1 个盘从中转柱搬到目标柱。",
-          "analogy": "像搬家：先把小件寄放在邻居家（中转柱），把大衣柜搬进新居，再把小件从邻居家挪过来。",
-          "analogyBreaksDown": "搬家时邻居家始终是同一个角色，而汉诺塔里中转柱在两次子问题中会互换：第一次用 right 当中转，第二次用 left 当中转，类比把中转角色固定住就讲不通了。",
-          "mechanism": "关键设计是把『谁当中转柱』做成函数参数而不是写死左右顺序，这样同一段代码在两次子调用里自动交换角色，无需为三种柱子组合各写一遍分支。",
-          "visual": "画三根竖轴 left/mid/right，横轴是时间；每个圆盘的一次移动画成从一根轴跳到另一根轴的圆点，n=3 的轨迹呈两段对称的『金字塔搬运』。",
+          "name": "Cosine Similarity（余弦相似度）",
+          "readable": "把两个向量按长度归一化后看点积，只关心方向是否一致，不关心谁更长。本题点积 1、两模长乘积 2，于是 0.5，夹角 60°。",
+          "analogy": "两个人从同一个路口出发，只看他们走的方向夹角有多大；谁走的路更长（模长）不影响方向判断。",
+          "analogyBreaksDown": "方向类比忽略了一点：对尺度不敏感既是优点也是代价，当向量长度本身携带信息（词频、热度、置信度）时，归一化会把这部分信号丢掉；另外零向量没有方向，定义直接失效。",
+          "mechanism": "除以 ‖x‖‖y‖ 做归一化，把结果压到 [-1,1]，使不同长度向量可以跨样本比较阈值；代价是丢掉模长，所以工程上常离线预归一化，让在线计算退化成一次内积。",
+          "visual": "横轴取夹角 0° 到 180°，纵轴取余弦值 1 到 -1；画一条单调下降的曲线，在 60° 处标出取值 0.5 的点，并在 90° 处画一条 y=0 的虚线表示正交。",
           "prerequisites": [
-            "递归函数的写法（基例 + 递归式）",
-            "函数调用栈的执行顺序"
+            "内积与 L2 范数",
+            "余弦函数与向量夹角"
           ],
           "selfTest": [
-            "n=3 的第一步应该把最上面 2 个盘搬到哪根柱子？",
-            "为什么第二次子调用要把 frm/to 换成 via/to？",
-            "只打印轨迹而不真正模拟盘堆，会影响解法正确性吗？"
+            "把 y 换成 2y，余弦相似度会变吗？为什么？",
+            "余弦相似度为 0 在几何上意味着什么？",
+            "零向量参与计算时应该怎么处理？"
           ],
-          "formula": "T(n)=2T(n-1)+1,\\quad T(1)=1"
+          "formula": "\\cos(\\mathbf{x},\\mathbf{y})=\\frac{\\mathbf{x}^{\\top}\\mathbf{y}}{\\lVert\\mathbf{x}\\rVert_2\\,\\lVert\\mathbf{y}\\rVert_2}"
         },
         {
-          "name": "最优移动步数 (Optimal Move Count)",
-          "readable": "最少步数是 2^n−1：最大的盘迟早要搬一次，而搬它之前必须把上面 n−1 个盘整体挪到中转柱，搬完还得整体挪回来。",
-          "analogy": "像换轮胎：要动最里面那颗螺丝，上面的零件必须先全部拆下来再装回去，拆和装各一遍，省不掉。",
-          "analogyBreaksDown": "换轮胎的拆装量是随零件数线性增长，而汉诺塔的子问题自己又要重复同样的拆装，次数按 2 的幂爆炸，不能按『零件数乘 2』估算。",
-          "mechanism": "下界来自『最大盘必须移动一次，且移动前后各需把 n−1 个盘搬到同一根中转柱』；递归解法恰好达到该下界，所以它既是构造也是最优。",
-          "visual": "横轴 n 取 1 到 10，纵轴为步数；线性纵轴是一条贴地很久后陡然抬升的指数曲线，换成对数纵轴则变成斜率 1 的直线。",
+          "name": "Dot Product and L2 Norm（点积与 L2 范数）",
+          "readable": "点积是逐元素相乘再求和，衡量两支向量同向分量的累积；L2 范数是各元素平方和开根号，衡量向量长度。二者相除就去掉了长度。",
+          "analogy": "投影仪：点积像把一支箭投影到另一支箭上，得到『投影长度 × 本体长度』；L2 范数就是箭本身的长度。",
+          "analogyBreaksDown": "投影的直觉默认二维平面，高维里没有可画出的『影子』；而且点积可正可负，投影长度却总非负，符号信息在类比里丢失了。",
+          "mechanism": "xᵀy 对同号分量做正向累加、异号分量做抵消，天然编码方向一致程度；除以范数之积把量纲消掉，结果才能跨向量、跨数据集比较。",
+          "visual": "画两支从原点出发的箭头 x 与 y，用虚线把 x 垂直投影到 y 上，投影段标注为 xᵀy/‖y‖，两箭之间画一段角度弧并标 θ。",
           "prerequisites": [
-            "递推关系与数学归纳法",
-            "指数增长的量级直觉"
+            "向量加法与数乘",
+            "平方根与求和符号"
           ],
           "selfTest": [
-            "n=10 时最少需要多少步？",
-            "为什么步数不可能少于 2^n−1？",
-            "如果允许一次搬两个盘，步数量级会怎么变？"
+            "点积为负说明两个向量方向关系如何？",
+            "为什么点积不能直接当作相似度比较不同长度的向量？",
+            "‖x‖=0 时点积一定是多少？"
           ],
-          "formula": "T(n)=2^{n}-1"
+          "formula": "\\mathbf{x}^{\\top}\\mathbf{y}=\\sum_i x_iy_i,\\quad \\lVert\\mathbf{x}\\rVert_2=\\sqrt{\\sum_i x_i^2}"
         }
       ],
       "formulas": [
         {
-          "id": "f-hanoi-optimal-moves",
-          "name": "汉诺塔最少移动步数（Tower of Hanoi Move Count）",
-          "category": "engineering",
-          "latex": "T(n)=2T(n-1)+1,\\quad T(1)=1\\;\\Longrightarrow\\; T(n)=2^{n}-1",
+          "id": "f-cosine-similarity",
+          "name": "余弦相似度（Cosine Similarity）",
+          "category": "foundation",
+          "latex": "\\cos(\\mathbf{x},\\mathbf{y})=\\frac{\\mathbf{x}^{\\top}\\mathbf{y}}{\\lVert\\mathbf{x}\\rVert_2\\,\\lVert\\mathbf{y}\\rVert_2}",
           "symbols": [
             [
-              "T(n)",
-              "把 n 个圆盘整体搬到另一根柱子所需的最少移动次数"
+              "x, y",
+              "同一维度的两个实向量"
             ],
             [
-              "n",
-              "圆盘个数"
+              "xᵀy",
+              "点积（内积），逐元素相乘再求和"
             ],
             [
-              "T(1)",
-              "只有一个圆盘时的基例步数"
+              "‖x‖₂",
+              "L2 范数，即向量长度"
+            ],
+            [
+              "θ",
+              "两向量夹角，其余弦即所求"
             ]
           ],
           "derivation": [
-            "第 1 步（基例）：只有一个盘时一次就能搬到目标柱，所以 T(1)=1。",
-            "第 2 步（分段）：最大盘迟早要移动一次，而它上面不能压任何小盘，所以移动前必须把 n−1 个盘整体挪到中转柱，花掉 T(n−1) 步；再移动最大盘，1 步。",
-            "第 3 步（收尾）：最大盘到位后，那 n−1 个盘还要从中转柱整体挪到目标柱，又花 T(n−1) 步，于是 T(n)=2T(n−1)+1。",
-            "第 4 步（求解）：两边各加 1 得 T(n)+1=2(T(n−1)+1)，这是首项为 T(1)+1=2 的等比数列，解出 T(n)=2^n−1。"
+            "第 1 步（动机）：想刻画两个向量方向有多像，长度不该干扰，所以要找到能把方向与长度分离的量。",
+            "第 2 步（几何转代数）：欧氏几何的 cos θ 靠直角三角形定义，高维无法直接画；柯西-施瓦茨不等式给出 xᵀy = ‖x‖‖y‖cos θ 这一代数等价关系。",
+            "第 3 步（归一化）：两边同除 ‖x‖‖y‖（要求两者非零），得 cos = xᵀy/(‖x‖‖y‖)，值域被压到 [-1,1]。",
+            "第 4 步（代入本题）：xᵀy = 1×1+0×1+1×0 = 1，‖x‖=‖y‖=√2，故 cos = 1/2 = 0.5，对应 60°。"
           ],
-          "analogy": "像换轮胎前必须把上层零件全部拆掉、换完再装回去，拆一次装一次，工作量先翻倍再多加一次。",
+          "analogy": "把两支箭放在同一起点，用同一把量角器读夹角；箭画多长都不影响读数，所以余弦只反映方向。",
           "pitfalls": [
-            "把递推写成 T(n)=T(n−1)+1，把两次整体搬运合并成了一次。",
-            "只把 2^n−1 当递归解法的结果，忘了它同时也是任何解法都逃不掉的下界。",
-            "n 稍大时输出 2^n−1 条轨迹字符串直接撑爆内存，误以为算法写错了。"
+            "忘记除以两个范数，直接答成点积 1。",
+            "把余弦相似度当成距离：它是相似度，越大越像，不是度量空间里的距离。",
+            "对未归一化向量直接比余弦，把长度差异误当成方向差异。"
           ],
-          "code": "def hanoi(n, frm, to, via, out):\n    if n == 1:\n        out.append(f'move from {frm} to {to}')\n        return\n    hanoi(n - 1, frm, via, to, out)          # 先把 n-1 个挪到中转柱\n    out.append(f'move from {frm} to {to}')   # 最大盘直接到位\n    hanoi(n - 1, via, to, frm, out)          # 再从中转柱挪到目标柱\n\nout = []\nhanoi(2, 'left', 'right', 'mid', out)\nprint(out)",
+          "code": "import math\n\ndef cosine(x, y):\n    if len(x) != len(y):\n        raise ValueError('dimension mismatch')\n    dot = sum(a * b for a, b in zip(x, y))\n    nx = math.sqrt(sum(a * a for a in x))\n    ny = math.sqrt(sum(b * b for b in y))\n    if nx == 0.0 or ny == 0.0:\n        return 0.0          # 零向量没有方向，约定返回 0\n    return dot / (nx * ny)\n\nprint(round(cosine([1, 0, 1], [1, 1, 0]), 3))   # 0.5",
           "sources": [
             {
-              "title": "[编程题] 汉诺塔问题",
-              "url": "https://nowcoder.com/practice/7d6cab7d435048c4b05251bf44e9f185"
+              "title": "[单选题] 向量 x=(1,0,1)、y=(1,1,0)，余弦相似度定义",
+              "url": "https://nowcoder.com/questionTerminal/32080038af5e4d609b062e530d7314d4"
             }
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "题目给定 3 根柱子 left/mid/right 和 n 个由底至上从大到小放置的圆盘。",
-          "要求一次只能移动一个圆盘，且大盘不可以放到小盘上面。",
-          "要求实现函数打印最优移动轨迹，返回 string 数组，元素格式为 move from [leftmidright] to [leftmidright]。",
-          "示例 n=2 的输出为三步：move from left to mid、move from left to right、move from mid to right。",
-          "Java 代码框架给出的函数是 getSolution(int n)，返回 ArrayList。"
+          "题目把余弦相似度定义为 xᵀy/(‖x‖‖y‖)，并给出 x=(1,0,1)、y=(1,1,0)。",
+          "四个选项分别是 0.5、1、0.707、0.25。",
+          "题目为单选题，页面上标注的来源是 2026 年华为 8 月批次，当前 0 条回答、14 次浏览。"
         ],
         "uncertain": [
-          "摘要中『要求：时间复杂度 ， 空间复杂度 』的具体数值被采集截断，O(2^n) 时间 / O(n) 栈空间是按最优轨迹推断的，需核对原题面。",
-          "最少步数 2^n−1 是经典结论，摘要并未直接写出，需核对原文。",
-          "摘要末尾 Java 模板被截断（结尾为 class Solut），完整签名与返回类型细节需核实。"
+          "题库页面的摘要文本没有直接给出正确选项，0.5 是按定义手算的结果（推断）。",
+          "摘要未说明这题是纯手算还是编程实现，页面上也没有样例与约束。"
         ]
       },
       "teaching": {
         "progressive": [
           {
             "level": "一句话",
-            "text": "把一摞大小不一的盘子按规定搬到另一根柱子，并打印最省事的每一步。"
+            "text": "两个向量的方向有多像，用它们夹角的余弦来量，这题答案是 0.5。"
           },
           {
             "level": "入门",
-            "text": "n 个盘要从 left 移到 right。先递归把上面 n−1 个盘移到 mid，把最大的盘移到 right，再递归把 n−1 个盘从 mid 移到 right；只剩 1 个盘时直接搬。每次真实搬运都往结果里追加一条 move from X to Y，最后得到的就是最优轨迹。"
+            "text": "余弦相似度先把点积算出来，再除以两个向量的长度。x=(1,0,1) 与 y=(1,1,0) 的点积是 1，两个长度都是 √2，所以结果是 1/2=0.5，对应夹角 60 度。"
           },
           {
             "level": "进阶",
-            "text": "关键设计是把『中转柱是谁』参数化：写成 hanoi(n, from, to, via) 后，两次递归调用的 via/to 会互换，同一段代码就覆盖了所有柱子组合，不用写三套分支。每次调用只产生一次真实移动，所以输出顺序天然是最优序列；但深挖一层，最优性并不是这个写法『碰巧』保证的，而是由最大盘必须移动一次、且前后各需把 n−1 个盘整体腾挪推出的下界决定的。"
+            "text": "它本质是内积的『去尺度版』：内积同时受方向和长度影响，除以两个 L2 范数后只剩方向。取值落在 -1 到 1 之间，1 表示完全同向、0 正交、-1 反向。代价是丢掉模长信息，所以检索系统通常离线把向量归一化，之后内积就等于余弦，在线只需一次点积。"
           },
           {
             "level": "专家",
-            "text": "复杂度上共移动 2^n−1 次，时间 O(2^n) 且已达下界；递归深度 n，栈空间 O(n)。工程视角要意识到瓶颈在输出规模而不在算法：n=30 时轨迹就有十亿条，任何打印方案都不可行，所以真实场景通常只求步数、验证轨迹或按需生成第 k 步。实现上可用显式栈把递归改成迭代以避免爆栈；面试若追问非递归证明，可用归纳法或『最大盘分段』论证下界，再指出递归解恰好取等。"
+            "text": "与欧氏距离对比：欧氏距离对尺度和平移敏感，余弦只对方向敏感，因此文本与嵌入检索更常用余弦；但向量已归一化时两者单调等价，满足 ‖x-y‖²=2-2cos，排序结果一致且内积更快。与点积检索相比，余弦牺牲一次除法换来长度鲁棒性，当模长本身有意义（流行度加权、置信度加权）时反而不该归一化。数值上要处理零向量、浮点误差与高维下大量浮点乘加的精度问题，工业实现常用预归一化加近似最近邻索引。"
           }
         ],
         "socratic": [
           {
-            "q": "如果不把中转柱作为参数传进去会怎样？",
-            "a": "代码会把方向写死，只有第一次子问题是对的；第二次子问题的中转柱变成了另一根柱子，就必须另写分支，容易漏改或写错。"
+            "q": "如果只算点积、不除范数，会得到什么后果？",
+            "a": "本题点积是 1，看着也像答案；但只要把 y 换成 2y，点积翻倍而方向没变，说明结果被长度污染了。"
           },
           {
-            "q": "既然 BFS 也能搜出最短路径，为什么不用它？",
-            "a": "递归已经天然给出 2^n−1 的最优解；BFS 要维护整棵状态树，空间和时间都更差，还写不出这么短的代码。"
+            "q": "为什么不用欧氏距离判断方向相似？",
+            "a": "短向量与它的二倍向量方向完全一致，欧氏距离却不小；余弦在这种情况下恒为 1，只对方向敏感。"
           },
           {
-            "q": "n 为 0 时应该返回什么？",
-            "a": "没有盘需要移动，应返回空数组；但基例要写成 n==1 才直接搬，边界输入要单独判，否则会栈溢出。"
+            "q": "零向量为什么会让这个定义失效？",
+            "a": "零向量的范数为 0，会出现在分母上，数学上无定义；工程里通常直接返回 0 或跳过该样本。"
           }
         ],
-        "mechanism": "为什么必须这样设计：最大盘所在柱子上方不能留更小的盘，所以动它之前必须先把上面 n−1 个盘整体搬到第三根柱子；搬完最大盘后，这 n−1 个盘又必须整体搬到目标柱。这三段互不重叠且覆盖了全部步骤，因此步数下界就是这个递推式；递归写法既构造出达到下界的序列，又顺带给出了打印顺序，所以不需要额外做搜索或剪枝。",
-        "boundary": "边界：n 稍大时输出本身就有 2^n−1 个字符串，时间与内存都不可接受（n=30 已是十亿级），此时只适合求步数或生成第 k 步；题目只要求打印描述字符串，若要求真实维护三根柱子上的盘堆，还需要额外的栈结构与合法性校验；n≤0 属于非法或空输入，需要单独处理。",
-        "analogyBoundary": "搬家类比只在『一次搬一个、小的不能压大的』这类约束下成立：现实中可以一次搬多件、可以叠放，约束一放松，2^n−1 的最优性就不再成立，步数会立刻降到线性量级。",
+        "mechanism": "关键设计是把『方向』从『长度』里分离出来：内积同时编码两者，只有除以两个 L2 范数才能消掉尺度，让不同长度的向量可比。这次归一化同时把值域压到 [-1,1]，使固定阈值（例如 0.8）跨样本有意义；工程上再往前一步做离线预归一化，在线就能用一次内积代替余弦，省掉除法与开方。",
+        "boundary": "零向量没有方向，定义直接失效；当模长本身携带信号（词频、热度、置信度）时，归一化会把有用信息抹掉。余弦只比较方向，无法区分同方向不同长度的样本，做聚类或最近邻时可能把头部与长尾混在一起；高维下还需要注意大量浮点乘加的数值精度与近似索引的召回损失。",
+        "analogyBoundary": "『量角器读夹角』的类比只在二维、两向量共起点时成立：高维向量没有可画出的夹角，余弦值也不是角度本身，低余弦区间对应的角度变化会被 cos 压平，所以不能凭余弦差直接推断角度差。",
         "misconceptions": [
-          "把递推写成 T(n)=T(n−1)+1，漏掉了两次搬运 n−1 个盘的代价。",
-          "认为递归一定比迭代慢：步数下界不变，差别只在实现方式与栈开销。",
-          "忘记写基例 n==1，导致无限递归或栈溢出。"
+          "把余弦相似度说成距离：它是相似度，越大越像。",
+          "算成 0.707：那是把 1/√2 与本题混淆，本题点积是 1。",
+          "忘记除以范数，直接回答点积 1。"
         ],
-        "ownAnalysis": "从摘要看这题的重点不是算法推导，而是把递归写对并按格式拼字符串。（推断）摘要里复杂度要求的数值被截断，说明原题面很可能写明 O(2^n) 时间与 O(n) 空间，用来提示解法；返回值设计成整条轨迹数组而不是步数，也印证了考点在输出格式。与常见的『只求最少步数』变体相比，本题的坑集中在参数取名（from/to/via 的传递顺序）和字符串格式上，属于典型的面试手撕细节题。",
+        "ownAnalysis": "这题是典型的笔试热身题，答案 0.5 可以手算复核（推断：题库摘要并未显式写出正确选项）。放到求职语境里，真正会被追问的是它的工程变体：向量库为何默认用余弦或内积、归一化放在离线还是在线、以及向量很多时如何用一次矩阵乘法批量算完相似度矩阵。我的判断是把它当作『相似度度量』这一族问题的入口，而不是一道孤立的算术题。",
         "officialNotes": [
           {
-            "position": "题目要求实现函数打印最优移动轨迹，描述格式为 move from [leftmidright] to [leftmidright]，示例 n=2 给出三步输出。",
-            "source": "nowcoder_questions"
+            "position": "题目以单选题形式把余弦相似度定义为 xᵀy/(‖x‖‖y‖)，并给出四个数值选项，来源标注为 2026 年华为 8 月批次。",
+            "source": "https://nowcoder.com/questionTerminal/32080038af5e4d609b062e530d7314d4"
           }
         ],
-        "interviewAnswer": "汉诺塔我会把问题参数化成 hanoi(n, from, to, via)：n 等于 1 时直接搬并追加一条轨迹；否则先把 n−1 个盘从 from 经 to 搬到 via，再把最大盘从 from 搬到 to，最后把 n−1 个盘从 via 经 from 搬到 to。每一步都往结果里追加 move from X to Y。这样打印出来的就是最优轨迹，共 2^n−1 步，时间 O(2^n)，递归深度 n。如果要优化，我会把递归改成显式栈，并提醒调用方 n 较大时输出规模会爆炸。",
+        "interviewAnswer": "余弦相似度就是两个向量夹角的余弦，等于点积除以两个 L2 范数的乘积。这道题 xᵀy 是 1，两个范数都是 √2，所以结果是 0.5，夹角 60 度。工程上我会先把向量归一化，这样在线只需一次内积，向量库可以直接用内积检索；同时要处理零向量、浮点误差，并且注意模长本身有信息时不该做归一化。",
         "studyPath": {
           "prerequisites": [
-            "递归与函数调用栈",
-            "Java ArrayList 与字符串拼接"
+            "向量内积与 L2 范数",
+            "余弦函数与反三角函数",
+            "Python 的求和与列表推导"
           ],
           "nextSteps": [
-            "斐波那契与归并排序的递归写法",
-            "分治思想与主定理入手",
-            "把递归改写成显式栈"
+            "用一次矩阵乘法实现批量余弦相似度矩阵",
+            "对比余弦、点积、欧氏距离在检索任务中的差别",
+            "了解 HNSW 与 IVF 等近似最近邻索引"
           ]
         }
       }
     },
     {
-      "id": "7be70fc8379e7991",
-      "tldr": "覆盖 LeetCode、剑指 Offer 第 2 版、程序员面试金典第 6 版的多语言题解仓库。",
+      "id": "22144df60f7e221b",
+      "tldr": "描述集中趋势的是均值；偏度刻画形状，标准差与方差刻画离散程度。",
       "keyPoints": [
-        "覆盖 LeetCode、《剑指 Offer（第 2 版）》、《程序员面试金典（第 6 版）》",
-        "同一题提供 Java、C++、C#、Go、JavaScript、Python3 等多语言题解",
-        "摘要给出约 36647 stars、主语言 Java、最近更新 2026-10-02",
-        "主题标签含 algorithms、cpp、csharp、golang、java、javascript、leetcode、python3"
+        "四个选项为偏度、均值、标准差、方差",
+        "均值反映数据的中心位置，属集中趋势统计量",
+        "标准差与方差衡量离散程度，不是中心位置",
+        "偏度描述分布的不对称性，属于形状统计量"
       ],
-      "why": "面试手撕前用它按专题对照多语言写法，能快速补齐边界处理与语法细节，省去自己造轮子。",
+      "why": "均值与方差是特征归一化、损失设计和评估指标的基础，算法与数据岗笔试高频。",
       "difficulty": "easy",
       "tags": [
-        "leetcode",
-        "algorithms",
-        "interview",
-        "solutions",
-        "multilingual",
-        "github"
+        "statistics",
+        "mean",
+        "descriptive-statistics",
+        "interview"
       ],
       "entities": [
-        "doocs/leetcode",
-        "LeetCode",
-        "剑指 Offer",
-        "程序员面试金典"
+        "均值",
+        "标准差",
+        "方差",
+        "偏度",
+        "牛客网"
       ],
       "diagram": {
-        "kind": "flow",
-        "title": "题解仓库的四个要点",
-        "caption": "一个仓库同时提供题单覆盖、多语言实现和持续更新，适合当刷题索引。",
-        "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 240' role='img' aria-label='题解仓库四个要点流程图'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>题解仓库</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>doocs/leetcode</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>覆盖题单</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>LeetCode 与两本面试书</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>多语言实现</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>Java / C++ / Go / Py3</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>使用方式</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>按专题对照刷题</text>\n</svg>",
-        "alt": "从上到下四个方框：仓库 doocs/leetcode、覆盖题单为 LeetCode 与两本面试书、支持 Java/C++/Go/Python3 等多语言实现、使用方式是按专题对照刷题。"
+        "kind": "matrix",
+        "title": "四个统计量各自刻画什么",
+        "caption": "中心位置、离散程度、分布形状是三个互补维度，四个选项各归一类。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='四个统计量归属分类表'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>均值 Mean</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>集中趋势 / 中心位置</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>方差 Variance</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>离散程度（平方量纲）</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>标准差 Std</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>离散程度（同原量纲）</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>偏度 Skewness</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>分布形状 / 不对称性</text></svg>",
+        "alt": "四行归类：均值对应集中趋势与中心位置；方差与标准差对应离散程度；偏度对应分布形状与不对称性。"
       },
       "concepts": [
         {
-          "name": "多语言题解语料 (Multi-Language Solution Corpus)",
-          "readable": "同一个算法题，仓库里给出多种编程语言的等价实现，方便对照语法差异与标准库写法，而不是重新推导算法。",
-          "analogy": "像同一道菜的多个菜谱版本：配料和步骤（算法思路）一样，但川菜版和粤菜版（语言）在火候与调料写法上不同。",
-          "analogyBreaksDown": "菜谱差异主要是口味与工序，而换语言的差异还包括类型系统、内存管理与标准库 API，往往要整体改写数据结构，不是换调料那么简单。",
-          "mechanism": "把多语言实现并排放置在同一题下，读者先用熟悉的语言读懂思路，再对照目标语言读实现，从而把『想算法』和『写语言细节』两件事分开处理。",
-          "visual": "画一张矩阵：行是题目（按专题分组），列是编程语言，格子颜色深浅表示该语言实现是否齐全，空白格表示缺实现。",
+          "name": "Measures of Central Tendency（集中趋势度量）",
+          "readable": "用一两个数代表整批数据的『中心在哪』：均值是算术平均，中位数是排序后正中间那个，众数是出现最多的取值。它们回答位置，不回答分散程度。",
+          "analogy": "像看一个班的平均分：老师想用一个数说明这个班整体考得如何，平均分就是那个代表值，但它没法告诉你班里是不是两极分化。",
+          "analogyBreaksDown": "平均分受个别极端分数拉动很大，一个满分或一个零分就能明显改变它；而长尾数据里真正的『中心位置』往往由中位数刻画，平均分甚至可能落在没有学生考到的区间。",
+          "mechanism": "每个中心位置统计量都对应一个误差准则的最小值点：均值最小化平方误差，中位数最小化绝对误差。所以选均值还是中位数，本质是在选误差度量与对离群点的容忍度。",
+          "visual": "画一条数轴，点上若干样本点，用实心三角标出均值、空心方块标出中位数；右侧再放一组含极端值的样本，虚线显示均值向右漂移而中位数几乎不动。",
           "prerequisites": [
-            "基本数据结构与算法",
-            "至少一门语言的语法与标准库"
+            "求和与算术平均",
+            "排序与分位数概念"
           ],
           "selfTest": [
-            "同一题不同语言的实现差异通常出现在哪些地方？",
-            "突击面试时按题号浏览和按专题浏览，哪个更有效？",
-            "多语言题解能替代自己动手写吗？"
+            "均值最小化哪种误差，中位数最小化哪种？",
+            "数据里含一个极大离群点时，均值和中位数谁更稳健？",
+            "类别型数据应该用哪个集中趋势统计量？"
+          ],
+          "formula": "\\bar{x}=\\frac{1}{n}\\sum_{i=1}^{n}x_i"
+        },
+        {
+          "name": "Dispersion and Shape Statistics（离散与形状统计量）",
+          "readable": "方差是各点到均值的平方距离的平均，标准差是它的平方根、与原数据同量纲；偏度衡量分布左右是否对称。两者一个管散不散，一个管偏向哪边。",
+          "analogy": "像描述一群人的身高：平均身高是中心，标准差说明大家个子差得多不多，偏度说明是不是有一小撮人特别高、把右侧尾巴拖长了。",
+          "analogyBreaksDown": "身高近似正态、尾部不重，掩盖了真实数据的重尾特性：方差由平方项主导，少数极端点就能决定它的量级，此时标准差已不是『典型偏离』的可靠描述。",
+          "mechanism": "二阶中心矩把偏差平方后平均，既让正负抵消消失，又放大了离群点的影响；开方回到原始量纲便于解释；再把三阶中心矩除以标准差的立方，得到量纲无关的偏度。",
+          "visual": "在同一张图上叠三条密度曲线：对称的（偏度 0）、右尾长的（正偏）、左尾长的（负偏）；再在对称曲线下方用阴影标出正负一个标准差的区间表示离散程度。",
+          "prerequisites": [
+            "均值与求和符号",
+            "概率密度曲线的读法"
+          ],
+          "selfTest": [
+            "方差和标准差的量纲有什么差别？",
+            "偏度为正说明分布的尾巴拖向哪一侧？",
+            "为什么方差对离群点特别敏感？"
+          ],
+          "formula": "s^2=\\frac{1}{n-1}\\sum_{i=1}^{n}(x_i-\\bar{x})^2"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-arithmetic-mean",
+          "name": "样本均值（Sample Mean）",
+          "category": "foundation",
+          "latex": "\\bar{x}=\\frac{1}{n}\\sum_{i=1}^{n}x_i",
+          "symbols": [
+            [
+              "xᵢ",
+              "第 i 个观测值"
+            ],
+            [
+              "n",
+              "样本量"
+            ],
+            [
+              "x̄",
+              "样本均值，中心位置的估计"
+            ]
+          ],
+          "derivation": [
+            "第 1 步（准则）：要找一个数 c 来代表整批数据，最自然的准则是让它到各点的距离尽可能小。",
+            "第 2 步（写目标）：取平方距离之和 L(c)=Σ(xᵢ−c)²，这是关于 c 的凸二次函数，有唯一最小值。",
+            "第 3 步（求极值）：令导数为零，dL/dc = −2Σ(xᵢ−c) = 0。",
+            "第 4 步（解出）：c = (1/n)Σxᵢ 即样本均值；平方误差准则也解释了它为什么对离群点敏感。"
+          ],
+          "analogy": "四个人凑钱买一件东西，把钱合在一起再平摊，每人出的那份就是均值。",
+          "pitfalls": [
+            "把均值当作『典型样本』：它可能不等于任何一个真实观测值。",
+            "对长尾数据（收入、点击量）直接用均值，被极端值拉偏。",
+            "混淆总体均值 μ 与样本均值 x̄ 的记号与含义。"
+          ],
+          "code": "def mean(xs):\n    if not xs:\n        raise ValueError('empty sample')\n    return sum(xs) / len(xs)\n\ndef variance(xs, ddof=1):\n    m = mean(xs)\n    if len(xs) - ddof <= 0:\n        raise ValueError('need more samples')\n    return sum((x - m) ** 2 for x in xs) / (len(xs) - ddof)\n\ndata = [1, 2, 3, 4, 100]\nprint('mean    :', mean(data))\nprint('variance:', round(variance(data), 2))",
+          "sources": [
+            {
+              "title": "[单选题] 以下哪个统计量描述数据的集中趋势或中心位置？",
+              "url": "https://nowcoder.com/questionTerminal/fe132301412e4c459a496462b43d180d"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "题目的四个选项是偏度、均值、标准差、方差。",
+          "题目为单选题，来源标注为 2026 年华为 8 月批次，页面显示 0 条回答、8 次浏览。",
+          "题干问的是哪个统计量描述集中趋势或中心位置。"
+        ],
+        "uncertain": [
+          "题库摘要没有直接给出正确选项文本，选『均值』是按描述统计学的标准分类判定的（推断）。",
+          "摘要未给出本题的解析或引用教材，分类口径以通用统计学定义为准。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "均值说的是数据中心在哪，方差和标准差说的是数据散不散。"
+          },
+          {
+            "level": "入门",
+            "text": "描述集中趋势的统计量有均值、中位数、众数；方差与标准差描述离散程度；偏度描述分布偏向哪一侧。四个选项里只有均值属于第一类，所以选均值。"
+          },
+          {
+            "level": "进阶",
+            "text": "『中心位置』和『离散程度』是互补的两组描述：只知道均值不知道方差，就不知道数据稳不稳定。均值最小化平方误差，中位数最小化绝对误差，所以长尾数据用中位数更稳；标准差而不是方差常被用来解释波动，因为它的量纲和原始数据一致。"
+          },
+          {
+            "level": "专家",
+            "text": "把四个选项放进矩的框架最清楚：一阶矩是均值，二阶中心矩是方差（标准差是其平方根），三阶标准化矩是偏度。面试常顺着追问：为什么均值最小化平方误差、中位数更稳健、样本方差的分母为什么是 n−1（无偏性）、以及偏度在重尾小样本下估计极不稳定。回答时先给分类骨架，再给一个真实场景（例如收入特征用中位数并同时报告标准差）就能体现工程判断。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "如果题目改成『哪个统计量描述离散程度』，答案会变吗？",
+            "a": "会变，答案是方差或标准差；这说明把四个选项按中心、离散、形状三类归档才是真正的考点。"
+          },
+          {
+            "q": "有了方差为什么还要标准差？",
+            "a": "方差是平方量纲，和原始数据不同单位；开方后的标准差与原数据同量纲，便于解释波动幅度。"
+          },
+          {
+            "q": "偏度为什么容易被误选成集中趋势？",
+            "a": "因为它的名字里没有『散』字，考生凭印象归类；实际上它度量分布的不对称性，属于形状统计量。"
+          }
+        ],
+        "mechanism": "集中趋势回答『数据中心在哪』，离散程度回答『数据摊得多开』，形状回答『分布对称不对称』，三者各管一个自由度、不能互相替代：均值相同的两个分布可能极窄也可能极宽。所以描述一批数据至少要给出一对（中心 + 离散）才能有效刻画，这也是为什么只用均值做特征会丢失大量信息。",
+        "boundary": "均值只对数值型、近似对称的数据有代表性：类别数据要用众数，长尾或含离群点的数据中位数更合适。方差与标准差对离群点敏感（平方放大），稳健场景应改用中位数绝对偏差；偏度在样本量小或重尾分布下估计极不稳定，不适合作为小样本的结论依据。",
+        "analogyBoundary": "『合钱平分』只演示了算术平均的构造方式，不说明它的统计性质：真实数据带噪声和离群点，平分出来的数往往不在数据集内，也可能远离大多数观测，用它代表『典型值』是额外的假设而非类比本身能保证的。",
+        "misconceptions": [
+          "把标准差当中心位置的度量：标准差是离散程度。",
+          "认为偏度描述集中趋势：它描述分布形状。",
+          "混淆方差与标准差的量纲，被追问单位时答不上来。"
+        ],
+        "ownAnalysis": "这题考查描述统计的三个维度，属于笔试送分题，但面试官常顺着追问：均值为什么最小化平方误差、中位数为什么更稳健、样本方差分母为什么是 n−1（推断：题库未给出这些追问）。我建议把『中心、离散、形状』当成一个记忆骨架，并绑定一个真实决策——例如收入、时长这类长尾特征在工程上默认用中位数做填充、用标准差判断异常幅度。",
+        "officialNotes": [
+          {
+            "position": "题目为单选题，选项是偏度、均值、标准差、方差，问哪个描述集中趋势或中心位置，来源标注为 2026 年华为 8 月批次。",
+            "source": "https://nowcoder.com/questionTerminal/fe132301412e4c459a496462b43d180d"
+          }
+        ],
+        "interviewAnswer": "描述集中趋势的统计量是均值、中位数和众数，四个选项里只有均值属于这一类，所以选均值。方差和标准差描述离散程度，偏度描述分布的不对称性。实际做特征工程时我会先看分布：近似对称就用均值，长尾或有离群点就换成中位数，并同时报告标准差来体现波动，因为只给一个中心值信息量是不够的。",
+        "studyPath": {
+          "prerequisites": [
+            "描述统计的基本概念",
+            "求和符号与期望的定义"
+          ],
+          "nextSteps": [
+            "手推均值最小化平方误差、中位数最小化绝对误差",
+            "学习偏度与峰度的标准化矩定义",
+            "用 numpy 或 pandas 计算并解释这些统计量"
+          ]
+        }
+      }
+    },
+    {
+      "id": "50c04a4ca3002542",
+      "tldr": "MLE 的核心操作是找出让观测样本似然最大的 θ，即最大化 p(X|θ)。",
+      "keyPoints": [
+        "四个选项分别对应矩估计、贝叶斯、一致性、MLE",
+        "MLE 在参数空间里搜索使似然最大的 θ",
+        "『算样本均值方差直接当参数』是矩估计",
+        "『设先验再算后验』是贝叶斯估计，不是 MLE",
+        "『加大样本量使估计收敛』描述的是一致性"
+      ],
+      "why": "MLE 是交叉熵损失与概率建模的原点，面试常考它与 MAP、贝叶斯估计的关系。",
+      "difficulty": "medium",
+      "tags": [
+        "maximum-likelihood",
+        "statistics",
+        "parameter-estimation",
+        "interview"
+      ],
+      "entities": [
+        "最大似然估计（MLE）",
+        "似然",
+        "先验分布",
+        "后验分布",
+        "牛客网"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "MLE 的固定四步流程",
+        "caption": "写联合似然、取对数、求极值、得估计，任何分布族都走这四步。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='最大似然估计四步流程图'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>① 观测样本</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>已知分布族，θ 未知</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>② 写出联合似然</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>L(θ) = ∏ p(xᵢ|θ)</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>③ 取对数求极值</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>ℓ(θ) = Σ log p(xᵢ|θ)</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>④ 得到估计</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>θ̂ = argmax ℓ(θ)</text></svg>",
+        "alt": "四步流程：已知分布族但参数未知，写出联合似然，取对数后求极值，得到使似然最大的参数估计。"
+      },
+      "concepts": [
+        {
+          "name": "Maximum Likelihood Estimation（最大似然估计）",
+          "readable": "已知分布族但参数未知时，把『看到这批数据』的概率写成参数的函数，再挑出让这个概率最大的参数，就是最大似然估计。",
+          "analogy": "像在靶场看一组弹孔：靶心位置未知，但你会反推那个最可能打出这组弹孔的靶心在哪。",
+          "analogyBreaksDown": "靶心类比暗示未知量只有一个二维位置且可以直观比较距离，而 θ 可能是高维、带约束（如方差必须为正）甚至不可辨识的，似然面也可能有多个峰，这些都不在类比里。",
+          "mechanism": "关键设计是用联合似然而非单样本概率，并在对数域求解：样本独立所以似然是连乘，取对数把它变成求和，避免数值下溢又保持 argmax 不变，于是估计问题就归约成对 θ 求极值。",
+          "visual": "画一条横轴为 θ、纵轴为似然 L(θ) 的曲线，标出最高点 θ̂；旁边画同一曲线的对数版本，说明峰值位置相同但纵轴尺度更平缓。",
+          "prerequisites": [
+            "概率密度与独立同分布假设",
+            "求导与极值条件"
+          ],
+          "selfTest": [
+            "为什么取对数不改变最大似然估计的解？",
+            "高斯分布下 MLE 的方差分母为什么是 n 而不是 n−1？",
+            "MLE 与矩估计的目标函数差别在哪里？"
+          ],
+          "formula": "\\hat{\\theta}_{\\mathrm{MLE}}=\\arg\\max_{\\theta\\in\\Theta}\\prod_{i=1}^{n}p(x_i\\mid\\theta)"
+        },
+        {
+          "name": "Log-Likelihood and Cross-Entropy（对数似然与交叉熵）",
+          "readable": "对数似然把连乘变成求和；模型分布与数据分布之间的交叉熵正好等于负对数似然，所以最小化交叉熵与最大化似然是同一件事。",
+          "analogy": "像把一长串乘法换成一串加法：大小顺序不变，但算起来不会下溢，还能一项一项看每个样本贡献了多少。",
+          "analogyBreaksDown": "『换个算法』的说法只讲了数值技巧，没讲它同时把目标改写成了一种分布间度量：交叉熵并不对称，也要额外处理 log 0 这类边界。",
+          "mechanism": "因为对数单调，argmax 不变；而独立样本的联合概率是连乘，取对数后变成逐样本项求和，于是可以按样本并行求梯度。深度学习中常用的交叉熵损失，就是这一项的负数。",
+          "visual": "画两列对齐的方块：左列是各样本的 p(xᵢ|θ) 组成乘法链，右列是 log p(xᵢ|θ) 组成加法链；中间用箭头标注『单调变换，峰值位置不变』。",
+          "prerequisites": [
+            "对数的运算性质",
+            "交叉熵与 KL 散度的定义"
+          ],
+          "selfTest": [
+            "为什么最大化对数似然等价于最小化交叉熵？",
+            "log 0 会带来什么问题，工程上怎么处理？",
+            "对数变换为什么不影响最优参数的位置？"
+          ],
+          "formula": "\\ell(\\theta)=\\sum_{i=1}^{n}\\log p(x_i\\mid\\theta),\\quad H(p,q)=-\\sum_i p_i\\log q_i"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-mle-objective",
+          "name": "最大似然估计目标（Maximum Likelihood Objective）",
+          "category": "foundation",
+          "latex": "\\hat{\\theta}_{\\mathrm{MLE}}=\\arg\\max_{\\theta\\in\\Theta}p(X\\mid\\theta)=\\arg\\max_{\\theta}\\sum_{i=1}^{n}\\log p(x_i\\mid\\theta)",
+          "symbols": [
+            [
+              "θ",
+              "待估参数"
+            ],
+            [
+              "Θ",
+              "参数空间，即 θ 可取值的集合"
+            ],
+            [
+              "X = {x₁,…,xₙ}",
+              "独立同分布的观测样本"
+            ],
+            [
+              "p(xᵢ|θ)",
+              "第 i 个样本在参数 θ 下的似然"
+            ],
+            [
+              "θ̂_MLE",
+              "最大似然估计量"
+            ]
+          ],
+          "derivation": [
+            "第 1 步（动机）：参数未知而数据已经看到，最自然的准则就是挑那个让这批数据最可能出现的参数。",
+            "第 2 步（联合似然）：样本独立同分布，所以 L(θ)=∏p(xᵢ|θ)；注意它是 θ 的函数，不是 θ 的概率分布。",
+            "第 3 步（取对数）：连乘在 n 大时会下溢且难求导，而 log 单调递增不改变 argmax，于是 ℓ(θ)=Σlog p(xᵢ|θ)。",
+            "第 4 步（求极值）：令 ∇ℓ(θ)=0 并与参数空间边界比较即得 θ̂；高斯情形有闭式解，正是样本均值与分母为 n 的方差。"
+          ],
+          "analogy": "像看一组弹孔反推最可能的靶心：靶心是参数、弹孔是数据，你要找的是最能解释这组弹孔的那个位置。",
+          "pitfalls": [
+            "把似然当成 θ 的概率密度：似然对 θ 积分不必为 1。",
+            "把设先验再算后验当成 MLE：那是贝叶斯或 MAP 的做法。",
+            "只求导不检查边界与二阶条件，漏掉参数空间边缘的解。"
+          ],
+          "code": "import numpy as np\n\ndef mle_gaussian(xs):\n    xs = np.asarray(xs, dtype=float)\n    mu = xs.mean()\n    sigma2 = ((xs - mu) ** 2).mean()   # MLE 分母是 n，不是 n-1\n    return mu, sigma2\n\ndef log_likelihood(xs, mu, sigma2):\n    xs = np.asarray(xs, dtype=float)\n    return float(-0.5 * np.sum(np.log(2 * np.pi * sigma2) + (xs - mu) ** 2 / sigma2))\n\ndata = [1.0, 2.0, 3.0, 4.0, 100.0]\nmu_hat, s2_hat = mle_gaussian(data)\nprint('mu_hat:', mu_hat, 'sigma2_hat:', s2_hat)\nprint('logL  :', log_likelihood(data, mu_hat, s2_hat))",
+          "sources": [
+            {
+              "title": "[单选题] 已知随机过程所属的分布族，但参数 θ 未知。观察样本 X 后",
+              "url": "https://nowcoder.com/questionTerminal/b3f36391c03c498da65c0603d173fe84"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "题干设定为已知分布族但参数 θ 未知，观察样本 X 之后提问。",
+          "四个选项分别是：算样本均值与方差直接当参数、给 θ 设先验再算后验、不断增加样本量使估计收敛、寻找让观测样本似然最大的 θ。",
+          "题目为单选题，来源标注为 2026 年华为 8 月批次，页面显示 0 条回答、7 次浏览。"
+        ],
+        "uncertain": [
+          "题库摘要没有直接标出正确选项，选『寻找使似然最大的 θ』是按 MLE 定义判定的（推断）。",
+          "题面未指定具体分布族（高斯、伯努利等），本条公式按通用形式重建，需核对原文。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "最大似然估计就是挑一个让『已经看到的数据』最可能出现的参数。"
+          },
+          {
+            "level": "入门",
+            "text": "已知分布族 p(x|θ) 但 θ 不知道，就把观测样本的联合概率当成 θ 的函数，找到让它最大的那个 θ。它回答的是：在众多候选参数里，哪个最能解释这批数据。"
+          },
+          {
+            "level": "进阶",
+            "text": "实际做法是取对数把连乘变求和，再对 θ 求导置零。对数单调，argmax 不变，但数值稳定性好得多。高斯分布下闭式解就是样本均值与分母为 n 的样本方差，这也是为什么平方损失与高斯噪声假设天然绑定。"
+          },
+          {
+            "level": "专家",
+            "text": "MLE 与矩估计、MAP、完整贝叶斯的差别在于目标函数里有没有先验、求解的是点还是分布：矩估计只匹配低阶矩，MLE 用完整似然；MAP 在 ℓ(θ) 上加 log p(θ)，小样本时相当于正则；完整贝叶斯对 θ 积分得到后验预测分布。MLE 在样本量趋于无穷时一致且渐近有效（达到 Cramér-Rao 下界），但小样本可能有偏，参数不可辨识或落在边界时导数法失效，对离群点也远比中位数类估计敏感。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么一定要取对数，直接最大化连乘不行吗？",
+            "a": "数学上等价，但 n 大时连乘会迅速下溢为 0，梯度也难算；取对数把连乘变求和，数值稳定且求导简单。"
+          },
+          {
+            "q": "如果给 θ 加上一个先验分布，会得到什么？",
+            "a": "目标变成 log p(X|θ)+log p(θ)，也就是 MAP；先验相当于正则项，样本少时会明显把估计拉向先验中心。"
+          },
+          {
+            "q": "MLE 一定无偏吗？",
+            "a": "不一定。高斯方差的 MLE 分母是 n 而非 n−1，期望偏小；样本量增大偏差趋于 0，所以只能说渐近无偏。"
+          }
+        ],
+        "mechanism": "关键设计是把『数据出现的概率』当作参数的函数并整体最大化：只有用联合似然才能同时利用全部样本，只有取对数才能把乘积变成可加且数值稳定的目标。这样一来任何分布族都能套进『写似然、取对数、求极值』的固定流程，也让 MLE 与大样本下最小化交叉熵、最小化 KL 散度等价。",
+        "boundary": "样本量很小时 MLE 方差大且可能有偏，甚至给出概率为 0 的估计（某类别一次都没出现）；参数不可辨识或最优解落在参数空间边界时导数法失效；数据含离群点时高斯 MLE 会被明显拉走。此时应改用 MAP 或正则化、中位数类稳健估计，或直接做完整贝叶斯推断。",
+        "analogyBoundary": "『反推靶心』暗示只有一个旋钮和一个唯一的峰，实际似然面可能有多个局部极大、平坦高原甚至无界；而且弹孔类比让人以为能实时试错，而 MLE 只用一次性给定的一批样本。",
+        "misconceptions": [
+          "把似然当概率：似然是 θ 的函数，关于 θ 积分为 1 不成立。",
+          "把『设先验再算后验』当成 MLE：那是贝叶斯或 MAP。",
+          "认为 MLE 一定无偏或一定收敛：小样本有偏，不可辨识时未必收敛到真值。"
+        ],
+        "ownAnalysis": "把四个选项并排看，这道题真正考的是估计方法的分类骨架：矩估计（选项一）、贝叶斯（选项二）、大样本一致性与渐近性质（选项三）、MLE（选项四），这正是面试里常见的追问链。工程上它与深度学习直接相连——交叉熵损失就是负对数似然（推断：题面没有提到深度学习，这层联系是我补充的语境）。可疑处在于题面没给分布族，所以公式只能按通用形式重建。",
+        "officialNotes": [
+          {
+            "position": "题目为单选题，问最大似然估计的核心操作，题干设定为已知分布族但参数未知、观察样本 X 之后。",
+            "source": "https://nowcoder.com/questionTerminal/b3f36391c03c498da65c0603d173fe84"
+          }
+        ],
+        "interviewAnswer": "最大似然估计的核心是：把观测样本的联合概率 p(X|θ) 看作 θ 的函数，在参数空间里找让它最大的 θ。实际计算会取对数，把连乘变成求和，再求导置零。另外三个选项分别对应矩估计、贝叶斯估计和大样本一致性，都不是 MLE 的操作本身；如果加上先验，就变成 MAP 了。",
+        "studyPath": {
+          "prerequisites": [
+            "概率密度与联合分布",
+            "独立同分布假设",
+            "求导与极值条件"
+          ],
+          "nextSteps": [
+            "手推高斯与伯努利分布的 MLE 闭式解",
+            "对比 MLE、MAP 与完整贝叶斯估计",
+            "推导交叉熵损失与负对数似然的等价性"
+          ]
+        }
+      }
+    },
+    {
+      "id": "fac19566f6132cb4",
+      "tldr": "按右端点 DP 累加每个子串的极长连续段数：相同字符 a+=1，否则 a+=i+1。",
+      "keyPoints": [
+        "DP 按右端点递推，a 是以 i 结尾所有子串的连续段数之和",
+        "s[i]==s[i-1] 时 a += 1，旧子串段数不变只多单位子串",
+        "字符不同时 a = a + i + 1，i 个旧子串各多一段",
+        "result 逐轮累加 a，得到所有子串的极长连续段总数",
+        "摘要给出的实现用两个 long long 变量，单层循环"
+      ],
+      "why": "『按右端点分组子串』是手撕与笔试高频降维套路，也是字符串计数题的通用手法。",
+      "difficulty": "medium",
+      "tags": [
+        "dynamic-programming",
+        "string",
+        "algorithm",
+        "interview"
+      ],
+      "entities": [
+        "极长连续段的权值",
+        "动态规划",
+        "C++",
+        "long long"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "按右端点的线性 DP 递推",
+        "caption": "一轮循环只做三件事：比较相邻字符、更新 a、把 a 累加进 result。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='极长连续段权值的线性 DP 流程'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>① 初始化</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>a = 1，result = 1</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>② 比较 s[i] 与 s[i-1]</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>相同 / 不同两个分支</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>③ 更新 a</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>相同 a+=1，不同 a+=i+1</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>④ 累加并前进</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>result += a，直到 i = n-1</text></svg>",
+        "alt": "四步流程：初始化 a 与 result 为 1；比较当前字符与前一个字符；相同则 a 加 1、不同则 a 加 i 加 1；每轮把 a 累加进 result 并前进到 n-1。"
+      },
+      "concepts": [
+        {
+          "name": "DP by Right Endpoint（按右端点分组）",
+          "readable": "把所有子串按右端点分成 n 组，每组共享同一个结尾位置；这样从左往右扫一遍，就能用上一组的统计量在常数时间内推出下一组。",
+          "analogy": "像按『最后一位是谁』给队伍分组：新来一个人只影响以他结尾的那些队伍，之前那些队伍的段数不会因为他的加入而改变。",
+          "analogyBreaksDown": "队伍类比默认新成员只影响以他结尾的组，但如果题目要统计区间最值或区间内不同字符数，旧组的信息不足以常数时间更新，这个类比就失效了。",
+          "mechanism": "关键设计是选一个在『末尾追加一个字符』时封闭的统计量：极长连续段数只取决于新字符与前一个字符是否相同，所以组内增量只有 +1 或 +i+1 两种，递推因此成立。",
+          "visual": "画一行字符串方格，右端点 i 用竖线标出；每个 i 下方画一条横条表示以 i 结尾的所有子串，条上写段数之和 a_i，相邻两条之间用箭头标注增量是 +1 还是 +i+1。",
+          "prerequisites": [
+            "子串与下标约定",
+            "线性动态规划的状态定义"
+          ],
+          "selfTest": [
+            "以位置 i 结尾的子串一共有多少个？",
+            "为什么按右端点分组能避免枚举所有区间？",
+            "哪类统计量不能这样常数时间递推？"
+          ],
+          "formula": "a_i=\\sum_{l\\le i}\\mathrm{runs}(s[l..i])"
+        },
+        {
+          "name": "Run-Length Segmentation（极长连续段划分）",
+          "readable": "把字符串切成若干段，每段内部字符全相同、相邻两段的字符不同；段的个数就是 runs，也就是本题统计的对象。",
+          "analogy": "像把一条彩色串珠按颜色分成一段一段：同色相邻的珠子合成一段，颜色一换就开新的一段。",
+          "analogyBreaksDown": "串珠的段是整条可见的固定划分，而本题统计的是任意子串内部的段数：子串会把原来的段截断，所以不能直接复用整串的段划分。",
+          "mechanism": "runs 在追加一个字符时只有两种增量：与末尾字符相同则段数不变，不同则段数加一。取值只有两种可能，这正是 DP 能做常数时间转移的前提。",
+          "visual": "画一行字符，下方用横条盖住每一段并在段与段之间画竖线；再画一个子串窗口，显示窗口把原来的段截断后只剩两段。",
+          "prerequisites": [
+            "字符串遍历",
+            "指示函数与求和符号"
+          ],
+          "selfTest": [
+            "字符串 aabba 的极长连续段有几段？",
+            "追加一个字符时 runs 的增量有哪两种可能？",
+            "空串的 runs 应该定义为多少？"
+          ],
+          "formula": "\\mathrm{runs}(t)=1+\\sum_{j=1}^{|t|-1}\\mathbb{1}[t_j\\ne t_{j-1}]"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-run-count-substring-dp",
+          "name": "极长连续段计数 DP 转移（Run-Count DP Recurrence）",
+          "category": "engineering",
+          "latex": "a_i=a_{i-1}+1+i\\cdot\\mathbb{1}[s_i\\ne s_{i-1}],\\qquad \\mathrm{ans}=\\sum_{i=0}^{n-1}a_i",
+          "symbols": [
+            [
+              "aᵢ",
+              "以位置 i 结尾的所有子串的极长连续段数之和"
+            ],
+            [
+              "sᵢ",
+              "字符串第 i 个字符，0 基下标"
+            ],
+            [
+              "i",
+              "右端点下标；以 i 结尾的子串共 i+1 个"
+            ],
+            [
+              "1[·]",
+              "指示函数，条件成立取 1，否则取 0"
+            ],
+            [
+              "ans",
+              "所有子串的极长连续段总数"
+            ]
+          ],
+          "derivation": [
+            "第 1 步（分组）：任何子串由右端点唯一确定，把全部子串按右端点分成 n 组，只需维护每组的一个统计量。",
+            "第 2 步（相同字符）：若 sᵢ 与 sᵢ₋₁ 相同，新字符并入原有最后一段，i 个旧子串的段数一个都没变，只有新增的单位子串贡献 1 段，故 aᵢ = aᵢ₋₁ + 1。",
+            "第 3 步（不同字符）：新字符自成一段，i 个旧子串各多一段，加上单位子串的 1 段共多 i+1，故 aᵢ = aᵢ₋₁ + i + 1。",
+            "第 4 步（汇总）：每个子串恰属一个右端点分组，把 a₀ 到 aₙ₋₁ 相加即答案，时间 O(n)、额外空间 O(1)。"
+          ],
+          "analogy": "像清点一排队伍里同色衣服的段落：新来的人若与队尾同色就并入最后一段，否则另起一段；每加一人就把所有以他结尾的队伍重新结算一次。",
+          "pitfalls": [
+            "不同字符时只加 1：实际要加 i+1，漏掉旧子串各多出的一段。",
+            "忘记累加单位子串，结果比正确答案少 n。",
+            "用 32 位整型存结果导致溢出：摘要代码里 result 与 a 都声明为 long long。"
+          ],
+          "code": "def fast(s):\n    n = len(s)\n    if n == 0:\n        return 0\n    result, a = 1, 1\n    for i in range(1, n):\n        if s[i] == s[i - 1]:\n            a += 1\n        else:\n            a += i + 1\n        result += a\n    return result\n\ndef runs(t):\n    return 1 + sum(1 for i in range(1, len(t)) if t[i] != t[i - 1])\n\ndef brute(s):\n    return sum(runs(s[l:r]) for l in range(len(s)) for r in range(l + 1, len(s) + 1))\n\nfor s in ['aa', 'ab', 'aba', 'aab', 'abc']:\n    print(s, fast(s), brute(s))",
+          "sources": [
+            {
+              "title": "150. 极长连续段的权值 | 动态规划 | 状态转移",
+              "url": "https://programmercarl.com/kamacoder/0150.%E6%9E%81%E9%95%BF%E8%BF%9E%E7%BB%AD%E6%AE%B5%E7%9A%84%E6%9D%83%E5%80%BC.html"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要给出的 C++ 实现用 result 与 a 两个 long long 变量，循环变量 i 从 1 到 n−1。",
+          "代码中相同字符分支是 a += 1，不同字符分支是 a = a + i + 1，每轮都执行 result += a。",
+          "代码注释写明思路是『以最右节点为终点，每个子串的极长连续段都 +1，再加本身长度为 1 的子串』，并标注为动态规划、枚举最后边节点的情况。",
+          "条目标题给出的题号是 150，题名为『极长连续段的权值』。"
+        ],
+        "uncertain": [
+          "摘要只给出代码片段（连 #include 行都被剥离），没有完整题面、样例与数据范围，字符串长度上限未知。",
+          "『极长连续段的权值』的精确定义（是否等价于子串内极长连续段的个数之和）是按代码语义反推的（推断）。",
+          "代码把 result 与 a 初始化为 1，隐含 n ≥ 1；n = 0 的行为在摘要中没有出现。",
+          "我按递推与暴力枚举做过手工对拍（aa、ab、aba、aab 一致），但这是我自己的验证，不是摘要内容（推断）。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "一遍扫字符串，就能把所有子串里『连续相同字符的段数』加起来。"
+          },
+          {
+            "level": "入门",
+            "text": "以位置 i 结尾的子串共有 i+1 个。变量 a 记录这些子串的段数之和：s[i] 与 s[i-1] 相同时，旧子串段数不变，只有单字符子串新增 1 段；不同时 i 个旧子串各多一段，再加单字符子串，故加 i+1。"
+          },
+          {
+            "level": "进阶",
+            "text": "这是『按右端点枚举子串』的经典降维：直接枚举全部 O(n²) 个子串再逐个扫描是 O(n³)，而按右端点分组后，组与组之间只有一个字符的差别，于是转移只需常数时间。难点不在代码，而在找到『新旧两组之间段数怎么变』这条不变量，并把单字符子串的贡献单独算清楚。"
+          },
+          {
+            "level": "专家",
+            "text": "同族思路可以迁移到很多字符串计数题：用一个状态量表示『以当前下标结尾的所有子串的某个统计量之和』，再按新字符是否与前一个相同写两种转移。正确性依赖两点：每个子串被恰好划给一个右端点，且统计量在追加一个字符时只有有限种增量。代价是它只支持从左到右的流式统计，无法回答区间查询或支持在线修改；若要处理多次区间询问，需要换成后缀自动机、分块或离线预处理。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么不直接双重循环枚举左右端点？",
+            "a": "枚举有 O(n²) 个子串，每个再扫一遍求段数是 O(n³)；n 上万就超时，DP 把它压到 O(n)。"
+          },
+          {
+            "q": "为什么相同字符时 a 只加 1，而不是加子串个数？",
+            "a": "因为新字符并进了原来最后一段，旧子串的段数一个都没变，只有新增的单位子串贡献 1 段。"
+          },
+          {
+            "q": "a 和 result 含义不同，能不能只留一个变量？",
+            "a": "不能。a 只统计以当前位置结尾的那一组，result 是历史所有分组的累加，去掉任一个都得不到全局答案。"
+          }
+        ],
+        "mechanism": "关键在于把 O(n²) 个子串按右端点分组，让组内共享前缀信息：追加一个字符时，段数只在『是否与前一字符相同』这一处分叉。这个不变量让每一组都能从上一组用常数时间增量推出，于是全局求和变成一趟线性扫描，而不需要真的枚举区间。",
+        "boundary": "只有当被求的量在追加一个字符时具有常数增量时这套递推才成立，本题依赖『极长连续段数』这一性质。若题目改成求子串内不同字符数或最长回文，同样的状态量不封闭，需要换数据结构。此外该写法要求字符串能从左到右流式遍历，面对在线修改或区间查询场景并不适用；n 很大时还要注意累加结果的溢出。",
+        "analogyBoundary": "『数同色衣服段落』的类比里，人是按顺序加入、边界是固定的；而子串是任意区间，本题之所以能简化，是因为我们只关心以某人结尾的区间，其余区间的贡献被推迟到它们各自的右端点才结算，这一点类比没有体现。",
+        "misconceptions": [
+          "把 a 当成最终答案直接输出：a 只统计以当前位置结尾的子串。",
+          "不同字符时只加 1：实际要加 i+1，漏掉旧子串各多出的一段。",
+          "把『极长连续段的权值』理解成最长连续段的长度，而摘要代码统计的是段的个数。"
+        ],
+        "ownAnalysis": "我按代码语义反推：a 是以 i 结尾子串的极长连续段个数之和，并用 aa、ab、aba、aab 手工对拍过递推与暴力枚举一致（推断，摘要里没有出现样例）。可疑处在于题目名里的『权值』没有给出定义——如果权值指段的长度而不是段的个数，这段代码就解释不通，所以我倾向认为权值等于段数（待核实）。另一个细节是代码把 result 与 a 都初始化为 1，隐含 n≥1，空串需要额外处理。",
+        "officialNotes": [
+          {
+            "position": "题解给出的实现是单层循环的 O(n) DP：相同字符时 a+=1，不同字符时 a=a+i+1，每轮都执行 result+=a，并说明思路是枚举以最右节点为终点的子串。",
+            "source": "https://programmercarl.com/kamacoder/0150.%E6%9E%81%E9%95%BF%E8%BF%9E%E7%BB%AD%E6%AE%B5%E7%9A%84%E6%9D%83%E5%80%BC.html"
+          }
+        ],
+        "interviewAnswer": "我会用按右端点分组的线性 DP：维护 a 表示以当前位置结尾的所有子串的极长连续段数之和，result 是全局累加。当前字符与前一个相同时，新字符并入最后一段，旧子串段数不变，只有单字符子串新增一段，所以 a 加 1；不同时，i 个旧子串各多一段再加单字符子串，所以 a 加 i+1。每轮把 a 累加进 result。时间 O(n)，额外空间 O(1)，结果可能很大需要用 64 位整数。",
+        "studyPath": {
+          "prerequisites": [
+            "线性 DP 与状态定义",
+            "字符串下标与子串枚举",
+            "复杂度分析"
+          ],
+          "nextSteps": [
+            "手写暴力枚举版并对随机串做对拍",
+            "思考极长连续段长度版本该如何统计",
+            "练习同型题：统计所有子串的某个可常数增量维护的量"
+          ]
+        }
+      }
+    },
+    {
+      "id": "d248dc5a6bb9d099",
+      "tldr": "个人 LeetCode 题解仓库，55730 stars、主语言 JavaScript，按题目记录解题之路。",
+      "keyPoints": [
+        "仓库为 azl397985856/leetcode，主语言 JavaScript",
+        "摘要标注约 55730 stars，最近更新 2025-07-16",
+        "定位是记录自己 leetcode 解题之路的题解集",
+        "主题标签含 algo、data-structures、interview 等",
+        "摘要只给仓库元信息，未给题目清单与目录结构"
+      ],
+      "why": "可作为按专题查找面试高频题思路的索引，但需与官方题解交叉复核。",
+      "difficulty": "easy",
+      "tags": [
+        "leetcode",
+        "solutions",
+        "github",
+        "algorithms",
+        "interview"
+      ],
+      "entities": [
+        "azl397985856/leetcode",
+        "LeetCode",
+        "JavaScript"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "题解仓库的使用闭环",
+        "caption": "用它定位题目、自己先写、只取最小提示，最后提交并记录错因。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='使用题解仓库的四步闭环流程'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>① 按专题定位</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>题单与主题标签</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>② 先自己写</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>限时独立推导，不看题解</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>③ 只取最小提示</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>关掉题解，重新写一遍</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>④ 提交并复盘</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>记录错因与复杂度</text></svg>",
+        "alt": "四步流程：按专题定位题目，限时独立写，卡住只看最小提示后关掉题解重写，最后提交并记录错因与复杂度。"
+      },
+      "concepts": [
+        {
+          "name": "Solution Repository as Index（题解仓库当索引）",
+          "readable": "把个人题解仓库当作按专题检索思路的入口，而不是逐题精读的教材：先用它定位题型，再回到自己推导、自己提交验证。",
+          "analogy": "像图书馆的分类标签：标签帮你快速走到对应的书架，但书要自己读，标签本身不产生理解。",
+          "analogyBreaksDown": "图书馆的标签由馆员统一维护、相对稳定；个人仓库的目录与标签由作者自行组织，覆盖不均匀、随更新变化，也可能缺你需要的题型。",
+          "mechanism": "它把散落在题目讨论区的解法聚合成可检索的语料，把『找到思路起点』的成本降到一次搜索；但思路到能力之间还隔着一遍独立重写，所以它只能加速检索这一步，不能替代动手。",
+          "visual": "画一个漏斗：上层是仓库的专题标签（宽口），中层筛出你要练的十几道题，下层只留下独立写通并复盘过的题（窄口）。",
+          "prerequisites": [
+            "至少一门语言的语法与标准库",
+            "常见数据结构与复杂度分析"
+          ],
+          "selfTest": [
+            "为什么 star 数不能代表题解质量？",
+            "仓库主语言与你目标语言不一致时要注意什么？",
+            "读完一篇题解后的下一步应该做什么？"
           ],
           "formula": ""
         },
         {
-          "name": "题解仓库的复用边界 (Reuse Boundary of Solution Repos)",
-          "readable": "题解仓库给的是别人验证过的参考实现，适合对照与查漏；直接照抄会跳过推导和调试，现场手撕仍然会卡。",
-          "analogy": "像健身时看别人的训练视频：动作要领能看懂，但肌肉只能自己练出来，看视频本身不产生力量。",
-          "analogyBreaksDown": "看视频多少能学到动作发力方式，而照抄题解的收益几乎为零，因为面试考的是现场推导与调试，不是回忆文本，类比的收益被高估了。",
-          "mechanism": "有效用法是先自己写并跑用例，卡住再看题解，然后把差异点（边界条件、复杂度、语言特性）记成笔记；把仓库当索引而不是答案，才能把阅读转成能力。",
-          "visual": "画一个 2×2：横轴是『是否先自己写』，纵轴是『是否复盘差异』，只有右上角（先写 + 复盘）的能力增长最快，左下角（直接抄）几乎为零。",
+          "name": "Deliberate Practice Loop（刻意练习闭环）",
+          "readable": "先限时独立写，卡住只取最小提示，再关掉题解独立重写并提交，最后记录错因与复杂度；这个闭环才是把题解转成能力的机制。",
+          "analogy": "像学游泳：看教练示范只能看懂动作，必须自己下水、呛几口水、被纠正，才真的会游。",
+          "analogyBreaksDown": "游泳的反馈来自身体与水的直接作用，刷题的反馈来自判题系统与自己的复盘；如果不记录错因，重写只是重复劳动，闭环不会自动生效。",
+          "mechanism": "关键在于把『看懂』与『写出』分开：限时独立写暴露真实缺口，最小提示保证推导仍由自己完成，提交与复盘把错误固化成可检索的清单。",
+          "visual": "画一个四步环：限时独立写、取最小提示、关掉题解重写并提交、记录错因与复杂度；箭头回到起点换下一题，环外加一个计数器统计同类错因重复次数。",
           "prerequisites": [
             "基本的刷题习惯",
-            "能读懂多语言代码"
+            "能读懂他人代码"
           ],
           "selfTest": [
-            "先自己写再看题解，和直接看题解默写，差别在哪里？",
-            "复盘时应该记录哪三类信息？",
-            "什么情况下直接参考题解是合理的？"
+            "只看题解不自己写，缺的是哪一步反馈？",
+            "复盘时至少要记哪三类信息？",
+            "为什么提示要取『最小』而不是直接看完整题解？"
           ],
           "formula": ""
         }
@@ -260,658 +831,76 @@
       "formulas": [],
       "selfCheck": {
         "claims": [
-          "摘要给出的定位是多种编程语言实现 LeetCode 等面试题的题解仓库。",
-          "覆盖范围是 LeetCode、《剑指 Offer（第 2 版）》、《程序员面试金典（第 6 版）》。",
-          "摘要列出约 36647 stars、主语言 Java、最近更新 2026-10-02。",
-          "主题标签包含 algorithms、cpp、csharp、golang、java、javascript、leetcode、python3。"
+          "仓库全名为 azl397985856/leetcode。",
+          "摘要标注 55730 stars、主语言 JavaScript、最近更新 2025-07-16。",
+          "摘要描述它是 LeetCode 题解，记录自己的 leetcode 解题之路。",
+          "摘要列出的主题标签含 algo、algorithm、algorithms、data-structures、computer-science、cpp、interview。"
         ],
         "uncertain": [
-          "摘要只给标签与统计，没有描述目录结构、题目数量与题解质量，相关说明属于通用经验（非该仓库事实）。",
-          "按作业规则，链接/仓库类卡片允许 formulas 为空数组，本条因此未编造公式。",
-          "stars 数与更新时间为采集时快照，会随时间变化。"
+          "摘要只给出仓库元信息，没有题目清单、目录结构或代码质量证据，覆盖度需要人工抽查。",
+          "stars 数与最近更新时间是采集时的快照，会随时间变化。",
+          "按作业规则，链接与仓库类卡片允许 formulas 为空数组，本条因此没有产出公式。"
         ]
       },
       "teaching": {
         "progressive": [
           {
             "level": "一句话",
-            "text": "一个把 LeetCode 等面试题用多种语言写好题解的开源仓库。"
+            "text": "5.5 万星的个人 LeetCode 题解仓库，主语言 JavaScript。"
           },
           {
             "level": "入门",
-            "text": "它把 LeetCode、《剑指 Offer 第 2 版》和《程序员面试金典第 6 版》的题解集中在一个仓库里，同一题往往有 Java、C++、Python3 等多种实现，约 3.6 万星，最近仍在更新。对求职者来说，它最直接的用途是当刷题索引用。"
+            "text": "它把作者刷题的过程按题目记录下来，标注了算法、数据结构、面试等主题。对求职者来说，它的价值是当索引用：按专题找到同类题，再看别人的思路和代码，而不是把它当权威教材。"
           },
           {
             "level": "进阶",
-            "text": "正确用法是当索引而不是教材：先按专题定位高频题，自己写一遍并跑用例，卡住时对照目标语言实现，重点比对边界条件、复杂度与语言特性（例如 C++ 的引用语义、Python 的切片成本）。它的价值在覆盖面与多语言对照，而不是单题讲解深度，所以复习时还要自己补专题总结与错题本。"
+            "text": "用这类仓库的正确姿势是先自己想二十分钟，卡住了只看思路关键字，然后关掉题解自己重写并提交，否则容易产生『看懂了』的错觉。它的主语言是 JavaScript，如果你主投 C++ 或 Python，要注意语言习惯差异，例如数组操作、整数溢出与类型转换的处理方式都不同。"
           },
           {
             "level": "专家",
-            "text": "这类仓库的工程价值是『广度 × 多语言』的组合，降低了跨语言复习的切换成本；代价是同步维护成本高，不同语言实现可能版本不一致，有些题只有部分语言版本。评估时应看题单覆盖度与代码可运行性，而不是 star 数。对多模态/后训练方向的同学，算法题通常只是简历通过后的手撕环节，把仓库当索引用、把时间投在独立推导与复盘上，收益高于逐题精读题解。"
+            "text": "单一作者的个人题解仓库有共同风险：覆盖不均匀（作者刷得多的专题写得好）、难度标注与题解质量参差、缺少统一审校。因此更适合当第二意见——与官方题解、多份他人解法交叉比对，重点检查复杂度分析与边界讨论是否完整；面试前应以自己写出的、能提交通过的代码为准。评估这类仓库时，看题单覆盖度与代码可运行性，比看 star 数更有意义。"
           }
         ],
         "socratic": [
           {
-            "q": "如果这个仓库只支持一种语言，价值会下降吗？",
-            "a": "会明显下降：多语言对照是它的差异点，单语言时用户更可能直接看官方题解或语言专精仓库。"
+            "q": "只看题解不自己写，为什么效果差？",
+            "a": "阅读带来的是流畅错觉；真正被考的是从空白页写出正确代码并处理边界，这一段必须自己走一遍。"
           },
           {
-            "q": "为什么题解仓库不能替代自己动手写？",
-            "a": "面试考的是现场推导与调试，看题解只得到结论；先自己写才能暴露边界处理和复杂度判断上的漏洞。"
+            "q": "为什么不能把它当作唯一的复习资料？",
+            "a": "个人仓库覆盖不均、缺少审校，摘要里也看不到题目清单和质量证据，需要与官方题解交叉验证。"
+          },
+          {
+            "q": "star 数高说明题解质量好吗？",
+            "a": "不一定。star 更多反映知名度与积累年份，质量要看具体题目的复杂度分析和边界讨论是否到位。"
           }
         ],
-        "mechanism": "为什么需要这类仓库：面试题数量大、语言偏好分散，逐题去官方题解或博客检索的边际成本很高；用一个集中、带统计与多语言实现的仓库，把『定位题目』的成本降到一次搜索，并让读者用熟悉的语言先读懂思路。它解决的是检索与对照问题，不解决讲解深度问题，这也决定了它更适合当索引而不是教材。",
-        "boundary": "不适用场景：需要系统讲解与完整推导链时，题解仓库通常只给代码和简要说明；新题、竞赛题往往更新滞后；只依赖它复习会缺少专题总结与错题复盘，遇到变形题仍会失手。",
-        "analogyBoundary": "『菜谱/图书馆』类类比会掩盖一点：题解不是唯一标准答案，同一题可以有多种复杂度与风格的解法，仓库里通常只收录其中一种，读者需要自己判断是否最优、是否有更简洁的写法。",
+        "mechanism": "这类仓库的价值机制是『把检索成本外包』：它把散落在讨论区的解法按主题聚合成可翻阅的语料，让你卡题时能以最低成本获得一个思路起点。但思路到能力之间还隔着一次独立重写，所以它只能加速获取提示这一步，无法替代动手环节，这也是它只适合当索引的根本原因。",
+        "boundary": "当你的目标语言与仓库主语言 JavaScript 不一致时，代码细节的参考价值下降；冷门或较新的题型，个人仓库很可能缺失或滞后（摘要显示的最近更新是 2025-07-16，无法保证内容同步）。它也不含题库的版权题面，不能替代在真实判题系统上提交验证，更不能替代专题总结与错题复盘。",
+        "analogyBoundary": "把仓库当成『习题册答案』的类比会误导：答案册通常经过审校且与原题严格对应，而个人题解仓库是开放的个人笔记，可能只给一种解法、缺少推导，甚至存在未被发现的错误。",
         "misconceptions": [
-          "以为 star 多就代表每题讲解透彻：多数题解仓库以代码为主。",
-          "以为一份题解能跨语言直接照搬：类型系统与标准库差异常需重写。",
-          "把看题解当练习：缺少独立推导与调试环节。"
+          "把 star 数当作题解正确率的保证。",
+          "以为读完题解就等于掌握了题型，跳过独立重写。",
+          "忽略仓库主语言是 JavaScript，直接照抄到 C++ 或 Python 面试。"
         ],
-        "ownAnalysis": "从采集到的字段看，这张卡片更偏『工具入口』而非知识点本身，所以评估重点应该是题单覆盖度与多语言实现的一致性（推断：摘要未给目录结构，实际一致性需人工抽查）。（推断）它的更新频率与 star 量说明社区活跃，但活跃不等于每题都有高质量讲解。对求职者更划算的用法是把它绑定到自己的专题清单上：每个专题挑 10 到 15 题，自己写、再对照、再记错因。",
+        "ownAnalysis": "从元信息看，这是一个典型的『个人题解加高 star』型仓库：55730 stars 与 JavaScript 主语言说明它更贴近前端与全栈学习者的刷题语境（推断）。我的判断是把它定位为专题索引而非教材——先用它铺开题型地图，再用官方题解与自写代码收口。可疑处在于摘要没有给出目录结构与题目数量，无法评估覆盖度，也无法判断是否包含多语言实现（待核实）。",
         "officialNotes": [
           {
-            "position": "仓库自我描述为多种编程语言实现 LeetCode、《剑指 Offer（第 2 版）》、《程序员面试金典（第 6 版）》题解，并标注 36647 stars、Java、最近更新 2026-10-02。",
-            "source": "github_algo"
+            "position": "仓库自我描述为 LeetCode 题解、记录自己的 leetcode 解题之路，主语言 JavaScript，摘要标注 55730 stars，最近更新 2025-07-16。",
+            "source": "https://github.com/azl397985856/leetcode"
           }
         ],
-        "interviewAnswer": "我平时用 doocs/leetcode 这类多语言题解仓库当索引：先按专题挑高频题，自己写一遍并跑用例，卡住再看题解，重点比对边界条件和复杂度。它的优势是覆盖面广、同一题能对照 Java、C++、Python3 等实现，方便我理解语言特性差异；但我不把它当教材，因为多数题解只给代码，真正涨能力的是自己推导和复盘。",
+        "interviewAnswer": "我刷题时会用这类个人题解仓库当专题索引：先自己限时写一遍，卡住只瞄一眼思路关键词，然后关掉题解独立重写、提交通过，最后记下错因和复杂度。这个仓库有五万五千多 star、主语言是 JavaScript，覆盖度和审校程度都不如官方题解，所以我会和官方解法交叉比对，重点确认复杂度与边界条件，而不是照抄代码。",
         "studyPath": {
           "prerequisites": [
-            "一门主力语言加基本数据结构",
-            "复杂度分析"
+            "至少一门语言的语法与标准库",
+            "数组、哈希表、栈、队列、堆、图等数据结构",
+            "复杂度分析基础"
           ],
           "nextSteps": [
-            "按专题刷题并维护错题笔记",
-            "同一题用另一种语言改写一遍",
-            "模拟面试计时手撕"
-          ]
-        }
-      }
-    },
-    {
-      "id": "806ec4de46376616",
-      "tldr": "文本/视觉/音频/多模态 SOTA 模型的统一模型定义框架，兼顾推理与训练。",
-      "keyPoints": [
-        "定位是 model-definition framework，用来定义 SOTA 模型",
-        "覆盖文本、视觉、音频与多模态四类模型",
-        "同时服务推理（inference）与训练（training）",
-        "由 huggingface 维护，主题标签含 llm、deepseek、gemma、glm"
-      ],
-      "why": "多模态与 LLM 岗位的代码几乎都长在这套接口上，读懂模型定义与配置是上手微调的第一步。",
-      "difficulty": "medium",
-      "tags": [
-        "transformers",
-        "multimodal",
-        "llm",
-        "framework",
-        "training",
-        "huggingface"
-      ],
-      "entities": [
-        "huggingface",
-        "Transformers"
-      ],
-      "diagram": {
-        "kind": "architecture",
-        "title": "统一模型定义框架分层",
-        "caption": "同一份模型定义同时支撑训练与推理，并按模态横向扩展。",
-        "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 240' role='img' aria-label='模型定义框架分层架构图'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>输入模态</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>文本 / 图像 / 音频</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>模型定义</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>配置 + 结构与权重</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>统一接口</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>推理与训练共用</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>输出</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>文本 / 视觉 / 多模态</text>\n</svg>",
-        "alt": "从上到下四层：输入模态为文本/图像/音频，第二层是模型定义（配置加结构与权重），第三层是训练与推理共用的统一接口，最下是文本/视觉/多模态输出。"
-      },
-      "concepts": [
-        {
-          "name": "模型定义框架 (Model-Definition Framework)",
-          "readable": "它本身不训练模型，而是规定『一个模型长什么样、超参怎么写、权重怎么命名』，让同一份定义既能加载权重做推理，也能接上训练流程微调。",
-          "analogy": "像家具的标准化接口：不同厂家的零件只要孔位一致，就能装进同一套工具里加工，不必为每个厂重做工具。",
-          "analogyBreaksDown": "家具孔位是物理尺寸，公差很小；模型接口还要容纳注意力变体、位置编码、模态融合等语义差异，很多模型仍需框架内的自定义代码，一致性远不如五金件。",
-          "mechanism": "用配置对象描述超参与结构选择，用统一的前向接口与权重命名规范承载模型，把加载、训练、推理解耦成可复用组件；新增模型只需满足这几处约定，而不必改动上层流程。",
-          "visual": "画三层堆叠：最上层是配置键值表（超参），中间是模型类（模块树与权重命名），最下并列两条流水线（训练、推理），箭头从配置指向模型、再从模型指向两条流水线。",
-          "prerequisites": [
-            "PyTorch 基础（Module 与 state_dict）",
-            "Transformer 架构常识"
-          ],
-          "selfTest": [
-            "模型定义框架和训练框架的职责边界在哪里？",
-            "同一份模型定义如何同时支持推理与训练？",
-            "接入一个新模型最少要实现哪些约定？"
-          ],
-          "formula": ""
-        },
-        {
-          "name": "多模态统一接口 (Modality-Unified Interface)",
-          "readable": "文本、图像、音频先各自被预处理成张量，然后走同一套模型与前向接口，差异主要留在模态编码器和融合方式上。",
-          "analogy": "像机场的通用传送带：行李、包裹、随身物品先各自打包贴标，之后走同一条传送带和同一套分拣流程。",
-          "analogyBreaksDown": "机场里不同物品其实有各自的安检规则（液体、电子设备），而统一接口假设只有『张量进、张量出』；一旦某模态需要特殊采样或时间对齐，就必须在预处理层另开分支，接口并不能真的抹平差异。",
-          "mechanism": "把模态差异下沉到预处理层（推断：摘要未述具体设计），模型层只接收张量，于是训练/推理代码可按模态复用；代价是预处理配置错配会静默出错，例如采样率或归一化不一致。",
-          "visual": "画三条左侧输入线（文本、图像、音频），各自经过一个预处理方块后汇入中间同一个模型方块，右侧再按任务分成不同输出。",
-          "prerequisites": [
-            "张量与批处理维度约定",
-            "常见模态的预处理流程"
-          ],
-          "selfTest": [
-            "三种模态在进入模型前分别被转成了什么？",
-            "为什么模态差异要放在预处理层而不是模型层？",
-            "预处理配置不一致会导致什么现象？"
-          ],
-          "formula": ""
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-scaled-dot-product-attention",
-          "name": "缩放点积注意力（Scaled Dot-Product Attention）",
-          "category": "multimodal",
-          "latex": "\\mathrm{Attention}(Q,K,V)=\\mathrm{softmax}\\!\\left(\\frac{QK^{\\top}}{\\sqrt{d_k}}\\right)V",
-          "symbols": [
-            [
-              "Q",
-              "查询矩阵，序列中每个位置想『找什么』"
-            ],
-            [
-              "K",
-              "键矩阵，每个位置能『提供什么』"
-            ],
-            [
-              "V",
-              "值矩阵，被加权汇总的内容"
-            ],
-            [
-              "d_k",
-              "键（查询）向量的维度，用来缩放点积"
-            ]
-          ],
-          "derivation": [
-            "第 1 步（相似度）：用 Q 与 K 的点积衡量每个查询和每个键的匹配程度，得到分数矩阵 QK^T。",
-            "第 2 步（缩放）：维度越大点积方差越大，softmax 容易饱和，所以除以 sqrt(d_k) 把分数拉回稳定区间。",
-            "第 3 步（归一化）：沿键的维度做 softmax，得到每行和为 1 的注意力权重，表示这次查询在各位置上的分配比例。",
-            "第 4 步（加权汇总）：用权重矩阵乘 V，得到每个位置按重要性加权后的输出；多头时把多个头的输出拼接后再做一次线性投影。"
-          ],
-          "analogy": "像在讨论会上提问：你的问题（Q）和每个人的发言要点（K）逐一比对，越相关的人权重越高，最后汇总的是他们的具体观点（V），而不是要点本身。",
-          "pitfalls": [
-            "忘记除以 sqrt(d_k)：维度一大 softmax 就饱和，梯度接近消失。",
-            "softmax 做错维度：必须沿键的那一维归一化，否则权重和不为一。",
-            "因果掩码位置写错：应在 softmax 之前把未来位置置为负无穷，而不是之后再裁剪。"
-          ],
-          "code": "import torch\n\ndef scaled_dot_attention(q, k, v, mask=None):\n    d_k = q.size(-1)\n    scores = q @ k.transpose(-2, -1) / d_k ** 0.5   # 缩放，防 softmax 饱和\n    if mask is not None:\n        scores = scores.masked_fill(mask == 0, float('-inf'))\n    attn = scores.softmax(dim=-1)                   # 沿键维归一化\n    return attn @ v",
-          "sources": [
-            {
-              "title": "huggingface/transformers",
-              "url": "https://github.com/huggingface/transformers"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "摘要说明该仓库是 model-definition framework（模型定义框架）。",
-          "覆盖对象包括文本、视觉、音频和多模态的 SOTA 模型。",
-          "同时用于推理和训练（for both inference and training）。",
-          "作者标注为 huggingface，主题标签含 audio、deepseek、gemma、glm、llm、machine-learning 等。"
-        ],
-        "uncertain": [
-          "摘要未给出任何公式，注意力式为该框架同名架构的通用形式，需核对官方文档或原文。",
-          "星标数在摘要中未出现，元数据里 166878 与 166905 两个值不一致，引用时需核实。",
-          "预处理层如何统一各模态（推断内容）未在摘要中说明，具体设计需查文档。"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "把文本、图像、音频、多模态模型装进同一套接口，训练和推理都能用。"
-          },
-          {
-            "level": "入门",
-            "text": "它不是一个具体模型，而是一套『模型定义』的公共框架：用统一的配置和接口描述模型结构，于是加载预训练权重做推理、或接上训练流程做微调，都复用同一份定义。它覆盖文本、视觉、音频和多模态模型，由 huggingface 维护，更新非常频繁。"
-          },
-          {
-            "level": "进阶",
-            "text": "理解它的关键是把职责分层：配置层写超参和结构选择，模型层给出模块树与权重命名，上层训练/推理脚本只依赖这些约定。多模态方向要看的是模态差异被下沉到预处理层，模型层接收统一张量接口。真正的坑在版本与配置：同一份配置文件在不同版本下行为可能变化，预处理参数（图像归一化、音频采样率）配错会静默给出错误结果。"
-          },
-          {
-            "level": "专家",
-            "text": "工程上它的价值是把模型接入成本标准化，代价是抽象层多、版本迭代快，容易出现『代码在 A 版本能跑、B 版本报错』。使用它的正确姿势是：锁定版本、把配置与权重来源显式记录、对多模态输入做端到端断言（张量形状、采样率、padding 策略）。若目标是极致推理性能，通常要离开框架的通用路径，改用导出与专用运行时（推断），框架更适合作为研究、微调与基线复现的入口。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "如果没有统一的模型定义框架，会发生什么？",
-            "a": "每个模型都要自带一套加载、配置与训练脚本，复用只能靠复制粘贴，跨团队协作和基线复现的成本会高得多。"
-          },
-          {
-            "q": "为什么框架要把训练和推理放在同一份定义上？",
-            "a": "这样权重、结构与配置只维护一份，微调后立刻能推、推理时的行为也能追溯到训练时的配置，减少两边不一致的 bug。"
-          },
-          {
-            "q": "多模态接入时最容易出错的地方在哪？",
-            "a": "在预处理：分辨率、归一化、采样率、padding 与截断策略一旦和训练时不一致，模型不报错但效果明显变差。"
-          }
-        ],
-        "mechanism": "为什么需要这种设计：模型数量与变体增长得比框架代码快，如果每接一个模型都改训练和推理两条链路，改动量会翻倍且容易不一致。把『模型是什么』（配置 + 模块 + 权重命名）与『怎么用模型』（训练、推理流程）分离，新增模型就只填定义这一层，上层流程不动；这也是它能同时覆盖文本、视觉、音频与多模态的原因。",
-        "boundary": "边界：它擅长研究与微调的通用路径，不擅长极致延迟或超大规模定制的推理部署（推断）；对高度自定义的算子与并行策略，通用抽象会成为负担。版本升级频繁，跨版本行为差异需要锁版本与回归测试来兜底。",
-        "analogyBoundary": "『标准化零件接口』的类比会让人以为所有模型都能即插即用：实际很多新模型仍需要框架内的自定义实现，接口只覆盖了主干流程，特殊结构、损失与数据管线依然各自为政。",
-        "misconceptions": [
-          "把它当成一个具体模型：它其实是模型定义与接口的集合。",
-          "以为换了模型只需要换权重：配置、预处理与权重命名常需同步调整。",
-          "以为框架内跑通就等于效果正确：预处理不一致会静默降低质量。"
-        ],
-        "ownAnalysis": "（推断）从摘要措辞看，这条卡片的价值在于『生态入口』：真正的知识点是配置与模型定义的对应关系，以及训练/推理共用定义带来的工程约束，而不是某个算法。结合多模态求职场景，值得动手的是走通一次『加载多模态模型 → 前向 → 微调一步』的链路，并记录配置里影响输入的字段。摘要信息量很小（只有一句话定位），因此本条的深度主要来自对框架通用职责的常识性补充，具体 API 细节需查官方文档后再写结论。",
-        "officialNotes": [
-          {
-            "position": "官方定位为用于文本、视觉、音频与多模态 SOTA 模型的模型定义框架，同时支持推理与训练。",
-            "source": "github"
-          }
-        ],
-        "interviewAnswer": "我把 transformers 理解成模型定义框架：它规定配置怎么写、模块与权重怎么命名、前向接口怎么统一，所以同一份定义能同时支撑推理和微调，覆盖文本、视觉、音频和多模态。实际工作中我用它加载权重、跑基线、做 LoRA 或全参微调，同时会锁版本并把预处理参数固化下来，因为图像归一化、音频采样率这类配置和训练时不一致会静默掉点。要极致推理性能时我会考虑导出到专用运行时，而不是硬扛通用抽象。",
-        "studyPath": {
-          "prerequisites": [
-            "PyTorch Module 与 state_dict",
-            "Transformer 结构与注意力机制"
-          ],
-          "nextSteps": [
-            "读一个多模态模型类的配置与 forward",
-            "跑通一次多模态微调并记录预处理参数",
-            "了解导出与推理运行时优化"
-          ]
-        }
-      }
-    },
-    {
-      "id": "1c0c06f03796d16e",
-      "tldr": "讲清单例四种写法（饿汉、懒汉、双检锁、Magic Static）的演进逻辑与各自的坑。",
-      "keyPoints": [
-        "单例 = 类只有一个实例 + 提供全局访问点",
-        "核心手段：构造函数私有化、删除拷贝与赋值、静态方法返回唯一实例",
-        "饿汉式 main 之前初始化，线程安全但可能浪费资源、有初始化顺序问题",
-        "懒汉式多线程会创建两个实例；双检锁需 std::atomic 或 std::call_once",
-        "C++11 起局部 static 初始化线程安全，现代推荐 Magic Static"
-      ],
-      "why": "C++ 面试常由单例追问线程安全与初始化顺序，讲清演进逻辑能立刻区分候选人水平。",
-      "difficulty": "medium",
-      "tags": [
-        "cpp",
-        "singleton",
-        "design-pattern",
-        "concurrency",
-        "interview"
-      ],
-      "entities": [
-        "Singleton",
-        "getInstance",
-        "Magic Static",
-        "DCLP",
-        "std::atomic",
-        "std::call_once",
-        "C++11"
-      ],
-      "diagram": {
-        "kind": "timeline",
-        "title": "单例实现的四代演进",
-        "caption": "每一代都在补上一代的一个坑，终点是 C++11 的局部静态变量。",
-        "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 240' role='img' aria-label='单例模式四种实现的演进时间线'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>饿汉式</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>启动即建，可能浪费</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>懒汉式</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>按需创建，非线程安全</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>双检锁 DCLP</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>需 atomic 或 call_once</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>Magic Static</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>C++11 保证，最简最稳</text>\n</svg>",
-        "alt": "从上到下四个阶段：饿汉式启动即建可能浪费资源；懒汉式按需创建但非线程安全；双检锁 DCLP 需要 atomic 或 call_once；Magic Static 由 C++11 保证线程安全，最简最稳。"
-      },
-      "concepts": [
-        {
-          "name": "局部静态变量初始化 (Magic Static)",
-          "readable": "在函数里写 static Singleton inst; 再返回它的引用。C++11 保证这个局部静态变量的初始化只执行一次且线程安全，实例在程序结束时自动析构。",
-          "analogy": "像办公室只有一把钥匙：第一个进门的人刷卡时才配出钥匙，之后所有人拿到的都是同一把，不需要每人自带锁去抢。",
-          "analogyBreaksDown": "钥匙类比掩盖了初始化期间的等待：其他线程必须阻塞到初始化完成才能拿到引用，而且如果构造函数里又调用了 getInstance()，就会陷入未定义或死锁，类比里没有这种递归入口。",
-          "mechanism": "编译器为局部静态变量生成守卫变量或原子状态，把『只初始化一次』与线程同步都交给实现；开发者不再手写锁和二次检查，也就不会写错内存序。",
-          "visual": "画一条时间轴：T0 首次调用触发初始化（一个方块，其他线程的调用画成在门口排队的箭头），初始化完成后所有箭头都指向同一个实例方块；末尾画一个析构标记表示程序退出时销毁。",
-          "prerequisites": [
-            "C++ 静态存储期与对象生命周期",
-            "互斥量与内存序的基本概念"
-          ],
-          "selfTest": [
-            "为什么局部 static 比手写双检锁更不容易出错？",
-            "局部 static 对象的析构发生在什么时候？",
-            "构造函数内部再次调用 getInstance() 会发生什么？"
-          ],
-          "formula": "\\text{static } T\\ inst \\Rightarrow \\text{init exactly once, thread-safe (C++11)}"
-        },
-        {
-          "name": "双检锁 (Double-Checked Locking, DCLP)",
-          "readable": "在懒汉式外面套一层锁：先无锁判断指针是否为空，为空才加锁，加锁后再判断一次，仍为空才创建。目的是让创建之后的调用不必每次都加锁。",
-          "analogy": "像只有一把备用钥匙的档案室：先在门口看指示灯（无锁检查），灯灭才去管理员处登记（加锁），登记时再确认一次灯仍灭着，才真正取钥匙开门。",
-          "analogyBreaksDown": "灯灭就一定能拿到钥匙，而 C++ 里『指针非空』不代表对象构造对其它线程可见：C++11 之前指令重排会让人看到未构造完的对象，类比里没有这种可见性问题。",
-          "mechanism": "第一次检查省掉常见路径上的加锁开销，第二次检查防止两个线程都通过无锁检查后重复创建；正确性依赖原子变量与 acquire/release 内存序，或用 std::call_once 替代，否则重排会暴露半初始化对象。",
-          "visual": "画一个两层判定漏斗：上层『指针为空？』为否就直接返回（浅色表示快路径，不进入锁区），为是才进入锁区内再判一次，仍为空才创建实例。",
-          "prerequisites": [
-            "互斥量与临界区",
-            "指令重排与内存可见性（C++11 内存模型）"
-          ],
-          "selfTest": [
-            "为什么第一次检查之后还必须再检查一次？",
-            "C++11 之前的 DCLP 为什么有 bug？",
-            "std::call_once 相比手写 DCLP 好在哪？"
-          ],
-          "formula": ""
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-dclp-magic-static",
-          "name": "双检锁与局部静态的初始化判据（DCLP / Magic Static）",
-          "category": "engineering",
-          "latex": "p=\\varnothing \\;\\Rightarrow\\; \\big(\\mathrm{lock}(m);\\; p=\\varnothing \\Rightarrow p\\leftarrow \\mathrm{new}\\;T\\big);\\quad \\text{return } p",
-          "symbols": [
-            [
-              "p",
-              "指向唯一实例的静态指针"
-            ],
-            [
-              "∅",
-              "nullptr，表示实例尚未创建"
-            ],
-            [
-              "m",
-              "互斥量，只保护创建路径"
-            ],
-            [
-              "lock(m)",
-              "加锁；第二次检查必须在锁内进行"
-            ],
-            [
-              "new T",
-              "构造唯一实例并写入 p"
-            ]
-          ],
-          "derivation": [
-            "第 1 步（动机）：实例要按需创建，但裸懒汉式的『判空再创建』不是原子操作，两个线程可能同时通过判空，各建一个实例。",
-            "第 2 步（加锁）：把创建放进临界区，重复创建消失；代价是每次取实例都要加锁，热路径开销变大。",
-            "第 3 步（双检）：加锁前先做一次无锁检查，已创建就直接返回；只有未创建时才加锁，锁内再检查一次，防止两个线程都在锁外通过第一次检查。",
-            "第 4 步（修正）：C++11 前写指针可能被重排到构造完成之前，其它线程会拿到半初始化对象；所以要用 std::atomic 配 acquire/release 内存序、或 std::call_once，或者直接用局部 static（Magic Static）让语言来保证。"
-          ],
-          "analogy": "像只有一份钥匙的档案室：先在门口看灯，灯灭才去登记加锁，登记时再确认一次灯灭着，才真正取钥匙开柜；创建完成之后大家看灯就能直接走。",
-          "pitfalls": [
-            "写了两层 if 却用普通指针：没有 std::atomic 与内存序保证，仍可能看到半初始化对象。",
-            "把锁加在每次 getInstance() 上：正确但失去双检的意义，热路径被锁竞争拖慢。",
-            "对可能抛异常的构造不做处理：初始化失败后状态与重试语义要明确，否则会留下未定义的半成品。"
-          ],
-          "code": "import threading\n\n_inst = None\n_lock = threading.Lock()\n\ndef get_instance():\n    global _inst\n    if _inst is None:              # 第一次检查：无锁快路径\n        with _lock:\n            if _inst is None:      # 第二次检查：锁内防重复创建\n                _inst = object()\n    return _inst",
-          "sources": [
-            {
-              "title": "C++如何实现一个单例模式？",
-              "url": "https://notes.kamacoder.com/cpp/singleton-pattern.html"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "单例模式确保类只有一个实例并提供全局访问点，核心手段是构造私有化加删除拷贝/赋值加静态方法返回唯一实例。",
-          "饿汉式在程序启动时创建实例（静态成员在 main 之前初始化），天然线程安全，但单例很重又用不到时会浪费资源，且多个饿汉单例之间存在初始化顺序不确定问题。",
-          "懒汉式第一次调用 getInstance() 才创建，解决资源浪费，但多线程下两个线程可能同时判空并创建两个实例。",
-          "双检锁在懒汉式基础上加锁：第一次检查避免每次都加锁，加锁后第二次检查避免重复创建；C++11 之前因指令重排与内存可见性实际上有 bug，C++11 之后需配合 std::atomic 或 std::call_once。",
-          "现代 C++ 推荐用局部静态变量（Magic Static），C++11 标准保证局部 static 初始化线程安全，代码最简洁且自动析构。"
-        ],
-        "uncertain": [
-          "摘要只提到需要配合 std::atomic 或 std::call_once，未给出具体内存序写法，acquire/release 版本为按 C++11 内存模型的推断，需核对原文。",
-          "摘要页面为笔记正文的抓取片段，结尾被截断，四种实现的完整代码示例未包含在摘要中。",
-          "局部静态的线程安全保证依赖编译器实现（如关闭相关开关会失效），摘要未提及该条件。"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "单例就是全局只有一个实例；现代 C++ 用函数里的 static 变量写最稳。"
-          },
-          {
-            "level": "入门",
-            "text": "单例要保证一个类只有一个实例并提供全局访问点：构造函数私有化、禁用拷贝和赋值、用静态方法返回唯一实例。写法从『程序启动时就创建』（饿汉）到『第一次调用才创建』（懒汉），再到加锁的双检锁，最后是 C++11 的局部静态变量（Magic Static）。"
-          },
-          {
-            "level": "进阶",
-            "text": "四种写法其实是在补坑：饿汉线程安全但可能白建重对象，还受静态初始化顺序问题影响；懒汉按需创建却会在多线程下创建两个实例；双检锁用无锁的第一次检查优化热路径、锁内第二次检查防重复创建，但 C++11 之前因重排会暴露半初始化对象，现在必须配 std::atomic 或 std::call_once；Magic Static 把『一次初始化 + 线程同步』交给编译器，代码最短也最不容易写错。"
-          },
-          {
-            "level": "专家",
-            "text": "面试深挖通常三层：正确性（为什么普通指针不行，需要内存序或 call_once）、性能（每次加锁的竞争 vs 局部静态的守卫检查，热路径差异）、生命周期（静态存储期与析构顺序，程序退出阶段析构顺序不可控，析构函数里再取单例可能拿到已销毁对象）。现代默认选 Magic Static；若需要测试可重置、或要控制析构时机与所有权，可改成显式指针配合 call_once，并在文档里写清楚谁负责销毁。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "只用懒汉式而不加锁会发生什么？",
-            "a": "两个线程可能同时通过 instance == nullptr 的判断，各 new 一次，程序里出现两个『唯一』实例，全局状态被撕裂。"
-          },
-          {
-            "q": "双检锁两次检查看起来已经完备，为什么还推荐局部静态变量？",
-            "a": "因为它的正确性依赖内存序细节，手写容易漏原子变量或屏障；局部静态由语言标准保证一次且线程安全，代码更短、出错面更小。"
-          },
-          {
-            "q": "饿汉式是不是就没有缺点？",
-            "a": "有：静态初始化顺序不确定，多个饿汉单例互相依赖时，可能在 main 之前就用上尚未初始化的对象。"
-          }
-        ],
-        "mechanism": "为什么必须这样设计：单例要同时满足『唯一』与『按需创建』，而这两者在多线程下冲突，因为判空与创建不是一个原子操作。解法只有三条路：把创建提前到单线程阶段（饿汉），或把判断与创建整体串行化并优化热路径（双检锁），或把同步责任交给编译器（局部静态）。演进方向始终是把容易写错的内存序推理从业务代码里移走。",
-        "boundary": "边界：单例不适合存在多个真实实例的场景（多设备、多租户、多配置），也会把依赖变成隐式全局状态，导致单元测试难以替换、并发下成为瓶颈。跨动态库边界、插件卸载以及析构顺序敏感的场合要特别小心；需要可控销毁顺序时，静态局部对象反而可能带来麻烦。",
-        "analogyBoundary": "『只有一把钥匙』的类比只在『创建一次、之后只读』时成立；单例常被当成可变全局状态使用，此时多线程写同一实例仍需额外同步，钥匙本身并不提供互斥。",
-        "misconceptions": [
-          "以为 C++11 之后双检锁自动正确：仍然需要 atomic 或 call_once。",
-          "以为单例天然线程安全：单例只保证唯一，不保证实例状态访问安全。",
-          "以为饿汉式完全没有坑：存在静态初始化顺序不确定问题。"
-        ],
-        "ownAnalysis": "这段笔记是面试答题向的，把四种写法按『补坑』串成一条演进线，适合当回答骨架。需要补两点（推断）：其一，摘要只说双检锁要配 std::atomic 或 std::call_once，没给内存序写法，被追问时应能写出 acquire/release 版本；其二，Magic Static 的线程安全来自 C++11 标准，早期编译器或关闭相关编译开关会破坏该保证，回答时补一句能加分。另外要注意单例的真正风险是全局可变状态，而不是实现方式本身。",
-        "officialNotes": [
-          {
-            "position": "现代 C++ 推荐用局部静态变量（Magic Static）实现单例：C++11 标准保证局部 static 变量初始化线程安全，代码最简洁、自动析构、没有坑。",
-            "source": "kamacoder_notes"
-          }
-        ],
-        "interviewAnswer": "单例要保证唯一实例并提供全局访问点，做法是构造私有、删掉拷贝和赋值、用静态方法返回实例。演进有四步：饿汉式在 main 之前初始化，线程安全但可能浪费资源，还有静态初始化顺序问题；懒汉式按需创建，但多线程下会 double new；双检锁用第一次无锁检查优化热路径、锁内第二次检查防重复创建，C++11 之前因重排有 bug，现在要配 std::atomic 或 call_once；实际工作我直接选 Magic Static，函数内 static 变量，C++11 保证只初始化一次且线程安全，最短也最稳。",
-        "studyPath": {
-          "prerequisites": [
-            "C++ 类与访问控制",
-            "static 存储期与对象生命周期",
-            "互斥量的基本用法"
-          ],
-          "nextSteps": [
-            "C++11 内存模型与 atomic 内存序",
-            "std::call_once 与 once_flag",
-            "阅读标准库中局部静态守卫的实现"
-          ]
-        }
-      }
-    },
-    {
-      "id": "250593b8b2b6a7ad",
-      "tldr": "重载是编译期按参数选函数，重写是运行期按对象实际类型查虚表选函数。",
-      "keyPoints": [
-        "重载：同一作用域内函数名相同、参数类型/个数/顺序不同",
-        "仅返回值类型不同不能构成重载",
-        "重写三前提：继承关系、父类函数标 virtual、子类签名完全一致",
-        "父类不加 virtual 时子类同名函数是隐藏（hiding），不是重写",
-        "virtual 让调用走虚表机制，override 让编译器检查是否真的重写"
-      ],
-      "why": "多态类八股从这题起问，能否讲清静态/动态绑定与隐藏规则，直接暴露 C++ 基本功。",
-      "difficulty": "medium",
-      "tags": [
-        "cpp",
-        "polymorphism",
-        "overload",
-        "override",
-        "vtable",
-        "interview"
-      ],
-      "entities": [
-        "Overload",
-        "Override",
-        "virtual",
-        "override 关键字",
-        "虚函数表",
-        "隐藏(hiding)"
-      ],
-      "diagram": {
-        "kind": "matrix",
-        "title": "重载与重写四维对比",
-        "caption": "分水岭在判定条件不同，导致绑定时机一个是编译期、一个是运行期。",
-        "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 240' role='img' aria-label='重载与重写在作用域、判定条件、绑定时机、关键字四个维度的对比表'>\n<text x='24' y='28' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>维度</text>\n<text x='140' y='28' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>重载 Overload</text>\n<text x='316' y='28' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>重写 Override</text>\n<line x1='16' y1='38' x2='464' y2='38' stroke='var(--line-1)' stroke-width='1.4'/>\n<line x1='128' y1='12' x2='128' y2='228' stroke='var(--line-1)' stroke-width='1'/>\n<line x1='308' y1='12' x2='308' y2='228' stroke='var(--line-1)' stroke-width='1'/>\n<text x='24' y='66' font-size='13' fill='currentColor'>作用域</text>\n<text x='140' y='66' font-size='13' fill='currentColor'>同一作用域</text>\n<text x='316' y='66' font-size='13' fill='currentColor'>继承的父子类</text>\n<line x1='16' y1='80' x2='464' y2='80' stroke='var(--line-1)' stroke-width='1'/>\n<text x='24' y='106' font-size='13' fill='currentColor'>判定条件</text>\n<text x='140' y='106' font-size='13' fill='currentColor'>参数列表不同</text>\n<text x='316' y='106' font-size='13' fill='currentColor'>签名完全一致</text>\n<line x1='16' y1='120' x2='464' y2='120' stroke='var(--line-1)' stroke-width='1'/>\n<text x='24' y='146' font-size='13' fill='currentColor'>绑定时机</text>\n<text x='140' y='146' font-size='13' fill='currentColor'>编译期静态绑定</text>\n<text x='316' y='146' font-size='13' fill='currentColor'>运行期动态绑定</text>\n<line x1='16' y1='160' x2='464' y2='160' stroke='var(--line-1)' stroke-width='1'/>\n<text x='24' y='186' font-size='13' fill='currentColor'>关键字</text>\n<text x='140' y='186' font-size='13' fill='currentColor'>与 virtual 无关</text>\n<text x='316' y='186' font-size='13' fill='currentColor'>virtual + override</text>\n<line x1='16' y1='200' x2='464' y2='200' stroke='var(--line-1)' stroke-width='1'/>\n</svg>",
-        "alt": "四行对比表：作用域上重载在同一作用域、重写在继承的父子类；判定条件上重载是参数列表不同、重写是签名完全一致；绑定时机上重载是编译期静态绑定、重写是运行期动态绑定；关键字上重载与 virtual 无关，重写需要 virtual 加 override。"
-      },
-      "concepts": [
-        {
-          "name": "静态绑定与动态绑定 (Static vs Dynamic Binding)",
-          "readable": "编译期就能根据实参类型确定调哪个函数，叫静态绑定（重载）；必须等运行时看对象真实类型才能确定，叫动态绑定（重写）。",
-          "analogy": "像点外卖：套餐名和数量在下单那一刻就决定了厨房做哪一份；而客服电话转接要看接起电话的人是谁，运行时才知道真正处理的人。",
-          "analogyBreaksDown": "外卖类比里选择发生在下单时刻，但 C++ 的重载解析还要考虑隐式类型转换、模板推导与默认参数，可能出现『看起来该选另一个』的结果，类比里没有这种按转换代价排序的规则。",
-          "mechanism": "编译期通过名字查找加实参匹配（含隐式转换）选出唯一最佳函数并直接生成调用地址，零运行时成本；运行期通过对象的虚表指针在 vtable 中按槽位取函数地址，代价是一次间接调用，且常阻碍内联优化。",
-          "visual": "画两条并行流程：上排写『编译期：函数名 + 实参类型 → 最佳匹配 → 直接调用』，下排写『运行期：基类指针 → vptr → vtable 第 i 槽 → 实际函数』，用实线与虚线区分确定的时机。",
-          "prerequisites": [
-            "C++ 函数重载解析与隐式转换",
-            "类继承、指针与引用"
-          ],
-          "selfTest": [
-            "为什么仅返回值类型不同不能构成重载？",
-            "通过值传递的对象调用虚函数还会动态绑定吗？",
-            "为什么基类析构函数通常要声明为 virtual？"
-          ],
-          "formula": "\\text{overload}: \\text{resolve at compile time};\\quad \\text{override}: \\text{dispatch via vtable at run time}"
-        },
-        {
-          "name": "名字隐藏 (Name Hiding)",
-          "readable": "子类只要声明了与父类同名的函数（哪怕参数不同），就会把父类所有同名重载版本一起藏起来，直接调用会报参数不匹配，而不是自动回头找父类版本。",
-          "analogy": "像分店挂了自己的菜单牌：顾客只看分店牌子，总店的同名菜品即使还在供应，也不会自动端上来，得用 using 把总店菜单请进分店。",
-          "analogyBreaksDown": "菜单是展示问题，而隐藏是名字查找规则的结果：只要内层作用域出现了这个名字，查找就停止，根本不会继续往外找，与参数是否匹配、口味是否相同都无关。",
-          "mechanism": "名字查找先在内层作用域找到名字就停止，之后才做重载解析；用 using Base::func 把父类重载集引入子类作用域，或显式写 Base::func(...)，即可恢复可见性。",
-          "visual": "画两个同心作用域圈：子类在内圈、父类在外圈，一个查找箭头从内圈出发，一旦命中同名就用叉号标出『停止外扩』；using 声明画成把外圈条目搬进内圈的箭头。",
-          "prerequisites": [
-            "作用域与名字查找规则",
-            "继承与访问控制"
-          ],
-          "selfTest": [
-            "父类有 f(int)，子类写了 f(string)，调用 obj.f(3) 会怎样？",
-            "怎么让父类的重载在子类里重新可见？",
-            "隐藏和重写能同时发生在同一个名字上吗？"
-          ],
-          "formula": ""
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-static-vs-dynamic-binding",
-          "name": "静态绑定与动态绑定的选择机制（Static vs Dynamic Binding）",
-          "category": "engineering",
-          "latex": "\\underbrace{\\text{name}(a_1,\\dots,a_k)\\xrightarrow{\\text{compile time}} f_{\\text{best match}}}_{\\text{overload: static binding}}\\qquad \\underbrace{\\text{Base}^{*}p\\to \\text{vptr}\\to \\text{vtable}[i]=f_{\\text{actual}}}_{\\text{override: dynamic binding}}",
-          "symbols": [
-            [
-              "a_1..a_k",
-              "实参类型序列；重载解析只看参数，不看返回值"
-            ],
-            [
-              "f_best match",
-              "编译期按匹配与隐式转换代价选出的最佳函数"
-            ],
-            [
-              "vptr",
-              "对象内存里的虚表指针"
-            ],
-            [
-              "vtable[i]",
-              "第 i 个虚函数槽位；子类重写会替换该槽内容"
-            ],
-            [
-              "p",
-              "指向对象的基类指针或引用"
-            ]
-          ],
-          "derivation": [
-            "第 1 步（重载判定）：同一作用域内名字相同、参数列表不同（类型、个数或顺序）；编译期用实参类型做匹配并比较隐式转换代价，返回值不参与，所以返回类型不同无法构成重载。",
-            "第 2 步（重写判定）：需要继承关系、父类函数标了 virtual、子类函数签名完全一致；满足后子类版本被填入虚表对应槽位。",
-            "第 3 步（调用形式）：静态绑定在编译期直接生成函数地址，零运行时开销；动态绑定通过对象的 vptr 查 vtable 槽位，运行时才确定实际函数，且只在通过指针或引用调用时生效。",
-            "第 4 步（隐藏这一例外）：父类函数没有 virtual 时，子类同名函数不构成重写而构成隐藏；名字查找在子类命中即停止，父类重载集不再参与匹配，需要 using 引入。"
-          ],
-          "analogy": "重载像同一个人有很多头衔，名片上写清职位就能找到对应身份；重写像同一个岗位换了人，看工牌上的名字（对象真实类型）才知道今天谁在岗。",
-          "pitfalls": [
-            "以为返回类型不同可以重载：返回值不参与重载解析。",
-            "以为父类没写 virtual 子类同名就是重写：那是隐藏，多态直接失效。",
-            "以为写了 override 才有重写：virtual 才是机制来源，override 只做编译期检查。",
-            "以为虚函数一定动态绑定：按值传递会发生对象切片，直接对子类对象调用也是静态绑定。"
-          ],
-          "code": "class Base:\n    def speak(self):          # 等价于 virtual：运行期按实际类型分派\n        return 'base'\n\nclass Derived(Base):\n    def speak(self):          # 等价于 override：签名一致，替换实现\n        return 'derived'\n\ndef call_all(objs):           # 通过引用/指针传递 → 动态绑定\n    return [o.speak() for o in objs]\n\nprint(call_all([Base(), Derived()]))   # ['base', 'derived']",
-          "sources": [
-            {
-              "title": "C++的重载和重写，以及它们的区别和实现方式",
-              "url": "https://notes.kamacoder.com/cpp/overload-vs-override.html"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "重载发生在同一个作用域（同一个类或同一个命名空间），条件是函数名相同但参数列表不同（类型、个数或顺序不同）。",
-          "重载由编译器在编译期根据实参类型决定调用哪个版本，属于静态绑定；不能仅靠返回值类型区分重载。",
-          "重写必须满足三个前提：有继承关系、父类函数标了 virtual、子类函数签名与父类完全一致（函数名、参数列表、const 修饰都一样）。",
-          "满足重写条件后，通过父类指针或引用调用时，运行时会根据对象实际类型查虚函数表决定调用父类还是子类版本，属于动态绑定。",
-          "virtual 写在父类函数声明前，告诉编译器走虚函数表机制；父类不加 virtual 时，子类写同名同参函数不叫重写而叫隐藏。"
-        ],
-        "uncertain": [
-          "摘要中关于 override 关键字作用的正文在『hidi』处被截断，override 的具体检查行为为按通用 C++ 语义补充，需核对原文。",
-          "摘要未涉及 const/引用限定符、协变返回类型、默认参数按静态类型取用等细节，本条的补充说明（推断）需核对标准或原文。",
-          "虚表布局与槽位顺序的具体实现属于常见 ABI 约定，摘要未描述，表述为通用机制。"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "重载在编译期按参数挑函数，重写在运行期按对象真实类型挑函数。"
-          },
-          {
-            "level": "入门",
-            "text": "重载发生在同一个作用域里：函数名相同、参数列表不同，编译器按你传的参数在编译期就定好调哪个版本，所以仅返回类型不同不算重载。重写发生在继承里：父类函数标了 virtual、子类签名完全一致，运行时按对象的实际类型决定调父类还是子类版本。"
-          },
-          {
-            "level": "进阶",
-            "text": "判定条件决定绑定时机：重载只依赖名字与实参类型（含隐式转换），编译期生成直接调用；重写依赖继承加 virtual 加签名一致，运行时经 vptr 查虚表槽位。第三个坑是隐藏——父类没 virtual 时子类同名函数会藏起父类的整个重载集，名字查找在子类命中就停止，需要用 using 把父类版本引入；override 关键字不改变语义，只是让编译器帮你检查是否真的重写。"
-          },
-          {
-            "level": "专家",
-            "text": "工程判断点：virtual 带来一次间接调用并限制内联（除非去虚化），热路径上要权衡；override 是零成本正确性工具，能把『以为是重写其实是隐藏或签名写错』提前变成编译错误；基类析构函数若会被继承使用应声明 virtual，否则用基类指针删除是未定义行为。此外 const、引用限定符、异常规格都参与签名一致性判断，而默认参数不参与签名、按静态类型取值，重写时不重定义会造成两个不同的默认值，这是高频追问点。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "不加 virtual，光靠子类写同名函数能实现多态吗？",
-            "a": "不能：那只是隐藏，通过基类指针或引用调用仍会静态绑定到基类版本，多态失效。"
-          },
-          {
-            "q": "override 关键字不是必须的，为什么还推荐写？",
-            "a": "它不改变语义，只在编译期检查该函数是否真的重写了某个虚函数，避免签名写错后悄悄变成新函数或隐藏。"
-          },
-          {
-            "q": "重载能不能靠返回值类型区分？",
-            "a": "不能：调用表达式在编译期只有名字和实参，编译器无法从『你打算怎么用返回值』反推该调哪个版本。"
-          }
-        ],
-        "mechanism": "为什么必须区分两者：重载解决的是『同一个名字面对不同参数如何选函数』，这完全可以由编译器在编译期完成，因此是零运行时成本；重写解决的是『同一个接口面对不同对象如何选实现』，而对象的真实类型往往只有运行时通过指针或引用才知道，所以必须借助虚表和间接跳转。把两者混为一谈，就答不出为什么一个是静态绑定、一个必须是动态绑定。",
-        "boundary": "边界：重写只在通过基类指针或引用调用时生效，按值传递会发生对象切片，直接对子类对象调用也是静态绑定；构造函数不能是虚函数，静态成员函数与模板实例之间的选择也不走虚表；名字隐藏则会静默吞掉父类重载集，团队代码里应显式 using 或 override 来防止踩坑。",
-        "analogyBoundary": "『同岗位换人』的类比会让人以为运行时总能查到对象的真实身份：实际上只有通过指针或引用调用时 vptr 才指向真实类型；按值传参时基类对象已被切片，身份信息在拷贝时就丢失了。",
-        "misconceptions": [
-          "把重写理解成参数可以不同：重写要求签名完全一致，参数不同就是隐藏。",
-          "以为 override 是让函数变虚的关键字：virtual 才是，override 只做检查。",
-          "以为虚函数一定是动态绑定：按值传递或直接对对象调用仍是静态绑定。"
-        ],
-        "ownAnalysis": "这条笔记给的是面试答题骨架：先给定义，再用静态/动态绑定这条主线串起来，最后补 virtual 与 override 的分工。摘要恰好停在隐藏处，说明原文后面还有内容（推断）。要补的重点是三个高频追问：默认参数按静态类型取（子类不重定义就会有两个默认值）、协变返回类型是否算签名一致、以及 const 与引用限定符对签名的影响。此外『隐藏』在工程上比『重写』更容易造成 bug，因为编译不报错但行为悄悄变成父类版本。",
-        "officialNotes": [
-          {
-            "position": "重载在同一作用域内按参数列表区分、编译期静态绑定，不能仅靠返回值区分；重写需继承加父类 virtual 加签名完全一致，运行时通过虚函数表动态绑定；父类不加 virtual 时子类同名函数是隐藏而非重写。",
-            "source": "kamacoder_notes"
-          }
-        ],
-        "interviewAnswer": "重载和重写的分水岭是绑定时机。重载在同一作用域里，函数名相同、参数列表不同，编译器按实参类型在编译期选出最佳匹配，是静态绑定，返回值不参与所以仅返回类型不同不行。重写要有继承、父类函数标 virtual、子类签名完全一致，运行时通过对象的 vptr 查虚表槽位决定调用哪个版本，是动态绑定。还要注意：父类没 virtual 时子类同名函数是隐藏而不是重写，会把父类重载集藏起来；override 关键字不改变语义，只是让编译器帮我检查是否真的重写。",
-        "studyPath": {
-          "prerequisites": [
-            "类与继承、访问控制",
-            "指针/引用与对象切片",
-            "作用域与名字查找"
-          ],
-          "nextSteps": [
-            "虚函数表布局与对象内存模型",
-            "多态下的析构与 RAII",
-            "C++11 override/final 与去虚化优化"
+            "按专题给自己排一份刷题清单并统计通过率",
+            "每道题写三行复盘：思路、错因、复杂度",
+            "与官方题解交叉验证，并做同型变形题"
           ]
         }
       }

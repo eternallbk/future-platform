@@ -1,0 +1,22 @@
+{
+  "batchId": "prob-cur-38",
+  "problem": {
+    "id": "deepseek-moe-comm",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "MoE 模型的通信开销计算与负载不均衡分析",
+    "topics": [],
+    "difficulty": "hard",
+    "statement": "DeepSeek 笔试第三题：分析 MoE 的计算量与通信量，给出 All-to-All 载荷与通信时间的估算式，并说明如何度量与缓解负载不均衡。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

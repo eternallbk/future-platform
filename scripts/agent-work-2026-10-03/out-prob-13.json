@@ -1,0 +1,132 @@
+{
+  "batchId": "prob-13",
+  "entries": [
+    {
+      "id": "pb-a352cf35797ac6d2",
+      "itemId": "a352cf35797ac6d2",
+      "tldr": "选 A：中间激活、临时缓冲区和多分支并发执行；权重只常驻一份，激活与临时缓冲随 batch/序列放大，并发分支各占一份。",
+      "restated": "华为 2026 笔试单选题（题面采集自牛客，标题在「模型文件本身的大」处被截断，按语义应为「大小」）：端侧推理时，哪项因素最可能使峰值内存显著超过模型文件本身的大小？四个选项为 A 中间激活、临时缓冲区和多分支并发执行；B 输出类别数固定；C 训练集规模过大；D 标签类别过少。正确选项是 A：权重只常驻一份，而激活、算子临时缓冲会随 batch 与序列长度放大，多分支并发时还要同时驻留多份。",
+      "approach": [
+        {
+          "step": "先排除 B/C/D：它们都不进入推理时的峰值内存账",
+          "detail": "B「输出类别数固定」只决定最后一层权重的形状（hidden×类别数），它是模型文件本身的一部分，且属于常数项——类别数再多也只是权重多一点，不会让「峰值」相对「模型文件」被放大。C「训练集规模过大」是训练阶段的问题：端侧推理只加载权重、不读训练集，数据集大小与推理峰值无关（它影响的是训练时的显存与数据流水线）。D「标签类别过少」连参数量都改不动，更不可能让峰值反超模型文件。三个选项的共同毛病是：它们描述的量要么已包含在模型文件里，要么根本不出现在推理路径上。"
+        },
+        {
+          "step": "正解 A：把峰值内存拆成「权重 + 激活/临时缓冲 + KV cache」",
+          "detail": "推理时的常驻量只有一份权重（模型文件），但峰值还要加上随输入规模增长的部分：中间激活按 层数×batch×序列长度×隐层维度 走，卷积/矩阵乘的临时缓冲（im2col 展开、分块 GEMM、显式注意力矩阵 S×S）是额外的、与权重无关的开销，自回归解码还多一份 KV cache。这些量随 batch 和序列长度线性甚至平方增长，而权重是固定的一份，所以峰值相对模型文件的倍数可以轻松大于 1：例如 1 亿参数 8bit 权重约 100MB，序列 512、隐层 1024、24 层时激活约 24MB、临时缓冲约 5MB、KV cache 约 24MB，单分支就到 150MB 以上，倍数 1.5 以上。"
+        },
+        {
+          "step": "多分支并发：把工作集再乘上分支数",
+          "detail": "端侧常见多任务/多分支结构（多 head、多模态分支、投机解码的草稿与验证分支、并发跑多个请求），只要它们同时执行，激活与临时缓冲就不能互相复用，峰值近似按分支数线性叠加；同时权重也可能因为不同分支各自持有一份而翻倍。所以题目把「中间激活、临时缓冲区」和「多分支并发执行」并列为同一个选项：它们叠加起来才是端侧 OOM 的主因，也是「峰值显著超过模型文件」这句话里唯一自洽的解释。"
+        },
+        {
+          "step": "量化能压权重，但压不动激活，反而放大这个差距",
+          "detail": "端侧常用 4bit/8bit 量化把权重（模型文件）压小，但激活与临时缓冲通常仍以 8bit/16bit 计算（否则精度掉得厉害），于是权重越小、模型文件越小，峰值与模型文件的倍数反而越大。这条经验在工程上会直接改变优化顺序：先控 batch 与序列长度、复用缓冲、避免显式 S×S 注意力矩阵、串行化分支，再考虑继续压权重。"
+        }
+      ],
+      "complexity": {
+        "time": "O(1)（常数项估算）",
+        "space": "O(1)（只输出一份内存分解字典）",
+        "why": "峰值 = 权重 + 分支数×(激活+临时缓冲) + KV cache，每项都是 batch·序列·隐层·层数的乘积，一次常数项四则运算即可算完。"
+      },
+      "code": {
+        "language": "python",
+        "source": "# 端侧推理峰值内存估算：为什么峰值会远超模型文件大小。\n# 单选题结论：最可能让峰值显著超过模型文件的是\n# 「中间激活、临时缓冲区和多分支并发执行」。\n# 权重（模型文件）只是常驻的一份，激活与临时缓冲随 batch、序列长度、\n# 算子实现（im2col、显式注意力矩阵）成倍放大；多分支并发时这些缓冲\n# 还会同时驻留，峰值因此可以达到模型文件的数倍。纯标准库，可直接运行。\n\n\ndef weight_bytes(num_params, bits=8):\n    # 模型文件大小的来源：参数量 x 量化位宽。bits 取 4/8/16/32。\n    if num_params <= 0 or bits not in (4, 8, 16, 32):\n        raise ValueError('num_params 必须为正，bits 取 4/8/16/32')\n    return num_params * bits // 8\n\n\ndef kv_cache_bytes(batch, seq_len, layers, hidden, bits=8):\n    # 自回归解码的 KV cache：2（K 和 V）x 层数 x batch x 序列 x 隐层。\n    if min(batch, seq_len, layers, hidden) <= 0:\n        raise ValueError('batch/seq_len/layers/hidden 都必须为正')\n    return 2 * layers * batch * seq_len * hidden * (bits // 8)\n\n\ndef activation_bytes(batch, seq_len, hidden, layers, bits=8, fanout=2):\n    # 中间激活：按每层一份 fanout 倍隐层的工作集估算。\n    if min(batch, seq_len, hidden, layers) <= 0 or fanout < 1:\n        raise ValueError('尺寸必须为正，fanout 至少为 1')\n    return layers * batch * seq_len * hidden * fanout * (bits // 8)\n\n\ndef temp_buffer_bytes(batch, seq_len, hidden, im2col=False, attn_matrix=False, bits=8):\n    # 算子临时缓冲：im2col 展开与显式 SxS 注意力矩阵是端侧最典型的两块。\n    total = 0\n    if im2col:\n        total += batch * seq_len * hidden * 9 * (bits // 8)\n    if attn_matrix:\n        total += batch * seq_len * seq_len * (bits // 8)\n    return total\n\n\ndef peak_memory(num_params, batch, seq_len, hidden, layers,\n                bits=8, branches=1, im2col=False, attn_matrix=False):\n    # 峰值 = 一份权重 + 每个并发分支各一份工作集 + 一份 KV cache。\n    if branches < 1:\n        raise ValueError('branches 至少为 1')\n    weights = weight_bytes(num_params, bits)\n    branch_ws = activation_bytes(batch, seq_len, hidden, layers, bits) + \\\n        temp_buffer_bytes(batch, seq_len, hidden, im2col, attn_matrix, bits)\n    kv = kv_cache_bytes(batch, seq_len, layers, hidden, bits)\n    peak = weights + branches * branch_ws + kv\n    return {'weights': weights, 'branch_ws': branches * branch_ws,\n            'kv_cache': kv, 'peak': peak, 'ratio_to_file': peak / weights}\n\n\ndef option_impact(option):\n    # 逐个选项判定：只有 A 会成倍抬高峰值内存。\n    table = {\n        'A': '抬高：激活/临时缓冲随 batch*序列*隐层增长，多分支还并发多份',\n        'B': '几乎无影响：输出类别数只决定最后一层的大小，是常数项',\n        'C': '无影响：训练集规模属于训练阶段，端侧推理不读训练集',\n        'D': '无影响：标签类别数不进入推理时的内存账',\n    }\n    return table.get(option.strip().upper(), '未知选项')\n\n\ndef main():\n    # 例：1 亿参数、8bit 量化、batch=1、序列 512、隐层 1024、24 层、2 个并发分支。\n    report = peak_memory(num_params=100000000, batch=1, seq_len=512,\n                         hidden=1024, layers=24, bits=8,\n                         branches=2, im2col=True, attn_matrix=True)\n    mb = 1024 * 1024\n    print('模型文件(权重): %.1f MB' % (report['weights'] / mb))\n    print('分支工作集   : %.1f MB' % (report['branch_ws'] / mb))\n    print('KV cache     : %.1f MB' % (report['kv_cache'] / mb))\n    print('峰值内存     : %.1f MB' % (report['peak'] / mb))\n    print('峰值/模型文件: %.2fx' % report['ratio_to_file'])\n    for opt in 'ABCD':\n        print(opt, option_impact(opt))\n    assert report['ratio_to_file'] > 1.0, '峰值应当超过模型文件本身'\n    # 边界：最小模型（1 参数、1 层、序列 1）也要有正的权重与合法分解。\n    tiny = peak_memory(1, 1, 1, 1, 1, bits=32)\n    assert tiny['peak'] >= tiny['weights'] > 0\n    print('OK')\n\n\nif __name__ == '__main__':\n    main()\n",
+        "walkthrough": [
+          {
+            "note": "weight_bytes 是「模型文件大小」这一侧的账：参数量 × 位宽 ÷ 8，并强制 bits 只能取 4/8/16/32，避免把非法位宽算成负数或小数。"
+          },
+          {
+            "note": "activation_bytes 与 kv_cache_bytes 是「超出模型文件」那一侧的账。激活按 层数×batch×序列×隐层×fanout 估，fanout 表示同一时刻要同时存活的张量份数（前向的残差、算子输入输出）；KV cache 是解码时每层都要缓存 K 和 V，所以前面乘 2，且随序列长度线性增长。"
+          },
+          {
+            "note": "temp_buffer_bytes 专门刻画「临时缓冲区」：im2col 把卷积窗口展开成矩阵会多出约 9 倍（3×3 卷积）的特征图副本，显式注意力矩阵则多出 batch×序列² 的 S×S 矩阵——这正是端侧最容易 OOM 的两块，也是选项 A 点名的东西。"
+          },
+          {
+            "note": "peak_memory 把三部分加起来，并用 branches 乘以工作集：权重只算一份（常驻共享），激活与临时缓冲每个并发分支各一份，KV cache 按 batch 单独算。返回的 ratio_to_file = 峰值 / 模型文件，直接回答题目「峰值显著超过模型文件」的成因。"
+          },
+          {
+            "note": "option_impact 用一张小表把四个选项逐个判定，把「为什么 B/C/D 不对」写成可打印的结论，方便自测时直接对照题干。"
+          },
+          {
+            "note": "main 用 1 亿参数/8bit/序列 512/隐层 1024/24 层/2 分支跑一遍：权重约 95MB（8bit 下 100000000 字节），分支工作集约 55MB，KV cache 约 24MB，峰值/模型文件大于 1，assert 通过；最后用最小边界（1 参数、1 层、序列 1）验证分解仍然合法且权重为正，保证空输入式的退化情形不会崩。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "batch=1、序列=1 的最小输入：激活与 KV cache 退化成常数，峰值可能就约等于模型文件，此时选项 A 的效果最弱——「显著超过」需要 batch/序列/分支足够大。",
+        "纯权重加载阶段（还没开始前向）：此时峰值≈模型文件，说明激活/临时缓冲是「推理过程中」才出现的增量，题目问的是峰值而不是常驻。",
+        "极端量化（4bit 权重 + 16bit 激活）：模型文件被压得很小，但激活仍是 fp16，倍数比 8bit 全量化时更大。",
+        "单个自回归请求、无并发：branches=1，但 KV cache 随生成长度线性增长，长上下文（如 8k/32k）时 KV cache 本身就可能超过权重。",
+        "显式 S×S 注意力矩阵：序列长度平方增长，短序列看不出来，长序列直接吃掉几十 MB 到几百 MB，属于典型的临时缓冲爆炸。",
+        "多分支但串行执行：缓冲可以复用，峰值不按分支数叠加——「并发」才是乘数，这是选项 A 里并发两字的要害。"
+      ],
+      "pitfalls": [
+        "把「模型文件大小」当成推理内存的全部，忽略激活与算子临时缓冲这两块纯增量。",
+        "误选 B：输出类别数固定只决定最后一层权重的形状，属于模型文件内部的常数项，无法让峰值反超模型文件。",
+        "误选 C：训练集规模是训练阶段的账，端侧推理不加载训练集，与推理峰值无关。",
+        "误选 D：标签类别数既不影响权重也不影响激活，是纯粹的干扰项。",
+        "只看到「激活」而漏掉「多分支并发」：并发分支各自持有工作集、不能复用，是倍数放大的关键。",
+        "假设权重和激活位宽相同：端侧常见 4bit 权重配 16bit 激活，激活反而可能是大头。",
+        "回答时只给结论不讲机制：面试官要的是把峰值拆成 权重 + 激活/临时缓冲 + KV cache 的账，而不是背选项。"
+      ],
+      "followUps": [
+        "端侧把峰值内存降下来，你会按什么顺序做？（先控 batch 与序列、算子融合去掉 S×S 矩阵、缓冲复用与内存池、再串行化分支，最后才是压权重位宽。）",
+        "算子融合（flash-attention、Conv-BN 融合）为什么能同时降峰值和时间？省掉的是哪一块缓冲？",
+        "KV cache 的显存怎么算？量化 KV、滑窗注意力、MQA/GQA 各能把这一项压多少？",
+        "权重的内存布局（NCHW/NHWC）与算子临时缓冲的峰值有什么关系？",
+        "如果要做端侧多任务，怎么设计调度让分支串行以复用缓冲，代价是什么？",
+        "怎样实测峰值内存（Android 的 dumpsys meminfo / iOS 的 footprint / PyTorch 的 max_memory_allocated）并与这个估算模型对账？"
+      ],
+      "variations": [
+        "把问题换成「训练时峰值内存超过模型文件的原因」：优化器状态（Adam 的 2 份动量）与激活重计算成为主角。",
+        "换成「为什么端侧推理首帧内存峰值特别高」：权重加载 + 图编译/预热 + 一次性大缓冲同时发生。",
+        "换成「为什么 batch 从 1 提到 8，内存不是 8 倍而是更多」：工作集、KV cache 与各种对齐填充一起乘。",
+        "换成「模型文件 500MB，为什么手机上跑不起来」：可用内存、权重解压副本、多分支并发三者叠加。",
+        "换成「量化后模型变小了，为什么峰值没降」：权重变小但激活位宽不变，倍数反而变大。"
+      ],
+      "diagram": {
+        "kind": "curve",
+        "title": "模型文件 vs 峰值内存",
+        "caption": "记住这个加法：峰值 = 权重（一份，等于模型文件）+ 分支数×(激活+临时缓冲) + KV cache。模型文件只是第一项，激活与临时缓冲随 batch/序列增长，多分支并发再乘上分支数，所以峰值必然可能显著反超模型文件。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='模型文件与端侧推理峰值内存的构成对比：权重一份，峰值还包含激活、临时缓冲与并发分支'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='20' font-size='14' fill='currentColor'>模型文件 vs 峰值内存</text><text x='14' y='52' font-size='13' fill='currentColor'>模型文件</text><rect x='110' y='36' width='100' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='216' y='52' font-size='13' fill='currentColor'>权重（常驻一份）</text><line x1='160' y1='60' x2='160' y2='78' stroke='var(--line-1)' stroke-width='1'/><polygon points='160,82 156,76 164,76' fill='var(--line-1)'/><text x='14' y='100' font-size='13' fill='currentColor'>峰值内存</text><rect x='110' y='82' width='100' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='140' y='100' font-size='13' fill='currentColor'>权重</text><rect x='210' y='82' width='110' height='26' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='221' y='100' font-size='13' fill='currentColor'>激活+临时</text><rect x='320' y='82' width='46' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='327' y='100' font-size='13' fill='currentColor'>KV</text><text x='372' y='100' font-size='13' fill='currentColor'>+并发份</text><text x='14' y='144' font-size='13' fill='var(--accent)'>答案 A：激活 / 临时缓冲 / 多分支并发</text><text x='14' y='172' font-size='13' fill='currentColor'>B 输出类别数固定 → 只影响最后一层</text><text x='14' y='196' font-size='13' fill='currentColor'>C 训练集规模过大 → 训练阶段的事</text><text x='14' y='220' font-size='13' fill='currentColor'>D 标签类别过少 → 不进推理内存账</text></svg>",
+        "alt": "上方一条代表模型文件的条形「权重（常驻一份）」，下方一条被分成权重、激活+临时缓冲、KV、并发份四段的峰值内存条，说明峰值在权重之外还要叠加激活、临时缓冲与并发分支，下面三行分别列出选项 B、C、D 为什么不影响推理峰值。"
+      },
+      "selfTest": [
+        "为什么「训练集规模过大」不会让端侧推理的峰值内存变高？（答：推理阶段只加载权重并跑前向，训练集只在训练时被读入，它影响的是训练显存而不是端侧推理峰值。）",
+        "输出类别数从 10 增到 10000，会让峰值内存相对模型文件被「放大」吗？（答：不会，它只改最后一层权重 hidden×类别数的形状，属于模型文件内部的常数项，峰值与模型文件的倍数基本不变。）",
+        "一个 1 亿参数、8bit 的模型文件约 100MB，序列 512、隐层 1024、24 层、单分支时，激活与 KV cache 各大约多少？（答：激活约 24MB（24×1×512×1024×2 字节），KV cache 约 24MB（2×24×1×512×1024 字节），再加上 im2col 等临时缓冲，峰值明显超过 100MB。）",
+        "把并发分支从 1 提到 3，峰值里哪些项变、哪些项不变？（答：激活与临时缓冲按分支数各算一份、变成 3 倍；权重仍只常驻一份、KV cache 按 batch 走，不随分支数变。）",
+        "端侧用 4bit 量化把权重压到 1/2，峰值内存会同步减半吗？（答：不会。只有权重那一项减半，激活与临时缓冲位宽不变，所以倍数反而变大。）"
+      ],
+      "keyPoints": [
+        "峰值 = 一份权重（≈模型文件）+ 分支数×(激活+临时缓冲) + KV cache",
+        "激活随 层数×batch×序列长度×隐层 增长，临时缓冲（im2col、S×S 注意力矩阵）是纯增量",
+        "多分支并发时工作集不能复用，峰值近似按分支数线性叠加",
+        "B/C/D 分别只影响最后一层形状、训练阶段、标签数，都不进入推理峰值内存账",
+        "量化只压权重，压不动激活，权重越小峰值与模型文件的倍数反而越大"
+      ],
+      "sources": [
+        {
+          "title": "牛客题库 · 端侧推理峰值内存单选题（2026年-华为-08月笔试）",
+          "url": "https://nowcoder.com/questionTerminal/bdc9e29c1a504458b9ac1e6f11e16eaa"
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "题干原文可确定：这是单选题，问「端侧推理时，哪项因素最可能使峰值内存显著超过模型文件本身的大小？」，四个选项依次是「中间激活、临时缓冲区和多分支并发执行」「输出类别数固定」「训练集规模过大」「标签类别过少」。",
+          "题干给出题目来源为「2026年-华为-08月」笔试，采集来源为牛客题库；本题 origin 为 collected，本文件 sources 只写 sourceUrl 这一条链接（见 sources[0].url），未添加任何其他链接。",
+          "「峰值 = 权重 + 分支数×(激活+临时缓冲) + KV cache」是本文件为解释选项 A 而给出的内存分解模型，四则运算关系在 code.source 中可直接运行验证（示例输入下峰值/模型文件大于 1）。",
+          "code.source 只用标准库（无 torch/第三方依赖），包含 6 个函数与 main，具备输入校验（非法位宽、非正尺寸、非正分支数均抛 ValueError）与边界断言（最小模型权重为正），无占位符。"
+        ],
+        "uncertain": [
+          "题面在页面标题「使峰值内存显著超过模型文件本身的大」处被截断，末字应为「大小」，本文件按「大小」解释；若原题另有后半句，解释需要修订。",
+          "采集到的题面没有给出正确选项（页面上只有「查看正确选项」入口，没有答案文本），选项 A 是依据端侧推理内存机制推导出的结论，不是抄录的官方答案。",
+          "题干未给出模型规模、量化位宽、batch、序列长度等具体数值，正文中的 1 亿参数/8bit/序列 512/隐层 1024/24 层只是用于说明倍数的示例取值，不代表题目约束。代码里的 fanout=2、im2col 的 9 倍、KV 的 2 份都是工程估算用的经验系数，真实值随算子实现变化。",
+          "「多分支并发执行」在题干里的具体所指（多任务分支、多请求并发还是投机解码）题面未说明，本文件按「缓冲不能复用、工作集同时驻留」这一共同机制解释。",
+          "选项 B/C/D 的文字从题干原样抄录，但题干对它们没有任何补充说明，本文件对它们的否定判断基于推理阶段的内存构成分析。"
+        ]
+      }
+    }
+  ]
+}

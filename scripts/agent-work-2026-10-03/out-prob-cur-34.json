@@ -1,0 +1,134 @@
+{
+  "batchId": "prob-cur-34",
+  "entries": [
+    {
+      "id": "deepseek-dpo-derivation",
+      "tldr": "DPO 由 KL 约束最优策略反解奖励，代入 Bradley-Terry 后配分项 Z(x) 相消，损失只剩偏好对数概率差。",
+      "restated": "题面（DeepSeek 笔试第二题）：推导 DPO 的完整训练流程，要点是从 KL 约束下的最优策略形式中消去显式奖励模型，得到只依赖偏好对数概率的目标。给定偏好对数据 (x, y_w, y_l)、参考策略 π_ref 与系数 β，要求写出 KL 约束目标的极值解、奖励的反解式、Bradley-Terry 代入后的相消结果、损失函数、梯度与训练流程。题面为要点式描述，未给样例与数据规模。",
+      "approach": [
+        {
+          "step": "第一步：写对 KL 约束目标并解出最优策略",
+          "detail": "起点是带 KL 锚点的目标：max_π E_{x~D, y~π}[r(x,y)] − β·KL(π(·|x)‖π_ref(·|x))。把它按 x 拆开，每个 x 上都是「线性期望项 + β 倍 KL」的逐点变分问题：对候选 y 求导置零得 β·(log π(y|x) − log π_ref(y|x)) = r(x,y) − β·log Z(x)，即 π*(y|x) = π_ref(y|x)·exp(r(x,y)/β)/Z(x)，其中 Z(x)=Σ_{y'} π_ref(y'|x)·exp(r(x,y')/β)。这步要讲清两点：奖励 r 原本与策略无关，最优解却把 r 放进了策略的对数比里，这正是后面能反过来用策略表示奖励的原因；同时 Z(x) 是归一化项、只与 prompt x 有关而与 y 无关，这是整条推导的枢纽。"
+        },
+        {
+          "step": "第二步：反解奖励，得到隐式奖励 r̂",
+          "detail": "对 π* 取对数移项：r(x,y) = β·log(π*(y|x)/π_ref(y|x)) + β·log Z(x)。因为 Z(x) 与 y 无关，它对「同一个 prompt 内两条回答的奖励差」没有贡献。训练时把未知的 π* 换成待训策略 π_θ（π_ref 保持 SFT 初始化并冻结），就得到隐式奖励 r̂_θ(x,y) = β·log(π_θ(y|x)/π_ref(y|x))：奖励模型没有被显式建模，而是被策略与参考策略的对数比隐式表示，β 就是 KL 惩罚强度（β 小则允许策略偏离参考，β 大则几乎钉在参考附近）。"
+        },
+        {
+          "step": "第三步：代入 Bradley-Terry，Z(x) 相消",
+          "detail": "偏好模型假设 p(y_w ≻ y_l | x) = σ(r(x,y_w) − r(x,y_l))。代入 r̂：β·log Z(x) 在两条回答相减时抵消，得 p = σ(β·[log(π_θ(y_w)/π_ref(y_w)) − log(π_θ(y_l)/π_ref(y_l))])。取负对数似然即 L_DPO = −E[log σ(β·(Δ_w − Δ_l))]，其中 Δ_y = log π_θ(y|x) − log π_ref(y|x)。目标里既没有奖励模型也没有 Z，没有采样，只剩两项对数概率差。对 θ 求导得 ∇L = −β·σ(−margin)·(∇log π_θ(y_w) − ∇log π_θ(y_l))，权重 σ(−margin) 会随 margin 增大而衰减，自动压低已经判得很好的样本。"
+        },
+        {
+          "step": "第四步：落地成可执行的训练流程",
+          "detail": "工程上按五步走：① 准备偏好对 (x, y_w, y_l)，log 概率只对 completion 的 token 求和（prompt 部分两序列相同，算进去只会稀释差异并引入长度偏差）；② 拷贝一份 SFT 模型冻结成 π_ref，其 log 概率可以离线预计算并缓存；③ 每个 batch 让策略对 chosen/rejected 各做一次前向拿到 log π_θ，减去参考值得到 Δ_w、Δ_l；④ 组成 −log σ(β(Δ_w − Δ_l))（用 log-sigmoid/softplus 的稳定写法），反向只更新 π_θ，π_ref 永不更新；⑤ 监控隐式奖励差 r̂_w − r̂_l、pair accuracy 与相对参考的 KL，β 常取 0.1 量级。相比 PPO，省掉了奖励模型、rollout 采样与 RL 循环。"
+        }
+      ],
+      "complexity": {
+        "time": "每步约 O(B·L·d)：策略与参考各一遍前向 + 策略一遍反向（chosen/rejected 合批则为 2B 条序列）",
+        "space": "O(参数量×2)（策略 + 冻结参考）加 O(B·L·d) 激活；缓存 log π_ref 可省一次参考前向，代价是 O(N·L) 存储",
+        "why": "开销只在两次前向一次反向；Z(x) 相消后无需估计配分函数、无需采样与奖励模型，因此比 PPO 少一整块在线开销。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''DPO 损失推导的自包含验证：只用标准库，可直接 python 运行。\n\n推导链：KL 约束目标 -> 最优策略 pi* ∝ pi_ref·exp(r/beta) -> 反解\nr = beta·log(pi*/pi_ref) + beta·logZ(x) -> 代入 Bradley-Terry -> Z(x) 相消\n-> L = -log sigmoid(beta·((logpi_w - ref_w) - (logpi_l - ref_l)))，logpi = log pi。\n'''\nimport math\n\n\ndef log_softmax(z):\n    m = max(z)\n    return [v - (m + math.log(sum(math.exp(v - m) for v in z))) for v in z]\n\n\ndef sigmoid(x):\n    if x >= 0:\n        return 1.0 / (1.0 + math.exp(-x))\n    e = math.exp(x)\n    return e / (1.0 + e)\n\n\ndef log_sigmoid(x):\n    # 数值稳定写法：x >= 0 用 -log1p(exp(-x))，x < 0 用 x - log1p(exp(x))\n    return -math.log1p(math.exp(-x)) if x >= 0 else x - math.log1p(math.exp(x))\n\n\ndef dpo_loss(logits, ref_logp, beta=0.1):\n    '''logits: 策略对 [y_w, y_l] 的未归一化分数；ref_logp: 参考策略的 log 概率。'''\n    logp = log_softmax(logits)\n    d_w = logp[0] - ref_logp[0]\n    d_l = logp[1] - ref_logp[1]\n    margin = beta * (d_w - d_l)          # 隐式奖励差 r_w - r_l，Z(x) 已相消\n    return -log_sigmoid(margin), margin\n\n\ndef dpo_grad(logits, ref_logp, beta=0.1):\n    '''dL/dlogits：先对 log pi 求导，再过 softmax 雅可比 (1[y=j] - pi_j)。'''\n    logp = log_softmax(logits)\n    pi = [math.exp(v) for v in logp]\n    margin = beta * ((logp[0] - ref_logp[0]) - (logp[1] - ref_logp[1]))\n    w = 1.0 - sigmoid(margin)            # = -dL/d(margin)，随 margin 增大而衰减\n    g_logp = [-beta * w, beta * w]\n    return [sum(g_logp[y] * ((1.0 if y == j else 0.0) - pi[j]) for y in (0, 1))\n            for j in (0, 1)]\n\n\ndef optimal_policy_probs(r, ref_p, beta, log_z):\n    '''pi*(y|x) = pi_ref(y|x)·exp(r(y)/beta)/Z(x)，换任意 Z 不应改变偏好概率。'''\n    w = [ref_p[i] * math.exp((r[i] - beta * log_z) / beta) for i in (0, 1)]\n    s = sum(w)\n    return [v / s for v in w]\n\n\ndef main():\n    ref_logp, beta = [-0.7, -1.6], 0.1\n    ref_p = [math.exp(v) for v in ref_logp]\n    r = [1.5, -0.5]\n    margins = []\n    for log_z in (0.0, 3.7, -2.2):          # 三组不同 Z(x)，验证相消\n        lp = [math.log(v) for v in optimal_policy_probs(r, ref_p, beta, log_z)]\n        margins.append(beta * ((lp[0] - ref_logp[0]) - (lp[1] - ref_logp[1])))\n    assert max(margins) - min(margins) < 1e-12, margins\n    assert abs(margins[0] - (r[0] - r[1])) < 1e-9, margins[0]\n\n    loss0, m0 = dpo_loss(list(ref_logp), ref_logp, beta)\n    assert abs(m0) < 1e-12 and abs(loss0 - math.log(2)) < 1e-12, (loss0, m0)\n\n    logits = [0.3, -0.9]\n    g = dpo_grad(logits, ref_logp, beta)\n    eps = 1e-6\n    for j in (0, 1):                        # 中心差分对拍解析梯度\n        a, b = list(logits), list(logits)\n        a[j] += eps\n        b[j] -= eps\n        num = (dpo_loss(a, ref_logp, beta)[0] - dpo_loss(b, ref_logp, beta)[0]) / (2 * eps)\n        assert abs(num - g[j]) < 1e-6, (j, num, g[j])\n\n    new = [logits[j] - 0.5 * g[j] for j in (0, 1)]\n    assert dpo_loss(new, ref_logp, beta)[1] > dpo_loss(logits, ref_logp, beta)[1]\n    w = 1.0 - sigmoid(dpo_loss(logits, ref_logp, beta)[1])\n    assert 0.0 < w < 1.0\n    print('margin(Z 无关) =', margins[0], ' loss0 =', loss0)\n    print('解析梯度 =', g, ' 下降后 margin =', dpo_loss(new, ref_logp, beta)[1])\n    print('all asserts passed')\n\n\nif __name__ == '__main__':\n    main()\n",
+        "walkthrough": [
+          {
+            "note": "三个数值工具：log_softmax 用减最大值的方式算，避免 exp 上溢；sigmoid 分段写，负指数时不会溢出；log_sigmoid 用 log1p 分两段实现（等价于 −softplus(−x)），margin 很负时不会直接 log(0) 下溢——这正是 DPO 损失该有的稳定写法。"
+          },
+          {
+            "note": "dpo_loss 就是整条推导的最终产物：由 logits 算 log π_θ，减去 π_ref 的 log 概率得到 Δ_w、Δ_l，β 乘在两者之差上得到隐式奖励差 margin（即 r̂_w − r̂_l），损失是 −log σ(margin)。函数里没有任何奖励模型、没有任何 Z(x)——它们已经被消掉了。"
+          },
+          {
+            "note": "dpo_grad：对 log π 的导数只有 ±β·σ(−margin)（chosen 为负、rejected 为正），再乘 softmax 雅可比 (1[y=j] − π_j) 回传到 logits。这解释了 DPO 的自适应权重：margin 越大（样本已被判对）σ(−margin) 越小，梯度自动衰减，因此不需要像 PPO 那样显式裁剪。"
+          },
+          {
+            "note": "optimal_policy_probs 复现推导第一步的最优解形式 π* ∝ π_ref·exp(r/β)/Z，Z 的 log 值作为普通常数 log_z 传入，用来检验「换任意 Z 结果不变」。"
+          },
+          {
+            "note": "main 里五组断言：① 三组不同 log Z（0.0/3.7/−2.2）算出的 margin 完全相同（差 <1e-12）且等于 r_w − r_l = 2.0，这是 Z(x) 相消的数值证据；② π_θ = π_ref 时 margin=0、loss=log2≈0.6931；③ 解析梯度与中心差分（eps=1e-6）在 1e-6 内吻合；④ 沿负梯度走一步后 margin 变大；⑤ 自适应权重 σ(−margin) 落在 (0,1) 开区间。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "必须同一个 prompt x 内相减：chosen/rejected 来自不同 x 时 β·log Z(x_w) 与 β·log Z(x_l) 不抵消，DPO 目标不再成立；这也是「成对数据」不可省的原因。",
+        "π_θ 初始等于 π_ref（标准做法，从 SFT 模型起训）：所有 Δ=0、margin=0、loss=log2≈0.6931，但梯度不为零，方向是 −(β/2)(∇log π_w − ∇log π_l)。",
+        "β→0：KL 约束几乎消失，目标退化成无锚的偏好分类，margin 被无限推大（最优解在无穷远），策略过拟合偏好、语言多样性下降；β 很大：策略几乎不动、欠拟合。",
+        "长度偏置：log π 是对 completion 所有 token 的求和，chosen 与 rejected 长度差很多时比较天然有偏，常见补救是按 token 平均或做长度归一化。",
+        "y_w 与 y_l 相同（tie 或脏数据）：margin 恒为 0，样本只贡献常数 log2 和噪声梯度，训练前必须清洗或单独处理平局。",
+        "数值稳定：margin 很负时直接算 log(sigmoid(margin)) 会下溢成 −inf，必须用 log_sigmoid（或 softplus(−margin)）。",
+        "只算最后一个 token 的 log 概率、或把 prompt 一起算进去，都是实现层的常见错；标准做法是 completion-only 的 sum 或 mean。",
+        "冻结的参考模型必须与策略同一 tokenizer、同一 SFT 初始化；换成别的模型（甚至换 chat template）会让 Δ 失去意义。"
+      ],
+      "pitfalls": [
+        "忘记减 log π_ref（丢掉参考项）：目标退化成普通偏好二分类，KL 锚点消失，模型会无约束地跑偏并概率锐化。",
+        "以为 β·log Z(x) 可以随手丢：它只在「同一个 x 内两条回答相减」时才相消，跨 prompt 比较不成立。",
+        "β 位置放错（写成 margin/β 或整个漏掉 β）：等价于偷偷换了 KL 强度，实验结论会完全变味。",
+        "log 概率算成全序列（含 prompt）或只算最后一个 token，而不是对 completion 的 token 求和。",
+        "把「DPO 与带 KL 的 RLHF 等价」说成严格等价：只有在最优解处、且偏好数据服从 Bradley-Terry 时才成立，实际是弱等价（隐式奖励 + 隐式 KL 正则）视角。",
+        "梯度符号/加减写错，例如写成 −β(1−σ)·(∇log π_w + ∇log π_l)：正确形式是 chosen 项为负、rejected 项为正。",
+        "损失直接用 log(sigmoid(x)) 实现，margin 很负时下溢；应改成 softplus(−margin)。",
+        "把 DPO 说成「不需要参考模型」：参考模型只在训练时用，但它是目标的组成部分；去掉它（如 SimPO）需要另外的归一化设计。",
+        "忽略 DPO 的失败模式：长度偏置、likelihood displacement（chosen 概率涨得不如 rejected 掉得多）在只写公式时容易被漏掉。"
+      ],
+      "followUps": [
+        "从 ∇L = −β·σ(−margin)(∇log π_w − ∇log π_l) 出发，解释 DPO 的权重自适应和它为什么会抑制 OOD 样本。",
+        "DPO 与 PPO/RLHF 的关系是什么？为什么说 DPO 相当于「隐式奖励模型 + 隐式 KL 正则」？两者在什么条件下等价？",
+        "β 与 KL 约束强度、偏好标签噪声之间怎么权衡？噪声大时为什么要降 β 或改用 cDPO/IPO？",
+        "如果只允许多条回答的相对排序（k 个候选）而不是成对偏好，目标怎么改（Plackett-Luce 版 DPO）？",
+        "reference-free 方案（SimPO/CPO）去掉 π_ref 后如何避免退化？它们丢掉了什么保证？",
+        "离线 DPO 与在线/迭代 DPO 的差别？用当前策略采样新偏好对会带来什么收益与风险？",
+        "为什么 DPO 只需两次前向一次反向？如果参考策略换成「上一轮的自己」，训练会出什么问题？",
+        "怎么诊断 DPO 训练：隐式奖励差、pair accuracy、与参考策略的 KL、chosen/rejected 的 log 概率各自说明什么？"
+      ],
+      "variations": [
+        "IPO：把 −log σ 换成平方损失，避免确定性偏好下 margin 被无限推大（DPO 在无噪声偏好下会过拟合）。",
+        "cDPO：假设标签有 ε 的翻转噪声，对偏好目标做标签平滑（等价于在 logit 上加噪声）。",
+        "KTO：不需要成对数据，只用好/坏二元标签，用前景理论式的效用函数。",
+        "SimPO / CPO：去掉参考模型，用长度归一化的平均对数概率当隐式奖励（CPO 再加一个 SFT 正则项）。",
+        "ORPO：把 SFT 与偏好对齐合成一个目标，用 odds ratio 代替显式参考模型。",
+        "Plackett-Luce DPO：由成对偏好扩展到 k 个候选的完整排序。",
+        "迭代式 / Online DPO：用当前策略重新采样偏好对再训练，缓解离线数据的分布偏移。",
+        "带长度归一化的 DPO（length-normalized / LN-DPO）：对 Δ 按 completion token 数取平均，治长度偏置。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "DPO 推导五步链",
+        "caption": "记住这条链：KL 约束目标 → 最优策略 π*∝π_ref·exp(r/β) → 反解奖励 → 代入 Bradley-Terry → Z(x) 相消；损失只依赖偏好对数概率差，训练时冻结参考模型、只更新策略。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='DPO 推导五步链：从 KL 约束目标到配分项相消'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='17' font-size='13' fill='currentColor'>DPO 推导：五步链</text><rect x='10' y='26' width='185' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='44' font-size='13' fill='currentColor'>1 KL 约束目标 J(π)</text><rect x='10' y='62' width='185' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='80' font-size='13' fill='currentColor'>2 最优策略 π* 的形式</text><rect x='10' y='98' width='185' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='116' font-size='13' fill='currentColor'>3 反解出隐式奖励 r̂</text><rect x='10' y='134' width='185' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='152' font-size='13' fill='currentColor'>4 代入 Bradley-Terry</text><rect x='10' y='170' width='185' height='26' fill='none' stroke='var(--accent)' stroke-width='1.5'/><text x='18' y='188' font-size='13' fill='currentColor'>5 Z(x) 相消 → DPO 损失</text><line x1='102' y1='52' x2='102' y2='58' stroke='var(--line-1)' stroke-width='1'/><polygon points='102,62 98,56 106,56' fill='var(--line-1)'/><line x1='102' y1='88' x2='102' y2='94' stroke='var(--line-1)' stroke-width='1'/><polygon points='102,98 98,92 106,92' fill='var(--line-1)'/><line x1='102' y1='124' x2='102' y2='130' stroke='var(--line-1)' stroke-width='1'/><polygon points='102,134 98,128 106,128' fill='var(--line-1)'/><line x1='102' y1='160' x2='102' y2='166' stroke='var(--line-1)' stroke-width='1'/><polygon points='102,170 98,164 106,164' fill='var(--line-1)'/><text x='205' y='44' font-size='13' fill='currentColor'>max E[r] − β·KL(π‖π_ref)</text><text x='205' y='80' font-size='13' fill='currentColor'>逐点变分求极值</text><text x='205' y='116' font-size='13' fill='currentColor'>奖励 = β·策略与参考的对数比</text><text x='205' y='152' font-size='13' fill='currentColor'>σ(r_w − r_l) 拟合人类偏好</text><text x='205' y='188' font-size='13' fill='currentColor'>−log σ(β·Δlogπ_w − β·Δlogπ_l)</text><line x1='102' y1='196' x2='102' y2='210' stroke='var(--line-1)' stroke-width='1'/><polygon points='102,214 98,208 106,208' fill='var(--line-1)'/><text x='120' y='228' font-size='13' fill='currentColor'>训练：冻结 π_ref，只更新 π_θ</text></svg>",
+        "alt": "竖排五步流程图：KL 约束目标、最优策略 π* 的形式、反解出隐式奖励、代入 Bradley-Terry、Z(x) 相消得到 DPO 损失；右侧标注每步对应的公式，底部标注训练时冻结参考模型。"
+      },
+      "selfTest": [
+        "写出 KL 约束目标的逐点最优解，并说明 Z(x) 是什么。（答：π*(y|x)=π_ref(y|x)·exp(r(x,y)/β)/Z(x)，Z(x)=Σ_{y'} π_ref(y'|x)·exp(r(x,y')/β)，只与 prompt x 有关。）",
+        "为什么最终的 DPO 目标里既没有奖励模型也没有 Z(x)？（答：由最优解反解 r=β·log(π/π_ref)+β·log Z(x)，代入 Bradley-Terry 的奖励差 r_w−r_l 时 β·log Z(x) 相减抵消——前提是同一个 x；再令 π=π_θ 即得只含对数概率差的目标。）",
+        "写出 DPO 损失和它关于 θ 的梯度，说明 σ(−margin) 的作用。（答：L=−log σ(β(Δ_w−Δ_l))，∇L=−β·σ(−margin)·(∇log π_w−∇log π_l)；权重随 margin 增大而衰减，自动降低已判对样本的梯度。）",
+        "π_θ 初始等于 π_ref 时损失是多少？梯度为零吗？（答：margin=0、L=log2≈0.6931；梯度不为零，为 −(β/2)(∇log π_w−∇log π_l)。）",
+        "β→0 与 β→∞ 分别发生什么？（答：β→0 时 KL 约束消失，目标退化成无锚偏好分类、margin 被无限推大；β→∞ 时策略被钉在参考策略附近几乎不更新。）"
+      ],
+      "keyPoints": [
+        "带 KL 锚的目标解出 π*∝π_ref·exp(r/β)/Z(x)，再用它反解奖励 r=β·log(π*/π_ref)+β·log Z(x)",
+        "r̂=β·log(π_θ/π_ref)，代入 Bradley-Terry 后 β·log Z(x) 在同一个 prompt 内相减抵消",
+        "L_DPO=−E[log σ(β·(Δ_w−Δ_l))]，Δ_y=log π_θ(y|x)−log π_ref(y|x)",
+        "梯度 −β·σ(−margin)·(∇log π_w−∇log π_l)：权重自适应，无需奖励模型、无需采样",
+        "工程要点：参考模型冻结、只对 completion 算 log 概率、β 控制偏离参考的强度、监控隐式奖励差与 KL"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "输入题为人工整理（origin=curated、sourceUrl=null、sourceName 为人工整理题库），按规则 sources 为空数组，且本 entry 正文不含任何链接（SVG 的 xmlns 只是 XML 命名空间声明，不是可访问链接）。",
+          "题面明确要求「推导 DPO 的完整训练流程」，并点明要点是「从 KL 约束下的最优策略形式中消去显式奖励模型，得到只依赖偏好对数概率的目标」；本文件的四步推导、损失式与训练流程都围绕这两句展开。",
+          "题面标注 marker 为「笔试场景」、kind 为 exam、difficulty 为 hard、topics 为机器学习基础/大模型与 RL，与「推导 DPO 数学流程」这一考点一致。",
+          "题面只给了要点式描述，没有给出任何具体样例、数据规模或已写好的损失式；因此损失式、梯度式与训练流程细节属于标准 DPO 推导的补充，而非题面原文照抄。",
+          "本文件 code.source 已在本机 python 上实际运行通过，输出为：margin(Z 无关) = 1.9999999999999998、loss0 = 0.6931471805599453（=log 2）、解析梯度 = [−0.04925005624493797, +0.04925005624493797]、四个部分共五组断言全部通过。",
+          "代码中的关键断言直接支撑推导结论：换三组不同 log Z（0.0/3.7/−2.2）得到的 margin 完全相同（最大差 <1e-12）且等于 r_w−r_l=2.0，即 Z(x) 相消的数值证据；π_θ=π_ref 时 loss=log2；中心差分（eps=1e-6）与解析梯度在 1e-6 内吻合，支撑 ∇L=−β·σ(−margin)(∇log π_w−∇log π_l) 的推导。"
+        ],
+        "uncertain": [
+          "题面被要点化/可能截断：没有说明要求的输出颗粒度（是否必须写出梯度、是否要讨论 β 取值、是否要与 PPO 比较），我按「完整训练流程」覆盖了数据准备、参考模型、损失、梯度与超参，若人工本意只要一段公式推导，需要人工裁剪。",
+          "题面未给样例数据、评测方式，也没有任何链接；因此无法引用外部来源，sources 依 curated 规则留空，未编造任何链接。",
+          "笔试场景下「推导完整训练流程」很可能期望纸笔推导；这里给出的可运行代码是对推导的数值验证（纯标准库复现二维 softmax 策略上的损失与梯度），不是 PyTorch/真实 LM 上的实现，若期望多轮对话、长度归一化等工程细节需人工补充。",
+          "文中关于 DPO 的失败模式（长度偏置、likelihood displacement）、与 PPO 的等价性边界以及 IPO/cDPO 等变形属于我的补充，题面并未要求，属于加分内容而非题面结论。",
+          "代码里的 pair 只是「两条候选回答」的二维简化，用于把推导落到可验证的数值；真实 LM 中 log π(y|x) 要对 completion 的全部 token 求和、并带 tokenizer 与 chat template 约定，这部分未在代码中体现。"
+        ]
+      }
+    }
+  ]
+}

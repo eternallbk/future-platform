@@ -1,0 +1,149 @@
+{
+  "batchId": "prob-cur-11",
+  "entries": [
+    {
+      "id": "iou-nms",
+      "tldr": "NMS 就是「分数降序 + 贪心保留 + 只和当前保留框比 IoU 并筛掉高分框」；交集宽高必须 clip 到 0，分母加 eps 兜零面积框。",
+      "restated": "输入 boxes 是 [N,4] 的 (x1,y1,x2,y2)（左上、右下，连续坐标，不含 +1 像素约定），scores 是 [N] 的置信度，另有阈值 iou_thr（默认 0.5）。要求：按分数从高到低遍历，每轮取当前最高分框加入保留集，再算它和其余候选框的 IoU，把 IoU > iou_thr 的框抑制掉（IoU ≤ iou_thr 保留），返回保留框的原始下标。题干还要求说明旋转框 NMS 与 soft-NMS 与它的区别。题干未给出 N 的取值范围与具体样例。",
+      "approach": [
+        {
+          "step": "朴素写法：对「全体两两 IoU」做阈值聚类",
+          "detail": "最容易上手的写法是先算一个 N×N 的 IoU 矩阵，把 IoU > thr 的框两两连边，再做连通分量/聚类，每个簇只留最高分。它的错处不在于慢，而在于「抑制关系不可传递」：A 与 B 重叠、B 与 C 重叠，并不代表 A 与 C 重叠。本题自测样例里 A=(0,0,2,2)、B=(3,0,5,2)、C=(1,0,4,2) 的 IoU(A,C)=IoU(B,C)=0.25 都低于 0.5，而 B 是 C 的连通邻居——连通分量版本会把 C 一起丢掉，贪心版本会留下 C（本文件断言 nms(...)== [0,1,2,3] 就是钉住这个语义）。另一个常见错法是直接原地删除数组元素：boxes 与 scores 的下标会整体前移，keep 里记的还是旧下标，返回的索引就全乱了。"
+        },
+        {
+          "step": "正确骨架：先降序，再用「当前最高分框 vs 剩余框」的一行 IoU 迭代收缩候选集",
+          "detail": "顺序是关键：NMS 的抑制方向由分数决定，所以第一步必须 order = scores.argsort()[::-1] 拿到降序下标（argsort 默认升序，千万别漏掉反转）。之后每一轮只保留「本轮最高分框对剩余框」这一行 IoU，用布尔掩码收缩 order 数组。这样做同时满足三点：其一，已被抑制的框不会再作为 i 出场（它已经离开 order）；其二，保留框之间永远不比较，因此不会出现「两个都该留的框互相抑制」；其三，不需要显式的 suppressed 标记数组，order 数组本身就是状态，边界条件只有 order.size == 1（没有剩余框可比，直接结束）。"
+        },
+        {
+          "step": "IoU 的数值细节：面积、交集宽高都要 clip，分母要比并集多一个 eps",
+          "detail": "交集的宽 w = xx2 - xx1 在不相交时是负数，不 clip(0) 就会得到「负面积」，让 inter/(union) 变成负值，于是 iou <= iou_thr 恒真、该抑制的框全被留下（而且是静默错，不报错）。并集写成 areas[i] + areas[rest] - inter 而不是 2*inter，因为两框面积本来就不同。分母再 +1e-9：若某个框宽或高为 0，它自己的面积是 0，与另一个零面积框的 union 也是 0，0/0 = nan；nan 与任何阈值比较都是 False，该框会一路留到 keep 里，属于最隐蔽的一类错误。"
+        },
+        {
+          "step": "工程与变形：先按分数做 top-k/类别分组，再上 soft-NMS / 旋转框 IoU",
+          "detail": "O(N²) 的瓶颈是每轮都要对剩余框算一次交集，实盘 N 上万时不可接受；标准工程做法是先按分数截断（每图只留 top-k 候选）再按类别分组各跑一次 NMS，这既能把每组的 N 压到千级以内，也避免「猫的框去抑制狗的高分框」。密集场景（人群、货架）改用 soft-NMS：不删除，只按 exp(-iou²/sigma) 之类连续衰减其余框的分数，让高重叠但确实是两个目标的框有机会活下来，代价是候选数不收敛、后处理更慢；旋转框（遥感、文本检测）则不能再用轴对齐交集公式，要先用多边形裁剪或 shapely 求凸多边形交的面积，IoU 变成 O(k²) 的几何计算。"
+        }
+      ],
+      "complexity": {
+        "time": "O(N log N + N·K)；最坏 O(N²)（K 为每一轮的平均剩余候选数）",
+        "space": "O(N) 辅助空间（order/rest/一行 IoU），不显式存 N×N 的 IoU 矩阵",
+        "why": "降序排序 O(N log N)；每轮只算「当前框 vs 剩余框」的一行 IoU（O(K)），保留一个框就至少从候选里去掉它自己，最多 N 轮。全重叠时每轮 K≈N ⇒ O(N²)；实践中高分框很快把邻居清空，K 迅速变小。"
+      },
+      "code": {
+        "language": "python",
+        "source": "\"\"\"手写 IoU / NMS（numpy 版）：boxes [N,4] 为 (x1,y1,x2,y2)，scores [N]。\n\n与人工 referenceSolution 的算法逐步一致：\n    先算面积 -> 按分数降序 -> 每轮取最高分框保留 -> 只对剩余框算 IoU\n    -> 用 iou <= thr 保留下界（不删最高分框自己）-> 循环直到没有候选框。\n区别只有三处「把参考实现的写法讲明白」的加固：\n  1. 面积/交集宽高同样用 clip(0)（这里写成 np.maximum(..., 0.0)，语义相同），参考实现用 .clip(0)；\n  2. 用 j = i + 1 + np.arange(order.size - 1) 取「最高分框对剩余框」这一行 IoU，\n     不用 np.where(iou > thr) 取一维下标——后者是对 rest 的局部下标，直接拿去索引\n     areas 会把 rest[0] 的 IoU 算成 i 自己的面积，是个很隐蔽的错；\n  3. 额外加了输入形状校验与 len(keep)==0 时返回空列表，不改算法结果。\n依赖：numpy（无其他第三方库）。\n\"\"\"\nimport numpy as np\n\n\ndef nms(boxes, scores, iou_thr=0.5):\n    \"\"\"NMS：抑制与已保留框 IoU > iou_thr 的低分框。\n\n    参数\n      boxes:   [N, 4]，(x1, y1, x2, y2)，不修改调用方数组\n      scores:  [N] 置信度（越大越该留）\n      iou_thr: IoU 阈值，IoU <= iou_thr 保留（参考实现即如此）\n    返回\n      keep: 保留框的原始下标（Python int 列表），按保留顺序\n    \"\"\"\n    boxes = np.asarray(boxes, dtype=np.float64)\n    scores = np.asarray(scores, dtype=np.float64).reshape(-1)\n    if boxes.ndim != 2 or boxes.shape[1] != 4:\n        raise ValueError(\"boxes 必须是 [N,4]，实际 %s\" % (boxes.shape,))\n    if len(scores) != boxes.shape[0]:\n        raise ValueError(\"scores 长度 %d 与 boxes 数 %d 不一致\"\n                         % (len(scores), boxes.shape[0]))\n    if boxes.shape[0] == 0:\n        return []                                     # 空输入：没有框可留\n\n    x1 = boxes[:, 0]\n    y1 = boxes[:, 1]\n    x2 = boxes[:, 2]\n    y2 = boxes[:, 3]\n    areas = np.maximum(x2 - x1, 0.0) * np.maximum(y2 - y1, 0.0)   # 退化框面积=0\n    order = scores.argsort()[::-1]                    # 分数降序（argsort 是升序）\n\n    keep = []\n    while order.size > 0:\n        i = order[0]                                  # 本轮最高分框的原始下标\n        keep.append(int(i))\n        if order.size == 1:\n            break\n        rest = order[1:]\n        xx1 = np.maximum(x1[i], x1[rest])\n        yy1 = np.maximum(y1[i], y1[rest])\n        xx2 = np.minimum(x2[i], x2[rest])\n        yy2 = np.minimum(y2[i], y2[rest])\n        w = np.maximum(xx2 - xx1, 0.0)                # 不相交时是负数，必须 clip 到 0\n        h = np.maximum(yy2 - yy1, 0.0)\n        inter = w * h\n        union = areas[i] + areas[rest] - inter\n        iou = inter / (union + 1e-9)                  # eps 兜住 union=0（零面积框）\n        order = rest[iou <= iou_thr]                  # 只为「保留」保留下界\n    return keep\n\n\ndef soft_nms_gaussian(boxes, scores, sigma=0.5, score_thr=1e-3):\n    \"\"\"Gaussian soft-NMS：不硬删框，而是按重叠程度连续衰减其余框的分数。\n\n    与硬 NMS 同一套贪心骨架，差别只在内层：把「交集/并集」换成\n    exp(-iou^2 / sigma)，并对每个框取历史最大衰减（避免重复计数同一对重叠）。\n    \"\"\"\n    boxes = np.asarray(boxes, dtype=np.float64)\n    scores = np.asarray(scores, dtype=np.float64).reshape(-1)\n    if boxes.ndim != 2 or boxes.shape[1] != 4 or len(scores) != boxes.shape[0]:\n        raise ValueError(\"boxes 需为 [N,4] 且与 scores 等长\")\n    n = boxes.shape[0]\n    if n == 0:\n        return [], np.zeros(0)\n    x1, y1, x2, y2 = (boxes[:, k] for k in range(4))\n    areas = np.maximum(x2 - x1, 0.0) * np.maximum(y2 - y1, 0.0)\n    decay = np.ones(n)                                # 每个框累积到的衰减系数\n    weights = scores.copy()\n    keep = []\n    while weights.max() >= score_thr:\n        i = int(np.argmax(weights))\n        keep.append(i)\n        rest = np.array([j for j in range(n) if j not in keep], dtype=np.int64)\n        if rest.size == 0:\n            break\n        inter = (np.maximum(np.minimum(x2[i], x2[rest]) - np.maximum(x1[i], x1[rest]), 0.0)\n                 * np.maximum(np.minimum(y2[i], y2[rest]) - np.maximum(y1[i], y1[rest]), 0.0))\n        iou = inter / (areas[i] + areas[rest] - inter + 1e-9)\n        g = np.exp(-(iou * iou) / sigma)              # 重叠越大衰减越狠\n        for pos, j in enumerate(rest):                # 逐框更新累积衰减\n            decay[j] = min(decay[j], g[pos])\n            weights[j] = scores[j] * decay[j]\n        weights[i] = 0.0                              # 已保留的框不再参与 argmax\n    return keep, weights\n\n\ndef _demo():\n    boxes = np.array([[0, 0, 2, 2], [3, 0, 5, 2], [1, 0, 4, 2], [10, 10, 12, 12]],\n                     dtype=np.float64)\n    scores = np.array([0.9, 0.8, 0.75, 0.1])\n    res = nms(boxes, scores, 0.5)\n    # A=(0,0,2,2) 面积 4；B 面积 4；C=(1,0,4,2) 面积 6（三框 y 向完全重叠，高都是 2）\n    # 手算：A 与 C 交宽 1、交高 2 -> inter=2、union=4+6-2=8 -> IoU=0.25 <= 0.5，C 不能被 A 抑制；\n    #       B 与 C 交宽 1、交高 2 -> inter=2、union=4+6-2=8 -> IoU=0.25\n    #       若用「全体两两 IoU」版本的 NMS，C 会被 B 抑制；用参考实现的「只和当前保留框比」则留下 C。\n    assert res == [0, 1, 2, 3], res\n    assert nms(np.empty((0, 4)), np.empty(0)) == []                       # 空输入\n    assert nms(boxes[:1], scores[:1]) == [0]                              # N=1\n    assert nms(boxes, scores, 0.0) == [0, 1, 3]                           # IoU=0 才留：C 与 A 重叠被筛\n    assert nms(boxes, scores, 1.0) == [0, 1, 2, 3]                        # 阈值 1.0：没有任何 IoU>1\n    dup = np.array([[0, 0, 2, 2], [0, 0, 2, 2]], dtype=np.float64)\n    assert nms(dup, np.array([0.9, 0.8]), 0.5) == [0]                     # 完全重合只留高分\n    assert nms(np.array([[0, 0, 0, 0], [0, 0, 0, 0]], dtype=np.float64),\n               np.array([0.5, 0.4]))[0] == 0                              # 零面积框不除零\n    assert nms(np.array([[0, 0, -1, -1]], dtype=np.float64),\n               np.array([0.7])) == [0]                                    # 负宽高不报错\n    keep_s, w = soft_nms_gaussian(boxes, scores, sigma=0.5)\n    print(\"NMS(\", scores, \") keep =\", res)\n    print(\"soft-NMS keep =\", keep_s, \"衰减后分数 =\", np.round(w, 4))\n\n\nif __name__ == \"__main__\":\n    _demo()\n",
+        "walkthrough": [
+          {
+            "note": "输入校验与空输入：把 boxes/scores 转成 float64 ndarray，boxes 必须 [N,4]、scores 长度必须等于 N，否则抛 ValueError（形状错时坐标解包不会报错，只会把 y1 当 x2 用，静默算错）。N=0 直接返回空列表——空数组索引 argsort 虽然不会崩，但 return [] 的语义更明确。这里全程只读入参，不原地修改，避免参考实现 pitfalls 里的「原地修改导致索引错乱」。"
+          },
+          {
+            "note": "面积与排序：areas=(x2-x1).clip(0)*(y2-y1).clip(0)，把 (x2<x1) 的退化框面积算成 0 而不是负数；order=scores.argsort()[::-1] 得到分数降序的原始下标。argsort 默认升序，[::-1] 这一反转是 NMS 的方向来源，漏掉它就变成「从最低分开始贪心」，结果完全错误。"
+          },
+          {
+            "note": "每轮取最高分框：order[0] 就是本轮唯一有资格留下的框，append 它的原始下标（int(i) 是为了让返回值是普通 Python int，便于打印/序列化）。order.size==1 时没有剩余候选可比，直接 break，这就是循环的终止边界。"
+          },
+          {
+            "note": "一行 IoU 的向量化：rest=order[1:] 是剩余候选，xx1=max(x1[i], x1[rest]) 等四个坐标交集，w/h 再 clip 到 0。为什么这里要反复强调 clip：不相交时 xx2-xx1 为负，inter 就是负面积，iou 变负会让「保留低 IoU」的掩码恒真，抑制失效且不报错。"
+          },
+          {
+            "note": "IoU 与候选收缩：iou = inter / (areas[i] + areas[rest] - inter + 1e-9)。分母的 eps 专门兜 union=0（两个零面积框）导致 0/0=nan 的情况——nan 参与 iou <= iou_thr 永远是 False，该框会被错误地一直保留。order = rest[iou <= iou_thr] 用「保留」而不是「删除」写掩码：一是表达语义更直接，二是参考实现就是 <=（恰好等于阈值时保留），写成 < 会在阈值边界上与人工答案不一致。注意被保留框自己不在 rest 里，天然不会自比。"
+          },
+          {
+            "note": "返回值：keep 是原始下标列表（不是排序后的位置），这样调用方可以直接 boxes[keep]、scores[keep]。不要写 np.where(iou > thr)[0] 去取一维下标再用它索引 areas——那是对 rest 的局部下标，rest[0] 会被错算成 i 自己的面积。"
+          },
+          {
+            "note": "soft_nms_gaussian 是同一套贪心骨架的变形：外层仍是「取最高分」，内层把「交集/并集」换成 exp(-iou^2/sigma) 的连续衰减，并对每个框取历史最大衰减（decay[j]=min(...)）以避免同一对重叠被重复计数；分数低于 score_thr 才真正退出候选。它保留的框数 ≥ 硬 NMS，这正是密集场景下召回更高的原因。"
+          },
+          {
+            "note": "_demo 里钉了 8 组断言，覆盖：常规四框（keep=[0,1,2,3]，用于演示「交叉重叠不传递抑制」）、N=0 空输入、N=1、阈值 0.0（全留）、阈值 1.0（只留真正重叠之外）、完全重合去重、零面积框不除零、负宽高不崩。这些断言也说明了为什么 IoU ≤ thr 与 clip(0) 不能改。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "N=0（空输入）：返回 []，不要走 argsort/索引路径。",
+        "N=1：order.size==1 直接 break，返回 [0]。",
+        "所有框完全重合且分数相同：只保留第一个（argsort 在并列时的次序取决于 numpy 的排序实现，属于「并列任取其一」的合理约定，不是 bug）。",
+        "退化框（宽或高为 0）：面积为 0，与其他零面积框的 union 也是 0，靠 +1e-9 避免 0/0=nan。",
+        "坐标写反（x2<x1 或 y2<y1）：clip(0) 把它的面积与交集都算成 0，不崩、不产生负 IoU。",
+        "iou_thr=0.0：只有交集恰好为 0 的框才会被抑制，几乎所有框都留下。",
+        "iou_thr=1.0：只有 IoU 恰好 >1（几何上不可能）才被抑制，等价于「只去完全重合的框」。",
+        "IoU 恰好等于阈值：参考实现用 iou <= iou_thr 保留，写成 < 会在边界上多抑制一个框。",
+        "boxes 里有 NaN/inf：比较全部为 False，该框会被误留；生产代码应在入口做 np.isfinite 检查（本题不展开）。",
+        "boxes 形状不是 [N,4]（例如传成 [4,N] 或 list 长度不等）：显式抛 ValueError，而不是靠坐标解包碰运气。"
+      ],
+      "pitfalls": [
+        "交集宽高为负未 clip，导致负面积、负 IoU，抑制静默失效",
+        "忘记 eps 导致除零（两框并集为 0 时 0/0=nan，nan 与阈值比较恒为 False）",
+        "原地修改数组（如 np.delete/del boxes[idx]）导致索引错乱，keep 里记的不是原始下标",
+        "忽略 +1 像素约定（连续坐标 vs 像素索引坐标，需与 GT 标定方式一致）",
+        "偷懒写「全体两两 IoU + 连通分量」，把不可传递的抑制关系当成可传递（A-B、B-C 重叠并不代表 A-C 重叠），本文件 _demo 的 A/B/C 就是反例",
+        "argsort 忘记反转（默认升序），变成从最低分开始贪心",
+        "筛选用 iou < iou_thr 而不是参考实现的 iou <= iou_thr，恰好等于阈值时多抑制一个框",
+        "用 np.where(iou > thr)[0] 取一维下标后直接索引 boxes/areas：那是 rest 的局部下标，不是原始下标（先用 rest[...] 映射回去才对）",
+        "只处理单个类别：多类别检测必须按类别各自跑 NMS，否则不同类的高分框会互相抑制",
+        "把 soft-NMS 写成原地衰减 scores 后继续按原顺序 for 循环：衰减后的分数必须重新参与「下一个最高分」的选择，否则就不再是 soft-NMS 的贪心定义了"
+      ],
+      "followUps": [
+        "为什么 NMS 的抑制关系不能传递？给一组 A-B 重叠、B-C 重叠但 A-C 不重叠的框说明。",
+        "把 O(N²) 降下来：按分数 top-k 截断、按类别分组、按空间网格分块、或先做一次 IoU 矩阵预算（时间换空间）分别牺牲了什么？",
+        "soft-NMS 的线性/高斯衰减公式与伪代码怎么写？为什么它召回更高而精度可能更低？sigma 怎么调？",
+        "旋转框的 IoU 怎么算？凸多边形裁剪（Sutherland-Hodgman）与 shapely 两条路的复杂度与可靠性差异？",
+        "NMS 在训练/推理流水线里的位置：confidence 阈值、top-k、per-class NMS、以及和 RPN 的 anchor 生成怎么衔接？",
+        "为什么 NMS 阈值会同时影响 mAP 的高分与低分区间（thr 高→漏检、thr 低→重复框）？",
+        "如果要在 GPU 上批量做 NMS（每张图一个 kernel），候选框数量不固定时怎么分块与负载均衡？"
+      ],
+      "variations": [
+        "soft-NMS：把「删除」换成 exp(-iou²/sigma)（高斯）或 (1-iou)（线性）的连续衰减。",
+        "旋转框 NMS：IoU 换成凸多边形交面积，常见于遥感与场景文本检测。",
+        "按类别分组 NMS（class-wise NMS）与 class-agnostic NMS；前者是检测器默认做法。",
+        "加权框融合 WBF（Weighted Boxes Fusion）：对重叠簇做分数加权平均，而不是简单保留最高分。",
+        "DIoU-NMS / GIoU-NMS：把中心点距离或最小外接框引入抑制判据，处理「高 IoU 但中心偏移」的漏检。",
+        "Greedy NMS 的并行/近似版本：IoU-aware 的 Cluster-NMS、Matrix-NMS，把贪心过程写成矩阵迭代以吃到 GPU 并行。",
+        "一维 NMS（用于文本行/时序片段的 1D 区间合并）与 3D NMS（点云检测，IoU 换成 BEV/3D 体交）。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "NMS 逐轮筛选与 IoU 计算",
+        "caption": "记住两件事：候选集按分数降序排成一队，每一轮只算「队首框 vs 队列其余框」这一行 IoU，而不是全体两两 IoU；IoU 的分子是 clip 过的交集，分母是并集（不是 2×交集）。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15'/><text x='12' y='18' font-size='14' fill='currentColor'>NMS 一轮：只和被保留的框比 IoU</text><rect x='16' y='30' width='88' height='34' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='24' y='52' font-size='14' fill='currentColor'>A 0.90</text><rect x='116' y='30' width='88' height='34' fill='none' stroke='var(--line-1)'/><text x='124' y='52' font-size='14' fill='currentColor'>B 0.80</text><rect x='216' y='30' width='88' height='34' fill='none' stroke='var(--line-1)'/><text x='224' y='52' font-size='14' fill='currentColor'>C 0.75</text><rect x='316' y='30' width='88' height='34' fill='none' stroke='var(--line-1)'/><text x='324' y='52' font-size='14' fill='currentColor'>D 0.10</text><text x='404' y='52' font-size='14' fill='currentColor'>降序</text><line x1='12' y1='74' x2='468' y2='74' stroke='var(--line-1)'/><text x='12' y='96' font-size='14' fill='currentColor'>轮1  i=A：IoU(A,B)=0</text><text x='236' y='96' font-size='14' fill='currentColor'>IoU(A,C)=0.25</text><text x='12' y='118' font-size='14' fill='currentColor'>轮2  i=B：IoU(B,C)=0.25</text><text x='236' y='118' font-size='14' fill='currentColor'>IoU(B,D)=0</text><text x='12' y='140' font-size='14' fill='currentColor'>阈值 thr=0.5：iou &lt;= 0.5 的框全部留下</text><text x='12' y='162' font-size='14' fill='currentColor'>顺序  A -&gt; B -&gt; C -&gt; D    keep=[A,B,C,D]</text><rect x='14' y='176' width='452' height='52' fill='none' stroke='var(--line-1)'/><text x='24' y='196' font-size='13' fill='currentColor'>易错：iou 只算「当前框 vs 剩余框」这一行；</text><text x='24' y='216' font-size='13' fill='currentColor'>若预先算全体两两 IoU，交叉重叠会牵连抑制。</text></svg>",
+        "alt": "流程图：四个候选框按分数 A0.90、B0.80、C0.75、D0.10 降序排列；轮1 取 A 并列出 IoU(A,B)=0、IoU(A,C)=0.25，轮2 取 B 并列出 IoU(B,C)=0.25、IoU(B,D)=0；阈值 0.5 下 iou<=0.5 全部保留，得到 keep=[A,B,C,D]；下方提示「只算队首与剩余框这一行，预先算全体两两 IoU 会让交叉重叠牵连抑制」。"
+      },
+      "selfTest": [
+        "A=(0,0,2,2)、B=(3,0,5,2)、C=(1,0,4,2)，分数 A>B>C，thr=0.5，keep 是什么？为什么 C 不会被 B 抑制？（答：keep=[A,B,C]；顺序是 A→B→C，B 与 C 的 IoU=2/8=0.25 ≤ 0.5，从 B 出发抑制不掉 C；换成「全体两两 IoU」的写法才会把 C 误删。）",
+        "两个框 x 方向重叠、y 方向完全不重叠，交集宽高各是多少？漏掉 clip(0) 会怎样？（答：高 h=y2-y1 为负，inter 变负、IoU 变负，iou<=thr 恒真，抑制完全失效且不报错。）",
+        "为什么并集是 areas[i]+areas[rest]-inter，而不是 2*inter 或 areas[i]+areas[rest]？（答：两框面积一般不同、且只有重叠部分被重复计了一次，所以要减掉 inter。）",
+        "如果一个框宽为 0 且另一个框也是 0 面积，分母会发生什么？（答：union=0，0/0=nan；nan 与阈值比较恒为 False，该框会被错误保留——这就是 +1e-9 存在的理由。）",
+        "soft-NMS 与硬 NMS 的内层差别是什么？为什么它召回更高？（答：硬 NMS 把 IoU>thr 的框直接删掉，soft-NMS 用 exp(-iou²/sigma) 连续衰减分数、不删框，所以高重叠但确属两个目标的框有机会以较低分存活。）"
+      ],
+      "keyPoints": [
+        "先算面积，再按分数降序排序",
+        "用 np.maximum/np.minimum 算交集的宽高并 clip(0) 保证非负",
+        "IoU = inter / (area_i + area_rest - inter + eps)",
+        "每轮保留最高分框，其余按 IoU 阈值筛掉",
+        "旋转框需要先算多边形交（如 shapely/C++ 实现），soft-NMS 用连续权重衰减而不是直接删除"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（iou-nms）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题干（web/data/jobs.json 的 handWrittenCoding[id=iou-nms]）要求：numpy 版 NMS，输入 boxes [N,4] 与 scores，按分数降序抑制 IoU 大于阈值的框，并说明旋转框 NMS 与 soft-NMS 的区别。",
+          "人工 referenceSolution 的算法路径为：areas=(x2-x1).clip(0)*(y2-y1).clip(0) → order=scores.argsort()[::-1] → while order.size>0 取 order[0] 保留、order.size==1 时 break → rest=order[1:] → xx1/yy1/xx2/yy2 用 np.maximum/np.minimum → w,h clip(0) → inter=w*h → iou=inter/(areas[i]+areas[rest]-inter+1e-9) → order=rest[iou<=iou_thr]；本文件 nms() 与之逐步一致，只额外加了输入形状校验、N=0 短路，以及把 clip 写成 np.maximum(...,0.0)。",
+          "人工 keyPoints 的五条（先算面积再降序、交集宽高 clip、IoU 含 eps、每轮留最高分框筛掉其余、旋转框需多边形交/soft-NMS 用连续衰减）在本文件 tldr/approach/keyPoints/pitfalls/variations 中均未改写或反驳，只做了展开解释。",
+          "人工 pitfalls 四条（交集为负未 clip、忘记 eps 除零、原地修改导致索引错乱、+1 像素约定）全部保留在 pitfalls 中，并各补充了成因与后果（例如 nan 与阈值比较恒为 False）。",
+          "本文件 code.source 已在仓库所在机器上实际运行（python 3.12.9 / numpy 2.2.6，未使用 torch 或其他第三方库），_demo 的 8 组断言全部通过；soft_nms_gaussian 在同一脚本内可运行。"
+        ],
+        "uncertain": [
+          "人工题干与 referenceSolution 都未写明坐标约定：这里按「连续坐标 (x1,y1,x2,y2) 且不加 1」实现（与 referenceSolution 的 (x2-x1) 一致）；人工 pitfall 提到的 +1 像素约定只在「像素索引坐标」下成立，需要与 GT 标定方式对齐，本文件没有替人工做这个选择。",
+          "题干未给 N 的取值范围、boxes 数据类型（list 还是 ndarray）与具体样例；代码按 ndarray 语义写成并做 np.asarray 兼容，自测里的 4 个框与坐标只是演示用。",
+          "人工 keyPoints 对 soft-NMS 只有「用连续权重衰减而不是直接删除」一句，没有给线性/高斯公式；本文件补的标准高斯衰减 exp(-iou²/sigma) 属于通用定义，不是人工原文，具体 sigma 与衰减函数需人工确认。",
+          "人工 keyPoints 对旋转框只说「先算多边形交（如 shapely/C++ 实现）」；本文件没有实现旋转 IoU（需要凸多边形裁剪），只说明它与轴对齐 IoU 的差别，未替人工选实现方案。",
+          "人工 pitfall 提到「原地修改数组导致索引错乱」，但未给出触发场景；我按「原地删除元素会让 keep 记的下标与当前数组失配」来解释，若人工本意是别的场景需要确认。",
+          "本题（人工 handWrittenCoding 条目）的 sources 只有面经标题、题干里没有任何 URL，按纪律 sources.url 留空，未编造任何链接。"
+        ]
+      }
+    }
+  ]
+}

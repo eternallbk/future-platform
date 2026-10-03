@@ -1,0 +1,25 @@
+{
+  "batchId": "prob-cur-39",
+  "problem": {
+    "id": "aliyun-three-easy-tasks",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "手撕三连：二叉树右视图 / 滑动窗口 / 扎气球最少箭数",
+    "topics": [
+      "二叉树",
+      "双指针"
+    ],
+    "difficulty": "medium",
+    "statement": "阿里云多模态大模型暑期实习手撕：1) 二叉树的右视图；2) 非 hot100 的滑动窗口；3) 扎破所有气球的最少箭数（lc452，区间贪心）。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

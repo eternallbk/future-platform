@@ -1,0 +1,173 @@
+{
+  "batchId": "prob-cur-08",
+  "entries": [
+    {
+      "id": "gae-and-grpo",
+      "itemId": "gae-and-grpo",
+      "tldr": "GAE 必须从 t=T-1 倒推，末尾 V_T=0；GRPO 用组内 (r-mean)/(std+eps) 当优势，目标对 ratio 单侧截断。",
+      "restated": "输入输出两类。①GAE：给定奖励序列 r[0..T-1] 与 critic 价值 V[0..T-1]（形状 [T] 或 [B,T]），超参 gamma、lambda，输出优势 A[T]（A_t=δ_t+γλA_{t+1}，δ_t=r_t+γV_{t+1}-V_t）与 returns=A+V。②GRPO：同一 prompt 采样 G 个回答，奖励按组连续摆放成一维 [组数×G]，输出组内相对优势 (r-mean)/(std+eps)；再给定 ratio[T]（=π_θ/π_old）与该优势，输出带 clip 的标量替代损失。题面未给 T、G、eps 的具体数值，本文按通用约定实现。",
+      "approach": [
+        {
+          "step": "朴素写法一：单步 TD 残差（λ=0）或整段蒙特卡洛回报（λ=1）",
+          "detail": "最省事的写法是 A_t = r_t + γV_{t+1} - V_t（纯 TD）或 A_t = G_t - V_t（纯 MC）。前者完全信任 critic：V 的偏差直接变成优势的偏差，训练早期 V 还是随机初始化时优势几乎是噪声，策略被带偏；后者把整条轨迹的随机奖励全加起来，方差随 T 线性增长，长回答的信用分配信噪比极低。而且这不是调 γ 能解决的问题：γ 只管折扣，管不了「该信 V 还是该信实际观测」。两种写法还都逐时间步独立处理，丢掉了「相邻步的 V 误差高度相关、本应互相抵消」这一关键结构，这正是 λ 加权要利用的东西。"
+        },
+        {
+          "step": "GAE 的正确写法一：定义 δ_t 后写成从后往前的单次递推",
+          "detail": "定义 TD 残差 δ_t = r_t + γV_{t+1} - V_t，λ 加权优势为 A_t = Σ_{l≥0}(γλ)^l δ_{t+l}。照定义写是 O(T²) 的双重循环，但 A_t = δ_t + γλ·A_{t+1} 只依赖下一步，所以用一个 running 变量做 for t in reversed(range(T)) 的累积就是 O(T)。running 的语义必须钉死为「进入第 t 轮时存放 A_{t+1}」：首轮 t=T-1 它是 0，恰好就是 V_T=0 对应的 A_T，边界条件不需要额外分支。方向写反（for t in range(T)）时读到的是未计算的占位 0，等价于把 λ 强制当 0、退回纯 TD 残差，而代码看起来完全正确、不报任何错——这是人工 pitfalls 第一条。"
+        },
+        {
+          "step": "GAE 的正确写法二：末尾 next value 的处置与 returns 的用途",
+          "detail": "t+1 == T 时不能索引 values[..., t+1]（Python 层直接 IndexError），必须显式给出 V_T：episode 真正结束就置 0（人工 referenceSolution 的硬编码 0.0，也就是 pitfalls 第二条「末尾置 0」），因时间上限被截断的轨迹则传自举值 V_T——两者语义不同，混用会让 critic 学到有偏的目标。第二个返回值 returns = A + V 是 critic 的 λ-return 回归目标：策略用 A 更新、critic 用 returns 更新，很多实现只返回 A 然后让调用方自己加，容易漏加或加错（加上旧 V 而不是新 V）。"
+        },
+        {
+          "step": "GRPO 的正确定位：为什么用组内均值当 baseline，而不训 critic",
+          "detail": "直接把 reward 当优势是错的：策略梯度只对与动作无关的 baseline 免疫，而 0/1 verifier 的奖励全非负，没有 baseline 时所有动作都会被朝「更可能出现」的方向推。用 critic 做 baseline（PPO 路线）在 LLM 上代价高：状态是 token 序列，要再挂一个同规模网络、显存翻倍、还要与策略一起调稳，而整条回答常常只有一个末尾标量奖励，V(s) 本来也难学准。GRPO 的替代方案是同一 prompt 采样 G 个回答、用组内均值当 baseline：baseline 与动作无关就不引入偏差，而同 prompt 的采样天然同分布，组内均值既便宜又低方差；再除以组内标准差把奖励尺度归一化（组内和恰为 0），0/1 verifier 与连续 RM 能共用一套超参，这就是「不需要 critic」的全部理由。"
+        },
+        {
+          "step": "组内归一化的两个实现细节：eps 加在 std 上、G=1 必须特判",
+          "detail": "A_i = (r_i - μ_g)/(σ_g + eps)。eps 只能加在 σ 上：全同奖励（G 个回答全对或全错，verifier 场景极常见）时 σ_g=0 且分子也为 0，不加 eps 就是 0/0，浮点下得到 NaN，NaN 经 mean 污染整个 batch 的梯度，几步之后权重全变 NaN；加 eps 后该组得到全 0 优势、梯度为 0，语义正好是「这组没有相对信号，别学」。第二个细节是 torch.std 默认无偏（分母 n-1）：G=1 时直接返回 NaN，加 eps 也救不回来，所以组内只有一个样本时特判为 0 优势。reshape(-1, group_size) 还要求同一 prompt 的 G 个回答在 batch 里连续摆放，顺序错了会把不同 prompt 的回答混进同一组，算出完全错误的优势。"
+        },
+        {
+          "step": "GRPO 目标：ratio 的含义与 min 的单侧截断",
+          "detail": "ratio = π_θ(y|x)/π_old(y|x) = exp(logp_θ - logp_old) 是重要性采样权重，它让同一批 rollout 能训练多个 minibatch/epoch（离策略修正）；写成 π_ref 就既不修正也不惩罚，是人工 pitfalls 第四条。目标 L = -mean( min(ρA, clip(ρ,1-ε,1+ε)·A) )，逐样本取两支中较小的一支：A>0 且 ρ 涨过 1+ε 时 clip 支更小、被选中，ρ 再涨也不给额外收益、梯度为 0；A>0 而 ρ 跌破 1-ε（把好动作概率压小了）时 min 选中的是未截断支，梯度 -A 原样保留把策略推回来；A<0 时镜像对称（有益方向 ρ<1-ε 封顶，有害方向 ρ>1+ε 保留未截断梯度）。所以 clip 是单侧、非对称的：它只截断「有利方向的额外激励」，不保护有害方向，这也是 dual-clip PPO 要补下界的原因。顺序同样重要：先逐元素 min、后 mean；写成先 mean 再 min 语义就变了。"
+        }
+      ],
+      "complexity": {
+        "time": "GAE：O(T) 或 O(B·T)（B 条轨迹并行）；GRPO：O(N)，N=组数×G，其中组内 mean/std 各一趟归约",
+        "space": "GAE：O(T) 存 adv/returns（递推本身只需 O(1) 额外标量状态）；GRPO：O(N)",
+        "why": "时间来自一趟反向循环，t 维无法并行（A_t 依赖 A_{t+1}），但每个 t 只做常数次张量运算、batch 维完全可并行；空间用于存放与输入同形状的优势/回报张量，组归一化的中间量只有 [组数,1] 的 mean/std。"
+      },
+      "code": {
+        "language": "python",
+        "source": "\"\"\"手写 GAE 优势估计与 GRPO 目标函数（PyTorch，CPU 可跑）。\n\n形状约定（与人工 referenceSolution 一致）：\n    rewards / values: [T] 或 [B, T]   # 每个时间步的标量奖励 r_t 与 critic 的 V(s_t)\n    adv / returns:    与 rewards 同形状\n    logp / logp_old:  [N]             # 当前策略 / 采样策略对同一批 token 的 log 概率\n    ratio:            [N] = exp(logp - logp_old) = pi_theta / pi_old\n    rewards（GRPO 用）: [N_rows]，N_rows = 组数 * group_size（同一 prompt 的 G 个回答连续摆放）\n\n依赖：torch（pip install torch）。直接运行本文件会执行 _self_test()，全部断言通过后打印 OK。\n\"\"\"\nimport torch\n\n\ndef gae(rewards, values, gamma=0.99, lam=0.95, last_value=0.0):\n    \"\"\"广义优势估计：delta_t = r_t + gamma*V_{t+1} - V_t；A_t = delta_t + gamma*lam*A_{t+1}。\n\n    返回 (advantages, returns)，其中 returns = advantages + values，是 critic 的 lambda-return 回归目标。\n    last_value 是 t = T-1 处那个 next value V_T：有限长度 episode 取 0.0（人工实现即如此，也就是\n    「序列末尾 next value 置 0」）；因时间上限被截断的轨迹可以传入自举值。\n    \"\"\"\n    if not (isinstance(rewards, torch.Tensor) and isinstance(values, torch.Tensor)):\n        raise TypeError(\"rewards / values 必须是 torch.Tensor，numpy 数组请先 torch.as_tensor\")\n    if not rewards.is_floating_point() or not values.is_floating_point():\n        raise TypeError(\"rewards / values 必须是浮点张量，整型会在递推中被静默截断\")\n    if rewards.shape != values.shape:\n        raise ValueError(\"rewards 与 values 形状必须一致，得到 %s vs %s\"\n                         % (tuple(rewards.shape), tuple(values.shape)))\n    if rewards.ndim < 1:\n        raise ValueError(\"rewards 至少是一维 [T]，得到 0 维张量\")\n    if rewards.numel() == 0:                       # T = 0：空序列，优势与回报都是空张量\n        return rewards.clone(), rewards.clone()\n\n    T = rewards.shape[-1]\n    adv = torch.zeros_like(rewards)\n    running = torch.zeros_like(rewards[..., 0])    # 语义：始终存放 A_{t+1}\n    for t in reversed(range(T)):                   # 必须从后往前：A_t 依赖 A_{t+1}\n        if t + 1 < T:\n            next_v = values[..., t + 1]\n        else:\n            next_v = torch.full_like(running, float(last_value))   # 末尾：V_T（通常为 0）\n        delta = rewards[..., t] + gamma * next_v - values[..., t]\n        running = delta + gamma * lam * running\n        adv[..., t] = running\n    return adv, adv + values\n\n\ndef token_ratio(logp, logp_old):\n    \"\"\"ratio = pi_theta / pi_old = exp(logp - logp_old)。分母是采样用的旧策略，不是参考模型 pi_ref。\"\"\"\n    if logp.shape != logp_old.shape:\n        raise ValueError(\"logp 与 logp_old 形状必须一致，得到 %s vs %s\"\n                         % (tuple(logp.shape), tuple(logp_old.shape)))\n    return torch.exp(logp - logp_old)\n\n\ndef group_relative_advantage(rewards, group_size, eps=1e-4):\n    \"\"\"GRPO 的组内相对优势：A = (r - group_mean) / (group_std + eps)，因此不需要 critic。\n\n    rewards: [组数 * group_size] 的一维张量，且同一个 prompt 的 G 个回答必须连续摆放。\n    \"\"\"\n    if not isinstance(rewards, torch.Tensor) or rewards.ndim != 1:\n        raise ValueError(\"rewards 必须是一维张量 [组数 * group_size]\")\n    if group_size < 1:\n        raise ValueError(\"group_size 必须是正整数，得到 %r\" % (group_size,))\n    if rewards.numel() == 0:\n        return rewards.clone()\n    if rewards.numel() % group_size != 0:\n        raise ValueError(\"样本数 %d 不能被 group_size %d 整除，不要静默截断\"\n                         % (rewards.numel(), group_size))\n    r = rewards.reshape(-1, group_size)\n    if group_size == 1:\n        # 组内只有一个样本：没有参照物，相对优势恒为 0。\n        # 不能照抄 std 归一化：torch.std 默认无偏，n = 1 时返回 NaN，加 eps 也救不回来。\n        return torch.zeros_like(rewards)\n    mean = r.mean(dim=1, keepdim=True)\n    std = r.std(dim=1, keepdim=True) + eps         # eps 防 0/0：全同奖励时 std = 0 且分子 = 0\n    return ((r - mean) / std).reshape(-1)\n\n\ndef grpo_objective(ratio, adv, eps=0.2, beta=0.0, ref_ratio=None):\n    \"\"\"GRPO 替代目标：L = -mean( min(ratio*A, clip(ratio, 1-eps, 1+eps)*A) )，可选 KL 惩罚。\n\n    ratio: [N] = pi_theta/pi_old；adv: [N] 由同组 G 个样本的 reward 做组内归一化得到（当常数用）。\n    \"\"\"\n    if not isinstance(ratio, torch.Tensor) or ratio.shape != adv.shape:\n        raise ValueError(\"ratio 与 adv 必须同形状，得到 %s vs %s\"\n                         % (tuple(getattr(ratio, \"shape\", ())), tuple(getattr(adv, \"shape\", ()))))\n    if not 0.0 < eps < 1.0:\n        raise ValueError(\"eps 必须在 (0, 1) 内，得到 %r\" % (eps,))\n    if ratio.numel() == 0:                         # 空 batch：返回可微的 0，而不是 NaN\n        return ratio.sum() * 0.0\n    unclipped = ratio * adv\n    clipped = torch.clamp(ratio, 1.0 - eps, 1.0 + eps) * adv\n    loss = -torch.min(unclipped, clipped).mean()   # 逐样本取更保守的一支，再取平均\n    if beta:\n        if ref_ratio is None:\n            raise ValueError(\"beta > 0 时必须提供 ref_ratio，否则 KL 项会被静默丢掉\")\n        # 人工 referenceSolution 的形式（它的注释说明这是 k3 估计器的简化示意）\n        loss = loss + beta * (ratio - ref_ratio).mean()\n    return loss\n\n\ndef _self_test():\n    torch.manual_seed(0)\n\n    # 1) GAE 递推 vs 按定义展开：A_t = sum_l (gamma*lam)^l * delta_{t+l}\n    T, gamma, lam = 6, 0.97, 0.9\n    rewards, values = torch.randn(T), torch.randn(T)\n    adv, returns = gae(rewards, values, gamma=gamma, lam=lam)\n    deltas = torch.stack([rewards[t] + gamma * (values[t + 1] if t + 1 < T else torch.tensor(0.0))\n                          - values[t] for t in range(T)])\n    brute = torch.stack([sum((gamma * lam) ** l * deltas[t + l] for l in range(T - t))\n                         for t in range(T)])\n    assert torch.allclose(adv, brute, atol=1e-5), (adv, brute)\n    assert torch.allclose(returns, adv + values, atol=1e-6)\n\n    # 2) 两个端点：lam=0 -> A = delta；lam=1 -> A = 折扣回报 - V（V_T = 0 时的 telescoping）\n    adv0, _ = gae(rewards, values, gamma=gamma, lam=0.0)\n    assert torch.allclose(adv0, deltas, atol=1e-6)\n    adv1, _ = gae(rewards, values, gamma=gamma, lam=1.0)\n    mc = torch.stack([sum(gamma ** l * rewards[t + l] for l in range(T - t)) for t in range(T)])\n    assert torch.allclose(adv1, mc - values, atol=1e-5)\n\n    # 3) 批量 [B, T] 与逐行调用一致；T = 0 与 T = 1 的边界\n    batch_r, batch_v = torch.randn(3, T), torch.randn(3, T)\n    adv_b, _ = gae(batch_r, batch_v, gamma=gamma, lam=lam)\n    for i in range(3):\n        row_adv, _ = gae(batch_r[i], batch_v[i], gamma=gamma, lam=lam)\n        assert torch.allclose(adv_b[i], row_adv, atol=1e-6)\n    empty_adv, empty_ret = gae(torch.zeros(0), torch.zeros(0))\n    assert empty_adv.numel() == 0 and empty_ret.numel() == 0\n    one_adv, one_ret = gae(torch.tensor([1.0]), torch.tensor([0.5]))\n    assert torch.allclose(one_adv, torch.tensor([0.5]))\n    assert torch.allclose(one_ret, torch.tensor([1.0]))\n\n    # 4) 末尾自举：last_value 只影响最后一个 delta，再沿递推往前传播\n    boot, _ = gae(rewards, values, gamma=gamma, lam=lam, last_value=2.0)\n    assert not torch.allclose(boot, adv)\n    manual = torch.zeros(T)\n    manual[T - 1] = rewards[T - 1] + gamma * 2.0 - values[T - 1]\n    for t in reversed(range(T - 1)):\n        manual[t] = rewards[t] + gamma * values[t + 1] - values[t] + gamma * lam * manual[t + 1]\n    assert torch.allclose(boot, manual, atol=1e-5)\n\n    # 5) 组内相对优势：组内和为 0、无偏 std 为 1；全同奖励不产生 NaN；G = 1 特判\n    rewards_g = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0, 5.0, 5.0, 5.0])\n    a = group_relative_advantage(rewards_g, group_size=4)\n    assert a[:4].sum().abs() < 1e-5 and a[4:].abs().max() < 1e-9\n    assert torch.isfinite(a).all()\n    assert abs(a[:4].std().item() - 1.0) < 1e-3\n    assert torch.allclose(group_relative_advantage(rewards_g, group_size=1), torch.zeros(8))\n    assert group_relative_advantage(torch.zeros(0), 4).numel() == 0\n\n    # 6) 目标函数：区间内等于 -mean(ratio*A)；被 clamp 那一支对 ratio 的梯度是 0\n    loss_in = grpo_objective(torch.ones(2), torch.tensor([1.0, -3.0]), eps=0.2)\n    assert torch.allclose(loss_in, torch.tensor(1.0), atol=1e-6)   # -mean([1, -3]) = 1\n\n    r_up = torch.tensor([2.0], requires_grad=True)     # A > 0 且 ratio > 1+eps：收益封顶\n    loss_up = grpo_objective(r_up, torch.tensor([1.0]), eps=0.2)\n    assert torch.allclose(loss_up, torch.tensor(-1.2), atol=1e-6)\n    loss_up.backward()\n    assert r_up.grad is not None and abs(r_up.grad.item()) < 1e-7\n\n    r_down = torch.tensor([0.5], requires_grad=True)   # A > 0 且 ratio < 1-eps：保留原梯度 -A\n    loss_down = grpo_objective(r_down, torch.tensor([1.0]), eps=0.2)\n    assert torch.allclose(loss_down, torch.tensor(-0.5), atol=1e-6)\n    loss_down.backward()\n    assert abs(r_down.grad.item() + 1.0) < 1e-6\n\n    r_neg = torch.tensor([0.5], requires_grad=True)    # A < 0 且 ratio < 1-eps：有益方向同样封顶\n    loss_neg = grpo_objective(r_neg, torch.tensor([-1.0]), eps=0.2)\n    assert torch.allclose(loss_neg, torch.tensor(0.8), atol=1e-6)\n    loss_neg.backward()\n    assert abs(r_neg.grad.item()) < 1e-7\n\n    # 7) KL 惩罚项、token_ratio、空 batch 与非法输入\n    rr = torch.tensor([1.0, 2.0])\n    base = grpo_objective(rr, torch.zeros(2), eps=0.2)\n    with_kl = grpo_objective(rr, torch.zeros(2), eps=0.2, beta=0.5,\n                             ref_ratio=torch.tensor([1.0, 1.0]))\n    assert torch.allclose(with_kl, base + torch.tensor(0.25), atol=1e-6)\n    assert abs(grpo_objective(torch.zeros(0), torch.zeros(0)).item()) < 1e-12\n    assert torch.allclose(token_ratio(torch.tensor([-1.0, -2.0]), torch.tensor([-2.0, -2.0])),\n                          torch.exp(torch.tensor([1.0, 0.0])), atol=1e-6)\n    bad_calls = [lambda: grpo_objective(rr, torch.zeros(1), eps=0.2),\n                 lambda: grpo_objective(rr, torch.zeros(2), eps=0.0),\n                 lambda: grpo_objective(rr, torch.zeros(2), beta=1.0),\n                 lambda: gae(rewards, values[:T - 1]),\n                 lambda: gae(rewards.to(torch.long), values),\n                 lambda: group_relative_advantage(torch.zeros(5), 2)]\n    for bad in bad_calls:\n        try:\n            bad()\n        except (ValueError, TypeError):\n            pass\n        else:\n            raise AssertionError(\"非法输入应当显式报错\")\n\n    print(\"OK: GAE/GRPO 全部自测通过（递推方向、lam 端点、批量、边界、clip 梯度、KL 项、非法输入）\")\n\n\nif __name__ == \"__main__\":\n    _self_test()\n",
+        "walkthrough": [
+          {
+            "note": "先看 docstring 的形状契约：rewards/values 是 [T] 或 [B,T]，adv/returns 同形状；GRPO 侧 logp/logp_old 是 [N]、ratio 是 [N]、reward 是「组数×G」的一维张量且按组连续摆放；gae 返回 (adv, returns) 二元组，grpo_objective 返回标量损失。这类题的评分点有相当一部分在形状约定上——面试时说不清是 [T] 还是 [B,T]、组归一化沿哪一维做，后面的代码几乎一定写错。"
+          },
+          {
+            "note": "gae 里唯一需要动脑的变量是 running，它保证「进入第 t 轮时存放 A_{t+1}」：循环体先由 δ_t 与 running 算出 A_t、写回 running，于是下一轮（t-1）读到的就是 A_t。首轮 t=T-1 时 running=0，这正是 V_T=0 时 A_T 的取值，边界条件无需额外分支就满足。循环必须是 reversed(range(T))：正向循环会在 A_{t+1} 尚未算出时读到占位的 0，λ 彻底失效且不会报错——这是本函数最贵的 bug。"
+          },
+          {
+            "note": "末尾 next value 单独处理：t+1 == T 时行内索引 values[..., t+1] 会越界抛 IndexError，所以用 last_value 广播填充。人工实现把末尾硬编码为 0.0（pitfalls 第二条），本文把它做成默认 0.0 的参数，默认路径与人工实现逐位一致；被时间上限截断的轨迹可以传真实自举值，自测单独验证了 last_value 只改变最后一个 δ、再沿递推向前传播。"
+          },
+          {
+            "note": "第二个返回值是 adv + values，即 critic 的 λ-return 回归目标：纯广播加法、不 in-place 改任何输入（自测用 [B,T] 批量与逐行调用对比验证了形状语义）。输入校验全部前置：非张量、整型张量、形状不一致、0 维、空序列各自行为明确；空序列提前返回空张量，避免后面访问 shape[-1] 与空循环。整型检查不是洁癖——整型 rewards 会让 δ 与 running 每步被截断，结果是静默错误而不是报错。"
+          },
+          {
+            "note": "group_relative_advantage 先把 [N] reshape 成 [组数, G]，再用 keepdim=True 的 mean/std 得到 [组数,1]，广播回 [组数,G] 后展平。减均值让组内优势之和恰为 0（组内互相比较，无 critic）；除 (std+eps) 把奖励尺度归一化，eps 专治全同奖励时的 0/0。G=1 单独特判返回全 0：torch.std 默认无偏，n=1 时公式本身就带 0/0、返回 NaN，加 eps 也救不回来。样本数不能被 G 整除时直接报错，不静默截断。"
+          },
+          {
+            "note": "grpo_objective 严格保留人工实现的两支写法：unclipped = ratio*adv，clipped = clamp(ratio, 1-eps, 1+eps)*adv，loss = -torch.min(两支).mean()。torch.min 是逐元素取小、mean 放在最后，顺序不能换；取负号是因为我们要最大化替代目标而优化器做最小化。可选 KL 项沿用人工的 beta*(ratio - ref_ratio).mean()（人工注释已说明它是 k3 估计器的简化示意），本文不改它的形式，只在 selfCheck.uncertain 里标注它与标准 k3 = e^Δ - Δ - 1 的差别。ratio 为空张量时返回 ratio.sum()*0.0 而不是 NaN：分布式训练里空 batch 真实存在，返回可微的 0 才不会让 all-reduce 出 NaN。"
+          },
+          {
+            "note": "_self_test 把上面每条设计都落成可验证断言：① 递推结果与按定义展开的 Σ(γλ)^l δ_{t+l} 逐元素一致（方向对了才有这个等式）；② λ=0 退化为 δ、λ=1 等于「折扣回报 - V」（telescoping，前提 V_T=0）；③ [B,T] 批量与逐行一致、T=0 与 T=1 的边界、last_value 自举与手写展开一致；④ 组内优势之和为 0、无偏标准差为 1、全同奖励结果为有限值（不是 NaN）、G=1 返回 0；⑤ 用 autograd 验证被 clamp 那一支对 ratio 的梯度为 0、未截断那一支梯度为 -A；⑥ KL 项数值、空 batch，以及六种非法输入都会显式报错。依赖只有 torch，CPU 即可：python gae_grpo.py。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "T=0（空序列）：rewards.numel()==0 时提前返回空 adv/returns，否则 shape[-1] 与 reversed(range(0)) 的语义都容易写歪。",
+        "T=1：只有 A_0 = r_0 + γ·V_T - V_0 一项，用来验证 next value 的边界分支（实现返回 A=[0.5]、returns=[1.0]，r_0=1、V_0=0.5）。",
+        "rewards 与 values 形状不一致、传入 numpy 数组或整型张量：显式 TypeError/ValueError，避免混用导致的静默错误。",
+        "整组奖励完全相同（G 个回答全对或全错）：σ_g=0 且分子为 0，未加 eps 时是 0/0=NaN；加 eps 后该组优势全 0、无梯度。",
+        "group_size = 1：torch.std 默认无偏，n=1 时返回 NaN（加 eps 无效），实现特判为 0 优势——单样本组本来就没有相对信息。",
+        "样本数不能被 group_size 整除：实现直接报错，不做静默截断（截断会让最后几个回答丢掉或与别的 prompt 混组）。",
+        "ratio/adv 为空张量（空 batch）：返回 ratio.sum()*0.0 这个可微的 0，而不是 nan。",
+        "ratio 恰好在 1±ε 边界上：clamp 是闭区间，两支在该点取值相同，数值上没有跳变，不需要额外的开闭区间处理。",
+        "eps 取 0 或 ≥1：eps=0 时 clip 退化成恒等、完全失去约束，实现要求 0<eps<1，越界直接报错。",
+        "gamma=0 或 lam=0：数学自然退化（lam=0 时 A_t=δ_t，gamma=0 时只看即时奖励），实现不需要特判，自测覆盖了 lam=0 端点。",
+        "序列末尾是真实终止 vs 时间上限截断：前者 last_value=0，后者必须传自举值；混用会让 critic 的回归目标系统性有偏。",
+        "rewards 里出现 inf/nan（verifier 异常）：GAE 的全序列耦合会把单个异常点沿递推传播到它之前的所有步，整条轨迹的优势全废——这也是工程上必须在 reward 计算处做 finite 检查的原因。",
+        "优势是否需要 detach：人工实现的 adv 是外部传入的常量张量，实现按常数使用、只对 ratio 求导；若上游把 adv 建在计算图上，需要调用方自行 detach，否则会二次反传。"
+      ],
+      "pitfalls": [
+        "GAE 递推方向写反（应从后往前）——正向循环读到的是占位的 0，等价于 λ=0，不报错但结果完全不对。",
+        "忘记 next value 在序列末尾置 0（或该传自举值时置 0），δ_{T-1} 用错导致最后一步乃至整条轨迹的优势有偏。",
+        "GRPO 组内归一化时 std 未加 eps，全同奖励时除零得到 NaN，污染整个 batch 的梯度。",
+        "忘记 ratio 是 π_θ/π_old 而不是 π_θ/π_ref：π_ref 只出现在 KL 惩罚里，混用等于既没做重要性修正也没惩罚，clip 还拦错了对象。",
+        "把 λ 的连乘写成 γ·λ 忘掉括号，或把 gamma*lam 写成 gamma+lam：递推权重含义完全改变，λ 的偏差-方差权衡失效。",
+        "忘记 -mean 里的负号（或在最大化目标上再取负）：优化器把替代目标当损失最小化，符号错了策略会被反向优化。",
+        "把 min 与 mean 的顺序写反（先 mean 再 min，或对两支做 mean 后再取 min）：clip 的作用范围从「逐样本」变成「整批」，单条越界的样本被平均掉后不再受约束。",
+        "clip 写成 torch.max(unclipped, clipped)：取的是「乐观」一侧，等于鼓励把 ratio 推得更远，与 PPO/GRPO 的原意相反。",
+        "ratio 用 exp 前后的差写成 logp_old - logp（符号反了）：ratio 变成 1/ρ，clip 区间方向整体错位。",
+        "GAE 里 in-place 修改传入的 rewards/values（例如 rewards[t] = ...）或返回 views：调用方后续还要用原始奖励做日志/复算时会静默出错。",
+        "returns 直接返回 adv（忘了 + values）：critic 被要求回归优势而不是 λ-return，value loss 量纲错、critic 学不到正确目标。",
+        "组内归一化前忘记把奖励 reshape 成 [组数, G]（直接对整批做 (r-mean)/std）：不同 prompt 的奖励混在一起，组内比较语义丢失。",
+        "把 KL 惩罚的 beta 当成「加上去就一定生效」：人工实现是 if beta and ref_ratio is not None 才加，ref_ratio 缺省时会被静默跳过；本文改成显式报错，写代码时也要明确「KL 到底加没加」。",
+        "对 [B,T] 输入在 t 维上用 values[:, t+1] 而忘了批量边界，或把 B 与 T 弄反（批量维必须在时间维之前）。"
+      ],
+      "followUps": [
+        "GAE 的时间维能不能并行？A_t = Σ(γλ)^l δ_{t+l} 是一个卷积/前缀扫描形式，可以用 associative scan（结合律：(a,b)∘(c,d)=(ac, ad+b)）做成 O(T log T) 甚至 O(T) 的并行实现；为什么工业实现仍多用串行循环？有终止标志（done）的 GAE 怎么写？delta 里 next value 置 0，并且 A_{t+1} 的传递必须在 episode 边界断开（乘 (1-done)），否则优势会跨 episode 泄漏——写出改动后的三行代码。",
+        "为什么组内归一化用标准差而不是只减均值？减均值已经去掉了 baseline，除 std 换来的是什么（尺度不变性、学习率鲁棒性），代价是什么（奖励差异小的组被放大成同样大的优势）？",
+        "无偏 std（n-1）与有偏 std（n）在 G 很小时差多少（G=2 时差 √2 倍）、该用哪个？为什么不同框架的实现不一致？",
+        "eps 该取多大？clip 是单侧截断，什么情况下需要 dual-clip PPO 的下界（A<0 且 ratio 很大时梯度无界），怎么补？",
+        "token 级 GRPO 怎么做？把 ratio 展平到 [N] 后是「先按 token 平均再按序列平均」还是「按 token 总数加权平均」，两者的损失尺度差多少，为什么长回答会主导梯度？",
+        "k3 估计器（KL ≈ e^Δ - Δ - 1，Δ = logp_θ - logp_ref）为什么比 (ratio - 1) 的形式方差更低且非负？写出它的无偏性来源。",
+        "GRPO 的优势为什么常在这一步之后再做一次跨 batch 白化（减均值除标准差）？它会破坏「组内可比性」吗？",
+        "如果同一 prompt 的 G 个回答奖励全相同，这一组对梯度的贡献是多少？为什么 DAPO 用「动态采样」把这批组丢掉重采样？",
+        "为什么 LLM 的 RL 常用 token 级 ratio 而很少用序列级？序列级 ratio 的方差为什么随长度指数增长（写出方差随 T 的表达式）？"
+      ],
+      "variations": [
+        "手写 PPO 的完整目标（带 critic）：GAE + 价值裁剪（value clip）+ 熵奖励，考察 advantage 与 returns 的分工。",
+        "手写 RLOO / REINFORCE++：用 leave-one-out 均值当 baseline（(Σr - r_i)/(G-1)），与 GRPO 的组内均值/std 对比偏差方差。",
+        "手写 n-step return / TD(λ) 的回报估计，并说明与 GAE 在 λ=1、λ=0 处的对应关系。",
+        "手写 GRPO 的完整训练 step：rollout → old logprob → 逐 token ratio → 组内优势 → clip 目标 → 反向，考察 logprob 收集与 detach 的时机。",
+        "把 GAE 写成并行版本（associative scan 或 conv1d 求 Σ(γλ)^l δ_{t+l}），并要求与串行结果逐元素一致。",
+        "DAPO 的改动：clip-higher（上下界解耦）、动态采样丢弃全同奖励组、token 级 loss 归一化，逐条说明各解决什么问题。",
+        "GRPO 的 KL 项换成 k3 估计器并比较数值稳定性（本文沿用人工实现的简化形式）。",
+        "把规则 verifier 的奖励（0/1 或 +1/-1）与 RM 打分的连续奖励都接进组内归一化，说明为什么同一套超参能通用。",
+        "用 numpy 重写一遍（要自己实现无偏 std 与 clip），对比 torch 版本在 G=1、全同奖励两个边界上的行为差异。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "GAE 递推与 GRPO 组内归一化",
+        "caption": "左：A_t 只依赖 A_{t+1}，所以循环必须从 t=T-1 倒推、末尾 V_T 置 0；右：GRPO 把同组奖励归一化成优势，ratio 落在 [1-ε,1+ε] 之外的那一支梯度为 0。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' font-size='13'><text x='14' y='20' font-size='15' fill='currentColor'>GAE 反向递推与 GRPO 组内归一化</text><line x1='14' y1='30' x2='466' y2='30' stroke='var(--line-1)' stroke-width='1'/><line x1='240' y1='38' x2='240' y2='234' stroke='var(--line-1)' stroke-width='1'/><text x='14' y='50' fill='var(--accent)'>① GAE：从 t=T-1 倒推到 t=0</text><text x='16' y='76' fill='var(--fg-1)'>t=0</text><rect x='54' y='60' width='174' height='24' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='62' y='76' fill='currentColor'>A0 = δ0 + γλA1</text><text x='16' y='112' fill='var(--fg-1)'>t=1</text><rect x='54' y='96' width='174' height='24' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='62' y='112' fill='currentColor'>A1 = δ1 + γλA2</text><text x='16' y='148' fill='var(--fg-1)'>t=2</text><rect x='54' y='132' width='174' height='24' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='62' y='148' fill='currentColor'>A2 = δ2 + γλA3</text><text x='16' y='184' fill='var(--fg-1)'>t=3</text><rect x='54' y='168' width='174' height='24' rx='4' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='62' y='184' fill='currentColor'>A3 = δ3 + γλ·V4</text><path d='M228 180 H234 V144 H228' fill='none' stroke='currentColor' stroke-width='1'/><path d='M234 140 L234 148 L228 144 Z' fill='currentColor'/><path d='M228 144 H234 V108 H228' fill='none' stroke='currentColor' stroke-width='1'/><path d='M234 104 L234 112 L228 108 Z' fill='currentColor'/><path d='M228 108 H234 V72 H228' fill='none' stroke='currentColor' stroke-width='1'/><path d='M234 68 L234 76 L228 72 Z' fill='currentColor'/><text x='14' y='212' fill='var(--fg-1)'>δ_t = r_t + γ·V_{t+1} - V_t</text><text x='14' y='228' fill='var(--fg-1)'>末尾 V_T = 0：A_{T-1} = δ_{T-1}</text><text x='248' y='48' fill='var(--accent)'>② GRPO：组内相对优势</text><rect x='248' y='52' width='44' height='20' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='261' y='66' fill='currentColor'>r=1</text><rect x='300' y='52' width='44' height='20' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='313' y='66' fill='currentColor'>r=3</text><rect x='352' y='52' width='44' height='20' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='365' y='66' fill='currentColor'>r=2</text><rect x='404' y='52' width='44' height='20' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='417' y='66' fill='currentColor'>r=6</text><path d='M348 74 V86' fill='none' stroke='currentColor' stroke-width='1'/><path d='M344 84 L352 84 L348 92 Z' fill='currentColor'/><rect x='248' y='94' width='218' height='26' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='254' y='111' fill='currentColor'>A = (r - μ_g) / (σ_g + eps)</text><path d='M348 122 V134' fill='none' stroke='currentColor' stroke-width='1'/><path d='M344 132 L352 132 L348 140 Z' fill='currentColor'/><rect x='248' y='142' width='218' height='26' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='254' y='159' fill='currentColor'>mean(A) = 0，无需 critic</text><text x='248' y='182' fill='var(--fg-1)'>ρ 越界 ⇒ 该支梯度为 0</text><rect x='298' y='186' width='100' height='14' rx='3' fill='none' stroke='var(--accent)' stroke-width='2'/><line x1='248' y1='193' x2='448' y2='193' stroke='var(--line-1)' stroke-width='1'/><line x1='348' y1='182' x2='348' y2='204' stroke='var(--line-1)' stroke-width='1'/><text x='248' y='216' fill='var(--fg-1)'>ρ = π_θ/π_old，ε = 0.2</text><text x='248' y='232' fill='currentColor'>L = -mean min(ρ·A, clip(ρ)·A)</text></svg>",
+        "alt": "图解。左半部分是 GAE 从后往前的递推链，四行分别是 t=3 的 A3=δ3+γλV4、t=2 的 A2=δ2+γλA3、t=1 的 A1=δ1+γλA2、t=0 的 A0=δ0+γλA1，箭头从下往上表示 γλA_{t+1} 回传给前一步，δ_t=r_t+γV_{t+1}-V_t，末尾 V_T 置 0 所以 A_{T-1}=δ_{T-1}。右半部分是 GRPO 流程：同一 prompt 的 G 个回答奖励（示例 1、3、2、6）→ 减组内均值、除 (组内标准差+eps) 得到优势 A（组内均值为 0、不需要 critic）→ 以 ρ=π_θ/π_old 代入目标 L=-mean min(ρA, clip(ρ,1-ε,1+ε)A)；水平轴上的区间示意 clip 的截断位置，ρ 越界的那一支梯度为 0。"
+      },
+      "selfTest": [
+        "如果不小心把循环写成 for t in range(T)，实际算出来的 A_t 是什么？它在 λ→0 时是否恰好等于正确答案，为什么这个错误不报任何异常？",
+        "λ=1、γ=0.99、T=3、V_T 置 0 时，A_0 的展开式是什么？写出 telescoping 过程说明它为什么等于「折扣回报 - V_0」。",
+        "一组 G=8 个回答里 7 个 reward=1、1 个 reward=0：组内均值与（无偏）标准差各是多少？归一化后那 7 个优势的表达式是什么，为什么这一组的总优势之和为 0？",
+        "A=-2、ρ=1.5、ε=0.2 时目标函数选中哪一支、对 ρ 的梯度是多少？把 ρ 改成 0.5 呢？再问 A=+2 的两种情形，归纳出「哪一种方向会被截断」。"
+      ],
+      "keyPoints": [
+        "delta_t = r_t + gamma*V_{t+1} - V_t；A_t = delta_t + gamma*lambda*A_{t+1}",
+        "GRPO 用同一 prompt 采样一组 G 个回答，优势 = (r - group_mean)/group_std，因此不需要 critic",
+        "替代目标 L = -min(ratio*A, clip(ratio,1-eps,1+eps)*A)，clip 防止单步更新过大",
+        "lambda 在 MC（lambda=1）与 TD（lambda=0）之间做偏差-方差权衡，这是 PPO 工业标配的原因"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（gae-and-grpo）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题面原文：实现 GAE 的优势估计（含 gamma/lambda），并实现 GRPO 的组内相对优势与带 clip 的替代目标函数。",
+          "人工 keyPoints 原文四条：delta_t = r_t + gamma*V_{t+1} - V_t、A_t = delta_t + gamma*lambda*A_{t+1}；GRPO 用同 prompt 一组 G 个回答、优势 = (r - group_mean)/group_std、不需要 critic；L = -min(ratio*A, clip(ratio,1-eps,1+eps)*A)；lambda 在 MC 与 TD 之间做偏差-方差权衡。本文的 keyPoints 逐字沿用。",
+          "人工 pitfalls 原文四条（递推方向写反、末尾 next value 未置 0、std 未加 eps 导致除零、ratio 误用 pi_ref）均被本文 pitfalls 保留，并补充了其它扣分点。",
+          "人工 referenceSolution 的算法：gae 用 for t in reversed(range(T)) 累积 running=delta+gamma*lam*running、next value 在 t+1==T 时为 0、返回 (adv, adv+values)；group_relative_advantage 用 (r-mean)/(std+1e-4)；grpo_objective 用 -torch.min(ratio*adv, clamp(ratio,1±eps)*adv).mean() 加可选 beta*(ratio-ref_ratio).mean()。本文实现与这三段算法的数值行为一致，只额外增加了默认值为 0.0 的 last_value 参数与输入合法性校验。",
+          "数学等价性：A_t = δ_t + γλA_{t+1} 与按定义展开的 A_t = Σ_{l≥0}(γλ)^l δ_{t+l} 等价，本文自测用双重循环按定义展开逐元素比对，误差 < 1e-5。",
+          "数学等价性：λ=1 且 V_T=0 时 A_t = Σ γ^l r_{t+l} - V_t（telescoping）；λ=0 时 A_t = δ_t。本文自测对这两个端点分别断言。",
+          "数值事实：组内减均值后该组优势之和恰为 0；除以（无偏）组内标准差后该组样本标准差为 1（自测阈值 1e-3）。",
+          "数值事实：G=1 时 torch.std（默认无偏）返回 NaN，加 eps 无法挽救，因此实现特判返回 0 优势；全同奖励时 σ=0 且分子为 0，未加 eps 会得到 NaN，加 eps=1e-4 后得到全 0 优势（自测断言 isfinite）。",
+          "梯度事实（自测用 autograd 验证）：A>0 且 ρ>1+ε（或 A<0 且 ρ<1-ε）时 min 选中被 clamp 的分支，目标对 ratio 的梯度为 0；A>0 且 ρ<1-ε 时选中未截断支，梯度为 -A（自测 ρ=0.5、A=1 时梯度为 -1）。",
+          "复杂度事实：GAE 是一趟 O(T) 的反向循环，A_t 依赖 A_{t+1} 故 t 维不可并行，batch 维可完全并行；组内归一化是 [组数,G] 上的一趟归约 O(N)。",
+          "依赖与可运行性：代码只用 torch（文件内 import torch），CPU float32 即可运行，_self_test 覆盖递推方向、λ 端点、批量、T=0/1、last_value 自举、组内归一化、clip 梯度、KL 项、空 batch 与六类非法输入，全部断言通过（实测打印 OK）。"
+        ],
+        "uncertain": [
+          "人工题面未给 T、G、eps、beta、gamma、lambda 的具体取值；本文示例沿用人工 referenceSolution 的默认 gamma=0.99、lam=0.95，并另取 eps=0.2、beta=0 作演示，不代表评测口径。",
+          "人工 referenceSolution 里 values 的长度就是 T、末尾 next value 硬编码 0，本文默认 last_value=0.0 与之逐位一致；但真实训练中「定长截断的轨迹」通常要传自举值 V_T，题面未说明场景是完整 episode 还是时间上限截断。",
+          "人工 referenceSolution 的 KL 惩罚写作 beta*(ratio - ref_ratio).mean()，其注释自称「k3 估计器形式的 KL 惩罚（此处为简化示意）」；标准 k3 估计器是 exp(Δ) - Δ - 1（Δ = logp_θ - logp_ref），与之数值含义不同。本文按要求保留人工形式、未擅自替换，该形式能否作为无偏 KL 惩罚存在疑问，需人工核实。",
+          "GAE 的输入形状是单条 [T] 还是一批 [B,T]、是否需要 done 掩码，人工题面与参考实现都没有体现；本文以 [T] 为主并支持 [B,T] 广播，done/截断的处理只在 followUps 与 edgeCases 里讨论，未写进实现。",
+          "组内标准化用无偏 std（torch 默认，n-1）还是有偏 std（n）：人工实现用的是 torch.std 默认值，本文保持一致；不同框架/论文实现两者都有，G 较小时差异（G=2 时相差 √2 倍）不可忽略，未展开核对。",
+          "GRPO 目标的聚合层级：人工实现是「逐样本 min 后对样本取 mean」，token 级实现通常先算 per-token ratio 再按 token 平均，两者损失尺度不同；题面未指定，本文按人工实现保留样本级聚合。",
+          "优势是否需要在实现里 detach：人工 referenceSolution 的 adv 是入参常量，未体现 detach 语义；本文按常数处理、只对 ratio 求导，若上游把 adv 建在计算图上需调用方自行 detach。",
+          "本文新增的 G=1 特判（返回 0）与 beta>0 缺 ref_ratio 时显式报错是人工实现没有的防御性分支，不改变任何有效输入的数值，但若评测逐行对照人工代码，会看到这两处差异。",
+          "GRPO 组内奖励「按组连续摆放」这一假设来自 reshape(-1, group_size) 的实现方式，人工题面未明说 batch 的排列约定；工程实现里常用 index/segment 归约来避免这个隐式约定。"
+        ]
+      }
+    }
+  ]
+}

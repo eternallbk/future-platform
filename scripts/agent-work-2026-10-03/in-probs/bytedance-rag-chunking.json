@@ -1,0 +1,24 @@
+{
+  "batchId": "prob-cur-23",
+  "problem": {
+    "id": "bytedance-rag-chunking",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "场景题：RAG 分块策略与父子块召回（含具体数值处理）",
+    "topics": [
+      "大模型与RL"
+    ],
+    "difficulty": "medium",
+    "statement": "字节 Agent 秋招二面大段追问 RAG 分块：Markdown 文档的分块逻辑是怎样的？是否先按标题结构划分模块再拆小 chunk？检索时召回小 chunk 再补充对应父模块吗？相邻块是否重合？如果一段内容有 1000 个 token、chunk size 为 400，最后剩余 200 如何处理，是否会向前补充内容凑成 400？",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

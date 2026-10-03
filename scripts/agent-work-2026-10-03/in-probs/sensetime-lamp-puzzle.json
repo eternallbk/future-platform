@@ -1,0 +1,22 @@
+{
+  "batchId": "prob-cur-29",
+  "problem": {
+    "id": "sensetime-lamp-puzzle",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "智力题：100 盏灯与 100 个学生（完全平方数）",
+    "topics": [],
+    "difficulty": "medium",
+    "statement": "商汤二面智力题（面经原文）：一个房间有 100 盏灯（全关），编号 1-100 的开关控制；100 个学生依次进入，第 i 个学生切换所有 i 的倍数的开关。问第 100 个学生进入后还有多少盏灯亮着？",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

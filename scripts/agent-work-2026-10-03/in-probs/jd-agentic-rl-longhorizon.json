@@ -1,0 +1,24 @@
+{
+  "batchId": "prob-cur-28",
+  "problem": {
+    "id": "jd-agentic-rl-longhorizon",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "场景题：用强化学习让模型完成长程任务",
+    "topics": [
+      "大模型与RL"
+    ],
+    "difficulty": "hard",
+    "statement": "京东人才计划实习生（北大 AI 博士，研究方向 Agentic RL）自述工作：主要做“怎么通过强化学习，让模型完成长程任务”；工作方式是先和负责人讨论方向，再自己搭训练环境、调整算法、训练、看结果、汇报。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

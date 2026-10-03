@@ -1,0 +1,169 @@
+{
+  "batchId": "prob-cur-21",
+  "entries": [
+    {
+      "id": "dataloader",
+      "tldr": "只 pad 到本 batch 最长，同步给 attention_mask 与 labels(-100)；按长度分桶成批以最小化 padding 浪费。",
+      "restated": "题意澄清：给变长文本样本列表 samples（含 text 与 label），实现三件事。(1) Dataset：__getitem__ 用 tokenizer 编码 text 并按 max_len 截断，返回 input_ids 与标量 label；__len__ 返回样本数。(2) collate_fn：把一批样本 pad 到本 batch 最长 L，输出 input_ids[B,L]、attention_mask[B,L]、labels[B,L]（pad 位 -100）。(3) Sampler：按长度分桶成批以减少 padding 浪费，并说明为何需要分桶。",
+      "approach": [
+        {
+          "step": "朴素/易错写法：pad 到全局最长 + 忘记 attention_mask/-100 + 顺序取样",
+          "detail": "最省事的第一版是先把整个数据集 pad 成 [N, L_global]（L_global 取语料里最长样本），再直接 DataLoader(batch_size=B)。它有三个后果。第一，注意力与 FFN 的算力都按 L_global 计费，而语料长度分布通常长尾：绝大多数 batch 里有效 token 占比很低，等于把算力烧在 pad 上——这正是人工 pitfalls 第一条「pad 到全局最大长度导致大量无效计算」。第二，pad 位如果不遮蔽，attention 会把 pad 当真实 token 参与，同时 labels 的 pad 位若不是 -100，cross_entropy 会把「预测 pad」也算进 loss，模型被训成爱输出 pad（人工 pitfalls 第二条）。第三，完全按索引顺序取样且不做任何 shuffle，每个 epoch 的 batch 组成一模一样，梯度方向高度相关，收敛明显变差。"
+        },
+        {
+          "step": "正确写法关键设计一：collate_fn 只 pad 到「本 batch 最长」，并一次产出三件套",
+          "detail": "maxlen = max(len(b[\"input_ids\"]) for b in batch) —— 注意是这一批的最大值，不是数据集的最大值（人工 keyPoints 第一条原话）。三个张量都用同一个 maxlen 才保证形状一致：input_ids 右侧补 pad_id；attention_mask 有效位 1、pad 位 0，这样上游的 mask 逻辑才有依据；labels 的 pad 位必须置 -100，因为 cross_entropy(ignore_index=-100) 会跳过该位置（人工 keyPoints 第二、三条原话）。把「pad 到 batch 最长」放在 collate 而不是 Dataset：Dataset 是单样本视角（返回变长 list），只有 collate 才看得到整个 batch，才知道这一批的最长是多少——这是 DataLoader 把 padding 交给你写的唯一理由。"
+        },
+        {
+          "step": "正确写法关键设计二：按长度分桶的 Sampler，把「近等长」的样本凑到一批",
+          "detail": "先把所有下标按长度升序（order），再每 batch_size 个切一桶（chunk），最后打乱桶的顺序。为什么必须排序：一个 batch 的实际算力由 maxlen 决定，若把 len=9 和 len=2 放进同一批，短样本要补 7 个 pad；而排序后同一桶内长度几乎相同，batch 的 maxlen ≈ 桶内平均长度，padding 浪费骤降，吞吐随之上升（人工 keyPoints 第四条原话）。为什么还要 shuffle：只排序会让每轮顺序固定、且同类样本（长度相近常常也语义相近）永远同批，破坏随机性，所以必须打乱桶顺序；漏掉这一步就是人工 pitfalls 第三条「分桶后忘记 shuffle，破坏随机性」。"
+        },
+        {
+          "step": "正确写法关键设计三：边界、可复现与 IO 侧的配合",
+          "detail": "边界要显式处理：空 batch 直接抛 ValueError（否则 max() 报空的 sequence），batch_size <= 0 与 lengths 为空在 Sampler 构造时就拒绝，空文本编码后至少回退到一个 unk token 以免长度为 0 让 mask 全 0。可复现性上，__iter__ 里对桶列表做浅拷贝 [b[:] for b in self.batches]，避免 DataLoader 多轮迭代时把 self.batches 洗乱、破坏「每个 epoch 的桶划分固定、只有桶序随机」的语义。IO 侧再加两层：num_workers > 0 让样本解码/tokenize 与 GPU 计算重叠（受 Python GIL 约束所以是真并行），pin_memory=True 把 batch 放进页锁定内存，使 H2D 拷贝可以走 DMA 异步传输——这两个参数不改变本题算法，但决定了 GPU 是否真的被喂饱。"
+        }
+      ],
+      "complexity": {
+        "time": "Dataset 取单样本 O(len(text))；一个 epoch 的 collate 总量 O(Σ len_i)（只 pad 到本 batch 最长时，每个 batch 的多余长度 < batch_size 个 token）；BucketSampler 预处理 O(N log N) 排序 + O(N) 切桶，__iter__ 里 O(#batches) 洗牌；每个 batch 的前向计算量与 batch 内最长序列长度成正比",
+        "space": "Dataset 存 O(Σ len_i) 的原始 token；一个 batch 的显存/内存 O(B · L_batch)，其中 L_batch 是本批最长（这正是分桶要压小的量）；Sampler 额外 O(N) 存下标与桶划分",
+        "why": "代价来自「按当前 batch 最长序列做张量计算」：padding 越多，算力与显存越浪费，所以排序分桶把 L_batch 从全局最长降到桶内最长；排序本身是一次性 O(N log N)"
+      },
+      "code": {
+        "language": "python",
+        "source": "import random\nfrom torch.utils.data import Dataset, DataLoader, Sampler\n\n\nclass CharTokenizer:\n    \"\"\"极简字符级分词器，只实现题目需要的那一种调用约定：\n    tok(text, truncation=True, max_length=L) -> {\"input_ids\": [...]}\n    真机换成 transformers 的 AutoTokenizer.from_pretrained(...) 即可，Dataset 无需改动。\"\"\"\n\n    def __init__(self):\n        self.vocab = {\"<pad>\": 0, \"<unk>\": 1}\n        self.pad_id = 0\n        self.unk_id = 1\n\n    def _id(self, ch):\n        if ch not in self.vocab:\n            self.vocab[ch] = len(self.vocab)          # 动态扩表：保证任何字符都可编码\n        return self.vocab[ch]\n\n    def __call__(self, text, truncation=True, max_length=512):\n        ids = [self._id(ch) for ch in text]\n        if truncation:\n            ids = ids[:max_length]                    # 先截断，再去 collate 里 pad\n        return {\"input_ids\": ids or [self.unk_id]}    # 空串退化成一个 unk，避免长度 0\n\n\nclass MyDataset(Dataset):\n    def __init__(self, samples, tokenizer, max_len=512):\n        self.samples, self.tok, self.max_len = samples, tokenizer, max_len\n\n    def __len__(self):\n        return len(self.samples)\n\n    def __getitem__(self, idx):\n        s = self.samples[idx]\n        ids = self.tok(s[\"text\"], truncation=True, max_length=self.max_len)[\"input_ids\"]\n        return {\"input_ids\": ids, \"label\": s[\"label\"]}\n\n    def lengths(self):\n        \"\"\"给 BucketSampler 用的真实长度（截断后的 token 数）。\"\"\"\n        return [min(len(self.tok(s[\"text\"], truncation=True,\n                                max_length=self.max_len)[\"input_ids\"]), self.max_len)\n                for s in self.samples]\n\n\ndef collate_fn(batch, pad_id=0):\n    \"\"\"关键：变长序列只 pad 到本 batch 最长，并生成 attention_mask；\n    labels 侧的 padding 位置必须置 -100（cross_entropy 的 ignore_index）。\"\"\"\n    if not batch:\n        raise ValueError(\"empty batch：sampler / batch_size 配置有误，不要静默返回空张量\")\n    maxlen = max(len(b[\"input_ids\"]) for b in batch)   # 本 batch 最长，不是全局最长\n    input_ids, attn, labels = [], [], []\n    for b in batch:\n        ids = b[\"input_ids\"]\n        pad = maxlen - len(ids)\n        input_ids.append(ids + [pad_id] * pad)\n        attn.append([1] * len(ids) + [0] * pad)\n        labels.append(ids + [-100] * pad)\n    return {\"input_ids\": input_ids, \"attention_mask\": attn, \"labels\": labels}\n\n\nclass BucketSampler(Sampler):\n    \"\"\"按长度分桶：全局按长度升序 -> 每 batch_size 个切一桶 -> 打乱桶顺序。\n    等长成批让 padding 浪费最小，桶间 shuffle 保住随机性（人工 pitfalls 第三条）。\"\"\"\n\n    def __init__(self, lengths, batch_size, shuffle=True, shuffle_within_batch=False):\n        if batch_size <= 0:\n            raise ValueError(\"batch_size 必须为正\")\n        if not lengths:\n            raise ValueError(\"lengths 为空：没有样本可分桶\")\n        order = sorted(range(len(lengths)), key=lambda i: lengths[i])\n        self.batches = [order[i:i + batch_size] for i in range(0, len(order), batch_size)]\n        self.shuffle = shuffle\n        self.shuffle_within_batch = shuffle_within_batch\n\n    def __iter__(self):\n        bs = [b[:] for b in self.batches]        # 浅拷贝：不污染 self.batches，保证多轮可复现\n        if self.shuffle:\n            random.shuffle(bs)                   # 漏掉这步 = 每轮顺序完全相同\n        for b in bs:\n            if self.shuffle_within_batch:\n                random.shuffle(b)                # 桶内再打乱（默认关闭，与人工实现一致）\n            yield from b\n\n    def __len__(self):\n        return sum(len(b) for b in self.batches)\n\n\nif __name__ == \"__main__\":\n    random.seed(0)\n    texts = [\"深度学习\", \"a\", \"推荐系统与向量召回\", \"ab\", \"大模型对齐\", \"abc\"]\n    samples = [{\"text\": t, \"label\": i % 2} for i, t in enumerate(texts)]\n    tok = CharTokenizer()\n    ds = MyDataset(samples, tok, max_len=4)\n    sampler = BucketSampler(ds.lengths(), batch_size=2)\n    loader = DataLoader(ds, batch_size=2, sampler=sampler,\n                        collate_fn=lambda b: collate_fn(b, pad_id=tok.pad_id),\n                        num_workers=0, pin_memory=False)\n\n    seen = 0\n    for step, batch in enumerate(loader):\n        lens = [sum(m) for m in batch[\"attention_mask\"]]\n        L = len(batch[\"input_ids\"][0])\n        assert all(len(row) == L for row in batch[\"input_ids\"]), \"batch 内必须等长\"\n        assert len(batch[\"labels\"]) == len(batch[\"attention_mask\"]) == len(batch[\"input_ids\"])\n        assert L == max(lens), \"必须只 pad 到本 batch 最长\"\n        n_pad = sum(1 for row in batch[\"labels\"] for x in row if x == -100)\n        assert n_pad == sum(L - n for n in lens), \"labels 的 pad 位必须恰好是 -100\"\n        seen += len(batch[\"input_ids\"])\n        print(\"step\", step, \"| L =\", L, \"| 有效长度\", lens, \"| 被忽略\", n_pad)\n    assert seen == len(ds), \"sampler 必须恰好覆盖每个样本一次\"\n    print(\"ok: 覆盖\", seen, \"条样本，桶划分\", [len(b) for b in sampler.batches])\n",
+        "walkthrough": [
+          {
+            "note": "依赖说明：本实现只用标准库 random 与 PyTorch（from torch.utils.data import Dataset, DataLoader, Sampler），算法与人工 referenceSolution 完全一致：Dataset 用 tokenizer 出 input_ids，collate_fn pad 到本 batch 最长并生成 attention_mask / labels(-100)，BucketSampler 排序切桶再洗桶序。CharTokenizer 不是占位符，它是把 referenceSolution 里那个未给出的 tokenizer 补成一个能跑的字符级实现，__call__ 的签名与 HuggingFace 一致，真机换成 AutoTokenizer 时 Dataset/collate/Sampler 一行都不用改。"
+          },
+          {
+            "note": "CharTokenizer 这一段在解决「referenceSolution 依赖一个没声明的外部 tokenizer」的问题：_id 遇到新字符就动态扩表，所以任何输入都能编码；__call__ 先按 max_length 截断再返回，把「截断」归 tokenizer、「padding」归 collate_fn，两者职责不混。ids or [unk_id] 是第一个边界处理——空字符串否则会返回长度 0 的序列，让后面 attention_mask 整行全 0、masked softmax 出现整行 -inf 的 nan。"
+          },
+          {
+            "note": "MyDataset 就是题目要的那层：__len__ 给 DataLoader 算总步数，__getitem__ 是单样本视角，所以它只能返回变长 list，绝不在这里 pad——这是本题最容易被写坏的地方（在 Dataset 里 pad 到 max_len 等于把每个样本都当成全局最长）。lengths() 是给 BucketSampler 用的辅助：分桶需要提前知道所有样本长度，而长度要在不取样本的前提下算出来，所以它重复调一次 tokenizer 而只取长度（真实工程里会把这个长度表缓存到磁盘）。"
+          },
+          {
+            "note": "collate_fn 第一行 maxlen = max(len(b[\"input_ids\"]) for b in batch) 是本题的核心：batch 是 DataLoader 交给你的一批样本，只有在这里才知道这一批最长是多少，所以「pad 到本 batch 最长」只能在这里做（人工 keyPoints 第一条）。空 batch 直接抛错而不是返回空张量，因为空 batch 往下走会在 softmax/mean 处变成 nan，早失败比晚失败好定位。"
+          },
+          {
+            "note": "三个张量共用同一个 maxlen，形状才能对齐：input_ids 补 pad_id（数值不参与 loss 的语义后面靠 labels 兜住）；attention_mask 是「1 * 有效长度 + 0 * pad 数」，正是人工 keyPoints 第三条说的 1/0 标记，它决定上游 attention 里哪些位置被遮蔽；labels 是「ids + [-100] * pad」，pad 位恰好等于 cross_entropy 的 ignore_index（默认 -100），所以 loss 自动跳过这些位置（人工 keyPoints 第二条、pitfalls 第二条）。注意这一版里 labels 由 input_ids 复制而来，是 token 级目标（逐位置预测）；样本自带的标量 label 字段仍原样返回给上层，供分类式任务使用——这一点沿用人工实现，未作改动。"
+          },
+          {
+            "note": "BucketSampler.__init__ 先做三次防御：batch_size <= 0、lengths 为空、以及用 sorted(range(len(lengths)), key=lengths.__getitem__ 等价写法) 得到按长度升序的下标序 order；再按 batch_size 切块得到 self.batches。这一步把「长度相近」变成同一桶，于是每一批的 maxlen ≈ 桶内长度，padding 浪费从「按全局最长计费」降到「按桶内最长计费」（人工 keyPoints 第四条）。"
+          },
+          {
+            "note": "__iter__ 里 bs = [b[:] for b in self.batches] 是浅拷贝，目的是让多轮迭代互不影响：如果直接 random.shuffle(self.batches)，第 2 个 epoch 的「桶划分」就已经被上一轮洗过，桶内长度不再相近，分桶带来的收益会逐轮衰减。随后 random.shuffle(bs) 打乱桶顺序——这是人工 pitfalls 第三条要求的 shuffle，漏掉它每轮 batch 顺序完全固定。shuffle_within_batch 默认 False，所以默认行为与人工 referenceSolution 逐句一致；开成 True 时只在桶内再打乱顺序（不改变桶内长度集合，因此不增加 padding），这是对「桶内也想要随机性」的一种补充写法。"
+          },
+          {
+            "note": "DataLoader 这里用 sampler= 而不是 shuffle=True：两者互斥，DataLoader 会把「取哪些下标」这件事完全交给 sampler，所以「分桶 + 洗桶序」的随机性就由 BucketSampler 负责，不能同时再开 shuffle。collate_fn 用 lambda 绑定 pad_id，是为了不动 referenceSolution 的 collate_fn(batch, pad_id=0) 签名（functools.partial 等价）。num_workers>0 让取数/编码在子进程里与 GPU 计算重叠，pin_memory=True 让 batch 进页锁定内存以便异步 H2D。"
+          },
+          {
+            "note": "末尾的自检把题目三条硬要求变成了可执行断言：batch 内所有行等长且等于本批最长（不是全局最长）、labels 的 -100 个数恰好等于 pad 总数、sampler 恰好覆盖每个样本一次（不漏不重）。最后打印桶划分，可以直观看到长度 4/4 与 2/2/1 被分到不同桶里——这就是「分桶减少 padding」的现场证据。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "空 batch（batch=[]）：collate_fn 里 max() 会报「max() arg is an empty sequence」，必须显式抛 ValueError 或返回空张量；本实现选择显式抛错。",
+        "空数据集（len(dataset) == 0）：BucketSampler 构造时 lengths 为空会抛 ValueError；DataLoader 也会因为 sampler 长度为 0 而不产出任何 batch。",
+        "空文本（text == \"\"）：tokenizer 返回长度 0 的 input_ids 时，attention_mask 整行全 0、masked softmax 会出现整行 -inf 的 nan；本实现在 tokenizer 层回退为一个 unk token。",
+        "单样本 batch（bucket 尾部只剩 1 条）：maxlen 就是它自己的长度，pad = 0，三个张量都退化成 [1, L]；分桶下这是常态（见 6 条样本分 2 桶的示例）。",
+        "所有样本等长：分桶排序不改变任何东西，padding 本来就为 0，此时 BucketSampler 等价于普通的顺序/洗桶序 sampler。",
+        "所有样本长度都为 1：整批一次性进桶，等价于「全局一批」，分桶收益为 0 但也不会有副作用。",
+        "长度分布极长尾（如 ln(长度) 服从近似正态）：排序后桶内仍然接近等长，这正是分桶最有效的场景；但要注意「长度相近常常语义相近」，所以桶序必须洗（人工 pitfalls 第三条）。",
+        "样本长度 > max_len：由 tokenizer 的 truncation 在 Dataset 层截断，collate 拿到的最长不会超过 max_len；若忘了截断，maxlen 会等于语料最长样本，等于退回「pad 到全局最长」的坑。",
+        "labels 全部为 -100（极端情况下整批都是 pad）：cross_entropy 在 mean 归约时会除零得到 nan，需要调用方保证每批至少有一个有效 token；本实现用断言 n_pad == Σ(L - 有效长度) 先把「-100 只出现在 pad 位」这件事钉死。",
+        "pad_id 与真实 token id 冲突：如果词表里 pad_id=0 恰好也是某个真实 token 的 id，input_ids 侧无法区分，必须靠 attention_mask / labels(=-100) 来区分——这就是为什么三件套缺一不可。",
+        "num_workers > 0 时 sampler 会被每个 worker 各持有一次：自定义 Sampler 若在 __iter__ 里修改共享状态会产生竞态；本实现只在拷贝上洗牌，因此对多 worker 安全。",
+        "多轮迭代（多个 epoch）：必须保证每个 epoch 的样本集合恰好覆盖一次且不漏不重，__len__ 返回样本总数（不是桶数）就是为了让 DataLoader 正确推算步数。",
+        "分布式/多卡（DistributedSampler）：分桶与「按 rank 切分」是两件事，工程上要先分桶再按 rank 交错切分，否则各卡的有效 token 数不均衡；本题按单卡语义讲解。"
+      ],
+      "pitfalls": [
+        "pad 到全局最大长度导致大量无效计算（人工 pitfalls 原话）——正确做法是只在 collate_fn 里 pad 到本 batch 最长。",
+        "忘记给 labels 加 -100，导致 loss 被 padding 污染（人工 pitfalls 原话）——cross_entropy 的 ignore_index 默认为 -100，pad 位必须用这个值。",
+        "分桶后忘记在每个 bucket 内 shuffle，破坏随机性（人工 pitfalls 原话）——本实现的默认做法是打乱桶顺序（random.shuffle(bs)），并额外提供 shuffle_within_batch 开关用于桶内再打乱。",
+        "在 Dataset.__getitem__ 里就 pad 到 max_len：Dataset 是单样本视角、看不到 batch，在这里 pad 等于把最长样本的长度强加给所有样本，分桶也救不回来。",
+        "attention_mask 写成 bool 之外的类型或方向写反（把 1 给 pad）：上游 mask 语义就反了，表现为「模型只看得见 pad」，且不会报错。",
+        "三个张量用了不同的 maxlen：形状对不上会在 concat/stack 时报错，或者被 Python 的 list 长度不一致悄悄带过去，直到张量化才炸。",
+        "shuffle=True 与 sampler= 同时传给 DataLoader：PyTorch 会直接报「sampler option is mutually exclusive with shuffle」，随机性应完全交给 sampler。",
+        "直接 random.shuffle(self.batches) 而不拷贝：第 2 个 epoch 的桶划分已被破坏，分桶收益逐轮衰减（隐蔽的性能 bug，不会有任何报错）。",
+        "用 batch_size 整除假设写切桶：样本数不能被 batch_size 整除时最后一桶变短，__len__ 必须返回样本总数而不是桶数 × batch_size。",
+        "把 labels 的 pad 位写成 pad_id 而不是 -100：loss 会把「预测 pad_id」当成任务，模型很快学会输出 pad，评测时表现为生成全是 pad。",
+        "忽略 num_workers 的启动开销：num_workers=0 时 tokenize 与 GPU 计算串行，GPU 空转；但 worker 数过大反而会因进程调度与内存拷贝变慢，需要按 CPU 核数与数据解码开销调。",
+        "以为 pin_memory 一定更快：只有 batch 最终要 H2D 时才有效，CPU 推理或已常驻显存的数据用 pin_memory 只是白白占用页锁定内存。"
+      ],
+      "followUps": [
+        "num_workers 与 pin_memory 如何影响吞吐？（人工 keyPoints 第五条原话）num_workers > 0 时每个 worker 是一个独立进程，负责 Dataset 取数与 collate，与主进程的 GPU 计算重叠，因此能掩掉 tokenize/解码的开销；但进程启动、跨进程传输和内存复制都有成本，worker 过多会让 CPU 争抢与序列化开销反超。pin_memory=True 把 batch 放进页锁定内存，使 cudaMemcpyAsync 可以真正异步，避免 H2D 拷贝阻塞计算；代价是页锁定内存不可换出，占用过多会影响系统。",
+        "为什么分桶能提升吞吐，收益有多大？一个 batch 的计算量与 batch 内最长序列近似成正比（甚至平方，若用未优化的 dense attention），所以浪费比例 ≈ 1 - 平均长度 / 桶内最长。全局排序后桶内长度几乎相等，这个比例接近 0；随机成批时若长度分布是长尾，浪费可以到一半以上。",
+        "分桶的代价是什么？会不会影响训练效果？代价有三：一是需要预先算全量长度（多一次 tokenize 或读缓存）；二是长度相近的样本常常语料来源/难度也相近，同批样本相关性变高，所以必须洗桶序甚至桶内洗序；三是采样分布不再是「均匀随机批次」，对 BN 统计量或对比学习这类对 batch 组成敏感的算法要谨慎。",
+        "动态 batch（token-based batching）怎么做？把「每批固定样本数」换成「每批固定 token 数」：排序后用贪心装箱，累加长度直到超过 max_tokens 再开新桶。这样每批的有效 token 数几乎恒定，能显著降低 padding 率并让显存占用平稳，代价是每批的样本数可变、`__len__` 变成近似值。",
+        "如果不用排序也能减少 padding 吗？可以用「长度分位分桶 + 桶内随机」：先按长度做若干离散桶（如 32/64/128/256），每个 epoch 内随机选桶再在桶内随机取样。它牺牲一点等长性，换来更好的随机性与更简单的实现（有些框架的 LengthGroupedSampler / BucketIterator 就是这么做的）。",
+        "collate_fn 里能不能直接用 torch 张量而不是 Python list？可以：用 torch.full 预分配 [B, L] 再按行切片填充，比 append 后 torch.tensor(list) 少一次全量拷贝，是自定义 collate 的常见优化；但要注意 dtype（input_ids 用 long，attention_mask 可用 long 或 bool）与 pad_id 的类型一致性。",
+        "attention_mask 与 labels 的 -100 能否只保留一个？不能完全互换：attention_mask 作用于注意力与池化（让 pad 不参与、不产生表示），labels 的 -100 作用于损失（让 pad 不计入梯度）。两者对应不同位置，缺一个都会留下隐患——不过若模型完全依赖 attention_mask，labels pad 位也可能恰好被忽略，这就是「少写一个也不报错」的陷阱。",
+        "右 padding 与左 padding 有什么区别？训练时右 padding 足够；自回归推理（batch 生成）时必须左 padding，否则新生成的 token 会跟在 pad 后面、位置编码与实际位置错位，且需要 position_ids 或 attention_mask 修正。",
+        "prompt 部分要不要也算 loss？指令微调里通常把 prompt 的 label 也置 -100，只对 completion 计 loss（与 DPO 里只累加 completion 对数概率同理）；实现上就是把 prompt 段整体写 -100，与 pad 位共用同一个 ignore_index。",
+        "怎么验证 collate_fn 写对了？用最小 batch 手算：给长度 [2, 4] 的两条样本，断言 input_ids == [[a,b,pad,pad],[c,d,e,f]]、attention_mask == [[1,1,0,0],[1,1,1,1]]、labels == [[a,b,-100,-100],[c,d,e,f]]，再断言 labels 的 -100 个数等于 pad 数。本实现把这些断言直接写进了 __main__。"
+      ],
+      "variations": [
+        "只写 collate_fn：给一批变长 list，返回 pad 后的 input_ids / attention_mask / labels，并要求用 torch 张量而不是 Python list 返回（练习 dtype 与预分配）。",
+        "classification 版 collate_fn：labels 是每样本一个标量（不是 token 级），此时不需要 -100，但需要在 batch 维度 stack 成 [B]，练习区分「token 级目标」与「样本级目标」。",
+        "语言模型版 collate_fn：labels 是 input_ids 左移一位（next-token prediction），pad 位仍然 -100，并要说明为什么最后一列的 logits 不参与 loss（或忽略第一个 label）。",
+        "把 BucketSampler 改成 token-based 动态批：按 max_tokens 装箱而不是按 batch_size 切块，比较两者在长尾长度分布下的 padding 率。",
+        "实现 DistributedSampler + 分桶的组合：先按长度分桶，再按 rank 交错切分，验证各卡的有效 token 数是否均衡。",
+        "实现 LengthGroupedSampler（长度分位分桶 + 桶内随机），对比全排序分桶在随机性与 padding 率上的取舍。",
+        "给 Dataset 加上长度缓存（把每条样本的 token 数存成 json/pyarrow），让分桶不必重新 tokenize，练习「一次性预处理换每轮速度」。",
+        "把 collate_fn 写成可配置的 padding 策略（batch 最长 / 固定 max_len / 到 8 的倍数以对齐 tensor core），讨论后者为什么在大模型训练里常见。",
+        "用 IterableDataset + streaming 重写这套流程，讨论「流式数据没法预排序」时分桶怎么近似实现（缓冲区排序 / 分片内排序）。",
+        "写一个 dataloader 性能基准：固定模型前向，比较 num_workers ∈ {0,2,4,8} 与 pin_memory ∈ {False,True} 的 samples/s，把人工 keyPoints 第五条变成实测曲线。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "分桶与 batch 内 padding",
+        "caption": "变长样本先交给 BucketSampler：按长度升序、每 batch_size 切一桶、再打乱桶顺序；然后 collate_fn 只 pad 到本 batch 最长。左半图是「一律 pad 到全局最长」的写法，短样本被补了大量虚线 pad，有效 token 只占三分之一；右半图是分桶后的同一批，padding 骤降。三件套 input_ids / attention_mask / labels 共用同一个 [B, L]，其中 labels 的 pad 位是 -100，loss 因此跳过这些位置。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='8' y='8' width='464' height='28' rx='6' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='20' y='27' font-size='14' fill='currentColor'>变长样本（乱序）：len = 9 / 4 / 6 / 2</text><path d='M240 36 L240 46' stroke='currentColor' stroke-width='1.5'/><path d='M234 42 L240 48 L246 42' fill='none' stroke='currentColor' stroke-width='1.5'/><rect x='8' y='48' width='464' height='34' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='20' y='64' font-size='14' fill='currentColor'>BucketSampler：按长度升序 → 每 batch_size=2 切一桶</text><text x='20' y='79' font-size='13' fill='currentColor'>→ 打乱桶的顺序（桶内天然近等长，padding 最少）</text><path d='M240 82 L120 90' stroke='currentColor' stroke-width='1.5'/><path d='M240 82 L360 90' stroke='currentColor' stroke-width='1.5'/><rect x='8' y='92' width='228' height='76' rx='6' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='20' y='110' font-size='13' fill='currentColor'>✗ 一律 pad 到全局最长 L=9</text><rect x='20' y='116' width='24' height='13' fill='none' stroke='var(--accent)' stroke-width='2'/><rect x='44' y='116' width='84' height='13' fill='none' stroke='var(--line-1)' stroke-width='1.5' stroke-dasharray='3 2'/><rect x='20' y='134' width='48' height='13' fill='none' stroke='var(--accent)' stroke-width='2'/><rect x='68' y='134' width='60' height='13' fill='none' stroke='var(--line-1)' stroke-width='1.5' stroke-dasharray='3 2'/><text x='20' y='162' font-size='13' fill='currentColor'>有效 6/18 ≈ 33%（虚线=浪费）</text><rect x='244' y='92' width='228' height='76' rx='6' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='256' y='110' font-size='13' fill='currentColor'>✓ pad 到本 batch 最长 L=4</text><rect x='256' y='116' width='24' height='13' fill='none' stroke='var(--accent)' stroke-width='2'/><rect x='280' y='116' width='24' height='13' fill='none' stroke='var(--line-1)' stroke-width='1.5' stroke-dasharray='3 2'/><text x='312' y='127' font-size='13' fill='currentColor'>只 2 个 pad</text><rect x='256' y='134' width='48' height='13' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='312' y='145' font-size='13' fill='currentColor'>本桶零 pad</text><text x='256' y='162' font-size='13' fill='currentColor'>有效 6/8 = 75%，算力全在 token 上</text><path d='M240 168 L240 178' stroke='currentColor' stroke-width='1.5'/><path d='M234 174 L240 180 L246 174' fill='none' stroke='currentColor' stroke-width='1.5'/><rect x='8' y='178' width='464' height='44' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='20' y='196' font-size='13' fill='currentColor'>collate_fn：按本 batch 最长 L 右侧补 pad_id</text><text x='20' y='212' font-size='13' fill='currentColor'>三张量同形 [B,L]；labels 的 padding 位 = -100</text><text x='240' y='234' text-anchor='middle' font-size='13' fill='currentColor'>DataLoader(num_workers&gt;0, pin_memory=True) 并行取数并加速 H2D</text></svg>",
+        "alt": "图：变长样本（长度 9/4/6/2）先经 BucketSampler 按长度升序、每两个切一桶并打乱桶序。左半图是错误做法——一律 pad 到全局最长 9，长度 2 与 4 的两条样本被补上大量虚线 pad，有效 token 只占 6/18 约 33%；右半图是正确做法——只 pad 到本 batch 最长 4，同一批有效 token 占 6/8 等于 75%。下方箭头指向 collate_fn 的输出：input_ids、attention_mask、labels 三个张量同形 [B, L]，labels 的 padding 位置是 -100。最后注明 DataLoader 用 num_workers 并行取数、pin_memory 加速 H2D 拷贝。"
+      },
+      "selfTest": [
+        "给两条样本，长度分别是 2 和 4，写出 collate_fn 输出的 input_ids / attention_mask / labels 三个 [2, 4] 矩阵（假设 pad_id = 0，token id 用字母代替）。再回答：如果这一批里恰好混进了长度为 9 的样本，输出的 L 会变成多少？这说明了什么？",
+        "为什么「pad 到本 batch 最长」这件事只能写在 collate_fn 里，而不能写在 Dataset.__getitem__ 里？如果非要写在 Dataset 里，你需要额外知道什么信息？",
+        "BucketSampler 只打乱桶的顺序、不打乱桶内顺序，随机性够吗？人工 pitfalls 说「分桶后忘记在每个 bucket 内 shuffle，破坏随机性」——按你写的实现，具体是哪一行在承担这个 shuffle？如果想让桶内也随机，改动会不会增加 padding？",
+        "attention_mask 和 labels 的 -100 各自作用在哪一步？如果只写了 attention_mask 而 labels 的 pad 位仍填 pad_id，训练曲线会出现什么现象？为什么这个 bug 不一定报错？",
+        "num_workers 从 0 调到 4 后吞吐反而下降，可能的三个原因是什么？pin_memory=True 在什么情况下不会带来任何收益？"
+      ],
+      "keyPoints": [
+        "collate_fn 中 pad 到本 batch 最长而不是全局最长（人工 keyPoints 原话）——因为只有 collate 才看得到整个 batch。",
+        "labels 的 padding 位置必须置 -100（cross_entropy 的 ignore_index）（人工 keyPoints 原话），否则 loss 被 padding 污染。",
+        "attention_mask 用 1/0 标记有效位置（人工 keyPoints 原话），它管注意力的遮蔽，-100 管损失的忽略，两者不可互相替代。",
+        "分桶（bucket）按长度排序成批，显著减少 padding 浪费、提升吞吐（人工 keyPoints 原话）；代价是长度相近的样本同批，所以必须打乱桶序以保住随机性。",
+        "面试延伸：num_workers 与 pin_memory 如何影响吞吐（人工 keyPoints 原话）——前者让取数与计算重叠，后者让 H2D 拷贝可异步。"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（dataloader）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题干明确要求三件事：变长文本 Dataset、collate_fn（padding + attention_mask + label 置 -100）、按长度分桶的 Sampler，并说明为什么需要分桶（题面原文）。",
+          "人工 keyPoints 明确给出五条：pad 到本 batch 最长、labels 的 pad 置 -100、attention_mask 用 1/0、分桶减少 padding 浪费并提升吞吐、面试延伸问 num_workers 与 pin_memory（keyPoints 原文）。",
+          "人工 pitfalls 明确给出三条扣分点：pad 到全局最长、忘记 -100 导致 loss 被污染、分桶后忘记 shuffle 破坏随机性（pitfalls 原文）。",
+          "本实现的算法与人工 referenceSolution 一致：MyDataset 用 tokenizer 编码并返回 {\"input_ids\", \"label\"}；collate_fn 取本 batch 最长并产出 input_ids / attention_mask / labels 三件套；BucketSampler 按长度升序切桶、shuffle 桶顺序、__len__ 返回样本总数。",
+          "三处新增内容都是防御性边界或可运行性补全，没有改动人工算法：(1) CharTokenizer 把 referenceSolution 里未声明的 tokenizer 补成可运行实现，__call__ 签名与 HuggingFace 对齐；(2) collate_fn 对空 batch 显式抛 ValueError；(3) BucketSampler 校验 batch_size>0、lengths 非空，并用 [b[:]] 浅拷贝避免多轮迭代破坏桶划分，另加默认关闭的 shuffle_within_batch。",
+          "complexity 的时间估计来自：预处理排序 O(N log N)、每 epoch collate 的额外长度小于 batch_size × 桶数、每 batch 计算量与桶内最长长度成正比；这些是 DataLoader/Sampler 语义的直接推论。",
+          "图解中的形状流转与数字是自洽的：全局最长 9 时 [2, 4] 两条样本的有效 token 占比为 6/18；pad 到本批最长 4 时为 6/8；三张量共用同一个 [B, L]。",
+          "code.source 中的断言（batch 内等长、L == max(有效长度)、-100 个数 == pad 总数、sampler 恰好覆盖每个样本一次）全部是本实现自身的正确性条件，可直接运行验证。"
+        ],
+        "uncertain": [
+          "人工题干未给词表大小、max_len、batch_size 与任何样例数值，本解自定 max_len=4、batch_size=2 只为演示；真实场景数值需按任务设置。",
+          "人工 referenceSolution 没有给出 tokenizer 的实现，只按 HuggingFace 的调用约定使用；本解的 CharTokenizer 是自写的字符级替身（不是占位符，能真实编码任意文本），与真机 AutoTokenizer 的分词粒度不同，因此具体 token 长度与本题结论无关，结论只依赖「长度可变」这一性质。",
+          "人工 referenceSolution 的 Dataset.__getitem__ 返回样本级标量 label，而 collate_fn 用 b[\"input_ids\"] 构造 token 级 labels 并在 pad 位置置 -100；两者面向不同训练目标（样本级分类 vs 逐 token 目标）。本解严格沿用这一行为未作合并，若需要在两者间统一（例如把标量 label 独热成 token 级标签）请人工确认预期。",
+          "人工 pitfalls 第三条写「分桶后忘记在每个 bucket 内 shuffle」；人工 referenceSolution 的实现实际只在 __iter__ 里 random.shuffle(self.batches)（打乱桶的顺序，桶内顺序仍按长度升序），其注释又写「桶内 shuffle」。本解以代码为准（打乱桶序承担随机性），并把「桶内再打乱」做成默认关闭的 shuffle_within_batch，未改写人工结论。",
+          "「桶序洗牌 + 桶内等长」是否足以满足训练的随机性要求，取决于任务对 batch 组成相关性的敏感度，本解未做实验验证，只给出定性说明。",
+          "complexity 里的时间/空间是按单卡 CPU 取数 + GPU 计算的通用约定给的量级，未包含 num_workers 的进程调度与跨进程序列化开销，也未在真实长尾语料上实测吞吐。",
+          "代码依赖 PyTorch（torch.utils.data）；本解未提供纯 Python 版本的 DataLoader，也未在真实 GPU 上验证 pin_memory 的收益（只作定性说明）。",
+          "「全 0 的 attention_mask 行会让 masked softmax 出现整行 -inf 的 nan」是框架实现的常见行为，具体是否产出 nan 取决于上游 attention 的实现（有些用 -1e9 而非 -inf）；本解只把它当作必须避免的边界，未逐框架验证。",
+          "本解未覆盖 torch.utils.data 的 IterableDataset、DistributedSampler 与 WebDataset 等流式/分布式形态，这些只在 followUps 与 variations 里点名，没有代码实现。"
+        ]
+      }
+    }
+  ]
+}

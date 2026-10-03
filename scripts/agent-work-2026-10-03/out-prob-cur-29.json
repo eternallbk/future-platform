@@ -1,0 +1,120 @@
+{
+  "batchId": "prob-cur-29",
+  "entries": [
+    {
+      "id": "sensetime-lamp-puzzle",
+      "tldr": "灯 j 被翻转「j 的约数个数」次；只有完全平方数的约数个数是奇数，故 1~100 中亮 10 盏。",
+      "restated": "房间里 100 盏灯初始全关，灯与开关编号 1~100，一盏灯对应一个开关。100 个学生按 1,2,…,100 的顺序依次进入：第 i 个学生切换所有编号为 i 的倍数的开关（翻一下，开变关、关变开）。问第 100 个学生进入后还剩多少盏灯亮着？题面即面经原文，完整无截断，但没有附带任何样例；答案需要说清是哪几盏亮以及为什么。",
+      "approach": [
+        {
+          "step": "暴力模拟：按规则翻一遍，先拿到可信答案",
+          "detail": "开一个长度 n+1 的布尔数组（下标 0 占位，灯编号 1..n），外层 i 从 1 到 n 表示第 i 个学生，内层 j 以 i 为步长从 i 走到 n，每次 lamps[j] = not lamps[j]，最后统计 True 的个数。它一定能算出正确答案，代价是第 i 个学生要翻 n/i 盏灯，总计 n·(1+1/2+…+1/n)≈n ln n 次翻转，n=100 时约 519 次，完全可以手跑；但它只给了数字，面试官接着问「n=10^9 呢」就答不上来了。"
+        },
+        {
+          "step": "关键观察：把「过程」换成「次数」",
+          "detail": "一盏灯最终是开是关，只取决于它被翻了多少次（奇数次亮、偶数次关），与翻转的先后顺序无关。而第 i 个学生会不会碰灯 j，等价于 i 是否整除 j；把 i 从 1 数到 100，灯 j 恰好被翻「j 的正约数个数」次。于是题目从「模拟 100 个学生」化成「判断 1~100 里哪些数有奇数个约数」，与具体是哪几个学生、谁先谁后都无关。"
+        },
+        {
+          "step": "最优结论：约数成对，只有完全平方数落单",
+          "detail": "若 d 是 j 的约数，则 j/d 也是 j 的约数，两者可以配成一对 (d, j/d)；只有当 d = j/d 即 d = √j 时这一对退化成同一个数、只贡献 1 个约数，而这要求 j 本身是完全平方数。所以：非完全平方数的约数两两配对，个数为偶数，灯关；完全平方数多出一个落单的 √j，个数为奇数，灯亮。1~100 中的完全平方数是 1²,2²,…,10²（10²=100 刚好在内），共 10 盏亮，通解是 floor(√n)。"
+        }
+      ],
+      "complexity": {
+        "time": "暴力模拟 O(n log n)（即 O(n·H(n))）；结论法 O(√n)，n=100 时是常数次判断。",
+        "space": "暴力模拟 O(n) 放灯的状态数组；结论法 O(1) 只存计数。",
+        "why": "第 i 个学生翻 n/i 盏灯，求和得 n·(1+1/2+…+1/n)≈n ln n；结论法只需数 1..√n 中 k²≤n 的个数，与灯数成平方根关系。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''100 盏灯与 100 个学生：暴力模拟与「约数奇偶性」推理互相印证。'''\n\n\ndef toggle_simulation(n):\n    '''O(n log n) 暴力：第 i 个学生翻转所有 i 的倍数，返回最终亮灯数。'''\n    if n < 0:\n        raise ValueError('n 必须非负')\n    lamps = [False] * (n + 1)          # 下标 0 占位，灯编号 1..n，全关\n    for i in range(1, n + 1):\n        for j in range(i, n + 1, i):   # j = i, 2i, 3i, ... 即 i 的倍数\n            lamps[j] = not lamps[j]    # 切换 = 翻转\n    return sum(lamps)\n\n\ndef count_open_by_squares(n):\n    '''O(√n) 结论：灯 j 被翻「j 的约数个数」次，只有完全平方数为奇数次。'''\n    if n < 0:\n        raise ValueError('n 必须非负')\n    lo, hi = 0, n + 1                  # 二分求 floor(sqrt(n))，避免浮点误差\n    while lo + 1 < hi:\n        mid = (lo + hi) // 2\n        if mid * mid <= n:\n            lo = mid\n        else:\n            hi = mid\n    return lo                          # 亮灯就是 1²,2²,...,lo²\n\n\ndef divisor_count(j):\n    '''暴力数 j 的正约数个数，用来验证「翻转次数 = 约数个数」。'''\n    return sum(1 for d in range(1, j + 1) if j % d == 0)\n\n\nif __name__ == '__main__':\n    assert toggle_simulation(0) == 0 and count_open_by_squares(0) == 0\n    assert toggle_simulation(1) == 1 and count_open_by_squares(1) == 1\n    for n in range(1, 401):            # 小规模对拍：模拟结果 == floor(sqrt(n))\n        assert toggle_simulation(n) == count_open_by_squares(n), n\n    for j in range(1, 61):             # 翻转奇偶性 == 是否完全平方数\n        root = count_open_by_squares(j)\n        assert (divisor_count(j) % 2 == 1) == (root * root == j), j\n    print('100 盏灯最后亮着 %d 盏：1, 4, 9, 16, 25, 36, 49, 64, 81, 100'\n          % toggle_simulation(100))",
+        "walkthrough": [
+          {
+            "note": "toggle_simulation 是「按题面老实做」的版本：布尔数组下标与灯编号对齐（多开一格让 1 号灯落在下标 1），外层 i 遍历每个学生，内层用 range(i, n+1, i) 生成 i 的全部倍数——步长写法天然把「j 从 i 开始」这件事写对了，不用手算边界；翻转用 not 而不是赋值 True，因为同一盏灯会被多个学生反复碰到。返回 sum(lamps) 直接数亮灯，布尔求和不需要额外循环。"
+          },
+          {
+            "note": "count_open_by_squares 是结论法：答案就是 1~n 中完全平方数的个数，即 floor(√n)。这里刻意不写 int(n ** 0.5) 或 math.isqrt 之外的浮点开方——浮点 sqrt 在 n 接近 10^16 量级时可能少 1，所以用二分在整数上收敛，保证 mid*mid 全是精确整数乘法。边界 n=0 时返回值 0，n=1 时返回 1，都与模拟一致。"
+          },
+          {
+            "note": "divisor_count 是第三条独立路径：直接枚举 1..j 数约数个数，用来验证核心引理「灯 j 被翻的次数 = j 的约数个数」，以及它的推论「次数为奇数 ⇔ j 是完全平方数」。三条路互不共享逻辑，对拍才有意义。"
+          },
+          {
+            "note": "主程序做四组校验：n=0 与 n=1 的边界；n=1..400 上模拟与结论逐一相等（这一步同时覆盖了完全平方数与非完全平方数的大量样本，例如 n=99 得 9、n=100 得 10）；j=1..60 上「约数个数为奇数」与「j 是完全平方数」严格同真同假。最后打印本题答案：100 盏灯亮 10 盏，就是 1² 到 10²。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "n=0（一盏灯都没有）与 n=1：1 号灯只被第 1 个学生翻一次，是奇数，亮，答案 1。",
+        "n 恰好是完全平方数：100=10²，所以第 10 盏亮灯正好卡在边界上，答案 10 而不是 9；换成 n=99 答案就是 9。",
+        "n 不是完全平方数时答案等于 floor(√n)，与 n 的大小没有别的依赖。",
+        "大 n 下的开方精度：用整数二分或 math.isqrt，不要用 int(n ** 0.5) 直接截断（浮点误差会让 10^16 附近的答案少 1）。",
+        "把「切换」理解成「打开」而不是「翻转」会得出所有灯都亮这种错误结论；同一盏灯会被多个学生碰到，必须用异或/取反语义。",
+        "倍数范围从 0 或从 2i 开始写错：j 必须从 i 开始（这样 i 自己也包含在内），且下标从 1 起。",
+        "沿用「0 号灯」的约定时要注意：0 是任何正整数的倍数，会被无限次翻转，题面里的编号因此是从 1 开始的。"
+      ],
+      "pitfalls": [
+        "把「切换」当成「开」或「关」，忽略一盏灯会被多个学生反复切换，必须用翻转语义。",
+        "内层循环写成 range(2*i, n+1, i) 或 range(0, n+1, i)，漏掉或凭空多出一次切换，答案会整体错位。",
+        "记错结论：以为偶数编号灯亮、或以为答案与 n 的奇偶有关，实际只与「完全平方数」有关。",
+        "推导只说「约数成对」，忘了点出完全平方数的约数个数为奇数是因为 √j 自己配自己、只算一次。",
+        "忘记 1 号灯也会亮（1 只有约数 1），答 9 盏。",
+        "把 100 盏灯的答案硬记成 10 却说不清通解，被追问 n=10^9 时只会说「模拟一下」。",
+        "结论法用浮点开方直接取整，在大 n 的追问下出现 off-by-one。",
+        "复杂度分析写成 O(n²)：内层不是每次都跑 n 步，而是 n/i 步，总计 O(n log n)。"
+      ],
+      "followUps": [
+        "如果 n 盏灯对应 n 个学生，通解是什么？为什么是 floor(√n)？请给出严格证明。",
+        "如果开关是三档的（每按一次 关→低→高→关），最后有几盏灯不是「关」？提示：约数个数被 3 整除的充要条件是编号为立方数。",
+        "如果第 i 个学生改为切换「i 的约数编号」而不是「i 的倍数编号」，亮灯数会变成多少？",
+        "如果学生只进到第 k 个（k<n），结论还成立吗？灯 j 的状态由什么决定？",
+        "怎样把「灯 j 被翻几次」这件事在 O(√j) 时间内直接算出来（枚举到 √j，成对计数）？",
+        "n=10^9 时你连数组都开不下，怎么在 O(√n) 甚至 O(1) 时间给出答案，并处理开方精度？"
+      ],
+      "variations": [
+        "三档开关 / 立方数版本：每个开关有 3 个状态，亮等价于被切换次数不被 3 整除，答案变成 1..n 中立方数的个数。",
+        "编号从 0 开始的版本：会引出「0 被所有人切换」的退化情况，考验对题面约定的敏感度。",
+        "100 个囚犯与 100 个抽屉（第 i 个囚犯翻 i 的倍数号抽屉）是同一道题的经典换皮。",
+        "学生顺序随机化版本：结论完全不变，因为每盏灯被翻的次数与顺序无关，只有奇偶重要。",
+        "把「倍数」换成「模 i 余 0 且为质数」等筛选条件，本质仍是数约数/数因子的奇偶性。",
+        "经典变体「100 扇门 + 100 个人」，答案同样是 10，考察点与本题完全一致。"
+      ],
+      "diagram": {
+        "kind": "matrix",
+        "title": "约数配对与完全平方数",
+        "caption": "把灯号 j 的约数上下两排对齐：每个 d 都对上一个 j/d，配对成功就贡献两次翻转（偶数，灯关）；只有完全平方数会出现 √j 自己配自己，落单一次，翻转次数变奇数，灯亮。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='灯12的约数两两配对共3对即6次翻转为偶数灯关，灯9的约数中3与根号9自己配对共3次翻转是奇数灯亮'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='18' font-size='14' fill='currentColor'>翻转次数 = 灯号的约数个数</text><text x='14' y='44' font-size='13' fill='currentColor'>灯 12（非平方数）</text><rect x='30' y='54' width='44' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='46' y='70' font-size='13' fill='currentColor'>1</text><rect x='110' y='54' width='44' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='126' y='70' font-size='13' fill='currentColor'>2</text><rect x='190' y='54' width='44' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='206' y='70' font-size='13' fill='currentColor'>3</text><line x1='52' y1='76' x2='52' y2='100' stroke='var(--line-1)' stroke-width='1'/><line x1='132' y1='76' x2='132' y2='100' stroke='var(--line-1)' stroke-width='1'/><line x1='212' y1='76' x2='212' y2='100' stroke='var(--line-1)' stroke-width='1'/><rect x='30' y='100' width='44' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='42' y='116' font-size='13' fill='currentColor'>12</text><rect x='110' y='100' width='44' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='126' y='116' font-size='13' fill='currentColor'>6</text><rect x='190' y='100' width='44' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='206' y='116' font-size='13' fill='currentColor'>4</text><text x='252' y='70' font-size='13' fill='currentColor'>d 配 j/d</text><text x='252' y='92' font-size='13' fill='currentColor'>3 对 = 6 次</text><text x='252' y='114' font-size='13' fill='currentColor'>偶数 → 灯关</text><text x='14' y='150' font-size='13' fill='currentColor'>灯 9（完全平方数）</text><rect x='30' y='160' width='44' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='46' y='176' font-size='13' fill='currentColor'>1</text><rect x='110' y='160' width='44' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='126' y='176' font-size='13' fill='currentColor'>3</text><line x1='52' y1='182' x2='52' y2='200' stroke='var(--line-1)' stroke-width='1'/><line x1='132' y1='182' x2='132' y2='200' stroke='var(--accent)' stroke-width='1'/><rect x='30' y='200' width='44' height='22' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='46' y='216' font-size='13' fill='currentColor'>9</text><rect x='110' y='200' width='44' height='22' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='126' y='216' font-size='13' fill='currentColor'>3</text><text x='252' y='176' font-size='13' fill='currentColor'>1×9，3×3</text><text x='252' y='198' font-size='13' fill='var(--accent)'>根号 9 自己配对</text><text x='252' y='220' font-size='13' fill='currentColor'>3 次（奇）→ 亮</text></svg>",
+        "alt": "上下两排方框的配对图：灯 12 的约数 1、2、3 与 12、6、4 一一连线，共 3 对即 6 次翻转（偶数，灯关）；灯 9 的约数 1、3 与 9、3 连线，其中 3 与根号 9 是同一个数、自己配对，共 3 次翻转（奇数，灯亮）。"
+      },
+      "selfTest": [
+        "灯 12 最后是开还是关？为什么？（答：约数 1、2、3、4、6、12 共 6 个，配成 (1,12)、(2,6)、(3,4) 三对，被翻 6 次，偶数次，关。）",
+        "为什么只有完全平方数最后是亮的？（答：约数 d 与 j/d 天然成对，只有 d=j/d 即 j=d² 时这一对只剩一个数，约数个数才变成奇数，灯被翻奇数次。）",
+        "100 盏灯的答案是多少？如果是 n 盏灯呢？（答：10 盏，即 1²~10²；通解是 floor(√n)，因为 1~n 中完全平方数的个数就是 floor(√n)。）",
+        "面试官追问 n=10^9 怎么办？（答：不用模拟，直接返回整数开方 floor(√n)=31622，注意用整数二分或 math.isqrt 避免浮点 off-by-one。）"
+      ],
+      "keyPoints": [
+        "灯的最终状态只由被切换次数的奇偶决定，与切换顺序无关",
+        "第 i 个学生碰灯 j ⇔ i 整除 j，所以灯 j 被切换「j 的约数个数」次",
+        "约数 d 与 j/d 成对，只有完全平方数多出一个落单的 √j",
+        "答案 = 1~n 中完全平方数的个数 = floor(√n)，n=100 时是 10",
+        "能顺手给出暴力 O(n log n) 模拟与 O(√n) 结论两条路径并互相印证"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "题面明确：100 盏灯初始全关，灯与开关编号 1~100；100 个学生按顺序进入，第 i 个学生切换所有编号为 i 的倍数的开关；问第 100 个学生进入后还有多少盏灯亮着。",
+          "由题面可直接推出：第 i 个学生是否切换灯 j，等价于 i 是否整除 j；把 i 从 1 取到 100，灯 j 被切换的次数恰好等于 j 在 1~100 中的正约数个数。",
+          "由「约数 d 与 j/d 成对、只有 j 为完全平方数时 √j 落单」可推出：灯亮 ⇔ j 为完全平方数，因此答案是 1~100 中完全平方数的个数。",
+          "1~100 中的完全平方数为 1、4、9、16、25、36、49、64、81、100，共 10 个，故答案为 10 盏。",
+          "题面自述是「商汤二面智力题（面经原文）」，输入文件标注 origin=curated、sourceUrl=null，因此本文件 sources 为空数组、正文不含任何链接。",
+          "输入文件标注 has.answerOutline=true，说明该题在题库里已有答案大纲（本次输入未附带其正文），本文件的结论 10 盏由题面独立推导得到，未依赖该大纲。"
+        ],
+        "uncertain": [
+          "题面没有提供任何样例（例如 n=4 时亮 2 盏），本文件的数值结论来自推导与代码自测，题库原文中若有标准答案可再核对一次。",
+          "题面只说「切换」开关，未显式写「开变关、关变开」；本文件按通行的翻转语义理解，若原意是别的操作则结论不成立。",
+          "题面只问 n=100 这一具体输入，未要求写出 n 盏灯的通解；floor(√n) 的通解是我补充的追问方向，不是题面要求。",
+          "题库只给了答案大纲（has.answerOutline=true）而没有完整解析正文，我无法核对大纲里给出的推导路径是否与本文一致。",
+          "代码中的对拍规模（n 到 400、约数验证到 60）与 n=0、n=1 的边界是自测取值，题面本身只约束 n=100。"
+        ]
+      }
+    }
+  ]
+}

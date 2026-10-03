@@ -6,152 +6,128 @@
   "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
   "items": [
     {
-      "id": "ac2524af5b9231f7",
-      "title": "ddalcu/mlx-serve - Native LLM inference server for Apple Silicon. OpenAI + Anthropic API compatible. No Python. Zig backend, Swift frontend macOS app with chat, music, voice, video generation.",
-      "category": "generative",
-      "channel": "github",
-      "url": "https://github.com/ddalcu/mlx-serve",
-      "sources": [
-        {
-          "url": "https://github.com/ddalcu/mlx-serve",
-          "name": "github"
-        }
-      ],
-      "tags": [
-        "agent",
-        "anthropic-api",
-        "apple-silicon",
-        "claude-code",
-        "deepseek-v4",
-        "diffusion",
-        "gguf",
-        "image-generation",
-        "Zig"
-      ],
-      "summary": "Native LLM inference server for Apple Silicon. OpenAI + Anthropic API compatible. No Python. Zig backend, Swift frontend macOS app with chat, music, voice, video generation.",
-      "authors": [
-        "ddalcu"
-      ],
-      "publishedAt": "2026-09-30T15:05:33+08:00",
-      "knowledgeType": "project",
-      "why": "归属「生成式模型」方向；命中关键词 diffusion、video generation；GitHub 1671 stars；疑似附带开源实现",
-      "relevanceScore": 73.3,
-      "qualitySignals": {
-        "stars": 1710,
-        "forks": 176,
-        "codeAvailable": true
-      },
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 73.3,
-      "planDepthScore": 49.97
-    },
-    {
-      "id": "92c09201f9fa3e53",
-      "title": "spiceai/spiceai - Add a real-time analytics node to your operational database. Spice is a portable, accelerated SQL query, search, and LLM-inference engine in Rust for data-grounded AI apps and agents.",
-      "category": "engineering",
-      "channel": "github",
-      "url": "https://github.com/spiceai/spiceai",
-      "sources": [
-        {
-          "url": "https://github.com/spiceai/spiceai",
-          "name": "github"
-        }
-      ],
-      "tags": [
-        "artificial-intelligence",
-        "data",
-        "data-federation",
-        "developers",
-        "full-text-search",
-        "infrastructure",
-        "llm-inference",
-        "machine-learning",
-        "Rust"
-      ],
-      "summary": "Add a real-time analytics node to your operational database. Spice is a portable, accelerated SQL query, search, and LLM-inference engine in Rust for data-grounded AI apps and agents.",
-      "authors": [
-        "spiceai"
-      ],
-      "publishedAt": "2026-10-01T00:17:26+08:00",
-      "knowledgeType": "project",
-      "why": "归属「工程与系统」方向；命中关键词 inference；GitHub 3097 stars；疑似附带开源实现",
-      "relevanceScore": 62.4,
-      "qualitySignals": {
-        "stars": 3098,
-        "forks": 231,
-        "codeAvailable": true
-      },
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 62.4,
-      "planDepthScore": 42.48
-    },
-    {
-      "id": "b1ec28947f12f9bd",
-      "title": "kunal-kushwaha/DSA-Bootcamp-Java — This repository consists of the code samples, assignments, and notes f",
-      "category": "course",
-      "channel": "github_algo",
-      "url": "https://github.com/kunal-kushwaha/DSA-Bootcamp-Java",
-      "sources": [
-        {
-          "url": "https://github.com/kunal-kushwaha/DSA-Bootcamp-Java",
-          "name": "github_algo"
-        }
-      ],
-      "tags": [
-        "GitHub",
-        "算法仓库",
-        "数据结构",
-        "算法"
-      ],
-      "summary": "This repository consists of the code samples, assignments, and notes for the Java data structures & algorithms + interview preparation bootcamp of WeMakeDevs.｜23928 stars｜Java｜最近更新 2024-08-18｜主题：algorithms、competitive-programming、data-structures、faang-interview、faang-preparation、faang-questions、google-interview、interview-preparation",
-      "authors": [],
-      "publishedAt": "2024-08-18T08:21:57Z",
-      "knowledgeType": "fundamentals",
-      "why": "归属「课程与仓库」方向；命中关键词 仓库；GitHub 23928 stars；疑似附带开源实现",
-      "relevanceScore": 48.0,
-      "qualitySignals": {
-        "stars": 23928
-      },
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 48.0,
-      "planDepthScore": 41.65
-    },
-    {
-      "id": "7f653843af9f1aba",
-      "title": "Show HN: TensorZero – open-source data and learning flywheel for LLMs",
+      "id": "1bd6dc963f664078",
+      "title": "Launch HN: RunAnywhere (YC W26) – Faster AI Inference on Apple Silicon",
       "category": "engineering",
       "channel": "hn",
-      "url": "https://github.com/tensorzero/tensorzero",
+      "url": "https://github.com/RunanywhereAI/rcli",
       "sources": [
         {
-          "url": "https://github.com/tensorzero/tensorzero",
+          "url": "https://github.com/RunanywhereAI/rcli",
           "name": "hn"
         },
         {
-          "url": "https://news.ycombinator.com/item?id=41557020",
+          "url": "https://news.ycombinator.com/item?id=47326101",
           "name": "canonical"
         }
       ],
       "tags": [],
-      "summary": "Hi HN! We're Gabriel & Viraj, and we're excited to open source TensorZero. To be a little cheeky, TensorZero is an open-source platform that helps LLM applications graduate from API wrappers into defensible AI products. 1. Integrate our model gateway 2. Send metrics or feedback 3. Unlock compounding improvements in quality, cost, and latency It enables a data & learning flywheel for LLMs by unifying: • Inference: one API for all LLMs, with <1ms P99 overhead • Observability: inference & feedback → your database • Optimization: better prompts, models, inference strategies • Experimentation: built-in A/B testing, routing, fallbacks Our goal is to help engineers build, manage, and optimize the next generation of LLM applications: AI systems that learn from real-world experience. In addition to",
+      "summary": "Hi HN, we're Sanchit and Shubham (YC W26). We built a fast inference engine for Apple Silicon. LLMs, speech-to-text, text-to-speech – MetalRT beats llama.cpp, Apple's MLX, Ollama, and sherpa-onnx on every modality we tested. Custom Metal shaders, no framework overhead. Also, we've open-sourced RCLI, the fastest end-to-end voice AI pipeline on Apple Silicon. Mic to spoken response, entirely on-device. No cloud, no API keys. To get started: brew tap RunanywhereAI/rcli https://github.com/RunanywhereAI/RCLI.git brew install rcli rcli setup # downloads ~1 GB of models rcli # interactive mode with push-to-talk Or: curl -fsSL https://raw.githubusercontent.com/RunanywhereAI/RCLI/main/install.sh | bash The numbers (M4 Max, 64 GB, reproducible via `rcli bench`): LLM decode – 1.67x faster than llama.",
       "authors": [
-        "GabrielBianconi"
+        "sanchitmonga22"
       ],
-      "publishedAt": "2024-09-16T03:25:03+08:00",
+      "publishedAt": "2026-03-10T05:14:52+08:00",
       "knowledgeType": "project",
-      "why": "归属「工程与系统」方向；命中关键词 inference、latency；社区热度 49",
-      "relevanceScore": 48.2,
+      "why": "归属「工程与系统」方向；命中关键词 inference；社区热度 240",
+      "relevanceScore": 40.2,
       "qualitySignals": {
-        "upvotes": 49,
-        "comments": 2
+        "upvotes": 240,
+        "comments": 153
       },
       "peerReviewed": false,
       "codeAvailable": false,
-      "planRelevanceScore": 48.2,
-      "planDepthScore": 36.25
+      "planRelevanceScore": 40.2,
+      "planDepthScore": 33.77
+    },
+    {
+      "id": "6b8e02c845919dd7",
+      "title": "GitHub Trending: pingdotgg/t3code",
+      "category": "trend",
+      "channel": "gh_trending",
+      "url": "https://github.com/pingdotgg/t3code",
+      "sources": [
+        {
+          "url": "https://github.com/pingdotgg/t3code",
+          "name": "gh_trending"
+        }
+      ],
+      "tags": [
+        "TypeScript",
+        "trending"
+      ],
+      "summary": "项目进入今日 GitHub 趋势榜。",
+      "authors": [],
+      "publishedAt": "2026-10-03T20:00:29+08:00",
+      "knowledgeType": "project",
+      "why": "归属「技术演进与趋势」方向；命中关键词 趋势；GitHub 24422 stars；疑似附带开源实现",
+      "relevanceScore": 57.7,
+      "qualitySignals": {
+        "codeAvailable": true,
+        "stars": 24495,
+        "starsToday": 251,
+        "language": "TypeScript"
+      },
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 57.7,
+      "planDepthScore": 25.79
+    },
+    {
+      "id": "d821c97b149a0920",
+      "title": "QQ-高级算法工程师",
+      "category": "job",
+      "channel": "jobs_tencent",
+      "url": "http://careers.tencent.com/jobdesc.html?postId=2044968720287297536",
+      "sources": [
+        {
+          "url": "http://careers.tencent.com/jobdesc.html?postId=2044968720287297536",
+          "name": "jobs_tencent"
+        }
+      ],
+      "tags": [
+        "招聘",
+        "深圳"
+      ],
+      "summary": "1.AI Agent 算法研究方向：探索工具调用、模型规划、长记忆、意图识别等核心能力；研究多 Agent 协同机制，推动 Agent 在实际业务中的落地； 2.多模态大模型研究与优化方向：主导多模态/全模态大语言模型的预训练、对齐与推理优化；推动图像、视频、文本等多模态理解与生成能力的持续演进； 3.多模态内容理解与治理方向：构建面向复杂场景的多模态内容理解能力；建设生态内容治理算法体系，支撑业务侧的理解、分析与交互需求； 4.图像/视频编辑与生成落地方向：研究并落地图像编 | 深圳 | 技术 | QQ | PCG",
+      "authors": [],
+      "publishedAt": "2026-09-24T00:00:00+08:00",
+      "knowledgeType": "job",
+      "why": "归属「岗位与招聘」方向；命中关键词 招聘、算法工程师；中文来源，贴近国内求职语境",
+      "relevanceScore": 64.9,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 64.9,
+      "planDepthScore": 19.28
+    },
+    {
+      "id": "ea462175f524a3f9",
+      "title": "再创佳绩！爱奇艺《灵魂摆渡》“浮生梦”系列AIGC网络故事片分账票房破千万",
+      "category": "trend",
+      "channel": "leiphone",
+      "url": "https://leiphone.com/category/industrynews/yHRIGngfk28TJvIw.html",
+      "sources": [
+        {
+          "url": "https://leiphone.com/category/industrynews/yHRIGngfk28TJvIw.html",
+          "name": "leiphone"
+        }
+      ],
+      "tags": [
+        "资讯",
+        "AI",
+        "中文媒体"
+      ],
+      "summary": "10月3日，爱奇艺、长信传媒出品《灵魂摆渡》“浮生梦”系列AIGC网络故事片累计分账票房正式突破1000万元！ 该系列前两部《灵魂摆渡·蝴蝶梦》《灵魂摆渡·天女之梦》于8月22日独家上线爱奇艺，备受观众喜爱，上线首周即收回两部影片制作成本，首月累计分账票房突破800万元。随着第三部《灵魂摆渡·公主之梦》于10月1日上线，系列热度进一步攀升，带动影片热度和分账票房持续增长。截至10月3日，“浮生梦”系列累计分账票房突破1000万元。 作为经典IP“灵魂摆渡”的全新网络故事片系列化开发，“浮生梦”系列延续原作中式志怪、借鬼怪写人心的创作内核，并通过全新故事进一步拓展人物前史与IP世界观。 三部作品分别从不同故事切入，逐步揭开“灵摆铁三角”赵吏、夏冬青、娅的前世今生与命运轨迹。《灵魂摆渡·蝴蝶梦》围绕庄周梦蝶的东方哲学意象展开；《灵魂摆渡·天女之梦》通过多重梦境探寻命运抉择与人生真谛；《灵魂摆渡·公主之梦》则透过一桩离奇案件牵出一段尘封百年的守候与执念，三位摆渡人的故事也由此持续展开。 上线以来，《灵魂摆渡》“浮生梦”系列持续收获观众关注与好评。社交平台上，不少新老剧粉围绕剧情细节、人物前史及系列伏笔展开讨论。观众对经典角色的情感共鸣，以及对后续故事的期待，也持续推动该系列网络故事片热度走高。 《灵魂摆渡》“浮生梦”系列的连续推出，也展现了AIGC技术在经典IP内容开发中的应用潜力。一方面，依托AIGC制作方式，作品能够以更灵活、高效和更具性价比的方式，呈现奇幻、志怪等具有较高视觉想象空间的场景，为经典IP拓展新的视觉表达。另一方面，通过“AI技术+真人表演迁移”的创作方式，作品得以突破角色年龄和线性时间等限制，经典角色能够进入新的故事与叙事时空，IP系列化延展获得更多可能。 与此同时，三部作品在制作过程中还沉淀了近500个角色资产、近800个场景资产，以及近200个核心道具资产。这些数字资产可复用于后续内容开发，在保持人物形象与表演风格统一的同时，进一步提升IP开发的生产效率和制作灵活性。 9月23日，在爱奇艺iJOY秋季悦享会上，爱奇艺创始人、CEO龚宇表示，过去三四个月",
+      "authors": [],
+      "publishedAt": "2026-10-03T18:12:00+08:00",
+      "knowledgeType": "other",
+      "why": "归属「技术演进与趋势」方向；命中关键词 讨论；中文来源，贴近国内求职语境",
+      "relevanceScore": 49.7,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 49.7,
+      "planDepthScore": 15.74
     }
   ]
 }

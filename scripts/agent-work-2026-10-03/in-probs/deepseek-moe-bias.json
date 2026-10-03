@@ -1,0 +1,22 @@
+{
+  "batchId": "prob-cur-36",
+  "problem": {
+    "id": "deepseek-moe-bias",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "DeepSeek MoE 的无辅助损失负载均衡机制推导",
+    "topics": [],
+    "difficulty": "hard",
+    "statement": "DeepSeek 笔试第八题：推导“无辅助损失”的负载均衡机制。要点不是取消均衡控制，而是把均衡从主损失中的可学习惩罚项，改成路由器外部的专家偏置反馈。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

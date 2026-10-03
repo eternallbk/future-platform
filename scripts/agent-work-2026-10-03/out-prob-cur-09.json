@@ -1,0 +1,172 @@
+{
+  "batchId": "prob-cur-09",
+  "entries": [
+    {
+      "id": "ddpm-sampling",
+      "tldr": "DDPM：x_T~N(0,I) 按闭式后验均值回退 T 步，t>0 加 sqrt(beta_t)·z，t=0 不加噪。",
+      "restated": "输入 betas[T]（beta_t∈(0,1)）与 eps_theta(x,t)；输出 x_0，形状同 shape（如 (B,C,H,W) 或 (B,D)）。先算 alpha_t=1-beta_t、alpha_bar_t=prod_{s<=t} alpha_s；再从 x_T~N(0,I) 对 t=T-1…0 迭代：t 扩成 (B,) long 的 t_batch 传入模型得同形状 eps，算 mean=(x_t-beta_t/sqrt(1-alpha_bar_t)·eps)/sqrt(alpha_t)，t>0 加 sqrt(beta_t)·z，t=0 只取 mean。",
+      "approach": [
+        {
+          "step": "朴素写法：把“去噪”当成每步减一点噪声（x_{t-1} = x_t - beta_t·eps，或把 alpha_bar 写成 cumsum）",
+          "detail": "最直觉的实现是 x_{t-1} = x_t - beta_t·eps，把 beta_t 当步长；另一种常见错法是把 alpha_bar_t 理解成“累积噪声量”写成 torch.cumsum(betas, dim=0)。两者都撑不过 T=1000：alpha_bar_t 是 T 个 (0,1) 数的乘积，线性调度 beta: 1e-4→0.02 时 alpha_bar_999≈4e-5，说明 x_T 里 99.99% 是噪声、信号只剩 sqrt(4e-5)≈0.006 倍；而 cumsum 在 t=999 时约等于 10，于是 1-alpha_bar_t 变负数、torch.sqrt 直接给 nan（不报错，只出 nan，最难查）。根因是每步真正的噪声系数不是 beta_t，而是 beta_t/sqrt(1-alpha_bar_t)，它由 q(x_t|x_0) 的闭式形式决定——不回到闭式后验，任何手调步长都不对。"
+        },
+        {
+          "step": "关键设计一：先用 cumprod 建出 alpha_bar，所有系数都从它派生",
+          "detail": "先固定三张长度 (T,) 的表：alphas = 1 - betas、alpha_bar = torch.cumprod(alphas, dim=0)。这不是为了省事：DDPM 的定义 q(x_t|x_0)=N(sqrt(alpha_bar_t)·x_0, (1-alpha_bar_t)·I) 里只出现 alpha_bar_t，反向的 mean、后验方差、乃至 DDIM 的确定性更新全部由它派生。cumprod 与 cumsum 一字之差是这题最经典的扣分点，所以自测里用 ab[1:] < ab[:-1]（严格递减）和 ab[-1] == prod(alphas) 两条断言钉死它。注意 cumprod 要显式写 dim=0：对 (T,) 侥幸一样，一旦 betas 带前导维就会静默沿错方向累积。"
+        },
+        {
+          "step": "关键设计二：mean 由贝叶斯后验推出，即“先估 x_0、再代回 q(x_{t-1}|x_t,x_0)”",
+          "detail": "看到 eps_theta 输出的是噪声，就先还原 x_0：x_0_hat = (x_t - sqrt(1-alpha_bar_t)·eps)/sqrt(alpha_bar_t)，代进 q(x_{t-1}|x_t,x_0) 的均值，整理后正好是人工 keyPoints 那一行 mean = (x_t - beta_t/sqrt(1-alpha_bar_t)·eps)/sqrt(alpha_t)。因为 beta_t = 1-alpha_t，写成 (x_t - (1-alpha_t)/sqrt(1-alpha_bar_t)·eps)/sqrt(alpha_t) 也完全等价（见 selfTest 第 2 题）；但分子里的 alpha_bar 必须是当前步 t、分母的 alpha_t 也必须是当前步 t——t 与 t-1 的 alpha_bar 在公式里各出现一次、位置不同，写反在 T 小的时候几乎看不出来，T 大时整条轨迹全错。面试要能当场推出这一行，而不是背下来。"
+        },
+        {
+          "step": "关键设计三：方差只在 t>0 注入，且 sigma_t=sqrt(beta_t) 是简化版选择",
+          "detail": "反向分布 q(x_{t-1}|x_t) 的方差在原论文里有两个取法：sigma_t^2 = beta_t（简化版，本实现用这个）或 sigma_t^2 = beta_t·(1-alpha_bar_{t-1})/(1-alpha_bar_t)（更接近真实后验，t 小时更小）。t=0 必须特判跳过，因为 x_0 就是采样终点，再加一次噪声等于把刚清理干净的结果又污染一遍，人工 pitfalls 里明确列了这一条。噪声必须用 torch.randn_like(x)（与 x 逐元素同形状）：写成 torch.randn(1) 或每个样本采一个标量再广播，会让整个 batch 共享同一份噪声，样本间相关性上升、多样性下降，而形状还能静默广播成功，属于“看起来对”的错。"
+        },
+        {
+          "step": "关键设计四：t 的 dtype/device、no_grad/eval，以及采样与训练共用同一套 alpha_bar",
+          "detail": "t 是 python int，必须扩成 (B,) 的 torch.long 才能进时间 embedding（nn.Embedding 只接受整型索引，传 float 会报错，传标量会广播失败或语义错），并且要和 x 同 device。整段循环应放在 torch.no_grad() 里并先 model.eval()：否则 T 步的计算图会一路累积、显存随时间步线性增长直至 OOM，dropout/BN 还会给输出叠加额外随机性。最后一条最容易被忽略：训练侧的闭式前向 x_t = sqrt(alpha_bar_t)·x_0 + sqrt(1-alpha_bar_t)·eps 与采样侧必须共用同一份 alphas/alpha_bar，调度器一换（比如训练用 cosine、采样用线性），模型收到的是分布外的时间步，样本会糊掉——这是“采样曲线为什么不对”最常见的答案。"
+        }
+      ],
+      "complexity": {
+        "time": "O(T · C(eps_theta))，T=1000 就是 1000 次网络前向；训练一次只需 1 次前向",
+        "space": "O(B × shape)（只留 x 与 eps）；不加 torch.no_grad() 会额外保留 T 步计算图",
+        "why": "每步固定一次 eps_theta 前向 + 常数次逐元素乘除，故与 T 线性；采样慢的根源是 T 大，不是张量大。"
+      },
+      "code": {
+        "language": "python",
+        "source": "\"\"\"手写 DDPM 反向采样循环（简化版 DDPM：sigma_t = sqrt(beta_t)）。\n\n形状约定（B = batch，其余维是数据形状；toy 一维例子退化成 (B, D)）：\n    betas:     (T,)             每个时间步的 beta_t ∈ (0, 1)\n    alphas:    (T,)             alpha_t = 1 - beta_t\n    alpha_bar: (T,)             alpha_bar_t = prod_{s<=t} alpha_s = cumprod(alphas)\n    x:         (B, C, H, W)     与训练数据同形状，(B, D) 也支持\n    t_batch:   (B,) dtype=torch.long   喂给时间 embedding，必须是整型\n    eps_theta: 与 x 同形状       模型预测的噪声，签名 model(x, t_batch) -> eps\n\n反向一步（闭式后验均值 + 简化版方差）：\n    mean_{t-1} = (x_t - beta_t / sqrt(1 - alpha_bar_t) * eps_theta(x_t, t)) / sqrt(alpha_t)\n    x_{t-1}    = mean_{t-1} + sqrt(beta_t) * z,  z ~ N(0, I)      (t > 0)\n    x_{-1}     = mean_0                                          (t = 0，不再加噪)\n\n依赖：pytorch（import torch）。运行：python ddpm_sample.py\n\"\"\"\nimport torch\n\n\ndef make_betas(T=50, beta_start=1e-4, beta_end=0.02, device=\"cpu\"):\n    \"\"\"线性 beta 调度：betas[t] 随 t 单调增，保证 alpha_bar_t 严格递减。\"\"\"\n    if int(T) < 1:\n        raise ValueError(\"T 必须是正整数，实际 %r\" % (T,))\n    if not (0.0 < float(beta_start) < float(beta_end) < 1.0):\n        raise ValueError(\"要求 0 < beta_start < beta_end < 1，实际 %r / %r\"\n                         % (beta_start, beta_end))\n    return torch.linspace(float(beta_start), float(beta_end), int(T), device=device)\n\n\nclass EpsMLP(torch.nn.Module):\n    \"\"\"最小可跑的 eps_theta：时间步做正弦 embedding，拼到输入上再过一个 MLP。\"\"\"\n\n    def __init__(self, dim, hidden=64):\n        super().__init__()\n        self.dim = int(dim)\n        self.net = torch.nn.Sequential(\n            torch.nn.Linear(self.dim + 8, hidden),\n            torch.nn.SiLU(),\n            torch.nn.Linear(hidden, self.dim),\n        )\n\n    def time_embed(self, t, device, dtype):\n        # t: (B,) long -> (B, 8)。必须先转浮点：整型下 tf*freqs 无法参与 sin/乘法。\n        tf = t.to(device=device, dtype=dtype).unsqueeze(-1)          # (B, 1)\n        freqs = torch.arange(1, 5, device=device, dtype=dtype)       # (4,)\n        ang = tf * freqs * 3.141592653589793                         # (B, 4)\n        return torch.cat([torch.sin(ang), torch.cos(ang)], dim=-1)   # (B, 8)\n\n    def forward(self, x, t):\n        if t.dim() != 1 or t.shape[0] != x.shape[0]:\n            raise ValueError(\"t 必须是 (B,) 且 B 与 x 一致：t=%r vs x=%r\"\n                             % (tuple(t.shape), tuple(x.shape)))\n        emb = self.time_embed(t, x.device, x.dtype)                  # (B, 8)\n        return self.net(torch.cat([x, emb], dim=-1))                 # 与 x 同形状\n\n\ndef ddpm_sample(model, shape, betas, device=\"cpu\"):\n    \"\"\"最简 DDPM 采样：从 x_T ~ N(0, I) 迭代到 x_0，返回形状为 shape 的张量。\n\n    betas: (T,)；alpha_bar_t = prod_{s<=t}(1 - beta_s)\n    x_{t-1} = (x_t - beta_t/sqrt(1-alpha_bar_t) * eps_theta) / sqrt(alpha_t) + sqrt(beta_t) * z\n    \"\"\"\n    shape = tuple(int(s) for s in shape)\n    if len(shape) < 1 or shape[0] < 1:\n        raise ValueError(\"shape 必须至少含 batch 维且 B >= 1，实际 %r\" % (shape,))\n\n    betas = torch.as_tensor(betas, dtype=torch.float32).to(device)   # 允许 list / numpy 传入\n    if betas.dim() != 1 or betas.numel() < 1:\n        raise ValueError(\"betas 必须是一维长度 T >= 1，实际形状 %r\" % (tuple(betas.shape),))\n    if not bool(torch.isfinite(betas).all()):\n        raise ValueError(\"betas 含 nan/inf：开根号后会静默产生 nan，必须先拒绝\")\n    if bool((betas <= 0).any()) or bool((betas >= 1).any()):\n        raise ValueError(\"beta_t 必须落在 (0, 1) 内，否则 1-alpha_bar_t 会除零或开根号得 nan\")\n\n    alphas = 1.0 - betas                                             # (T,)\n    alpha_bar = torch.cumprod(alphas, dim=0)                         # (T,) 关键：cumprod\n    T = int(betas.shape[0])\n\n    model = model.to(device) if hasattr(model, \"to\") else model\n    if hasattr(model, \"eval\"):\n        model.eval()                                                 # 关掉 dropout / BN 更新\n\n    with torch.no_grad():                                            # 采样不需要计算图\n        x = torch.randn(shape, device=device)                        # x_T ~ N(0, I)\n        for t in reversed(range(T)):                                 # T-1, ..., 1, 0\n            ab, a, b = alpha_bar[t], alphas[t], betas[t]\n            t_batch = torch.full((shape[0],), t, device=device,\n                                 dtype=torch.long)                   # 必须 long 才是合法索引\n            eps = model(x, t_batch)                                  # 预测噪声，同形状\n            if tuple(eps.shape) != tuple(x.shape):\n                raise ValueError(\"eps_theta 必须返回与 x 同形状：%r vs %r\"\n                                 % (tuple(eps.shape), tuple(x.shape)))\n            mean = (x - b / torch.sqrt(1.0 - ab) * eps) / torch.sqrt(a)   # 闭式后验均值\n            if t > 0:\n                sigma = torch.sqrt(b)                                # 简化版 DDPM\n                x = mean + sigma * torch.randn_like(x)               # 与 x 逐元素同形状的 z\n            else:\n                x = mean                                             # t = 0 不再加噪\n    return x\n\n\ndef _self_test():\n    torch.manual_seed(0)\n    B, D, T = 4, 3, 24\n    betas = make_betas(T)\n    alphas = 1.0 - betas\n    ab = torch.cumprod(alphas, dim=0)\n\n    # 1) alpha_bar 必须是 cumprod：严格递减，且末项等于所有 alpha 的乘积。\n    assert bool((ab[1:] < ab[:-1]).all()), \"alpha_bar 应随 t 严格递减\"\n    assert torch.allclose(ab[0], alphas[0]) and torch.allclose(ab[-1], torch.prod(alphas)), \\\n        \"alpha_bar 必须收敛到 prod(alphas)\"\n\n    class Zero(torch.nn.Module):\n        \"\"\"eps ≡ 0：把随机性来源压到只剩初始 x_T 与 t>0 注入的 z。\"\"\"\n\n        def forward(self, x, t):\n            return torch.zeros_like(x)\n\n    # 2) 形状守恒 + 非法 shape 必须被拒绝。\n    out = ddpm_sample(Zero(), (B, D), betas)\n    assert tuple(out.shape) == (B, D)\n    for bad_shape in ((), (0, D)):\n        try:\n            ddpm_sample(Zero(), bad_shape, betas)\n        except ValueError:\n            pass\n        else:\n            raise AssertionError(\"非法 shape 未被拒绝：%r\" % (bad_shape,))\n\n    # 3) T=1 且 eps≡0：唯一一步是 t=0，必须精确等于 x_T / sqrt(alpha_0)，绝不能带噪。\n    beta0 = torch.tensor([0.5])\n    torch.manual_seed(123)\n    got = ddpm_sample(Zero(), (B, D), beta0)     # 内部第一步就是 torch.randn(shape)\n    torch.manual_seed(123)\n    x_T = torch.randn(B, D)                      # 复现同一个初始噪声\n    want = x_T / torch.sqrt(1.0 - beta0[0])\n    assert torch.allclose(got, want, atol=1e-6), \"T=1 时不应注入噪声\"\n\n    # 4) T>1：同 seed 必须逐位复现，RNG 流继续推进后必须不同（方差真的注入了）。\n    torch.manual_seed(7)\n    s1 = ddpm_sample(Zero(), (B, D), betas)\n    torch.manual_seed(7)\n    s1_repeat = ddpm_sample(Zero(), (B, D), betas)\n    s2 = ddpm_sample(Zero(), (B, D), betas)      # 不复位 seed，随机流已推进\n    assert torch.allclose(s1, s1_repeat), \"同 seed 采样必须逐位复现\"\n    assert not torch.allclose(s1, s2), \"t>0 未注入 sqrt(beta_t) 的随机性\"\n\n    # 5) 非法 beta 必须报错，而不是静默产生 inf/nan。\n    bad_betas = (torch.tensor([0.0]), torch.tensor([1.0]),\n                 torch.tensor([-0.1, 0.2]), torch.tensor([float(\"nan\")]),\n                 torch.tensor([[0.1, 0.2]]))\n    for bad in bad_betas:\n        try:\n            ddpm_sample(Zero(), (2, D), bad)\n        except ValueError:\n            pass\n        else:\n            raise AssertionError(\"非法 betas 未被拒绝：%r\" % (bad.tolist(),))\n\n    # 6) 真模型跑通：t_batch 是 long，EpsMLP 内部会校验 t 与 x 的 batch 一致。\n    net = EpsMLP(D)\n    x0 = ddpm_sample(net, (B, D), make_betas(10))\n    assert tuple(x0.shape) == (B, D) and bool(torch.isfinite(x0).all())\n\n    # 7) 训练侧的闭式前向与采样侧共用同一套 alpha_bar：q(x_t|x_0) 的系数。\n    x_0, noise = torch.randn(B, D), torch.randn(B, D)\n    for t in (0, T // 2, T - 1):\n        x_t = ab[t].sqrt() * x_0 + (1.0 - ab[t]).sqrt() * noise\n        assert tuple(x_t.shape) == (B, D)\n\n    print(\"ddpm sample self-test OK\")\n\n\nif __name__ == \"__main__\":\n    _self_test()\n",
+        "walkthrough": [
+          {
+            "note": "先看形状约定，这是本题最容易翻车的地方：betas/alphas/alpha_bar 都是 (T,)，x 与 eps 都是 (B,C,H,W)（toy 例子是 (B,D)），t_batch 是 (B,) 且 dtype=torch.long。采样循环对数据形状完全无感——除了用 shape[0] 建 t_batch 之外，所有运算都是逐元素或标量乘，所以同一个 ddpm_sample 既能跑(B,D) 的玩具数据，也能跑 (B,C,H,W) 的图像张量；模型才是那个对形状有要求的部分。"
+          },
+          {
+            "note": "入口先做校验，因为这几个错都会“静默出 nan”而不是抛异常，事后极难定位：shape 至少要有 batch 维且 B≥1；betas 必须是一维长度 T≥1；必须全为有限值；必须严格落在 (0,1) 内（beta_t=1 会让 alpha_t=0，除零得 inf；beta_t>1 会让 1-alpha_bar_t≤0，sqrt 得 nan）。另外用 torch.as_tensor 把 betas 拉成float32 张量，这样传 python list / numpy 数组也能工作，避免“beta 是 list 时 1.0-betas 直接报错”。"
+          },
+          {
+            "note": "建表：alphas = 1 - betas，alpha_bar = torch.cumprod(alphas, dim=0)。这一行是整个算法的地基——后面每一步用的 ab、a、b 都是从它取出来的标量。cumprod 与 cumsum 的区别就是 keyPoints 的第 1 条，自测第 1 条断言专门守住它（严格递减 + 末项等于 prod(alphas)）。"
+          },
+          {
+            "note": "采样前的两个工程动作：model.eval() 关掉 dropout、让 BN 用滑动统计；torch.no_grad() 让循环不建图。它们不改变数学，但决定显存与可复现性：没有 no_grad 时，T=1000 步的中间激活会被计算图一路引用，显存约等于 T 倍前向激活；没有 eval 时，带 dropout 的模型每次采样结果都不一样。"
+          },
+          {
+            "note": "循环体：x = torch.randn(shape) 即 x_T ~ N(0,I)；for t in reversed(range(T)) 走 T-1→0。每步三件事：① 用 torch.full((B,), t, dtype=torch.long) 造 t_batch（long 是硬要求，见 walkthrough 最后一条）；② eps = model(x, t_batch)，顺手校验返回形状与 x 一致（形状不一致时后面的广播会把错误藏起来）；③ mean = (x - b/sqrt(1-ab)·eps)/sqrt(a)，这就是闭式后验均值，其中 b/sqrt(1-ab) 是把 eps 折算成“该擦掉多少噪声”的系数，除 sqrt(a) 则是把尺度从 x_t 拉回 x_{t-1}。"
+          },
+          {
+            "note": "每步结尾是 DDPM 与 DDIM 的分叉点：t>0 时加 sigma·z（sigma = sqrt(beta_t)，简化版 DDPM），t=0 时直接 x = mean。注意 z 用的是 randn_like(x) 而不是 randn(shape)——两者在这里等价，但 randn_like 自动继承 device 与 dtype，换了 cuda/半精度就不用改代码；而漏掉 t>0 判断、在 t=0 也加噪，会让输出带残余随机性（这是 pitfalls 的第 3 条）。"
+          },
+          {
+            "note": "EpsMLP 只是为了让文件能独立跑起来的最小 eps_theta：它把时间步做正弦 embedding（先 to(float) 再乘频率，因为整型张量算不了乘法+sin 这条链），拼到输入后面过一个 MLP 输出同形状的预测噪声；它只支持 (B,D) 这类摊平输入，真实 UNet/DiT 替换掉它即可，采样循环一行都不用改。这也是为什么ddpm_sample 的签名与人工 referenceSolution 完全一致：model 是可替换的纯接口。"
+          },
+          {
+            "note": "_self_test 把本题的每条“不可错”都变成断言：① alpha_bar 严格递减且末项等于 prod(alphas)（cumprod 的守门人）；② 输出形状与输入一致、非法 shape 被拒绝；③ T=1 且 eps≡0 时输出必须精确等于 x_T/sqrt(alpha_0)（证明 t=0 真的没加噪，用同 seed 复现同一个初始噪声来对照）；④ 同 seed 逐位复现、RNG 流推进后结果必须变化（证明 t>0 注入了 sqrt(beta_t)·z）；⑤ beta 越界/含 nan/二维都要抛 ValueError；⑥ 真模型跑通且输出有限；⑦ 训练侧 q(x_t|x_0) 的系数与采样共用同一套 ab。这些都只是断言，不需要 pytest，python ddpm_sample.py 直接验证。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "T = 1：循环里只有 t=0，走 else 分支不加噪，输出是确定性的、同 seed 逐位复现（自测第 3、4 条专门覆盖）。",
+        "t = 0 的特判：x_0 是采样终点，必须只取 mean；写成每步都加噪会让最终输出带残余随机性、且无法通过固定 seed 复现。",
+        "beta_t 越界：beta_t = 1 → alpha_t = 0 → 除零 inf；beta_t > 1 → 1-alpha_bar_t ≤ 0 → sqrt 得 nan。两种都不抛异常，实现里显式校验 (0,1)，并把 beta_start < beta_end 也一并检查。",
+        "beta 含 nan/inf：isfinite 检查放在开根号之前，否则 nan 会一路传播到输出、看不出源头在哪。",
+        "T 很大（如 1000）时 alpha_bar_T ≈ 4e-5：1-alpha_bar_t 接近 1、开根号安全；但 T 很小或 beta 很小时 1-alpha_bar_t 极小，b/sqrt(1-ab) 会把 eps 的误差放大，属于模型的精度边界而不是实现的 bug。",
+        "shape 为空 ()、B=0、(0,D)：都不能做 randn 或建 t_batch，实现里在入口就 raise ValueError。",
+        "betas 传成 python list / numpy 数组 / int 张量：torch.as_tensor(..., dtype=torch.float32) 统一收口；若直接把 int 张量当 float 用，1.0 - betas 在整型下会退化成整数减法。",
+        "device 不一致：betas 留在 cpu 而 x 在 cuda 会在逐元素运算时报 “Expected all tensors on the same device”，实现里把 betas.to(device) 且 t_batch 也建在同一 device；另外 x 若是整型 dtype（例如 uint8 图像），randn_like 会直接报错，必须先 .float()。",
+        "模型带 dropout / BatchNorm：必须 model.eval()，否则采样每次不同、BN 还会用 batch 统计导致样本随 batch 大小变化。",
+        "没有 torch.no_grad()：T 步计算图累积，显存随 T 线性增长，T=1000 的高分辨率采样很容易 OOM。",
+        "eps_theta 返回形状与 x 不一致（例如少了通道维）：靠广播有时能“算下去”，结果却是错的；实现里显式校验形状。",
+        "采样步数超过训练时见过的最大 t（例如在 T=1000 的调度上从 t=2000 开始）：alpha_bar 表没有对应项会索引越界，必须用训练时的同一张 betas 表。"
+      ],
+      "pitfalls": [
+        "alpha_bar 用错（写成 sum 而不是 cumprod）：cumsum(betas) 会让 1-alpha_bar_t 变负数、sqrt 出 nan，而 alpha_bar_t 本身必须是严格递减、末项等于所有 alpha_s 的乘积。",
+        "时间步 t 的 dtype 传给 embedding 层时报错（需 long）：t_batch 必须是 (B,) 的 torch.long 张量，传 python int 或 float 张量都会在 nn.Embedding 处失败。",
+        "忘记 t=0 不加噪声：最后一步只取 mean，否则输出带残余随机性、无法复现，也不再是“生成终点”。",
+        "把 DDIM（确定性）与 DDPM（随机）的更新混用：两者共用同一套 alpha_bar，但 DDIM 没有 sqrt(beta_t)·z 这一项，混着写会既不是 DDPM 也不是 DDIM。",
+        "mean 里把 alpha_bar_{t-1} 当成 alpha_bar_t（或反）：t 与 t-1 的 alpha_bar 各出现一次、位置不同，T 小时数值差异隐蔽，T 大时整条采样轨迹全错。",
+        "torch.cumprod 漏写 dim=0：对 (T,) 侥幸正确，一旦 betas 带前导维就沿错误的轴累积，形状还对得上。",
+        "sigma 取 sqrt(beta_t) 却漏了 t>0 判断，或在 t=0 走了加噪分支。",
+        "z 用 torch.randn(1) / 每个样本一个标量再广播，而不是 randn_like(x)：batch 内样本共享噪声，多样性下降，而且因为能广播成功，属于静默错误。",
+        "把循环写成 for t in range(T)（正向）：alpha_bar 从 1 走到 0，等价于从数据一路加噪，输出是噪声而不是样本。",
+        "采样时不加 torch.no_grad()：T 步计算图累积，显存随时间步线性增长直至 OOM。",
+        "忘记 model.eval()：dropout 让每次采样结果不同，BN 用 batch 统计还会让输出随 batch 大小变化。",
+        "不校验 beta 的取值：beta=1 除零、beta>1 或 nan 开根号，都是静默出 inf/nan 而非报错。",
+        "betas 与 x 不在同一 device，或 x 是整型 dtype（uint8 读图）直接 randn_like，都会在循环中途才炸。",
+        "t_batch 用 torch.full((shape[0],), t) 却忘了 device=：模型在 cuda 而 t_batch 在 cpu，embedding 取索引时报错。",
+        "把 step 数 T 与训练的最大时间步混为一谈：DDIM 可以在子序列上跳步（T=1000 只跑 20~50 步），但绝不能超过训练时见过的最大 t，也不能换一套 betas 表。",
+        "采样与训练用了不同的 beta 调度（训练 cosine、采样线性）：模型见到的是分布外的时间步，样本明显变糊。"
+      ],
+      "followUps": [
+        "采样为什么慢、怎么加速？T=1000 意味着 1000 次前向；DDIM 用同一套 alpha_bar 做确定性跳步（20~50 步）、DPM-Solver 用高阶 ODE 求解器、progressive distillation 把多步蒸馏成少步，latent diffusion 则把循环搬到更小的潜空间上。",
+        "sigma_t 的两种取法差别在哪？简化版 sqrt(beta_t) 在 t 小时偏大，真实后验方差 beta_t(1-alpha_bar_{t-1})/(1-alpha_bar_t) 会随 t→0 收缩到 0，因此后者在低噪声区间更稳、样本更干净。",
+        "DDIM 的更新式怎么写？先由 eps 还原 x_0_hat，再用 x_{t-1} = sqrt(alpha_bar_{t-1})·x_0_hat + sqrt(1-alpha_bar_{t-1})·eps；eta=0 完全确定，eta=1 退化成 DDPM。",
+        "DDPM 的 loss 为什么可以直接对 eps 做 MSE？它来自简化后的变分下界：把 KL 项展开后，去掉与 t 相关的权重系数就得到对噪声的加权平方误差，工程上更稳也更好训。",
+        "训练时 t 怎么采？keyPoints 说的是均匀采样；实践中也有重要性采样、低噪声偏置（让 t 小的样本更常出现），以及 logit-normal 时间步采样。",
+        "条件生成怎么加？classifier-free guidance：eps = eps_uncond + w·(eps_cond - eps_uncond)，w 是引导强度；采样循环本身只多一次前向或一次 batch 拼接。",
+        "怎么验证自己的实现是对的？小 T + 零模型做退化测试（本文件的自测就是这一套）；再用已知 x_0 走 q(x_t|x_0) 加噪、跑采样看是否近似重建；最后与官方实现在同 seed 下一个张量一个张量地比。",
+        "整个 batch 能不能用不同的 t？可以，把 t_batch 填成每个样本各自的 t 即可——一致性采样、并行采样都基于这一点，因为循环体对 t 只有逐元素依赖。",
+        "半精度下会出什么问题？t 接近 T 时 1-alpha_bar_t≈1 很安全，反而是 t 小时 1-alpha_bar_t 极小，fp16 下 b/sqrt(1-ab) 这个比值容易掉精度，通常用 fp32 算系数、fp16 只跑网络。"
+      ],
+      "variations": [
+        "DDIM 确定性采样（eta=0）：同一套 alpha_bar，去掉 sqrt(beta_t)·z，并在任意子序列上跳步。",
+        "只实现“单步更新”函数 p_sample_step(x_t, t) 而非整条循环，便于单测与在 DDIM / 并行采样中复用。",
+        "训练步：给定 x_0 均匀采 t，构造 x_t = sqrt(alpha_bar_t)·x_0 + sqrt(1-alpha_bar_t)·eps，返回 MSE(eps_pred, eps)。",
+        "用 nn.Embedding + MLP 注入时间条件（而不是正弦 embedding），考察 t_batch 的 long dtype 与形状对齐。",
+        "cosine beta 调度（Nichol & Dhariwal）：alphas_cumprod = cos((t/T+s)/(1+s)·π/2)^2 归一化，替换 make_betas 即可。",
+        "classifier-free guidance 的条件采样循环（同一份实现，只改 eps 的组合方式）。",
+        "latent diffusion：循环跑在 VAE 编码器给出的潜空间上，采样结束后再 decode 回像素。",
+        "返回全轨迹 p_sample_loop（保存每一步的 x_t）用于可视化加噪/去噪过程。",
+        "把 sigma 换成真实后验方差 beta_t(1-alpha_bar_{t-1})/(1-alpha_bar_t)，并对比样本质量与 t 小时的稳定性。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "DDPM 采样：形状与每步更新",
+        "caption": "x_t (B,C,H,W) 进 eps_theta 得到同形状的 eps，算出闭式后验均值；t>0 注入 sqrt(beta_t)·z，t=0 只取均值，循环 t 从 T-1 递减到 0 后输出 x_0。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' font-size='13'><text x='14' y='22' font-size='15' fill='currentColor'>DDPM 采样：形状流转与每步更新</text><line x1='14' y1='32' x2='466' y2='32' stroke='var(--line-1)' stroke-width='1'/><rect x='14' y='44' width='92' height='44' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='26' y='66' fill='currentColor'>x_t</text><text x='22' y='84' fill='var(--fg-1)'>(B,C,H,W)</text><path d='M106 66 L116 66' stroke='currentColor' stroke-width='1'/><path d='M116 62 L124 66 L116 70 Z' fill='currentColor'/><rect x='124' y='44' width='104' height='44' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='134' y='66' fill='currentColor'>eps_theta</text><text x='134' y='84' fill='var(--fg-1)'>(B,C,H,W)</text><path d='M228 66 L238 66' stroke='currentColor' stroke-width='1'/><path d='M238 62 L246 66 L238 70 Z' fill='currentColor'/><rect x='246' y='44' width='100' height='44' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='256' y='66' fill='currentColor'>mean</text><text x='256' y='84' fill='var(--fg-1)'>(B,C,H,W)</text><path d='M346 66 L356 66' stroke='currentColor' stroke-width='1'/><path d='M356 62 L364 66 L356 70 Z' fill='currentColor'/><rect x='364' y='44' width='102' height='44' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='374' y='66' fill='currentColor'>x_{t-1}</text><text x='374' y='84' fill='var(--fg-1)'>(B,C,H,W)</text><text x='14' y='118' fill='currentColor'>alpha_t = 1 - beta_t   alpha_bar_t = prod_{s&lt;=t} alpha_s</text><text x='14' y='138' fill='var(--fg-1)'>alpha_bar 必须用 cumprod 累积（不是 sum），随 t 严格递减</text><text x='14' y='162' fill='var(--fg-1)'>mean = (x_t - beta_t/sqrt(1 - alpha_bar_t)·eps_theta)</text><text x='14' y='182' fill='var(--fg-1)'>        / sqrt(alpha_t)</text><text x='230' y='182' fill='var(--accent)'>← 闭式后验均值</text><text x='14' y='204' fill='currentColor'>t &gt; 0：x_{t-1} = mean + sqrt(beta_t)·z</text><text x='280' y='204' fill='currentColor'>t = 0：不加噪（只取 mean）</text><text x='14' y='226' fill='var(--fg-1)'>t_batch 必须是 (B,) long；循环 t = T-1 → 0</text></svg>",
+        "alt": "流程图：x_t 形状 (B,C,H,W) 输入 eps_theta 得到同形状的 eps，再得到 mean (B,C,H,W)；t 大于 0 时加 sqrt(beta_t)·z 得到 x_{t-1}，t 等于 0 时直接令 x 等于 mean。下方三行标注 alpha_t = 1 - beta_t、alpha_bar_t = prod(alpha_s) 必须用 cumprod 累积、mean = (x_t - beta_t/sqrt(1 - alpha_bar_t)·eps_theta)/sqrt(alpha_t) 是闭式后验均值，以及 t_batch 必须是 (B,) 的 long 张量、循环方向为 t = T-1 到 0。"
+      },
+      "selfTest": [
+        "把 alpha_bar 写成 torch.cumsum(betas, dim=0)：beta 线性取 1e-4→0.02、T=1000 时 alpha_bar_999 约等于多少，1-alpha_bar_999 的符号是什么，第一次 nan 出现在哪一行？",
+        "为什么把分子写成 beta_t/sqrt(1-alpha_bar_t) 与写成 (1-alpha_t)/sqrt(1-alpha_bar_t) 结果完全一样？（提示：alpha_t = 1 - beta_t）",
+        "T=1 时循环会走哪个分支、输出是否确定？如果此时把 t>0 判断删掉（每步都加 sqrt(beta_t)·z），输出会变成什么？",
+        "去掉 t=0 的特判（t=0 也加 sqrt(beta_0)·z）之后，同一个 seed 还能复现输出吗？生成的样本在视觉上会有什么变化？",
+        "t_batch 传成 torch.float32 的 (B,) 张量，给 nn.Embedding 版本的时间条件会发生什么？如果模型改成正弦 embedding（先 .to(float)），还会报错吗，为什么？"
+      ],
+      "keyPoints": [
+        "alpha_t = 1 - beta_t；alpha_bar_t = prod_{s<=t} alpha_s 必须用 cumprod（不是 sum），它严格递减。",
+        "x_{t-1} = (x_t - beta_t/sqrt(1-alpha_bar_t)·eps_theta)/sqrt(alpha_t)：这是 q(x_{t-1}|x_t,x_0) 的均值，由“先估 x_0、再代回后验”推出。",
+        "t>0 时加 sigma_t·z，sigma_t = sqrt(beta_t)（简化版 DDPM）；z 必须与 x 同形状（randn_like）。",
+        "t=0 不再加噪，最终返回的就是 x_0 的估计。",
+        "t_batch 用 torch.full((B,), t, dtype=torch.long)；采样与训练必须共用同一套 alpha_bar（训练时 t 均匀采样并构造 x_t = sqrt(alpha_bar)·x_0 + sqrt(1-alpha_bar)·eps）。"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（ddpm-sampling）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题面原文：实现 DDPM 的反向采样循环——用模型预测噪声 eps_theta，按闭式后验均值公式迭代，并在 t>0 时注入方差。本题解的实现与它一致，没有改写题意。",
+          "人工 keyPoints 原文四条（alpha_t=1-beta_t / alpha_bar 用 prod、x_{t-1} 公式、t>0 加 sigma_t·z 且 sigma_t=sqrt(beta_t)、t=0 不加噪且训练时 t 均匀采样并构造 x_t）在本文件的 keyPoints 与代码里逐条对应。",
+          "人工 pitfalls 四条（alpha_bar 写成 sum、t 的 dtype 需 long、忘记 t=0 不加噪、DDIM 与 DDPM 混用）被完整保留在 pitfalls 的前四条，其余为补充。",
+          "人工 referenceSolution 的算法（cumprod 建 alpha_bar、mean=(x-b/sqrt(1-ab)·eps)/sqrt(a)、t>0 加 sqrt(b)*randn_like(x)、t=0 取 mean、t_batch 用 torch.full(...,dtype=torch.long)）在本文件的 ddpm_sample 里逐行保留；实测在同一 seed、同一确定性模型下两者输出逐位相同（max 绝对差 0.0）。",
+          "数学：alpha_bar_t = prod_{s<=t}(1-beta_s) = cumprod(alphas)[t]，故必须用 cumprod；由 x_0_hat=(x_t-sqrt(1-alpha_bar_t)eps)/sqrt(alpha_bar_t) 代回 q(x_{t-1}|x_t,x_0) 可整理出 mean=(x_t-beta_t/sqrt(1-alpha_bar_t)eps)/sqrt(alpha_t)。",
+          "数学：beta_t = 1-alpha_t，所以 beta_t/sqrt(1-alpha_bar_t) 与 (1-alpha_t)/sqrt(1-alpha_bar_t) 恒等。",
+          "代码事实：本文件只用 python + pytorch（import torch），纯 CPU float32 可运行；python ddpm_sample.py 实测打印 “ddpm sample self-test OK”，7 组断言全部通过。",
+          "代码事实：自测里 T=1、eps≡0 时输出与 x_T/sqrt(alpha_0) 的绝对误差小于 1e-6，证明 t=0 分支确实没有注入噪声（用同 seed 复现同一初始噪声做对照）。",
+          "代码事实：自测里同 seed 两次采样逐位相同、不复位 seed 的第三次采样与它们不同，证明 t>0 分支确实注入了 sqrt(beta_t)·z。",
+          "工程加固说明：本文在人工 referenceSolution 之外补了 betas 值域校验、eval()、no_grad()、eps 形状校验；对无 dropout/BN 的确定性模型这些不改变数值（已比对为逐位相同），属于工程加固而非改写算法。"
+        ],
+        "uncertain": [
+          "人工题干未给具体张量形状与是否条件生成：本文按无条件生成、通用 (B,C,H,W)（toy 例子 (B,D)）约定实现，实际评测可能用图像 UNet 的 4D 张量或潜空间张量。",
+          "人工题干未给 T、beta 调度与 eps_theta 的结构：本文用线性调度 T=50（自测）/ 通用 T 作为示例，真实训练常用 T=1000 线性或 cosine 调度，这不影响采样循环的写法。",
+          "sigma_t 的取法：人工 keyPoints 指定简化版 sqrt(beta_t)，本文严格照做；另一种真实后验方差 beta_t(1-alpha_bar_{t-1})/(1-alpha_bar_t) 只在 followUps/walkthrough 里作为对比提及，未写进代码。",
+          "人工 referenceSolution 未包含 model.eval() 与 torch.no_grad()：本文补上后，对带 dropout 的模型输出会与“不调 eval”的版本不同（这正是补它的目的）。若评测要求与未加 eval 的实现逐位一致，需要去掉 eval()——这一点无法从题面判断，故记在这里。",
+          "训练时 t 均匀采样来自人工 keyPoints，题面未给 t 的采样分布细节（是否有重要性采样/低噪声偏置），本文的 selfTest 与自测代码不涉及训练循环。",
+          "题面未涉及混合精度、x 的缓存（caching）、以及采样器是否需要支持 batch 内不同 t；本文实现天然支持 batch 内不同 t（把 t_batch 填成逐样本的值即可），但未在自测中覆盖这一用法。",
+          "自测第 3 条（T=1 的精确等价）依赖“初始 randn 是唯一随机来源”这一事实（eps≡0 且 t=0 不加噪），用同 seed 复现同一个 x_T 来对照；如果日后改动 RNG 的调用顺序，这条断言会失效，需要同步更新。",
+          "本文的 EpsMLP 只是让文件可独立运行的最小 eps_theta（只支持 (B,D) 摊平输入），它不代表真实模型的容量与接口复杂度；真实 UNet/DiT 替换它时 ddpm_sample 一行都不用改。"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "batchId": "prob-cur-32",
+  "entries": [
+    {
+      "id": "aliyun-digital-human-scenario",
+      "tldr": "单身份数字人的正解是冻结主干、用参考图 ID 特征解耦注入 + 小秩 LoRA + 身份/先验损失微调；追问要横向比 ref image 注入方案。",
+      "restated": "阿里云多模态大模型暑期实习一面的场景题，只有一句主问与一句追问，没有输入输出、数据规模、算力约束，也没有样例。主问：「如果我目前有一个数字人的模型，我想训练成只生成一个人的，可以怎么做？」追问：「你看过什么别的 SOTA 模型的 ref image 注入方式，有什么优劣？」所以这题要交付的是方案设计（数据 → 训练策略 → 损失 → 评估）加上 ref image 注入方案的横向对比，而不是一段可判题的算法代码；题面未说明数字人模态是图像、视频还是说话头。",
+      "approach": [
+        {
+          "step": "先把「只生成一个人」拆成三个互相拉扯的目标",
+          "detail": "面试官要听的不是「微调一下」，而是目标分解：(1) ID 保真——生成结果与参考图必须是同一个人（换角度、换光照、换表情都还像）；(2) 驱动可控——表情、口型、姿态、背景仍听文本与驱动信号的，不能被身份条件吃掉；(3) 基座先验不崩——只喂一个人的数据，最容易灾难性遗忘，通用人像、画质、文本跟随度会一起退化。任何单一手段（只做 LoRA、只加 ID 条件、只全参微调）都只能改善其中一到两项，方案本质是这三者之间的取舍与配比。"
+        },
+        {
+          "step": "数据侧：把「一个人」拍全，并构造可控的训练对",
+          "detail": "训练对是（驱动信号，该人的帧）：采集该人多视角、多表情、多光照、多姿态的图片与短视频；用现成模型自动标注——人脸检测＋关键点/3DMM 系数、人像分割、CLIP 打标、视频的音素/口型对齐；caption 里塞一个稀有标识符（sks 式）指代「这个人」，再用类别词 person 描述它是什么，这样微调时能把「身份」与「类别」解耦。数据要按 ID 相似度去重、剔除低质与遮挡帧、避免同一场景重复（否则模型会把背景当成身份的一部分，DreamBooth 的经典过拟合）。验证集必须同时包含该人的新场景与其他人的人像，前者测像不像，后者测有没有把别人污染成他。"
+        },
+        {
+          "step": "训练侧由轻到重：先零样本注入，再小秩微调，最后才考虑固化",
+          "detail": "路线 A（最省、最不容易遗忘）：冻结整个基座，只加参考图条件分支——人脸识别特征（ArcFace 类）或 CLIP 图像特征经投影成 ID token，走解耦 cross-attn（IP-Adapter 式）注入，只训这层投影与 K/V 投影，基座一个参数都不动；零样本能力与文本可控性都保得住，还能用 id_scale 在推理期调身份强度。路线 B（保真再加一档）：在 A 之上对注意力的 QKV/输出投影加 LoRA，单身份只需很小秩（r=16 到 64）、低学习率、1k 到 3k 步就够——数据只有一个人，训练轮数与步数按「新模型」设必然过拟合。路线 C（只在允许固化时用）：DreamBooth 式部分/全参微调＋稀有 token＋class prior preservation，保真与自由度最高，但每个身份一份权重、训练慢、容易连带语言漂移。工程默认推荐 A+B：先零样本注入保住可控性与可插拔，再用小秩 LoRA 把 ID 相似度拉上去。"
+        },
+        {
+          "step": "损失：主损失之外必须有身份损失与先验保持",
+          "detail": "扩散或流匹配的主损失只保证「会画人」，不保证「画的是这个人」，所以要在潜空间或像素域加身份损失：把预测的干净样本过一个人脸识别网络，与参考图的 embedding 算余弦距离，越小越像（人脸特征比 CLIP 特征对身份更判别）。再按模态加：关键点或 3DMM 系数损失保表情、感知损失/LPIPS 保纹理、视频场景加光流或时序判别器防抖、嘴部区域损失保口型同步。防遗忘用 DreamBooth 的 class prior preservation——拿基座自己生成的同类人像当正则样本，约束新模型在类别上的输出不要偏离旧模型（在预测空间蒸馏冻结基座是最省事的等价写法）。训练时以一定概率丢掉参考图条件（ID dropout）与文本条件（CFG dropout），推理期才有 id_scale 与 guidance 两个旋钮；各项损失量级差几个数量级，权重要按量级归一或做不确定度加权。"
+        },
+        {
+          "step": "评估与上线：先把「像」和「没被污染」分开测",
+          "detail": "离线指标：ID 余弦相似度（同人越像越好，同时测其他人是否被拉高，防身份泄漏）、FID/FVD（画质与视频时序质量）、口型同步（LSE-C/LSE-D）、姿态与表情可控性消融（固定参考图换驱动信号看是否跟随）、以及关掉参考图后是否干净回落成通用先验。过拟合用早停＋EMA＋固定随机种子的人工抽检控制。上线时：单身份且不再扩展，可以把 adapter/LoRA 权重合并进主干，省一份推理开销；只要还有多身份需求，就保留 adapter 热插拔，并把参考特征做缓存。"
+        },
+        {
+          "step": "追问：ref image 注入方式的横向对比",
+          "detail": "按「信息进模型的位置」分四类，逐类给优劣。①进权重（DreamBooth 全参/部分微调＋稀有 token）：保真与场景自由度最高，但每个 ID 一份权重、3 到 5 张以上图、训练数小时到数天、易语言漂移与背景过拟合；Textual Inversion 只学一个 token embedding，最轻但保真弱，人脸这种精细身份撑不起来。②进权重但低秩（单身份 LoRA）：存储与训练成本小、可切换、不丢通用能力，保真上限不如全参，秩与强度要调。③进 cross-attn（IP-Adapter 解耦 cross-attn，CLIP 图像特征＋投影）：即插即用、零样本、可多图、不破坏文本可控性，缺点是 CLIP 特征的 ID 信息密度低，精确身份要靠人脸特征（IP-Adapter-FaceID 用 ArcFace）再加 LoRA 提保真，注入权重与层的选择很敏感。④进空间条件（InstantID：ArcFace 特征＋人脸关键点图过 ControlNet 式 IdentityNet；PhotoMaker：多张参考图堆成 stacked ID embedding 融进文本 token；ReferenceNet：与主干同构的参考分支逐层用 attention 注入）：InstantID 单图零样本且 ID 保真强、姿态可控，但依赖人脸检测与关键点，侧脸/遮挡退化、风格化受限；PhotoMaker 免训练、可多图融合、风格多样，但 embedding 有信息损失，相似度不如 ArcFace 系；ReferenceNet 能保住像素级细节（服饰、纹样）且天然适配视频人物动画，代价是参考分支与主干同构、显存与单步时间大约翻倍。视频说话头系（参考图＋音频→表情/口型，再加时序层与逐帧参考注入）是把 ref 当作外观条件反复注入，优点是时序一致，缺点是长视频仍会 ID 漂移、且容易把驱动者的身份泄漏进来。评估维度固定成五条：保真度、数据需求（零样本还是必须微调）、训练与推理成本、对文本/姿态的可控性影响、多身份与风格泛化能力。"
+        }
+      ],
+      "complexity": {
+        "time": "训练：adapter/LoRA 单身份微调 1k 到 3k 步、单卡数小时；DreamBooth 式 3k 到 5k 步且每个身份一份权重。推理：adapter 路线每步只多一次参考特征的 K/V 计算",
+        "space": "显存由主干与分辨率决定：解耦 cross-attn 只多一份参考特征与 LoRA 参数（几十 MB）；ReferenceNet 或 ControlNet 式注入要跑一个与主干同构的参考分支，显存与单步时间约翻倍",
+        "why": "代价来自「参考图条件注入在哪一层」：解耦 cross-attn 只加投影与 K/V，几乎不增加计算；同构参考分支或额外控制网络要逐层前向，参数量与激活值成倍增长，这是保真度与成本的直接兑换。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''单身份数字人：参考图 ID 注入 + LoRA 微调的最小可跑训练循环。\n\n工程里的 VAE、文本编码器、人脸识别网络、DiT 主干在本文件里都换成了同接口的小模块，\n目的是在没有权重、没有 GPU 的机器上把「冻结主干 → 参考图解耦注入 → 低秩微调 →\n多目标损失（去噪 + 身份 + 先验保持）」这条链路完整跑通并断言其行为；\n把这几个小模块逐个换成真实权重，循环本身即可直接用于训练。\n'''\nimport copy\nimport math\n\nimport torch\nimport torch.nn.functional as F\nfrom torch import nn\n\ntorch.manual_seed(0)\nDIM, HEADS, ID_DIM, RANK, STEPS = 64, 4, 128, 8, 500\n\n\ndef sinusoidal(t, dim):\n    '''时间步 t∈[0,1] 的傅里叶位置编码，DiT 里代替可学习时间 embedding。'''\n    half = dim // 2\n    freqs = torch.exp(torch.linspace(0.0, math.log(1000.0), half))\n    ang = t[:, None] * freqs[None, :] * 2.0 * math.pi\n    return torch.cat([ang.sin(), ang.cos()], dim=-1)\n\n\nclass FaceEncoder(nn.Module):\n    '''代替 ArcFace 等人脸识别网络：latent（真实场景是图片）→ 单位化 ID 特征。\n\n    参数全程冻结，但梯度仍可穿过它流回生成器——身份损失正是靠这一步起作用。\n    '''\n\n    def __init__(self, in_dim=DIM, out_dim=ID_DIM):\n        super().__init__()\n        self.net = nn.Sequential(nn.Linear(in_dim, 128), nn.SiLU(), nn.Linear(128, out_dim))\n\n    def forward(self, x):\n        return F.normalize(self.net(x), dim=-1)\n\n\nclass LoRALinear(nn.Module):\n    '''包住冻结的基座权重，只训练低秩增量 x @ Aᵀ @ Bᵀ * (alpha/r)。\n\n    B 零初始化保证「训练前 = 基座」，避免随机增量一上来就把主干先验打乱。\n    '''\n\n    def __init__(self, base, r=RANK, alpha=16.0):\n        super().__init__()\n        self.base = base\n        for p in self.base.parameters():\n            p.requires_grad_(False)\n        out_f, in_f = base.weight.shape\n        self.A = nn.Parameter(torch.randn(r, in_f) / math.sqrt(in_f))\n        self.B = nn.Parameter(torch.zeros(out_f, r))\n        self.scale = alpha / r\n\n    def forward(self, x):\n        return self.base(x) + F.linear(F.linear(x, self.A), self.B) * self.scale\n\n\nclass DecoupledIDAttention(nn.Module):\n    '''文本 cross-attn 与参考图 cross-attn 的 K/V 分开算，输出相加后再过同一个 out 投影。\n\n    解耦的意义：ID 强度由一个独立 scale 控制，不重写文本分支的权重；\n    scale=0 时 ID 分支贡献恰好为 0，退化成「只用文本 + 基座先验」的通用模型。\n    '''\n\n    def __init__(self, dim=DIM, heads=HEADS, id_dim=ID_DIM):\n        super().__init__()\n        assert dim % heads == 0, 'dim 必须能被 heads 整除'\n        self.h, self.dh = heads, dim // heads\n        self.to_q = LoRALinear(nn.Linear(dim, dim, bias=False))\n        self.to_k = LoRALinear(nn.Linear(dim, dim, bias=False))\n        self.to_v = LoRALinear(nn.Linear(dim, dim, bias=False))\n        self.id_proj = nn.Sequential(nn.Linear(id_dim, dim), nn.SiLU(), nn.Linear(dim, dim))\n        self.to_k_id = nn.Linear(dim, dim, bias=False)\n        self.to_v_id = nn.Linear(dim, dim, bias=False)\n        self.to_out = nn.Linear(dim, dim)\n\n    def _split(self, t):\n        b, s, _ = t.shape\n        return t.view(b, s, self.h, self.dh).transpose(1, 2)\n\n    def _attend(self, q, k, v):\n        w = torch.softmax(q @ k.transpose(-2, -1) / math.sqrt(self.dh), dim=-1)\n        return w @ v\n\n    def forward(self, q_in, text, id_vec, id_scale=1.0):\n        b, s, _ = q_in.shape\n        q = self._split(self.to_q(q_in))\n        out = self._attend(q, self._split(self.to_k(text)), self._split(self.to_v(text)))\n        id_tok = self.id_proj(id_vec)[:, None, :]\n        out = out + id_scale * self._attend(q, self._split(self.to_k_id(id_tok)),\n                                            self._split(self.to_v_id(id_tok)))\n        return self.to_out(out.transpose(1, 2).reshape(b, s, -1))\n\n\nclass IDConditionedDenoiser(nn.Module):\n    '''极简 DiT：x_t 与 t 编码融合 → 文本+参考图 cross-attn → FFN → 回归速度场。'''\n\n    def __init__(self, dim=DIM):\n        super().__init__()\n        self.t_mlp = nn.Sequential(nn.Linear(dim, dim), nn.SiLU(), nn.Linear(dim, dim))\n        self.norm = nn.LayerNorm(dim)\n        self.attn = DecoupledIDAttention()\n        self.ff = nn.Sequential(nn.Linear(dim, 2 * dim), nn.SiLU(), nn.Linear(2 * dim, dim))\n        self.out = nn.Linear(dim, dim)\n        for module in (self.t_mlp, self.norm, self.ff):\n            for p in module.parameters():\n                p.requires_grad_(False)          # 主干全冻结：只训 LoRA 增量与 ID 注入分支\n\n    def forward(self, x_t, t, text, id_vec, id_scale=1.0):\n        h = x_t + self.t_mlp(sinusoidal(t, x_t.shape[-1]))\n        h = h + self.attn(self.norm(h)[:, None, :], text, id_vec, id_scale)[:, 0, :]\n        h = h + self.ff(h)\n        return self.out(h)\n\n\ndef build_data():\n    '''一个人的参考图 + 通用先验：这里全部用固定随机向量模拟。\n\n    换成真实数据时：ref_latent 是 VAE 编码该人的多张参考图，class_latent 是基座对\n    「a person」的先验中心，rare/klass 是稀有标识符与类别词的文本 embedding。\n    '''\n    ref_latent = F.normalize(torch.randn(DIM), dim=-1) * 2.0\n    class_latent = F.normalize(torch.randn(DIM), dim=-1) * 2.0\n    rare = torch.randn(4, DIM)\n    klass = torch.randn(4, DIM)\n    return ref_latent, class_latent, rare, klass\n\n\ndef make_batch(n, ref_latent, class_latent, rare, klass, id_ref):\n    '''一个 batch 里一半是这个人的样本（带参考图 ID 条件），一半是通用先验样本（无 ID）。'''\n    half = n // 2\n    x0 = torch.cat([ref_latent + 0.05 * torch.randn(half, DIM),\n                    class_latent + 0.10 * torch.randn(n - half, DIM)])\n    text = torch.cat([rare[None].expand(half, -1, -1), klass[None].expand(n - half, -1, -1)])\n    id_vec = torch.cat([id_ref[None].expand(half, -1), torch.zeros(n - half, ID_DIM)])\n    is_target = torch.cat([torch.ones(half, dtype=torch.bool),\n                           torch.zeros(n - half, dtype=torch.bool)])\n    return x0, text, id_vec, is_target\n\n\ndef train_step(model, base, face, opt, data, id_ref, w):\n    '''一次优化：去噪主损失 + 身份损失 + 先验保持，附带 CFG / ID 条件 dropout。'''\n    x0, text, id_vec, is_target = data\n    t = torch.rand(x0.shape[0])\n    noise = torch.randn_like(x0)\n    t_ = t[:, None]\n    x_t = (1.0 - t_) * noise + t_ * x0            # 流匹配插值：t=0 是纯噪声，t=1 是干净数据\n    v_target = x0 - noise\n    text = torch.where((torch.rand(x0.shape[0]) < 0.10)[:, None, None], torch.zeros_like(text), text)\n    drop_id = (torch.rand(x0.shape[0]) < 0.05)[:, None] & is_target[:, None]\n    id_cond = torch.where(drop_id, torch.zeros_like(id_vec), id_vec)\n    v = model(x_t, t, text, id_cond)\n    loss = w['mse'] * F.mse_loss(v, v_target)\n    if bool(is_target.any()):                     # 身份损失：一步还原出的 x1 要和参考图同一个人\n        x1 = x_t[is_target] + (1.0 - t_[is_target]) * v[is_target]\n        loss = loss + w['id'] * (1.0 - F.cosine_similarity(face(x1), id_ref[None], dim=-1)).mean()\n    if bool((~is_target).any()):                  # 先验保持：通用样本上不许偏离冻结基座\n        with torch.no_grad():\n            v_base = base(x_t[~is_target], t[~is_target], text[~is_target], id_cond[~is_target])\n        loss = loss + w['prior'] * F.mse_loss(v[~is_target], v_base)\n    opt.zero_grad(set_to_none=True)\n    loss.backward()\n    torch.nn.utils.clip_grad_norm_([p for p in model.parameters() if p.requires_grad], 1.0)\n    opt.step()\n    return float(loss.detach())\n\n\n@torch.no_grad()\ndef sample(model, n, text, id_vec, id_scale=1.0, steps=16):\n    '''从 t=0 的纯噪声欧拉积分到 t=1，得到 n 个 latent。'''\n    was_training = model.training\n    model.eval()\n    x = torch.randn(n, DIM)\n    for i in range(steps):\n        t0, t1 = i / steps, (i + 1) / steps\n        x = x + (t1 - t0) * model(x, torch.full((n,), t0), text, id_vec, id_scale)\n    if was_training:\n        model.train()\n    return x\n\n\n@torch.no_grad()\ndef id_similarity(face, latent, id_ref):\n    '''生成的 latent 与参考图 ID 特征的余弦相似度，越大越像这个人。'''\n    return float(F.cosine_similarity(face(latent), id_ref[None], dim=-1).mean())\n\n\n@torch.no_grad()\ndef eval_idsim(face, model, text, id_ref, id_scale=1.0, draws=4, n=8):\n    '''每次采样有随机性，取多轮平均，避免用单个幸运样本下结论。'''\n    sims = [id_similarity(face, sample(model, n, text, id_ref[None].expand(n, -1), id_scale), id_ref)\n            for _ in range(draws)]\n    return sum(sims) / len(sims)\n\n\ndef main():\n    ref_latent, class_latent, rare, klass = build_data()\n    face = FaceEncoder()\n    for p in face.parameters():\n        p.requires_grad_(False)\n    id_ref = face(ref_latent).clone()                    # 参考图的人脸特征（真实场景来自 ArcFace）\n    model = IDConditionedDenoiser()\n    base = copy.deepcopy(model)                          # 冻结基座：先验保持的教师 + 训练前对照\n    base.eval()\n    for p in base.parameters():\n        p.requires_grad_(False)\n\n    trainable = [p for p in model.parameters() if p.requires_grad]\n    total = sum(p.numel() for p in model.parameters())\n    print('可训练参数 %d / 总参数 %d（%.1f%%）' % (sum(p.numel() for p in trainable), total,\n                                                 100.0 * sum(p.numel() for p in trainable) / total))\n    before_frozen = base.out.weight.detach().clone()\n    opt = torch.optim.AdamW(trainable, lr=2e-3, weight_decay=1e-4)\n    w = {'mse': 1.0, 'id': 0.5, 'prior': 1.0}\n\n    prompt = rare[None].expand(8, -1, -1)\n    before = eval_idsim(face, base, prompt, id_ref)\n    for step in range(STEPS):\n        data = make_batch(32, ref_latent, class_latent, rare, klass, id_ref)\n        loss = train_step(model, base, face, opt, data, id_ref, w)\n        if (step + 1) % 100 == 0:\n            print('step %4d  loss %.4f' % (step + 1, loss))\n    after = eval_idsim(face, model, prompt, id_ref)\n    print('ID 余弦相似度：微调前 %.3f → 微调后 %.3f' % (before, after))\n\n    # 自测 1：单身份微调确实把生成结果拉向这个人\n    assert after > before + 0.3, (before, after)\n    # 自测 2：id_scale=0 时参考图分支贡献为 0，换任何 ID 特征输出都一样（可关断）\n    x_probe = torch.randn(4, DIM)\n    t_probe = torch.full((4,), 0.3)\n    other = torch.randn(4, ID_DIM)\n    with torch.no_grad():\n        v_zero = model(x_probe, t_probe, klass[None].expand(4, -1, -1), id_ref[None].expand(4, -1), 0.0)\n        v_zero2 = model(x_probe, t_probe, klass[None].expand(4, -1, -1), other, 0.0)\n        v_one = model(x_probe, t_probe, klass[None].expand(4, -1, -1), id_ref[None].expand(4, -1), 1.0)\n    assert torch.equal(v_zero, v_zero2), 'id_scale=0 时不该受 ID 特征影响'\n    assert not torch.allclose(v_zero, v_one), 'id_scale=1 时参考图必须起作用'\n    # 自测 3：冻结基座一个参数都没动\n    assert torch.equal(before_frozen, base.out.weight.detach())\n    assert all(p.grad is None for p in base.parameters())\n    # 自测 4：关掉参考图就回到通用先验，说明身份确实来自 ref image 而不是被写死进主干\n    class_prompt = klass[None].expand(8, -1, -1)\n    generic = eval_idsim(face, model, class_prompt, id_ref, id_scale=0.0)\n    print('关掉 ID 分支（scale=0，类别 prompt）的相似度 %.3f' % generic)\n    assert generic < after - 0.2, (generic, after)\n    print('全部自测通过')\n\n\nif __name__ == '__main__':\n    main()\n",
+        "walkthrough": [
+          {
+            "note": "数据与角色：build_data / make_batch 造出「一个人」的样本与通用先验样本。真实场景把 ref_latent 换成 VAE 编码该人多张参考图的结果、class_latent 换成基座对类别词 person 的先验中心、rare/klass 换成稀有标识符与类别词的文本 embedding。一个 batch 一半带参考图 ID 条件、一半是通用样本并由先验损失约束，这就是 DreamBooth 的稀有 token + class prior 思路在潜空间里的等价物。"
+          },
+          {
+            "note": "LoRALinear：基座权重先 requires_grad_(False)，只训练 A/B 两个低秩增量；B 零初始化保证「训练前输出 = 基座输出」，不会一上来就把主干先验打乱；alpha/r 决定增量生效强度，单身份只需要很小的 r（这里 8）与很少的步数。"
+          },
+          {
+            "note": "DecoupledIDAttention：文本分支与参考图分支各算各的 K/V，最后相加再过同一个 to_out，这就是 IP-Adapter 的解耦 cross-attn。ID 强度由独立的 id_scale 控制，scale=0 时该项严格为 0，因此既能做「关掉 ID 回到先验」的消融，也能在推理期只调身份强度而不动文本条件。"
+          },
+          {
+            "note": "FaceEncoder 代替 ArcFace。它的参数被冻结，但 forward 上不能加 torch.no_grad()——身份损失的梯度必须穿过它流回生成器，一旦把 forward 整体包进 no_grad，ID 损失会静默失效（参数冻结与梯度截断是两件事，这是本题最容易写错的地方）。"
+          },
+          {
+            "note": "train_step：流匹配插值 x_t=(1-t)·noise+t·x0、速度目标 x0-noise；身份损失用一步还原的 x1=x_t+(1-t)·v 过冻结人脸网络，与参考特征算余弦；先验保持只对通用样本算，教师是训练开始时的冻结基座（预测空间蒸馏）。再叠加 10% 文本 dropout 与 5% 的 ID dropout，推理期才有 CFG 与 id_scale 两个旋钮；最后做梯度裁剪与 AdamW 更新。"
+          },
+          {
+            "note": "sample 与 eval_idsim：从 t=0 的纯噪声欧拉积分 16 步到 t=1；评估取 4 轮平均，避免用单个幸运样本下结论——对应真实工程里 ID 相似度要在一批留出集上统计，而不是看一张图。"
+          },
+          {
+            "note": "main 的四条断言就是最小验收标准：训练后 ID 相似度显著上升；id_scale=0 时换任意 ID 特征输出逐元素相同（注入可精确关断）；冻结基座训练前后参数逐元素相等且 grad 全为 None（基座没被改坏）；关掉 ID 分支后回落到通用先验（身份来自参考图而不是被写死进主干）。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "只有 1 到 2 张参考图，且含侧脸或遮挡：零样本注入（InstantID 类人脸特征＋关键点）比微调更稳，但保真上限低；此时应先做人脸对齐与超分，再决定是否微调。",
+        "参考图里出现第二张人脸、镜子或合照：ID 特征被平均，生成结果会在两个身份之间漂移，必须做人脸检测挑选主脸区域。",
+        "驱动信号里带别人的身份（驱动视频是另一个人的脸）：训练时模型会把驱动者的 ID 也拟合进来，推理时原样泄漏，需要把驱动表示解耦成语义/结构条件并与身份条件分开监督。",
+        "大角度侧脸或脸部区域占比很小：人脸检测或关键点会失败，ArcFace 特征不可靠，ID 损失给出的梯度是噪声。",
+        "长视频生成时身份漂移：只在首帧注入参考图会越生成越不像，需要逐帧注入参考特征或用持续参考的注意力机制，并对每帧都算 ID 一致性。",
+        "只训一个人带来的灾难性遗忘：通用人像崩坏、文本跟随变差；靠先验保持、低秩更新、早停与保留通用验证集来压。",
+        "过拟合到训练背景或服装（DreamBooth 经典问题）：换背景就露馅，说明身份与场景在同一批潜变量里被混在一起，需要数据多样化并给背景单独条件。",
+        "训练集里同一场景重复出现：模型把该场景当成身份的组成部分，验证集必须换场景才测得准。"
+      ],
+      "pitfalls": [
+        "只答「微调或者上 LoRA 就行」，没有把 ID 保真、驱动可控、基座先验不崩三个目标拆开，也没说清数据与评估。",
+        "把「只生成一个人」做成「把身份写死进权重」：单身份能跑，但失去多身份扩展、无法在推理期调身份强度，也顺带丢掉了对 ref image 注入这一问的回答。",
+        "身份损失用 CLIP 图像特征而不是人脸识别特征：CLIP 对身份不够判别，看起来像但换脸不换人；参考特征还必须 detach / 冻结，否则生成器会与编码器合谋。",
+        "把人脸识别网络也放进优化器，或给它的 forward 加 no_grad：前者身份损失退化成自监督的平凡解，后者梯度被截断、ID 损失完全失效。",
+        "忘记先验保持（class prior preservation / 蒸馏冻结基座），只训一个人的数据，结果基座画谁都崩、文本跟随消失。",
+        "训练时不做 ID dropout 与 CFG 文本 dropout：推理期既不能调 id_scale，也不能做 classifier-free guidance，条件只能全开或全关。",
+        "超参按「训练一个新模型」设：单身份应该用很小的秩与很低的学习率、1k 到 3k 步就早停，训太久直接过拟合到训练图与背景。",
+        "评估只看像不像，不测是否污染其他人（身份泄漏）、不测姿态/表情可控性是否回退、不测画质与口型同步。",
+        "参考图预处理被忽略（不对齐、不裁脸、不去背景），ID 特征被背景与姿态污染，微调出来的身份换角度就变。",
+        "追问只背模型名（DreamBooth、IP-Adapter、InstantID）不说优劣维度，也没说各方案对数据量、可控性、成本、多身份的影响。"
+      ],
+      "followUps": [
+        "DreamBooth 的 class prior preservation 为什么必要？去掉之后 ID 保真、画质、文本跟随分别会怎么变？",
+        "IP-Adapter 用 CLIP 图像编码器，IP-Adapter-FaceID 为什么要换成 ArcFace 特征并再加 LoRA？两者在身份上的判别力差在哪？",
+        "同一套权重怎么支持多个身份：ID embedding＋解耦 cross-attn 热插拔，还是每个身份一份 LoRA？各自的存储与切换代价？",
+        "参考图条件应该注入 cross-attn，还是走 self-attn 或额外同构的 ReferenceNet？对保真、可控性与显存的影响分别是什么？",
+        "视频或说话头里怎么维持长时序的身份一致？逐帧注入、参考注意力、时序层、逐帧 ID 损失分别解决什么？",
+        "怎么防止驱动信号把驱动者的身份泄漏进生成结果？",
+        "ID 相似度和 FID/FVD 冲突时怎么取舍？指标该怎么组合才能反映用户感知？",
+        "只有一张参考图、连人脸关键点都检测不稳时，方案该怎么退？",
+        "怎么把训练与推理成本压下来：LoRA 合并、参考特征缓存、梯度检查点、低分辨率预训练加高分辨率微调？"
+      ],
+      "variations": [
+        "单身份扩展到多身份：身份库 + adapter 热插拔，或每身份一份小秩 LoRA。",
+        "图像定制扩展到视频/说话头定制：加音频到表情/口型分支与时序一致性损失，参考图作为持续注入的外观条件。",
+        "单张参考图的零样本注入（ArcFace 特征 + 人脸关键点 + ControlNet 式 IdentityNet）。",
+        "风格或服饰定制：稀有 token 微调文本编码器，或对文本侧加 LoRA。",
+        "把 ref 特征在推理期注入改成蒸馏进权重：免注入但失去可切换性。",
+        "采样期引导做身份一致性（ID guidance / 人脸复原后处理）而不是改训练。",
+        "把身份条件做成显式的 3DMM 或关键点条件，让姿态与身份在两个通道里分开控制。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "单身份数字人训练链路",
+        "caption": "记住四件事：参考图只经冻结的人脸网络变成 ID 特征；ID 特征通过解耦 cross-attn 按 id_scale 注入，主干恒冻结，只有 LoRA 增量与 ID 分支可训；损失必须同时有去噪主损失、身份余弦损失与冻结基座的先验保持；关掉 ID 分支就干净回落成通用先验。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='单身份数字人训练链路：参考图经冻结人脸网络得到 ID 特征，通过解耦 cross-attn 注入冻结主干加 LoRA，配合去噪、身份与先验保持三种损失'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='17' font-size='13' fill='currentColor'>单身份数字人：训练链路与损失</text><rect x='14' y='28' width='150' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='22' y='45' font-size='13' fill='currentColor'>参考图（本人多图）</text><line x1='164' y1='41' x2='184' y2='41' stroke='var(--line-1)' stroke-width='1'/><polygon points='190,41 182,37 182,45' fill='var(--line-1)'/><rect x='190' y='28' width='170' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='198' y='45' font-size='13' fill='currentColor'>人脸识别网络（冻结）</text><line x1='360' y1='41' x2='380' y2='41' stroke='var(--line-1)' stroke-width='1'/><polygon points='386,41 378,37 378,45' fill='var(--line-1)'/><rect x='386' y='28' width='80' height='26' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='394' y='45' font-size='13' fill='currentColor'>ID 特征</text><line x1='426' y1='54' x2='426' y2='62' stroke='var(--accent)' stroke-width='1'/><polygon points='426,68 422,60 430,60' fill='var(--accent)'/><rect x='14' y='68' width='150' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='22' y='85' font-size='13' fill='currentColor'>文本 / 驱动条件</text><line x1='164' y1='81' x2='184' y2='81' stroke='var(--line-1)' stroke-width='1'/><polygon points='190,81 182,77 182,85' fill='var(--line-1)'/><rect x='190' y='68' width='240' height='26' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='198' y='85' font-size='13' fill='currentColor'>解耦 cross-attn + id_scale</text><line x1='310' y1='94' x2='310' y2='102' stroke='var(--line-1)' stroke-width='1'/><polygon points='310,108 306,100 314,100' fill='var(--line-1)'/><rect x='14' y='108' width='416' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='22' y='125' font-size='13' fill='currentColor'>DiT / UNet 主干：冻结 + LoRA 低秩增量</text><line x1='222' y1='134' x2='222' y2='142' stroke='var(--line-1)' stroke-width='1'/><polygon points='222,148 218,140 226,140' fill='var(--line-1)'/><rect x='14' y='148' width='200' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='22' y='165' font-size='13' fill='currentColor'>生成 latent（这一帧）</text><line x1='214' y1='161' x2='234' y2='161' stroke='var(--line-1)' stroke-width='1'/><polygon points='240,161 232,157 232,165' fill='var(--line-1)'/><rect x='240' y='148' width='226' height='26' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='248' y='165' font-size='13' fill='currentColor'>冻结人脸网络 → ID 余弦损失</text><rect x='14' y='188' width='452' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='22' y='205' font-size='13' fill='currentColor'>先验保持：通用样本蒸馏冻结基座 + 去噪主损失</text><text x='14' y='230' font-size='13' fill='currentColor'>强调色框＝本次可训练（ID 注入 + LoRA），其余冻结</text></svg>",
+        "alt": "自上而下的流程图：参考图经冻结的人脸识别网络得到 ID 特征，文本或驱动条件与 ID 特征一起进入带 id_scale 的解耦 cross-attn，条件注入到冻结的 DiT/UNet 主干并只训练 LoRA 低秩增量，生成 latent 后再过冻结人脸网络算 ID 余弦损失；下方是通用样本上蒸馏冻结基座的先验保持与去噪主损失。"
+      },
+      "selfTest": [
+        "只对一个人的数据做 LoRA 微调、不加任何正则，最先坏掉的是什么？（答：通用先验先坏——灾难性遗忘让基座画谁都崩、文本跟随变差，并且会过拟合到训练背景；要靠 class prior preservation、低秩、早停与通用验证集压住。）",
+        "IP-Adapter 的解耦 cross-attn 与 InstantID 的区别是什么？（答：前者把 CLIP/ID 特征经投影当作额外 K/V 注入，零样本、不动主干、可控性好，但身份精度受特征限制；后者用 ArcFace 特征加人脸关键点图过 ControlNet 式 IdentityNet，单图 ID 保真更强，但依赖人脸检测与关键点，侧脸/遮挡退化、风格化受限。）",
+        "为什么身份损失要用冻结的人脸识别网络，而不是 CLIP 图像特征？（答：CLIP 对身份不判别，优化它只能得到「像个人」；ArcFace 类特征在身份上是判别性的。并且人脸网络的参数必须冻结、参考特征必须 detach，否则生成器和编码器会一起塌成平凡解。）",
+        "如果参考图条件被直接写进主干权重、推理时不再注入，会失去什么？（答：失去推理期调 id_scale 的能力、失去多身份扩展与热插拔，也失去「关掉条件回落到通用先验」的安全退化路径；换来的是推理少一次参考分支计算。）"
+      ],
+      "keyPoints": [
+        "目标先拆三层：ID 保真、驱动可控、基座先验不崩，三者互相拉扯，方案是配比而不是单一手段",
+        "推荐路线：冻结主干 + 参考图 ID 特征解耦注入（id_scale 可调）+ 小秩 LoRA，最后才考虑全参 DreamBooth 式固化",
+        "损失必须有身份损失（冻结人脸识别网络的余弦）与先验保持（防灾难性遗忘与背景过拟合）",
+        "训练时做 ID / 文本条件 dropout，推理期才能用 id_scale 与 CFG 调强度",
+        "追问要点名具体模型并给出五条优劣维度：保真度、数据需求、训练与推理成本、可控性、多身份与风格泛化"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "题面（人工整理）只有一句主问与一句追问：主问是「如果我目前有一个数字人的模型，我想训练成只生成一个人的，可以怎么做？」，追问是「你看过什么别的 SOTA 模型的 ref image 注入方式，有什么优劣？」，没有输入输出、数据规模、算力约束与样例。",
+          "题面把「怎么训成一个人」与「ref image 注入方式的优劣」并列，所以完整题解必须同时覆盖训练方案（数据 / 策略 / 损失 / 评估）与注入方案的横向对比，只答 LoRA 或只列模型名都不算答完。",
+          "题面把数字人模型的模态留空，本文件按「图像/视频生成 + 参考图条件注入」的一般情形作答，并在不确定项里标注说话头场景还需音频到表情分支与时序一致性损失。",
+          "本文件没有引用任何外部链接：题目为人工整理、没有来源链接，sources 留成空数组，正文与代码里也没有任何链接文本。",
+          "本文件 code.source 已在本机 python 3.12.9 + torch 2.12.1+cpu 上实际运行通过：固定 torch.manual_seed(0)，500 步后 ID 余弦相似度均值 0.175 → 0.705，关掉 ID 分支（id_scale=0，类别 prompt）为 0.409，四条断言全部通过并打印「全部自测通过」。",
+          "本机实测：主干 t_mlp / LayerNorm / FFN 冻结、只留 LoRA 增量与 ID 注入分支可训练时，32000 / 69312 个参数有梯度；冻结基座在训练前后逐元素相等（torch.equal 通过）且所有参数 grad 均为 None。",
+          "本机实测（对照实验）：若把输出投影与 FFN 也一起冻结（只留 LoRA 与 ID 分支，27840 / 69312 可训），同样 500 步与同样的学习率下 ID 相似度只到 0.459，明显低于 0.705——支撑「单身份保真度依赖 adapter 的容量，冻结得越多越需要靠注入分支补」这一取舍判断。",
+          "本机实测：id_scale=0 时，把 ID 特征换成任意随机向量，前向输出逐元素相同（torch.equal 通过）；id_scale=1 时输出不同——说明解耦注入可以被精确关断，这是推理期调 ID 强度与做消融的前提。",
+          "代码保留了 10% 文本条件 dropout 与 5% 的 ID 条件 dropout：这一步是设计取舍（没有条件 dropout，推理期就没有 id_scale 与 CFG 两个旋钮可用），不是本机跑出来的数值结论，实际运行只验证了带 dropout 时四条断言仍然通过。"
+        ],
+        "uncertain": [
+          "题面没有给数字人的模态（图像 / 视频 / 说话头）、基座架构（UNet 还是 DiT）、参考图数量与算力量级，方案按一般情形给出递进路线，没有唯一最优配置；落地前必须用本项目自己的数据做消融。",
+          "代码里的 VAE、文本编码器、人脸识别网络与 DiT 主干都是同接口的小模块（随机初始化、无预训练权重），只为在本机无权重环境下把训练链路跑通并断言行为；绝对数值（0.175 / 0.705 / 0.409、32000 / 69312）不代表真实模型表现，只有「训练后显著高于训练前、关掉 ID 分支回落到通用先验」这类相对关系才可迁移。",
+          "场景题没有标准答案与官方评分点，七种 ref image 注入方式（DreamBooth、Textual Inversion、LoRA、IP-Adapter/IP-Adapter-FaceID、InstantID、PhotoMaker、ReferenceNet 系）的优劣是按公开做法整理的方法论总结，未逐篇核对原始论文的数据与结论。",
+          "玩具代码里的超参（rank=8、lr=2e-3、500 步、batch 32、损失权重 1.0/0.5/1.0）是本机实验设置，真实训练要按主干规模、分辨率与数据量重调；把它们直接搬到生产会明显不匹配。",
+          "torch.manual_seed(0) 只保证同版本同设备可复现；换 torch 版本或改用 CUDA（部分 kernel 非确定性）数值会有差异，断言阈值（+0.3 / -0.2）也可能需要重设。",
+          "人工题库记录里只有一道题面（sourceName 为人工整理），没有参考实现或评分要点，因此本文件的代码与图解是自拟的等价实现，不是官方答案。"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "batchId": "prob-cur-35",
+  "problem": {
+    "id": "meituan-ce-vocab-calc",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "10w 词表的交叉熵损失值计算",
+    "topics": [
+      "机器学习基础"
+    ],
+    "difficulty": "medium",
+    "statement": "美团大模型算法二面第 6 题：“LLM 的损失函数是什么？给你一个 10w 的词表，计算出事的损失值。”考察对 CE 量级、均匀分布与随机初始化 loss 的直觉。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

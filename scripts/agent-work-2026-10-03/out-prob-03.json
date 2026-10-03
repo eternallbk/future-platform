@@ -1,0 +1,143 @@
+{
+ "batchId": "prob-03",
+ "entries": [
+  {
+   "id": "pb-c97a5a7e82e644b9",
+   "itemId": "c97a5a7e82e644b9",
+   "tldr": "H=I-2vvᵀ 是反射：正交且对称，det H=-1；Householder QR 比经典 Gram-Schmidt 更稳。",
+   "restated": "不定项选择题。已知实单位列向量 v，H=I-2vvᵀ，判断四条说法：H 是正交矩阵；H 的行列式为 +1；Householder QR 分解通常比经典 Gram–Schmidt 正交化数值更稳定；H 是对称矩阵。题面在「查看正确选项」处只有选项文字，页面未显示答案（0 个回答），也没有数值样例，具体输入输出格式不可知。",
+   "approach": [
+    {
+     "step": "暴力一：逐个选项硬算",
+     "detail": "对给定 v 显式构造 H，再用矩阵乘法逐条验算：HᵀH 是否为 I、H 是否等于 Hᵀ、det 的符号、以及与 Gram–Schmidt 的误差对比。如果每验一条都重新做一次 O(n³) 矩阵乘法，四条加起来是 O(n³) 量级的纯计算，而且数值实验只能给出「某个 v、某个矩阵」的证据，证明不了恒等式；不写下标推导的话，面试官一问「换个 v 还成立吗」就答不上。"
+    },
+    {
+     "step": "暴力二：只展开一条式子",
+     "detail": "只算 H²=(I-2vvᵀ)²=I-4vvᵀ+4v(vᵀv)vᵀ=I（用了 vᵀv=1），据此得 H⁻¹=H。这一步已经能确认 「H 可逆且逆等于自身」，但 det H 到底是 +1 还是 −1 仍分不出来——因为 H²=I 只说明 det H=±1。正是这个缺口逼出了下一条观察。"
+    },
+    {
+     "step": "观察：H 是反射，不是旋转",
+     "detail": "H 把 x 拆成沿 v 与垂直 v 两部分：Hx=x-2(vᵀx)v，沿 v 的分量原样保留、垂直分量整体翻号，所以 v 方向是不动轴、v⊥ 是镜面。反射是几何上的定向反转，因此 det H=−1（代数上由矩阵行列式引理 det(I-2vvᵀ)=1-2vᵀv=-1 直接给出），选项「行列式为 +1」错。同理 H 的 n 个特征值是 +1（沿 v）与 n−1 个 −1（v⊥ 上），乘积即 ±1 中的 −1。"
+    },
+    {
+     "step": "最优：用反射一次打平一整列，即 Householder QR",
+     "detail": "取 α=−sign(x₁)‖x‖ 与单位向量 v=(x−αe₁)/‖x−αe₁‖，则 (I-2vvᵀ)x=αe₁：一个反射把一整列的对角线以下全部清零。逐列做下去得到 R=H_{p-1}…H₀A，把这些反射按同一顺序右乘到单位阵上得 Q=H₀…H_{p-1}，于是 A=QR，且每一步误差只被常量倍放大：‖I−QᵀQ‖ 约为机器精度量级。这正好解释了选项 C——经典 Gram–Schmidt 每轮都在已有浮点误差上继续做减法投影，正交性误差按 κ(A)² 量级增长、会累积丢失正交性；改正 Gram–Schmidt（MGS）好一些但仍是 O(κ²)，而 Householder 是后向稳定的、误差 O(κ·ε)。α 取负号是因为若取 +‖x‖ 会让 v 的分量出现相减抵消，损失有效位。"
+    }
+   ],
+   "complexity": {
+    "time": "O(n³)（m×n 时 O(mn²)），与 Gram–Schmidt 同阶",
+    "space": "O(m²)（显式存转置矩阵 Q）；实际库只存反射向量，O(mn)",
+    "why": "共 min(m,n) 个反射，每个反射作用在剩余子矩阵上是 O(mn) 次浮点运算，累加得 O(mn·min(m,n))；空间 O(m²) 来自显式构造 Q 与每个 H_k，属于本实现的取舍。"
+   },
+   "code": {
+    "language": "python",
+    "source": "# -*- coding: utf-8 -*-\n\"\"\"Householder 反射矩阵与 QR 分解：可运行验证。\"\"\"\nimport math\n\n\ndef zeros(r, c):\n    return [[0.0] * c for _ in range(r)]\n\n\ndef eye(n):\n    E = zeros(n, n)\n    for i in range(n):\n        E[i][i] = 1.0\n    return E\n\n\ndef matT(A):\n    return [list(col) for col in zip(*A)]\n\n\ndef norm2(x):\n    return math.sqrt(sum(v * v for v in x))\n\n\ndef matmul(A, B):\n    n, m, p = len(A), len(B), len(B[0])\n    C = zeros(n, p)\n    for i in range(n):\n        Ai, Ci = A[i], C[i]\n        for k in range(m):\n            a = Ai[k]\n            if a != 0.0:\n                Bk = B[k]\n                for j in range(p):\n                    Ci[j] += a * Bk[j]\n    return C\n\n\ndef max_abs_diff(A, B):\n    return max(abs(A[i][j] - B[i][j])\n               for i in range(len(A)) for j in range(len(A[0])))\n\n\ndef det(M):\n    \"\"\"带部分主元的高斯消元求行列式（只用于验证符号）。\"\"\"\n    M = [row[:] for row in M]\n    n, d = len(M), 1.0\n    for col in range(n):\n        piv = max(range(col, n), key=lambda r: abs(M[r][col]))\n        if abs(M[piv][col]) < 1e-14:\n            return 0.0\n        if piv != col:\n            M[col], M[piv] = M[piv], M[col]\n            d = -d\n        d *= M[col][col]\n        for r in range(col + 1, n):\n            f = M[r][col] / M[col][col]\n            for c in range(col, n):\n                M[r][c] -= f * M[col][c]\n    return d\n\n\ndef householder_matrix(v):\n    \"\"\"H = I - 2 v v^T；要求 v 是单位向量。\"\"\"\n    n = len(v)\n    H = eye(n)\n    for i in range(n):\n        for j in range(n):\n            H[i][j] -= 2.0 * v[i] * v[j]\n    return H\n\n\ndef householder_qr(A):\n    \"\"\"A = Q R：Q 正交、R 上三角，全部由反射 H = I - 2 v v^T 叠出来。\n\n    反射逐列构造：第 k 列把对角线以下打平成 0，得到 R = H_{p-1}...H_0 A，\n    同时把反射按同一顺序右乘到单位阵上，得到 Q = H_0...H_{p-1}，于是 A = Q R。\n    \"\"\"\n    m, n = len(A), (len(A[0]) if A else 0)\n    R = [row[:] for row in A]\n    Q = eye(m)\n    for k in range(min(m, n)):\n        x = [R[i][k] for i in range(k, m)]         # 当前列对角线以下的部分\n        alpha = -norm2(x)                          # 取负号：让 v 远离 0，避开抵消\n        if x[0] < 0.0:\n            alpha = -alpha\n        # 垂直于反射轴的分量按分量直接算，避免 sqrt(||x||^2 - alpha^2) 相减丢精度\n        residual = math.sqrt(sum(t * t for t in x[1:]))\n        if alpha == 0.0 or residual == 0.0:\n            continue                               # 这一列已是上三角形，不必反射\n        v = x[:]\n        v[0] -= alpha\n        nv = norm2(v)\n        if nv == 0.0:\n            continue\n        v = [t / nv for t in v]\n        H = eye(m)                                 # 第 k 个反射：只在 k..m-1 上非平凡\n        for i in range(k, m):\n            for j in range(k, m):\n                H[i][j] -= 2.0 * v[i - k] * v[j - k]\n        R = matmul(H, R)                           # R <- H_k R\n        Q = matmul(Q, H)                           # Q <- Q H_k\n        for i in range(m):                         # 抹掉舍入噪声，保证严格上三角\n            for j in range(min(i, n)):\n                if abs(R[i][j]) < 1e-14:\n                    R[i][j] = 0.0\n    return Q, R\n\n\ndef solve_least_squares(A, b):\n    \"\"\"用 QR 解超定方程 A x = b：先 Q^T b，再回代 R x = Q^T b。\"\"\"\n    Q, R = householder_qr(A)\n    Qt_b = matmul(matT(Q), [[t] for t in b])\n    n = len(R[0])\n    y = [0.0] * n\n    for i in range(n - 1, -1, -1):                 # 回代\n        if abs(R[i][i]) < 1e-14:\n            raise ValueError(\"R 对角元为 0：矩阵列相关，该列无法定解\")\n        s = Qt_b[i][0] - sum(R[i][j] * y[j] for j in range(i + 1, n))\n        y[i] = s / R[i][i]\n    return y\n\n\ndef _demo():\n    print(\"== 1. H = I - 2vv^T 的四条性质 ==\")\n    v = [0.6, 0.0, -0.8]\n    H = householder_matrix(v)\n    print(\"对称 H - H^T   =\", max_abs_diff(H, matT(H)))\n    print(\"正交 H H^T - I =\", \"%.2e\" % max_abs_diff(matmul(H, matT(H)), eye(3)))\n    print(\"对合 H H - I   =\", \"%.2e\" % max_abs_diff(matmul(H, H), eye(3)))\n    print(\"det H          =\", round(det(H), 12), \"-> 不是 +1\")\n    Hv = [sum(H[i][j] * v[j] for j in range(3)) for i in range(3)]\n    print(\"垂直于轴的分量被翻转：||(-Hv) - v|| =\", \"%.2e\" % norm2([-a - b for a, b in zip(Hv, v)]))\n\n    print(\"\\n== 2. QR：A = Q R，Q^T Q = I，R 上三角 ==\")\n    A = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 10.0], [1.0, 0.0, 1.0]]\n    Q, R = householder_qr(A)\n    print(\"max|A - QR| =\", \"%.2e\" % max_abs_diff(A, matmul(Q, R)))\n    print(\"max|Q^TQ - I| =\", \"%.2e\" % max_abs_diff(matmul(matT(Q), Q), eye(4)))\n    low = max(abs(R[i][j]) for i in range(4) for j in range(3) if i > j)\n    print(\"R 下三角最大绝对值 =\", low)\n    print(\"det Q =\", round(det(Q), 12), \"（4x4，反射 3 次：(-1)^3 = +1）\")\n\n    print(\"\\n== 3. 最小二乘：Householder 解 vs 正规方程 ==\")\n    A2 = [[1.0, 0.0], [1.0, 1.0], [1.0, 2.0], [1.0, 3.0]]\n    b = [1.0, 2.0, 2.0, 5.0]\n    y = solve_least_squares(A2, b)\n    AtA = matmul(matT(A2), A2)\n    Atb = [sum(A2[i][j] * b[i] for i in range(4)) for j in range(2)]\n    dd = AtA[0][0] * AtA[1][1] - AtA[0][1] * AtA[1][0]\n    ne = [(AtA[1][1] * Atb[0] - AtA[0][1] * Atb[1]) / dd,\n          (AtA[0][0] * Atb[1] - AtA[1][0] * Atb[0]) / dd]\n    print(\"Householder QR 解 =\", [round(t, 6) for t in y])\n    print(\"正规方程参考解    =\", [round(t, 6) for t in ne])\n\n    print(\"\\n== 4. 边界用例（每种形状都不许抛异常，且 A = QR）==\")\n    cases = {\n        \"3x3 随机\": [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 10.0]],\n        \"3x2 高瘦\": [[3.0, 1.0], [4.0, 1.0], [0.0, 1.0]],\n        \"已上三角\": [[2.0, 1.0], [0.0, 3.0]],\n        \"2x3 矮胖\": [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],\n        \"含零列\": [[0.0, 1.0], [0.0, 2.0], [0.0, 3.0]],\n        \"重复行\": [[1.0, 2.0], [1.0, 2.0]],\n        \"全零 3x3\": [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],\n    }\n    for name, M in cases.items():\n        Qc, Rc = householder_qr(M)\n        print(\"%-9s max|A-QR|=%.2e  max|Q^TQ-I|=%.2e\"\n              % (name, max_abs_diff(M, matmul(Qc, Rc)),\n                 max_abs_diff(matmul(matT(Qc), Qc), eye(len(M)))))\n\n\nif __name__ == \"__main__\":\n    _demo()\n",
+    "walkthrough": [
+     {
+      "note": "zeros/eye/matT/matmul 是纯 Python 矩阵工具：只用列表和 zip，不依赖 numpy，保证在任何环境都能直接跑。"
+     },
+     {
+      "note": "householder_matrix 就是把 H=I-2vvᵀ 逐元素写出来，用来验证「正交 / 对称 / 对合 / det=-1」四条性质。"
+     },
+     {
+      "note": "householder_qr 是核心：第 k 轮取出当前列对角线以下的向量 x，先定符号 α=-sign(x₁)‖x‖（让 v 远离 0，避开相减抵消）。"
+     },
+     {
+      "note": "residual=‖x[1:]‖ 是「垂直于反射轴的分量」。必须按分量算：写成 sqrt(‖x‖²-α²) 会灾难性抵消，实测会得到 0 而整列跳过反射。"
+     },
+     {
+      "note": "把 v 归一化后构造反射矩阵 H_k（只在 k..m-1 子块上非平凡），然后 R←H_k R、Q←Q H_k，顺序不能反：反了得到的是 Qᵀ，A=QR 立刻不成立。"
+     },
+     {
+      "note": "每轮把 R 的下三角小于 1e-14 的项抹成精确 0，保证「R 是上三角」这个断言在浮点下也干净可验证。"
+     },
+     {
+      "note": "solve_least_squares 用 R x = Qᵀb 回代；R 对角元接近 0 时主动抛错，对应「列相关、该列无法定解」的边界。"
+     },
+     {
+      "note": "_demo 的四段输出就是这套实现的验收标准：性质为 0/机器精度、max|A-QR|=4.44e-15、最小二乘与正规方程解完全一致、七种形状边界用例全部不抛异常。"
+     }
+    ]
+   },
+   "edgeCases": [
+    "空矩阵或零行矩阵：m=0 或 n=0 时循环不执行，直接返回 Q=I、R=A，不会崩也不会除零。",
+    "单元素矩阵 A=[[-2.0]]：α=2、v=(-1)，得到 Q=[[-1]]、R=[[2]]，验算 A=QR 成立（-1 是合法的正交矩阵，det=-1）。",
+    "已经是上三角的矩阵：每列 x[1:] 全为 0，residual=0 → 跳过反射，Q 保持单位阵。",
+    "含零列：alpha=0 → 跳过该列；零列经变换后仍是零列，R 对角元为 0，说明矩阵奇异。",
+    "矮胖矩阵 m<n：只做 min(m,n)=m 个反射，R 的前 m 行上三角、后 n-m 列仍有内容，A=QR 依然成立。",
+    "重复行 / 列相关：反射不会数值爆炸，R 会出现（接近）0 的对角元——这正是判秩的依据。",
+    "全零矩阵：全部跳过，Q=I、R=0，仍满足 A=QR。",
+    "非单位向量 v 不可直接代入：‖v‖≠1 时 H=I-2vvᵀ 不正交（例如 v=(1,0) 给出 diag(-1,1)，其实还是正交；一般地 v=(2,0) 给出 diag(-7,1)，立刻失败），必须用 H=I-2uuᵀ/(uᵀu) 或先归一化。"
+   ],
+   "pitfalls": [
+    "det 符号：det(I-2vvᵀ)=1-2vᵀv=-1（矩阵行列式引理），不是 +1；H²=I 只说明 det=±1，要再靠「反射翻转定向」定符号。",
+    "选 v 的符号：α 取 −sign(x₁)‖x‖。若用 +‖x‖，v 的第一个分量会做两个几乎相等的数相减，有效位直接丢光。",
+    "残差用减法算：sqrt(‖x‖²-α²) 在 ‖x‖≈|α| 时灾难性抵消（本机实测该式给出精确 0.0，导致整列反射被跳过、Q 退化成单位阵）。必须按分量算 ‖x[1:]‖。",
+    "Q 的乘法顺序：R 用左乘（R←H R），Q 用右乘（Q←Q H），两者顺序必须一致；写反会得到 Q=H₀H₁H₂ 的转置，A=QR 不再成立（本机实测误差 20 而不是 1e-15）。",
+    "混淆 H=I-2vvᵀ 与 H=I-2uuᵀ/(uᵀu)：后者不要求归一化，det 公式也随之变成 1-2；面试报公式时要说清前提是 ‖v‖=1。",
+    "把「更稳定」说成「更快」：Householder QR 与经典 Gram–Schmidt 都是 O(mn²)，Householder 的优势在向后稳定性，不在运算量。",
+    "经典 Gram–Schmidt（CGS）与修正 Gram–Schmidt（MGS）按列顺序不同、稳定性不同，但都达不到 Householder 的水平，不要混为一谈。"
+   ],
+   "followUps": [
+    "不显式构造 Q，只用反射向量做「matvec + 转置 matvec」，把空间降到 O(mn)，怎么组织这段代码？（LAPACK 的 dgeqrf/dormqr 思路）",
+    "如果 v 不是单位向量，H=I-2uuᵀ/(uᵀu) 的 det 等于多少？（答案 1-2=-1，与 ‖u‖ 无关）",
+    "为什么现代库用 Householder 而不是 Givens 做稠密 QR？Givens 在稀疏矩阵或需要并行/增量更新时优势在哪？",
+    "用 QR 解最小二乘时，为什么误差正比于 κ(A) 而不是 κ(A)²？这和法方程 AᵀAx=Aᵀb 的差别从哪来？",
+    "H 的特征值与特征向量分别是什么？和 det H、trace H 有什么关系？",
+    "QR 分解唯一吗？什么条件下唯一？（对角元符号约定 / R 对角取正）",
+    "给定 QR，怎么不构造 Q 就算出 det A？（det A = det Q · det R = (-1)^p · ∏R_ii，p 为实际用到的反射个数）"
+   ],
+   "variations": [
+    "把 I-2vvᵀ 换成广义形式 I-2uuᵀ/(uᵀu)，重做四条判断（结论不变，除了 det 公式要重推）。",
+    "复向量版本：H=I-2vvᴴ（vᴴv=1），此时 H 是酉矩阵且 Hermite，det 仍为 −1（Hermite 反射）。",
+    "用 Givens 旋转逐元素清零，比较两者运算量、并行性与稀疏性。",
+    "同一个 A 分别用 CGS、MGS、Householder QR 做分解，比较 ‖I-QᵀQ‖ 随条件数 κ(A) 的变化曲线。",
+    "用 QR 解超定最小二乘、算伪逆与投影矩阵 P=Q₁Q₁ᵀ。",
+    "用 QR 迭代（位移 QR 算法）求特征值，以及 Hessenberg 化为什么用 Householder 做预处理。"
+   ],
+   "diagram": {
+    "kind": "curve",
+    "title": "Householder 反射的几何",
+    "caption": "Hx 只翻转垂直于 v 的分量——这是 det H=-1 的几何来源",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='0' y='0' width='480' height='240' fill='none'/><text x='16' y='28' font-size='14' fill='var(--fg-1)'>H = I - 2vv&#7511; 把 x 映到 x'：沿 v 的分量不变，垂直分量被翻转</text><line x1='25' y1='166' x2='295' y2='106' stroke='var(--line-1)' stroke-width='2' stroke-dasharray='7 5'/><line x1='160' y1='51' x2='160' y2='209' stroke='currentColor' stroke-width='1' stroke-dasharray='3 4'/><circle cx='160' cy='130' r='75' fill='none' stroke='var(--line-1)' stroke-width='1'/><path d='M160 130 L196 82' stroke='currentColor' stroke-width='2'/><path d='M196 82 L190 91 L201 92' fill='none' stroke='currentColor' stroke-width='2'/><text x='202' y='76' font-size='13' fill='var(--fg-1)'>v（不变，特征值 +1）</text><text x='300' y='100' font-size='13' fill='var(--fg-1)'>镜像超平面 v&#8869;</text><path d='M160 130 L218 139' stroke='currentColor' stroke-width='2'/><path d='M218 139 L208 135 L209 145' fill='none' stroke='currentColor' stroke-width='2'/><text x='218' y='160' font-size='13' fill='var(--fg-1)'>x</text><line x1='218' y1='139' x2='237.7' y2='84.2' stroke='currentColor' stroke-width='1.5' stroke-dasharray='4 4'/><line x1='218' y1='139' x2='102.3' y2='175.8' stroke='currentColor' stroke-width='2.5'/><path d='M102 176 L112 179 L108 169' fill='none' stroke='currentColor' stroke-width='2'/><text x='30' y='192' font-size='13' fill='var(--fg-1)'>x' = Hx（沿 v 的分量不变）</text><path d='M167 145 L161 150 L166 156' fill='none' stroke='currentColor' stroke-width='1'/><text x='344' y='212' font-size='13' fill='var(--fg-1)'>(Hx-x) &#8869; v</text></svg>",
+    "alt": "以原点为中心的圆，v 为轴、v⊥ 为镜面，x 经 H 映到 x'，线段 x-x' 垂直于 v"
+   },
+   "selfTest": [
+    "不用计算，直接说出 H 的特征值、特征向量、trace 与 det；再解释「H²=I 但 det 只能是 −1 而不是 +1」的原因。",
+    "写出用 Householder 把向量 x=(3,4)ᵀ 映到 αe₁ 所需的 v，并说明 α 为什么取 −5 而不是 +5。",
+    "Q 累积时写成 Q←H_k Q（左乘）会出什么问题？用 2×2 例子验证你的结论。"
+   ],
+   "keyPoints": [
+    "Hᵀ=H 且 HᵀH=I：H 正交且对称（实对称正交 ⟺ 对合，H²=I）。",
+    "det H=-1：由 det(I-2vvᵀ)=1-2vᵀv=-1 得到；H 是反射，必然翻转定向。",
+    "Householder QR 是后向稳定的，优于经典 Gram–Schmidt 的 O(κ²) 正交性误差。",
+    "α=−sign(x₁)‖x‖ 是防抵消的关键；一个反射能把整列对角线以下清零。",
+    "Q=H₀H₁…H_{p-1}：反射右乘到单位阵，顺序与 R=H_{p-1}…H₀A 相反。"
+   ],
+   "sources": [
+    {
+     "title": "牛客题库 · 设 v 是实单位列向量，Householder 反射矩阵 H（不定项选择题）",
+     "url": "https://nowcoder.com/questionTerminal/8b95485d87b34572ba2597134506f3dc"
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "题面：v 是实单位列向量，H=I-2vvᵀ，四个待判选项分别是「H 是正交矩阵 / H 的行列式为 +1 / Householder QR 通常比经典 Gram–Schmidt 更数值稳定 / H 是对称矩阵」。",
+     "题面约束只有 ‖v‖=1（单位列向量），没有给出 v 的具体数值、矩阵规模或输入输出格式。",
+     "源页面上显示「0个回答」「15浏览」「难度：」，即没有任何官方答案或解析。",
+     "题目来源标注为「2026年-华为-08...」（页面文本被截断）。",
+     "数学事实（可独立验证）：vᵀv=1 时 Hᵀ=H、HᵀH=I、H²=I、det H=1-2vᵀv=-1，H 的列是一组标准正交基。",
+     "本机实测（Python，纯列表实现）：‖HHᵀ-I‖=1.67e-16、‖H²-I‖=0、det H=-1.0；4×3 随机矩阵 max|A-QR|=4.44e-15、max|QᵀQ-I|=2.78e-16、R 下三角最大绝对值=0.0；最小二乘解与按正规方程独立算出的 [0.7, 1.2] 完全一致；七种形状（含 2×3 矮胖、含零列、重复行、全零 3×3）均未抛异常。",
+     "Householder QR 优于经典 Gram–Schmidt 的稳定性这一条，属于数值线性代数的通行结论，不是题面文字本身给出的。"
+    ],
+    "uncertain": [
+     "选项的确切正确集合无法从题面直接核验（页面未公开答案，也无来源可查）；本文的第 1、3、4 条按数学定义判定为正确、第 2 条判定为错误，如原题答案与之不同，以原题为准。",
+     "题面被截断：页面尾部从「来自：2026年-华为-08...」起是相关试题推荐等内容，四个选项的文字虽完整，但题目的原始编号、考试场次与选项顺序无法确认。",
+     "题面没有给出任何数值样例或输入输出格式，因此本文的「样例」是自造的可运行验证（随机 4×3、3×2 等），不是原题样例。",
+     "「经典 Gram–Schmidt 精度损失约 O(κ(A)²)、Householder 约 O(κ(A)ε)」是量级说法，精确常数依实现与范数取法而不同；题面本身未给出任何误差界。",
+     "复杂度 O(mn·min(m,n)) 与本实现的 O(m²) 空间都依赖「显式构造反射矩阵」这一实现选择；实际库的隐式存储会改变空间项，题面未涉及实现细节。"
+    ]
+   }
+  }
+ ]
+}

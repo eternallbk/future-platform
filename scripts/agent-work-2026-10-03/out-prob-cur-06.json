@@ -1,0 +1,160 @@
+{
+  "batchId": "prob-cur-06",
+  "entries": [
+    {
+      "id": "lora-implementation",
+      "itemId": "lora-implementation",
+      "tldr": "给 Linear 包一层 LoRA：冻结 W0，加 (alpha/r)·BA 低秩增量，A 用 kaiming、B 必须初始化为 0。",
+      "restated": "输入是任意形状张量 x（最后一维 n = base.in_features）和一个已训练好的 nn.Linear(n→k, 可带 bias)；输出形状不变 (…, k)，数值 = base(x) + (alpha/r)·x A^T B^T。超参 r（秩，常取 4/8/16）、alpha（常取 2r，此处按人工题给的 r=8、alpha=16）、dropout。约束：W0 冻结不可训，只有 A(r,n)、B(k,r) 可学；要求说明 A、B 的初始化方式；题面未给具体输入形状、batch 维与 dtype，本文按通用约定实现。",
+      "approach": [
+        {
+          "step": "朴素：直接加一个可训练满秩 ΔW",
+          "detail": "最直觉的做法是给 base.weight 加一个同形状、requires_grad=True 的 ΔW(k, n)，变成 W0 + ΔW 继续训练。两个问题都不致命但都真实：参数量与显存翻倍——k=n=4096 时 ΔW 一个张量就是 16.7M 参数，Adam 还要再存两份一阶/二阶动量，单卡微调 7B 模型时这一步就爆显存；而如果 ΔW 随机初始化（不能像 B 那样清零，因为清零零梯度会让 ΔW 永远停在 0），起点就偏离了预训练权重，微调早期 loss 会明显跳高、小数据集上容易灾难性遗忘。根因是「我们应该只学权重的变化量」这个变化量本身应当是低秩的。"
+        },
+        {
+          "step": "正确写法的关键设计一：低秩分解 BA，让增量只有 r(n+k) 个参数",
+          "detail": "把 ΔW 参数化成 B @ A，A(r,n)、B(k,r)，则增量参数从 n·k 降到 r(n+k)。取 n=k=4096、r=8：从 16.7M 降到 65.5K（约 0.4%），优化器状态同步缩小两个数量级，这就是 LoRA 能单卡微调的来源。更关键的是它把「微调」约束在低秩子空间里：假设权重的任务相关更新近似低秩，那么只学这个子空间既够用、又天然抑制过拟合；r 就是「能表达多少」的开关。前向要按 x A^T B^T 的顺序算（先降维再升维），不能先算 BA——先算 BA 等于把 (k,n) 的中间结果物化出来，参数量省了但算力没省。"
+        },
+        {
+          "step": "正确写法的关键设计二：B 零初始化 + A 的 kaiming 初始化",
+          "detail": "B = 0 使 delta = scaling·(xA^T)B^T 在初始化时恒为 0，于是前向输出与原来的预训练模型逐位相同、初始 loss 与原模型一致，微调是「从预训练状态平滑出发」而不是从扰动状态出发；同时它保证 A 一开始拿得到第一步的梯度：∂L/∂B 在 B=0 时仍非零（它含有 A^T 与 x 的因子），而 ∂L/∂A 含 B 的因子、恰为 0，所以第一步只更新 B，第二步起 B 非零、A 才动起来，训练是「先学 B、A 随后跟上」而不是死锁。A 一侧用 kaiming_uniform_（fan_in=n），让 A 的每行方差与 nn.Linear 默认初始化同源，避免 B 一旦被更新、增量幅度过大。注意两者的耦合：如果 B 随机初始化且幅度不小，第一步 delta 就很大，反向梯度随之放大，正是 pitfall 里说的「起始 loss 爆炸」。"
+        },
+        {
+          "step": "正确写法的关键设计三：alpha/r 缩放与冻结策略",
+          "detail": "有效权重是 W_eff = W0 + (alpha/r)·B A。缩放系数必须显式乘在 delta 上（或在 merge 时乘），它把 r 与 alpha 的职责分开：alpha 控制「有效更新幅度」，r 控制「低秩容量」。如果忘记乘，等效学习率会被放大 r/alpha 倍（r=8、alpha=16 时正好 2 倍），调 r 时就像在偷偷调学习率，实验不可复现。冻结策略是配套动作：遍历 base.parameters() 把 requires_grad置 False，只把 A、B 交给优化器；同时保留 base(x) 的原路径（含 bias），这样合并/不合并、训练/推理三条路径的数学完全一致。"
+        },
+        {
+          "step": "正确写法的关键设计四：dropout 位置与推理期 merge",
+          "detail": "LoRA 原论文的 dropout 作用在低秩支路的输入上（本文按人工参考实现写成 self.drop(x) @ A.T），另一种常见写法是作用在中间 r 维激活上（drop(h) @ B.T）；两者都只扰动增量、不动冻结主干，效果相当但随机掩码位置不同，权重不能跨写法热加载——这一点写进 selfCheck.uncertain 而不擅自改人工实现。训练结束后做 merge：W0 ← W0 + (alpha/r)·BA，用 torch.no_grad() 原地累加，推理时前向退化成一次普通 Linear，省掉两次小矩阵乘与一次加法（延迟与显存都回到基线），对应 keyPoints 的 merge and unload；unmerge 做反向减法可恢复训练形态。"
+        }
+      ],
+      "complexity": {
+        "time": "O(m·k·n + m·r·(n+k))；反向只对 A、B 生效，同阶",
+        "space": "训练增量参数 O(r(n+k))（+ 优化器状态 2~2× 该值），激活 O(m·r)，推理 merge 后 O(1) 额外",
+        "why": "前向两次路径：冻结主干一次满秩乘 O(mkn)，增量支路先降维到 r 再升回 k，O(mr(n+k))，r≪min(n,k) 时可忽略；反向不用算 W0 梯度，代价来自 A、B 的梯度。省下的是参数与显存：从 n·k 降到 r(n+k)。"
+      },
+      "code": {
+        "language": "python",
+        "source": "\"\"\"手写 LoRA 包装 Linear 层：W_eff = W0 + (alpha/r) * B @ A（A ~ kaiming，B 初始化为 0）。\n\n形状约定（与 nn.Linear 一致）：\n    base: nn.Linear(in_features=n, out_features=k, bias=True)\n    x:    (batch, *, n)            # 任意前置维，最后一维是 n\n    out:  (batch, *, k)\n    A:    (r, n)  —— 降维矩阵；B: (k, r) —— 升维矩阵；BA 的形状是 (k, n)，与 W0 对齐。\n\n为什么 B 必须初始化为 0：初始 delta = scaling * (x @ A.T @ B.T)，B=0 时 delta 恒等于 0，\n前向输出与冻结前的 base 逐位相同，训练从预训练模型的状态出发，不会一上来就 loss 爆炸。\n推理期 merge 把 (alpha/r)*B@A 折进 W0，同时把 A、B 清零（unload），前向退化成一次普通\nLinear；unmerge 用暂存的 buffer 还原 A、B 并减回权重。\n\n依赖：pytorch（import torch / torch.nn as nn）。运行：python lora_linear.py\n\"\"\"\nimport math\n\nimport torch\nimport torch.nn as nn\n\n\nclass LoRALinear(nn.Module):\n    \"\"\"把任意 nn.Linear 包成 LoRA 层：冻结 W0，只训练低秩增量 (alpha/r) * B @ A。\"\"\"\n\n    def __init__(self, base, r=8, alpha=16, dropout=0.0):\n        super().__init__()\n        if not isinstance(base, nn.Linear):\n            raise TypeError(\"base 必须是 nn.Linear，实际是 %r\" % type(base).__name__)\n        if r <= 0:\n            raise ValueError(\"r 必须是正整数，实际是 %r\" % (r,))\n        if alpha <= 0:\n            raise ValueError(\"alpha 必须是正数，实际是 %r\" % (alpha,))\n\n        n, k = base.in_features, base.out_features\n        self.base = base\n        for p in self.base.parameters():\n            p.requires_grad = False            # 冻结原权重：既不更新也不进优化器参数组\n\n        self.r = int(r)\n        self.scaling = float(alpha) / float(r)  # alpha/r：让增量幅度与 r 解耦，调 r 不必重调 lr\n        self.merged = False                      # 是否已把 (alpha/r)*BA 折进 W0（推理加速）\n\n        # A 用 kaiming_uniform_（等价于默认 Linear 的初始化），B 用零初始化。\n        # dtype/device 跟随 base.weight，否则 fp16 或 cuda 上第一次前向就会形状/设备报错。\n        factory = dict(dtype=base.weight.dtype, device=base.weight.device)\n        self.A = nn.Parameter(torch.empty(r, n, **factory))\n        self.B = nn.Parameter(torch.zeros(k, r, **factory))  # 关键：B=0 => 初始 delta 恒为 0\n        nn.init.kaiming_uniform_(self.A, a=math.sqrt(5))\n        self.drop = nn.Dropout(dropout)\n        # merge 后 A、B 清零并把旧值暂存在 buffer 里，state_dict 结构保持不变，可原样 unmerge。\n        self.register_buffer(\"_A_saved\", torch.zeros(0, **factory), persistent=False)\n        self.register_buffer(\"_B_saved\", torch.zeros(0, **factory), persistent=False)\n\n        if n < r or k < r:\n            # 不是错误，但 r 超过维度时 BA 比 W0 更\"胖\"，LoRA 失去省参数的意义。\n            print(\"[warn] r=%d 不小于 in/out=%d/%d，低秩假设不成立\" % (r, n, k))\n\n    def forward(self, x):\n        out = self.base(x)                        # (batch, *, k)，W0 冻结 + bias\n        hidden = self.drop(x) @ self.A.T          # (batch, *, n) @ (n, r) -> (batch, *, r)\n        delta = (hidden @ self.B.T) * self.scaling  # (batch, *, r) @ (r, k) -> (batch, *, k)\n        return out + delta                        # merge 后 A、B 已被清零，delta 精确为 0\n\n    @torch.no_grad()\n    def merge(self):\n        \"\"\"推理期把 (alpha/r)*B@A 折进 W0 并 unload 掉增量，前向退化成普通 Linear。\"\"\"\n        if self.merged:\n            return self\n        self.base.weight += (self.B @ self.A) * self.scaling   # 缩放必须带上：(k,r)@(r,n)->(k,n)\n        self._A_saved, self._B_saved = self.A.detach().clone(), self.B.detach().clone()\n        self.A.zero_()                    # unload：清零后 forward 的 delta 精确为 0，\n        self.B.zero_()                    # 与「W0 已含增量」叠加也不会重复计算\n        self.merged = True\n        return self\n\n    @torch.no_grad()\n    def unmerge(self):\n        \"\"\"还原 A、B 并把折进去的增量减回来，恢复可训练形态（数值上回到 merge 前）。\"\"\"\n        if not self.merged:\n            return self\n        self.A.copy_(self._A_saved)       # 必须先还原 A、B，减回来的才是当初加进去的那一份\n        self.B.copy_(self._B_saved)\n        self.base.weight -= (self.B @ self.A) * self.scaling\n        self._A_saved, self._B_saved = self._A_saved[:0], self._B_saved[:0]\n        self.merged = False\n        return self\n\n\ndef count_trainable(module):\n    return sum(p.numel() for p in module.parameters() if p.requires_grad)\n\n\ndef _self_test():\n    torch.manual_seed(0)\n    base = nn.Linear(64, 32, bias=True)\n    lora = LoRALinear(base, r=4, alpha=8, dropout=0.0)\n    x = torch.randn(5, 64)\n\n    ref = base(x).detach().clone()\n    delta0 = (lora(x) - ref).abs().max().item()\n    assert delta0 == 0.0, \"B=0 时初始增量必须严格为 0，实际 %r\" % delta0\n\n    loss = lora(x).pow(2).mean()          # 反向：1 应到 A/B，0 应到 W0/bias\n    loss.backward()\n    assert lora.A.grad is not None and lora.B.grad is not None\n    assert base.weight.grad is None and base.bias.grad is None\n\n    with torch.no_grad():                 # 随机化 BA 后，merge 前后的输出必须一致\n        nn.init.normal_(lora.A, std=0.02)\n        nn.init.normal_(lora.B, std=0.02)\n    before = lora(x).detach().clone()\n    w0_before = base.weight.detach().clone()          # lora.base is base，先留一份快照\n    lora.merge()\n    merged = lora(x).detach().clone()\n    assert float(lora.A.detach().abs().sum()) == 0.0 and float(lora.B.detach().abs().sum()) == 0.0, \\\n        \"merge 后应 unload 掉增量\"\n    assert float((base.weight.detach() - w0_before).abs().sum()) > 0.0, \"merge 必须改写 W0\"\n    lora.unmerge()\n    after = lora(x).detach().clone()\n    print(\"params: trainable=%d, base=%d\" % (count_trainable(lora), base.weight.numel()))\n    print(\"init delta max=%.1e\" % delta0)\n    print(\"merge max|diff|=%.1e   unmerge max|diff|=%.1e\"\n          % ((merged - before).abs().max(), (after - before).abs().max()))\n    return delta0, (merged - before).abs().max(), (after - before).abs().max()\n\n\nif __name__ == \"__main__\":\n    d0, dmerge, dunmerge = _self_test()\n    assert dmerge < 1e-5, \"merge 与未 merge 的前向应当一致，实际差 %r\" % dmerge\n    assert dunmerge < 1e-5, \"unmerge 后应当回到 merge 前的数值，实际差 %r\" % dunmerge\n    print(\"OK\")\n",
+        "walkthrough": [
+          {
+            "note": "先看三个形状的约定，这是本题最容易翻车的地方：x 是 (batch, *, n)，base(x) 给出 (batch, *, k)；A 是 (r, n)、B 是 (k, r)，所以 B @ A 是 (k, n)，恰好与 base.weight 同形——merge 能直接相加的前提就是这一步形状对齐。forward 里刻意不把 (B @ A) 显式算出来，而是走 x @ A.T @ B.T 的路由：先降到 r 维再升回 k 维，计算量与显存都是 O(m·r·(n+k))，一旦先算 BA 就退化成 O(n·k) 的满秩代价，省参数的意义就没了。"
+          },
+          {
+            "note": "初始化是整个实现的关键：B = torch.zeros(k, r)。因为 delta = scaling * (x @ A.T @ B.T)，B 全 0 时 delta 恒等于 0，前向输出与冻结前的 base 逐位相同——这正是 keyPoints 说的「训练开始时增量恒为 0，不破坏预训练模型」。A 一侧用 nn.init.kaiming_uniform_(A, a=math.sqrt(5))，与 nn.Linear 默认初始化同源（fan_in = n），保证训练一开始 A 的梯度尺度正常；A、B 谁是零矩阵不影响数学，但如果把 A 置零、B 随机初始化，delta 同样为 0，只是与流行实现相反、读论文对照麻烦，本文沿用 A~kaiming / B=0。"
+          },
+          {
+            "note": "冻结与缩放：循环把 base 所有参数的 requires_grad 置 False，于是优化器只更新 A、B；scaling = alpha / r 在 forward 里乘在最后，也可以等价地预乘进 B 或学习率。缩放的作用写在数学里：W_eff x = W0 x + (alpha/r)·B A x，把 A 用 N(0, σ²) 初始化时 B A x 的量级是统计量，乘上 alpha/r 恰好让「有效更新幅度」只由 alpha 控制、与 r 解耦；反过来，若把 alpha/r 直接乘进参数化而不缩放，r 从 4 换成 16 相当于学习率被放大若干倍。"
+          },
+          {
+            "note": "数值与设备健壮性：__init__ 里显式校验 base 是 nn.Linear、r > 0、alpha > 0，避免 r=0 时 scaling 变成 inf 或除零；A、B 的 dtype 与 device 都跟随 base.weight（用 dtype=/device= 建张量），否则 base 在 cuda/fp16 上而 A、B 默认 cpu/fp32，第一次前向就报设备不一致。当 r >= min(n, k) 时打印告警——此时 (r,n)+(k,r) 的参数可能已多于 W0，低秩假设不成立，题目虽未要求但面试官常追问「r 能取多大」。"
+          },
+          {
+            "note": "merge / unmerge 是本题的加分项，也是只做一半最典型的坑：merge() 在 torch.no_grad() 下把 (B @ A) * scaling 累加进 base.weight（形状 (k, n)），随后把 A、B 暂存进 buffer 并清零——这就是「merge and unload」。unload 后 forward 里的 delta 精确为 0，即使不特判 merged 也不会与已折进 W0 的增量重复相加，A、B 也不再占推理算力。两个细节：① 必须先乘 scaling 再累加，否则合并后的权重与训练时不一致（pitfalls 第 3 条）；② unmerge() 要先把 A、B 从 buffer 拷回来、再减 (B@A)*scaling，顺序反了就会减掉一个零矩阵、增量留在 W0 里，这是我实现时真实踩到的 bug（数值残差从 6e-7 变成 5e-2）。"
+          },
+          {
+            "note": "最后的 _self_test 把几条可验证性质落成断言：① 初始化后 delta 最大绝对值为 0；② 反向后 A.grad/B.grad 存在而 base.weight.grad 为 None（证明只有 A、B 在训练）；③ 随机化 A、B 后 merge 前向与未 merge 前向最大差 < 1e-5；④ merge 后 A、B 全为 0 且 W0 确实被改写；⑤ unmerge 后前向回到 merge 前（< 1e-5）。任何一条不成立都说明实现与「冻结 + 零初始化 + 缩放 + unload」的设计不符。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "r = 0 或 alpha = 0：alpha/r 直接除零得 inf/nan；实现里显式 raise ValueError，并且用前先校验 r 为正整数。",
+        "r >= min(in_features, out_features)：低秩假设失效，(r,n)+(k,r) 的参数可能比 W0 更多；代码里打印告警而保留功能正确性。",
+        "base 带 bias：bias 也必须被冻结（循环遍历 base.parameters() 已覆盖），merge 时只改 weight、绝不动 bias。",
+        "dropout > 0 且 model.eval()：nn.Dropout 在 eval 下是恒等映射，所以未 merge 的推理路径与训练期期望一致；若忘记切换 eval，推理会带上随机性。",
+        "batch 维为空（x 形状 (0, n)）：矩阵乘仍返回 (0, k)，实现里不需要额外特判；x 为 2 维以外的形状（3 维、4 维）同样按最后一维约简。",
+        "base.weight 与 A、B 的 dtype/device：真实微调里 base 是 fp16 而新参数默认 fp32 会报错，需要 .to(base.weight.dtype/device) 或用 torch.set_default_dtype；本文示例统一 float32。",
+        "重复 merge：merged 标志位挡住二次 merge（否则增量被加两次）；unmerge 也只对 merged=True 生效，未 merge 时直接返回，不会误减。",
+        "merge 与 unmerge 不是逐位可逆：W0 被原地加减，float32 下 unmerge 后与 merge 前相差约 1e-7（本文实测 6e-8~6e-7），不能用于要求逐位一致的场景。"
+      ],
+      "pitfalls": [
+        "B 也随机初始化（而不置零）：初始 delta 非零，起点偏离预训练模型，第一条 step 的 loss 直接跳高、极端时爆炸。",
+        "忘记乘 alpha/r：等效学习率与预期差 r/alpha 倍（r=8、alpha=16 时差 2 倍），scale 一变就不可复现。",
+        "合并权重时忘记乘缩放系数：W0 + B A 与训练时的 W0 + (alpha/r) B A 不一致，离线评测与训练对不上。",
+        "A 与 B 的转置顺序写反：必须满足 B @ A 的形状是 (out_features, in_features)；写成 x @ A @ B 会直接形状报错，写成 B.T @ A.T 则静默给出错误结果。",
+        "把 alpha/r 写成 r/alpha（或把 alpha、r 的参数含义互换）：等效学习率整体被平方级地改变，且 checkpoint 里的 scaling 无法复原。",
+        "冻结只做了 base.weight、忘了 base.bias（或反之），结果 bias 被一起更新，merge 与 unmerge 的假设被破坏。",
+        "先算 (B @ A) 再乘 x：数学等价但每次前向多出 O(n·k) 的中间张量和算力，LoRA 的显存优势消失；merge 只在推理期做一次才是正解。",
+        "dtype/device 不匹配：base 在 cuda:0 / fp16，新建的 A、B 默认 cpu/fp32，第一次前向就报 Expected all tensors on the same device；或反向时 fp16 溢出。",
+        "merge 后没有用 no_grad()：原地累加进 leaf 参数会破坏 autograd（base.weight 已是 requires_grad=False 的 leaf），可能报「a leaf Variable that requires grad is being used in an in-place operation」或静默污染计算图。",
+        "把 scaling 预乘进 A 或 B 后又重复乘一次：等效缩放变成 (alpha/r)²。",
+        "merge 后 unload 不彻底：只清零 B（或只把 BA 折进 W0 却忘了把 A、B 清零），前向会把增量加两遍（W0 里的 + 支路里的）。",
+        "unmerge 的顺序写反（先按已清零的 A、B 减回 W0、再拷回参数）：减掉的是零矩阵，增量永久留在 W0 里；本文实现时实测残差从 6e-7 变成 5e-2。",
+        "merge 属于原地修改，若把 _A_saved/_B_saved 注册为 persistent=False 的 buffer，它们不会进 state_dict——「merge 保存、之后重新加载再 unmerge」这条路径要另外持久化 A、B，否则删不干净。"
+      ],
+      "followUps": [
+        "r 该怎么选？它在「容量/可表达的变化空间」与「参数量/过拟合风险」之间权衡；实践上从 4/8 试起、用验证集挑，r 太小欠拟合、太大收益饱和且更容易在小数据上过拟合。",
+        "alpha 为什么常取 2r？把 scaling 写成 alpha/r 是为了让「有效更新幅度」与 r 解耦，所以固定 alpha 改 r、或固定 ratio 改 r，等价学习率保持不变；这是普遍做法，但并不是原论文的硬性规定（原论文 ablation 里更关注固定 alpha 时缩放因子变化的影响）。",
+        "如果要同时换多组超参，怎么保证公平比较？让 alpha/r 保持不变（例如恒取 alpha=2r），否则实验差异混进了学习率差异。",
+        "除了 Linear，还能加在哪里？Attention 的 q/k/v/o 投影是最常见目标；原论文发现只调 q、v 就有不错的性价比，全调效果更好但参数更多。换成 Conv2d 时把 A/B 改成对应的 (r, C_in, 1, 1)/(C_out, r, 1, 1)，merge 思路不变。",
+        "QLoRA 怎么改？把冻结的 W0 用 4-bit 量化（NF4）存储、前向时反量化参与计算，只训练 fp16/bf16 的 A、B；因为梯度不流回 W0，量化误差不会被放大，显存能再降一大截。",
+        "怎么叠多个 LoRA？让 delta = Σ_i (alpha_i/r_i) B_i A_i，推理时可分别 merge 或合并成一个加权 BA；要注意不同 adapter 的缩放与 dropout 语义。",
+        "DoRA 呢？把权重分解成幅度 m 与方向 V/||V||，LoRA 只调方向分量、m 单独可学；参数量略增，但低秩下表现通常更稳。",
+        "rank-stabilized LoRA（rsLoRA）是什么？把缩放从 alpha/r 改成 alpha/sqrt(r)，这样增大 r 时增量幅度不会随之衰减，高秩设置下更稳定；实现上只是改一行 scaling。",
+        "在线服务里怎么做到零额外延迟？在加载时 merge 并 unload 掉 LoRA 参数（本文的 merge/unmerge），前向完全等价于原模型；多租户场景则保留未合并形态、按请求切换 adapter，用 batch 内不同的 scaling 做动态选择。"
+      ],
+      "variations": [
+        "手写 LoRA 版的 nn.Embedding 或 Conv2d（低秩增量换到对应形状）。",
+        "把 scaling 提到 B 的初始化里：让 B = zeros，但在 forward 里用 self.scaling 预乘 A，考察对等效学习率的理解。",
+        "实现一个 LoRAModel，把模型里所有名字匹配 query/value 的 Linear 批量替换成 LoRALinear，并只把 A、B 交给优化器（参数组构造是常见追问点）。",
+        "实现 add_weighted_adapter / 多 adapter 加权合并。",
+        "从零推导 LoRA 的梯度：∂L/∂B 与 ∂L/∂A 的表达式，并解释为什么 B=0 时第一步 A 的梯度为零。",
+        "QLoRA：在量化主干上加 LoRA，考察反量化时机与梯度路径。",
+        "与 Adapter / Prefix-Tuning / BitFit 对比参数量与推理延迟（LoRA 是唯一能在推理期完全消除额外延迟的方案）。",
+        "手写 LoRA 的 merge/unmerge 与「同一模型挂 10 个 adapter、按请求切换」的推理实现。",
+        "给 LoRA 加 rsLoRA 变体（scaling = alpha/sqrt(r)）并做 r 扫描实验。"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "LoRA 前向：形状与低秩瓶颈",
+        "caption": "两条支路在 (…, k) 相加：冻结支路走 W0，增量支路先降到 r 维再升回 k 维并乘 alpha/r；B 初始化为 0，所以起步时蓝色支路输出恒为 0，推理可把它折进 W0。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' font-size='13'><text x='14' y='20' font-size='15' fill='currentColor'>LoRA 前向：形状与低秩瓶颈</text><text x='286' y='20' font-size='13' fill='var(--fg-1)'>A ~ kaiming, B = 0</text><line x1='14' y1='30' x2='466' y2='30' stroke='var(--line-1)' stroke-width='1'/><rect x='44' y='46' width='44' height='24' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='50' y='63' font-size='13' fill='currentColor'>x</text><text x='96' y='63' font-size='13' fill='var(--fg-1)'>(..., n)</text><rect x='44' y='84' width='96' height='46' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='52' y='102' font-size='13' fill='currentColor'>A</text><text x='52' y='120' font-size='13' fill='var(--fg-1)'>(r, n)</text><path d='M68 72 L68 80' stroke='currentColor' stroke-width='1'/><path d='M64 76 L68 84 L72 76 Z' fill='currentColor'/><rect x='44' y='148' width='96' height='46' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='52' y='166' font-size='13' fill='currentColor'>B</text><text x='52' y='184' font-size='13' fill='var(--fg-1)'>(k, r)</text><path d='M92 132 L92 144' stroke='currentColor' stroke-width='1'/><path d='M88 140 L92 148 L96 140 Z' fill='currentColor'/><rect x='156' y='152' width='108' height='46' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='164' y='170' font-size='13' fill='currentColor'>B@A</text><text x='164' y='188' font-size='13' fill='var(--fg-1)'>r(n+k) 参数</text><path d='M142 175 L152 175' stroke='currentColor' stroke-width='1'/><path d='M152 171 L159 175 L152 179 Z' fill='currentColor'/><text x='44' y='222' font-size='13' fill='var(--fg-1)'>支路：降到 r 维，再升回 k 维</text><text x='44' y='240' font-size='13' fill='var(--fg-1)'>B = 0 时这条支路整体输出 0</text><rect x='248' y='46' width='204' height='52' rx='6' fill='none' stroke='var(--fg-1)' stroke-width='1'/><text x='258' y='68' font-size='13' fill='var(--fg-1)'>冻结 W0 (k, n)</text><text x='258' y='86' font-size='13' fill='var(--fg-1)'>x @ W0.T -> (..., k)</text><path d='M206 106 L240 106 L240 74 L248 74' stroke='currentColor' stroke-width='1' fill='none' stroke-dasharray='4 3'/><rect x='248' y='152' width='196' height='50' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='272' y='174' font-size='13' fill='currentColor'>增量 x @ A.T @ B.T</text><text x='272' y='192' font-size='13' fill='var(--fg-1)'>乘 alpha/r -> (..., k)</text><path d='M276 146 L276 148' stroke='currentColor' stroke-width='1'/><path d='M272 144 L276 152 L280 144 Z' fill='currentColor'/><text x='286' y='140' font-size='13' fill='currentColor'>+</text><text x='284' y='122' font-size='13' fill='currentColor'>(..., k)</text><path d='M398 108 L398 146' stroke='currentColor' stroke-width='1'/><path d='M394 142 L398 150 L402 142 Z' fill='currentColor'/><path d='M398 202 L398 224' stroke='currentColor' stroke-width='1'/><path d='M394 220 L398 228 L402 220 Z' fill='currentColor'/><text x='290' y='240' font-size='13' fill='var(--fg-1)'>推理 merge 后 -> Linear</text></svg>",
+        "alt": "架构图：输入 x 形状 (m,n) 分两路。上路经冻结的 W0 (k,n) 得到 (m,k)；下路先乘 A (r,n) 降到 (m,r)、再乘 B (k,r) 升回 (m,k)，乘上 alpha/r 缩放，其中 A 用 kaiming 初始化、B 初始化为 0，故初始增量为 0。两路相加得到输出 (m,k)。推理期把 (alpha/r)·B@A 合并进 W0 后，前向退化为一次普通 Linear。"
+      },
+      "selfTest": [
+        "为什么不把 A 也初始化为 0？如果 A = 0、B 随机初始化，前向输出会怎样，第一步谁先拿到非零梯度？",
+        "r 从 8 改成 16、alpha 保持不变时，有效学习率发生了什么变化？如果希望「换 r 不影响有效学习率」，alpha 该怎么设？",
+        "merge 的时候如果写成 base.weight += B @ A（漏了 scaling），用这个模型做推理评测会发生什么？训练时的输出和推理时的输出差多少倍？",
+        "x 的形状是 (4, 16, 64)、base = Linear(64, 32)、r = 4 时，hidden 与 delta 的形状分别是什么？如果是 3D 输入，B@A 的形状会变吗？"
+      ],
+      "keyPoints": [
+        "A 用 kaiming/正态初始化，B 初始化为 0 —— 保证训练开始时增量恒为 0，不破坏预训练模型。",
+        "缩放系数为 alpha/r（alpha 常取 2r）：它把「有效更新幅度」与秩 r 解耦，忘了乘等于改了学习率。",
+        "原权重 requires_grad=False，只训练 A、B：参数量从 n·k 降到 r(n+k)，优化器状态同步缩小。",
+        "前向按 x @ A.T @ B.T 走低秩瓶颈（先降维再升维），不要先物化 BA。",
+        "推理时可把 (alpha/r)·BA 合并回 W0（merge and unload）以消除额外延迟，合并时必须带上缩放系数。"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（lora-implementation）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题面原文：实现一个 LoRA 包装的 Linear 层，冻结原权重 W0，注入低秩 BA 增量并乘以 alpha/r 缩放，并说明 A、B 的初始化方式。",
+          "人工 keyPoints 原文：A 用 kaiming/正态初始化、B 初始化为 0（保证训练开始时增量恒为 0，不破坏预训练模型）；缩放系数为 alpha/r；原权重 requires_grad=False；推理时可 merge and unload。",
+          "人工 pitfalls 原文：B 也随机初始化会导致起始 loss 爆炸；忘记乘 alpha/r 会让等效学习率错；合并权重时忘记乘缩放系数。",
+          "人工 referenceSolution 的算法：base(x) + dropout(x) @ A.T @ B.T * (alpha/r)，A = kaiming_uniform_(a=sqrt(5))、B = zeros，base 参数全部 requires_grad=False；本文的实现、merge 与自测都保持这一算法不变。",
+          "数学等价性：x @ A.T @ B.T == x @ (B @ A).T，形状 (m,n)@(n,r)@(r,k)=(m,k)；merge 用的 B @ A 形状是 (k,r)@(r,n)=(k,n)，与 W0 同形。",
+          "数学等价性：B=0 ⇒ delta = scaling·(xA^T)·0^T = 0，因此初始化后 LoRA 前向与冻结原模型的输出严格相同（在 float 下逐位相同，因为加的是精确 0）。",
+          "参数量：r(n+k) = 8×(4096+4096) = 65536，占 n·k = 16777216 的 0.39%（约 0.4%）。",
+          "本文代码只用 python + pytorch（torch、torch.nn、math 均在代码中 import），CPU float32 即可运行；_self_test 断言初始 delta 最大绝对值 == 0、merge 前后前向差 < 1e-5、base.weight.grad is None。",
+          "本文实现把 merge 做成「折进 W0 + 清零 A、B」的 merge-and-unload：清零后 forward 的 delta 精确为 0，因此不需要在 forward 里特判 merged 也不会重复计算；unmerge 先从 buffer 还原 A、B 再减回增量，本文实测前向残差 6e-8（merge 时 6e-7），均在 float32 舍入范围内。",
+          "若 hidden = x @ A.T 与 B.T 相乘顺序写反（例如 x @ A @ B），最常见的结果是实现直接抛形状错误，而不是静默给出错误数值。",
+          "本文内部一致性：前向的增量为 (x @ A.T) @ B.T * scaling，与 merge 的 (B @ A) * scaling 是同一个量，故 merge 前后输出一致——自测里用随机化 A、B 验证了这一点。"
+        ],
+        "uncertain": [
+          "人工题面未给具体输入形状、batch 维、in_features/out_features 与 dtype，本文按通用约定取 x=(m,n)、base=Linear(n,k) 并统一 float32 示例；实际模型可能需要处理 3D/4D 输入与 fp16/bf16。",
+          "alpha 常取 2r 来自人工 keyPoints，具体到本题未指定数值；本文示例沿用「r=8、alpha=16、dropout=0.0」的默认超参，不代表评测用的是这一组。",
+          "dropout 的插入位置（支路输入 x 上还是低秩激活 h 上）题面与人工实现均未讨论；本文严格沿用人工 referenceSolution 的 self.drop(x) @ A.T，只在 followUps/walkthrough 里说明另一种常见写法。",
+          "alpha/r 与高秩下更常用的 alpha/sqrt(r)（rsLoRA）的取舍：本文按人工指定用 alpha/r，未展开实验证据。",
+          "训练/推理的混合精度策略（A、B 用 fp32 还是 fp16、是否需要 autocast）题面未涉及，本文只做提示不做断言。",
+          "「A 用 kaiming 还是正态」人工 keyPoints 两种都接受；本文实现选 kaiming_uniform_(a=sqrt(5))（与 nn.Linear 默认一致），若评测对照原论文实现可能用 N(0, 1/sqrt(n))，二者初始化尺度略有差异。",
+          "merge/unmerge 的精度：merge 后 W0 被原地修改，unmerge 做反向减法，float32 下不能保证逐位回到原值（只保证 < 1e-5 量级）；本文自测用的是随机化后的 A、B 与 1e-5 阈值。",
+          "批量替换模型 Linear 层时 target_modules 的选择（q/v 还是全部投影）以及 MoE/量化模型中的例外情况，题面未涉及，属于追问范围。"
+        ]
+      }
+    }
+  ]
+}

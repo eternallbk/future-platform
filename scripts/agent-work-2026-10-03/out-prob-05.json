@@ -1,0 +1,132 @@
+{
+ "batchId": "prob-05",
+ "entries": [
+  {
+   "id": "pb-34583f8e3d5d4c78",
+   "itemId": "34583f8e3d5d4c78",
+   "tldr": "单链表反转：三指针原地改向，一趟 O(n) 时间、O(1) 空间，返回 prev 作为新表头。",
+   "restated": "输入单链表头结点 pHead（自带值，不是哑结点），长度 n；整条反向，返回新表头。样例：{1,2,3}→{3,2,1}，{}→{}。题面「数据范围」「要求：空间/时间复杂度」两处数值被截断，原文应为 0≤n≤1000、O(n) 时间 O(1) 空间；链表无环、值可重复。",
+   "approach": [
+    {
+     "step": "暴力（值搬运）",
+     "detail": "先遍历一遍把所有 val 抄进数组，反转数组，再遍历第二遍写回原结点。时间 O(n) 看似达标，但额外 O(n) 空间，违反题面「空间复杂度」一栏的要求；而且遇到不可拷贝的结点负载（大对象、锁、连接句柄）时根本无法搬运，面试里只能算兜底答案。"
+    },
+    {
+     "step": "头插法（建新链）",
+     "detail": "新开一个空链表，逐个摘下原结点做头插。时间 O(n)、逻辑直观，但仍然要维护一条新链，写起来比三指针多一个哨兵结点与一处分叉判断，且容易被追问「能不能不改结构？」——题干要的是原地改向，属于次优表述。"
+    },
+    {
+     "step": "最优（迭代三指针原地反转）",
+     "detail": "关键观察：反转一整条链表 = 对每个结点做同一件事——把它的 next 从后继改成前驱。所以只要维护 prev（已反转段的头）与 cur（未处理段的头）两个指针，外加一个 nxt 暂存后继即可。必须暂存，因为 cur.next = prev 一执行，通往原链表后半段的唯一线索就断了；先存后改，才能把「断链」变成「换向」。每轮循环不变式是「prev 段已完全反转、cur 及其后仍是原始顺序」，cur 走成 None 时 prev 恰好是新表头，直接返回即可。"
+    },
+    {
+     "step": "递归写法（面试可选加分项）",
+     "detail": "先递归反转 head.next，得到新表头 new_head，再让 head.next.next = head 把自己挂回去，并把 head.next 置空。代码三行，但它占用 O(n) 的调用栈，严格讲空间不是 O(1)，n 大时还会爆栈；面试里应主动说明这一取舍，而不是把它当最优解。"
+    }
+   ],
+   "complexity": {
+    "time": "O(n)",
+    "space": "O(1)",
+    "why": "每个结点只被 cur 访问一次，改向是常数操作；迭代版只用了 prev/cur/nxt 三个指针，无额外容器。"
+   },
+   "code": {
+    "language": "python",
+    "source": "from typing import List, Optional\n\n\nclass ListNode:\n    \"\"\"单链表结点。题面声明头结点 pHead 本身就带值，所以没有哑结点。\"\"\"\n\n    def __init__(self, val: int = 0, nxt: \"Optional[ListNode]\" = None) -> None:\n        self.val = val\n        self.next = nxt\n\n\ndef reverse_list(head: Optional[ListNode]) -> Optional[ListNode]:\n    \"\"\"迭代反转单链表：三指针原地改向，返回新的头结点。\"\"\"\n    prev, cur = None, head          # prev 是已反转段的头，初始为空\n    while cur is not None:          # 循环不变式：prev 已反转好，cur 仍是原链表的头\n        nxt = cur.next              # ① 先缓存后继，否则改向之后找不到原链表\n        cur.next = prev             # ② 把当前结点指回已反转段，形成反向边\n        prev, cur = cur, nxt        # ③ 反转段吞掉当前结点，窗口整体右移一格\n    return prev                     # cur 为空时，prev 正是反转后的头结点\n\n\ndef reverse_list_recursive(head: Optional[ListNode]) -> Optional[ListNode]:\n    \"\"\"递归写法：先反转 head.next 这段，再把自己挂到它的尾巴上。\"\"\"\n    if head is None or head.next is None:\n        return head                 # 空表/单结点：本身就是答案，也挡住了递归\n    new_head = reverse_list_recursive(head.next)\n    head.next.next = head           # 让后继结点反过来指向自己\n    head.next = None                # 自己成为新尾巴，必须断开，否则成环\n    return new_head\n\n\ndef build(values: List[int]) -> Optional[ListNode]:\n    \"\"\"测试辅助：按数组顺序建链，空数组返回 None。\"\"\"\n    sentinel = ListNode(0)\n    tail = sentinel\n    for v in values:\n        tail.next = ListNode(v)\n        tail = tail.next\n    return sentinel.next\n\n\ndef walk(head: Optional[ListNode]) -> List[int]:\n    \"\"\"测试辅助：把链表读回数组，用于断言结果。\"\"\"\n    out: List[int] = []\n    seen = 0\n    while head is not None:\n        seen += 1\n        if seen > 10000:            # 防御：成环时不要死循环\n            raise AssertionError(\"cycle detected\")\n        out.append(head.val)\n        head = head.next\n    return out\n\n\nif __name__ == \"__main__\":\n    # 边界：空表、单结点、两结点、正规样例 {1,2,3} -> {3,2,1}、重复值\n    cases = [[], [7], [1, 2], [1, 2, 3], [5, 5, 5, 5], list(range(1, 9))]\n    for values in cases:\n        got_iter = walk(reverse_list(build(values)))\n        got_recur = walk(reverse_list_recursive(build(values)))\n        expected = values[::-1]\n        assert got_iter == expected, (values, got_iter, expected)\n        assert got_recur == expected, (values, got_recur, expected)\n        print(\"ok\", values, \"->\", got_iter)\n    print(\"all cases passed\")\n",
+    "walkthrough": [
+     {
+      "note": "结点定义：显式写出 __init__，因为题面的 Java 骨架里 next 初值为 null，等价于 Python 的 None。"
+     },
+     {
+      "note": "主函数 reverse_list 三段式：nxt = cur.next 缓存 → cur.next = prev 换向 → prev, cur = cur, nxt 同步前移。这三步的顺序不可交换，交换任何两步都会断链或死循环。"
+     },
+     {
+      "note": "循环不变式：进入循环体时 prev 指向已反转好的那一段的头，cur 指向尚未处理段的头；循环体执行完后不变式重新成立。退出时 cur 为 None，prev 就是整条链的新头。"
+     },
+     {
+      "note": "返回值是 prev 而不是 cur —— 这是本题最常见的丢分点：cur 退出循环时必然是 None。"
+     },
+     {
+      "note": "递归版本用 head.next.next = head 完成「后继反过来指我」，随后 head.next = None 切断旧边；不切断就会形成长度 2 的环，遍历死循环。"
+     },
+     {
+      "note": "build / walk 是测试辅助函数：build 用哨兵结点顺序建链，walk 带步数上限，专门用来在断言失败时暴露「意外成环」而不是让脚本挂死。"
+     },
+     {
+      "note": "__main__ 里跑 6 组用例：空表、单结点、两结点、题面样例 {1,2,3}、全相同值、8 个结点；两种实现都要与 values[::-1] 相等才算过。"
+     }
+    ]
+   },
+   "edgeCases": [
+    "空链表（n=0）：head 为 None，循环一次都不进，返回 None，输出 {}。",
+    "单结点（n=1）：cur.next 改为 None，prev 变成该结点，返回它自身。",
+    "两结点：是「换向」而不是「交换值」的最小验证用例，最容易暴露写成值交换的错解。",
+    "结点值全部相同 / 有重复值：值相同不代表结点相同，必须按结点比较，不能靠 val 判断是否到头。",
+    "改向之后原链表的头结点成为新尾结点，它的 next 必须是 None（迭代版由第一轮 cur.next = prev 且 prev 初始为 None 保证）。",
+    "n=1000 的递归写法：递归深度等于 n，接近 Python 默认递归上限 1000，会被追问栈空间。"
+   ],
+   "pitfalls": [
+    "不暂存 nxt 就写 cur.next = prev，后半条链表直接丢失（必须 nxt = cur.next 在前）。",
+    "把循环条件写成 while cur.next 而不是 while cur，末尾会漏掉最后一个结点或空指针异常。",
+    "返回 cur 而不是 prev：退出循环时 cur 已经是 None，返回它等于返回空链表。",
+    "只交换相邻两个结点的 val 来「看起来反转了」，遇到奇数长度或链表结构被追问时立刻暴露。",
+    "解题时多建一个哨兵/哑结点——单链表反转本身不需要哑结点，头结点自带值，多建反而说不清返回值来源。"
+   ],
+   "followUps": [
+    "要求空间 O(1) 且不能改 val 之外的任何字段时怎么办？（本题就是，考察是否真在原地改 next）",
+    "改成递归实现，说明空间复杂度为什么不再是 O(1)，并说出栈深与 n 的关系。",
+    "如何用一趟遍历同时判断链表是否有环？（快慢指针，与本解共用「一次遍历改指针」的思路）",
+    "如果要求返回反转后的整条链表且不改动原链表，需要什么代价？（必须复制结点，空间回到 O(n)）",
+    "把链表换成双向链表，反转时需要额外维护哪些指针？（prev/next 互换，注意头尾哨兵）"
+   ],
+   "variations": [
+    "反转链表的前 n 个结点（头插法 + 第 n+1 个结点接续）。",
+    "指定区间 [m, n] 反转（先走到 m-1，再做局部反转并接回两端）。",
+    "K 个一组反转链表（外层分组 + 内层调用本题逻辑，注意不足 K 个时保持原序）。",
+    "两两交换链表中的结点（K=2 的特例，可以直接改写指针对）。",
+    "回文链表判定 / 重排链表（都以内层「反转后半段」为子过程）。"
+   ],
+   "diagram": {
+    "kind": "flow",
+    "title": "三指针原地反转链表",
+    "caption": "记住一句话：每轮先缓存 nxt，再把 cur.next 改指 prev，最后 prev 与 cur 整体右移一格。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='反转链表的三指针迭代过程：第一行是初始状态，prev 为空方块、cur 指向结点 1，链表为 1 指向 2 指向 3 指向空；第二行是 cur 推进到结点 2 之后，结点 1 与 2 之间的箭头已反向指回 prev，结点 2 到 3 仍是原方向；第三行是 cur 走成空之后，三根箭头全部反向，新表头是结点 3'><text x='10' y='18' font-size='13' text-anchor='start' fill='currentColor'>每轮：先存 nxt，再把 cur.next 改指 prev，最后整体右移</text><text x='16' y='45' font-size='13' text-anchor='middle' fill='var(--fg-1)'>空</text><rect x='36' y='32' width='30' height='26' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1.6'/><line x1='66' y1='45' x2='104' y2='45' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='116,45 104,39 104,51' fill='var(--line-1)'/><rect x='116' y='32' width='50' height='26' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1.6'/><text x='141' y='50' font-size='13' text-anchor='middle' fill='currentColor'>1</text><line x1='166' y1='45' x2='204' y2='45' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='216,45 204,39 204,51' fill='var(--line-1)'/><rect x='216' y='32' width='50' height='26' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1.6'/><text x='241' y='50' font-size='13' text-anchor='middle' fill='currentColor'>2</text><line x1='266' y1='45' x2='304' y2='45' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='316,45 304,39 304,51' fill='var(--line-1)'/><rect x='316' y='32' width='50' height='26' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1.6'/><text x='341' y='50' font-size='13' text-anchor='middle' fill='currentColor'>3</text><text x='420' y='45' font-size='13' text-anchor='middle' fill='var(--fg-1)'>空</text><text x='51' y='72' font-size='13' text-anchor='middle' fill='var(--accent)'>prev</text><text x='141' y='72' font-size='13' text-anchor='middle' fill='var(--accent)'>cur</text><text x='241' y='72' font-size='13' text-anchor='middle' fill='var(--line-1)'>nxt</text><text x='10' y='92' font-size='13' text-anchor='start' fill='currentColor'>第 1 轮结束：1 已指回 prev，cur 推进到 2（nxt 已预先存下）</text><text x='16' y='119' font-size='13' text-anchor='middle' fill='var(--fg-1)'>空</text><rect x='36' y='106' width='30' height='26' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1.6'/><text x='51' y='123' font-size='13' text-anchor='middle' fill='currentColor'>1</text><polygon points='110,119 122,113 122,125' fill='var(--accent)'/><line x1='78' y1='119' x2='122' y2='119' stroke='var(--accent)' stroke-width='1.6'/><rect x='122' y='106' width='50' height='26' rx='6' fill='none' stroke='var(--accent)' stroke-width='1.6'/><text x='147' y='124' font-size='13' text-anchor='middle' fill='currentColor'>2</text><line x1='172' y1='119' x2='210' y2='119' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='222,119 210,113 210,125' fill='var(--line-1)'/><rect x='222' y='106' width='50' height='26' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1.6'/><text x='247' y='124' font-size='13' text-anchor='middle' fill='currentColor'>3</text><text x='342' y='119' font-size='13' text-anchor='middle' fill='var(--fg-1)'>空</text><text x='51' y='146' font-size='13' text-anchor='middle' fill='var(--accent)'>prev</text><text x='147' y='146' font-size='13' text-anchor='middle' fill='var(--accent)'>cur</text><text x='10' y='163' font-size='13' text-anchor='start' fill='currentColor'>第 2 轮结束：2 也指回 1，cur 推进到 3，已反转段长度 2</text><text x='16' y='192' font-size='13' text-anchor='middle' fill='var(--fg-1)'>空</text><rect x='36' y='179' width='30' height='26' rx='6' fill='none' stroke='var(--accent)' stroke-width='1.6'/><text x='51' y='196' font-size='13' text-anchor='middle' fill='currentColor'>3</text><polygon points='110,192 122,186 122,198' fill='var(--accent)'/><line x1='78' y1='192' x2='122' y2='192' stroke='var(--accent)' stroke-width='1.6'/><rect x='122' y='179' width='50' height='26' rx='6' fill='none' stroke='var(--accent)' stroke-width='1.6'/><text x='147' y='197' font-size='13' text-anchor='middle' fill='currentColor'>2</text><polygon points='196,192 208,186 208,198' fill='var(--accent)'/><line x1='164' y1='192' x2='208' y2='192' stroke='var(--accent)' stroke-width='1.6'/><rect x='208' y='179' width='50' height='26' rx='6' fill='none' stroke='var(--accent)' stroke-width='1.6'/><text x='233' y='197' font-size='13' text-anchor='middle' fill='currentColor'>1</text><text x='312' y='192' font-size='13' text-anchor='middle' fill='var(--fg-1)'>空</text><text x='312' y='215' font-size='13' text-anchor='middle' fill='currentColor'>cur 为空，返回 prev 即新表头</text></svg>",
+    "alt": "三行指针状态图：第一行初始为 NULL←prev，cur 在结点 1，链表 1→2→3→NULL；第二行结点 1 的指针已回指 prev，cur 推进到 2，3 仍朝右；第三行三条指针全部反向，cur 走成 NULL，prev 停在结点 3 即新表头。"
+   },
+   "selfTest": [
+    "写出 {1,2,3,4} 的三轮迭代中 prev / cur / nxt 的取值序列，并说明退出循环时各是什么。",
+    "如果误把 cur.next = prev 写在 nxt = cur.next 之前，链表会变成什么样子？画出来。",
+    "把主函数改成递归版后，空间复杂度是多少？n=1000 时会发生什么？"
+   ],
+   "keyPoints": [
+    "本质是原地换向，不是交换值：cur.next = prev 是唯一的核心动作。",
+    "nxt 必须在校向之前缓存，否则后半段链表不可达。",
+    "循环不变式：prev 已反转完，cur 及其后保持原序；退出时返回 prev。",
+    "时间 O(n) 一趟，空间 O(1) 三个指针；递归版空间退化为 O(n)。",
+    "空表与单结点由同一个循环条件自然覆盖，无需特判。"
+   ],
+   "sources": [
+    {
+     "title": "牛客题库 · 反转链表（NC78）",
+     "url": "https://nowcoder.com/practice/75e878df47f24fdc9dc3e400ec6058ca"
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "输入是单链表头结点 pHead，题面明确说明该头结点自带值（不是哑结点）。",
+     "样例 1：{1,2,3} → {3,2,1}；样例 2：{} → {}，题面说明「空链表则输出空」。",
+     "题面要求空间复杂度与时间复杂度各一档（原文数值被截断），返回值为新链表的表头。",
+     "题面给出的 Java 骨架为 public ListNode ReverseList(ListNode head)，说明函数签名只收一个头结点、只返回一个头结点。",
+     "题面 topics 标为「链表/Java」，题型是手撕编程题（marker=编程题），难度标注 hard。"
+    ],
+    "uncertain": [
+     "题面「数据范围：」与「要求：空间复杂度 ，时间复杂度 。」两处的具体数值在采集文本里缺失（截断），正文按常见版本写作 0≤n≤1000、O(n) 时间、O(1) 空间，需人工核对原页。",
+     "题面的示例只有两组（{1,2,3} 与 {}），没有给 n=1、重复值、多组数据的样例，边界行为由「空链表则输出空」这一句外推，未在题面直接给出。",
+     "题面结尾停在 C/C++ 骨架的结构体定义处被截断，无法确认是否还有第三个骨架语言或额外输入输出格式说明。",
+     "plan 把本题标为 difficulty=hard，但题面本身没有任何提示难度较高的条件；该标注可能来自采集侧评分而非官方难度，需人工确认。",
+     "题面提到「以上转换过程如下图所示」与「加载中...」，原页应有配图/动态演示，本地文本里没有图片内容，本图解是按算法自行重绘的，不是原图。",
+     "代码按「Python 函数 + ListNode」形式交付（题面给的是 Java 骨架），若判题环境要求提交 Java，需要把同一三指针逻辑改写为 Java 版本。"
+    ]
+   }
+  }
+ ]
+}

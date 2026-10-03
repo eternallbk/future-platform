@@ -1,0 +1,146 @@
+{
+  "batchId": "prob-cur-39",
+  "entries": [
+    {
+      "id": "aliyun-three-easy-tasks",
+      "tldr": "阿里云三连：①BFS 每层取末位 ②变长滑窗右扩左缩 ③按右端点贪心射箭，三题都是定序后一次线性扫描。",
+      "restated": "题面原文只有一句话：阿里云多模态大模型暑期实习手撕三道题——二叉树右视图、一道非 hot100 的滑动窗口、以及扎破所有气球的最少箭数（题面自注即区间贪心）。没有输入输出格式、数据范围，也没有任何样例，滑动窗口那题连题号都未给出。因此这里按三个经典定义的通用版本写：右视图输入 TreeNode 根、输出自上而下的可见值；滑动窗口输入非负数组与阈值 k、输出和不超过 k 的最长子数组长度；扎气球输入若干闭区间、输出最少箭数。",
+      "approach": [
+        {
+          "step": "① 二叉树右视图：BFS 分层取末位",
+          "detail": "朴素做法是先序遍历后按层归并，或者对每个节点求深度再判断是不是该层最右——前者要额外维护层号，后者要先知道树高、多花一趟。稳的写法是 BFS：队列里按层处理，每轮先用 level = len(q) 冻结当前层节点数，再循环 level 次依次出队并把左右孩子入队；第 level-1 个出队的节点就是这一层最右边的节点，收集起来即可。每层只取一个，答案长度等于树高。等价的 DFS 写法是按深度覆盖 res[depth] = node.val，并且必须先递归右子树，保证同深度最后写进去的是最右节点。"
+        },
+        {
+          "step": "② 滑动窗口：右指针只扩、左指针只缩",
+          "detail": "对『最长/最短的满足约束的子数组』，暴力是 O(n²) 枚举左右端点再重新求和。滑动窗口把约束变成单调性：右指针每次右移一位把 nums[right] 并入窗口，一旦窗口不再满足约束，就 while 地右移左指针并把 nums[left] 移出，直到窗口重新合法；这时 [left, right] 就是以 right 结尾的最长合法窗口，用它的长度更新答案。左右指针都只单向移动，总步数 O(n)，窗口统计量（和、乘积、频次表）增量维护即可。这个单调性要求元素非负（和随窗口变长单调不减）；含负数时和不再单调，要改成前缀和 + 单调队列/二分。"
+        },
+        {
+          "step": "③ 扎气球最少箭数：按右端点排序 + 区间选点贪心",
+          "detail": "把每支箭想成数轴上的一个点，箭能覆盖所有包含该点的区间，问题就是『用最少的点刺穿所有区间』。按左端点排序是错的：反例 [1,10]、[2,3]、[4,5]，按左端点会先照顾长区间、把箭射到 10 附近，要 3 支；最优是射在 3 和 5，只需 2 支。正确做法是按右端点从小到大排序，维护 last = 最后一支箭的位置（初值 -inf）：对区间 [start, end]，若 start <= last 说明这支箭已经落在区间内、已被覆盖；若 start > last 说明箭的位置再怎么都在区间左边、够不到，必须新增一支，并贪心地射在 end 上——这是所有能覆盖该区间的选择里最靠右的，因而最有希望顺带覆盖后面的区间。交换论证：设第一个未被覆盖的区间为 I，任何可行解都必须有一支箭 x 落在 I 内，把 x 换成 I 的右端点 end(I) 不会让任何原本被覆盖的区间失效（因为 I 之前的区间都已被更早的箭覆盖，而之后的区间右端点都 >= end(I)）。"
+        },
+        {
+          "step": "④ 三题共性与现场写法",
+          "detail": "三题都是『先定序、再一次线性扫描』：右视图用 BFS 定层序，滑动窗口用左右指针定窗口序，扎气球用排序定区间序。现场手写时建议先把边界写死（空树返回 []、空数组/空区间返回 0、元素全大于 k 时返回 0），再写主循环，最后口头补一句复杂度与单调性/贪心证明，比边写边想要稳。"
+        }
+      ],
+      "complexity": {
+        "time": "右视图 O(n)；滑动窗口 O(n)（左右指针各单向走 n 步）；扎气球 O(n log n)（排序主导），三题合计 O(n log n)",
+        "space": "右视图 O(w)，w 为最大层宽（完全二叉树最坏约 n/2，单链树 O(1)）；滑动窗口 O(1) 额外空间；扎气球 O(n)（sorted 另开一份列表，原地排序可降到 O(log n) 递归栈）",
+        "why": "每个节点只入队出队一次、每个元素只进出窗口一次，摊销常数；扎气球的 O(n log n) 全部来自按右端点排序，之后的扫描是 O(n) 且只用 last 一个变量。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''阿里云暑期实习手撕三连：二叉树右视图 / 变长滑动窗口 / 扎气球最少箭数。\n\n三题都只需先定序再一次线性扫描；下面是可直接运行的实现，__main__ 里是边界自测。\n'''\nfrom collections import deque\n\n\nclass TreeNode:\n    '''二叉树节点，现场手撕要自己定义。'''\n\n    def __init__(self, val=0, left=None, right=None):\n        self.val, self.left, self.right = val, left, right\n\n\ndef right_side_view(root):\n    '''LC199：BFS 分层，每层最后一个出队的节点就是右视图看到的那个。'''\n    if root is None:                        # 边界：空树\n        return []\n    res, q = [], deque([root])\n    while q:\n        level = len(q)                      # 先冻结本层宽度，否则会跨层\n        for i in range(level):\n            node = q.popleft()\n            if i == level - 1:              # 本层末位\n                res.append(node.val)\n            if node.left:\n                q.append(node.left)\n            if node.right:\n                q.append(node.right)\n    return res\n\n\ndef longest_subarray_sum_at_most(nums, k):\n    '''变长滑动窗口模板：子数组和 <= k 的最长长度（要求 nums 非负）。'''\n    left = best = total = 0\n    for right, x in enumerate(nums):\n        total += x\n        while left <= right and total > k:   # 约束被破坏，收缩左端直到重新合法\n            total -= nums[left]\n            left += 1\n        best = max(best, right - left + 1)   # 收缩完再更新答案\n    return best\n\n\ndef min_arrows(points):\n    '''LC452：区间按右端点升序，每支箭都射在当前最右端点上。'''\n    if not points:                          # 边界：没有气球\n        return 0\n    arrows, last = 0, float('-inf')\n    for start, end in sorted(points, key=lambda p: p[1]):\n        if start > last:                    # 够不到才补箭；用 > 而非 >=，端点相接可共用\n            arrows, last = arrows + 1, end\n    return arrows\n\n\nif __name__ == '__main__':\n    root = TreeNode(1, TreeNode(2, None, TreeNode(5)), TreeNode(3, None, TreeNode(4)))\n    assert right_side_view(root) == [1, 3, 4]\n    assert right_side_view(None) == []\n    assert right_side_view(TreeNode(7)) == [7]\n    assert right_side_view(TreeNode(1, TreeNode(2, TreeNode(3)))) == [1, 2, 3]\n    assert longest_subarray_sum_at_most([1, 2, 1, 1, 1], 3) == 3\n    assert longest_subarray_sum_at_most([], 5) == 0\n    assert longest_subarray_sum_at_most([4, 4], 1) == 0\n    assert longest_subarray_sum_at_most([0, 0, 0], 0) == 3\n    assert min_arrows([[10, 16], [2, 8], [1, 6], [7, 12]]) == 2\n    assert min_arrows([[1, 2], [2, 3]]) == 1\n    assert min_arrows([[1, 2], [3, 4], [5, 6]]) == 3\n    assert min_arrows([]) == 0\n    print('all tests passed')\n",
+        "walkthrough": [
+          {
+            "note": "TreeNode 只给右视图用：val/left/right 三个属性一次写好并给默认值 None，省得后面忘记初始化左或右。"
+          },
+          {
+            "note": "right_side_view 的第一道边界是 root is None 直接返回 []。主循环里 level = len(q) 必须在 for 之前取：如果写成动态的 len(q) 或直接遍历队列，循环中途入队的下一层节点会被算进本层，右视图就会多出节点——这是本题最经典的错法。"
+          },
+          {
+            "note": "每层第 level-1 个出队的节点追加到 res，其余节点只负责把左右孩子按序入队；先左后右地入队不影响结果，因为答案取的是本层末位。返回顺序天然自上而下；等价 DFS 写法是按深度覆盖 res[depth] = node.val，且必须先递归右子树。"
+          },
+          {
+            "note": "longest_subarray_sum_at_most 是变长滑动窗口模板：right 的扩张每轮必然发生，while 收缩只在 total > k 时发生；条件里的 left <= right 保证窗口被收缩到空时不会越界。窗口为空时 right - left + 1 == 0，max 会把 best 拉回 0。"
+          },
+          {
+            "note": "模板的通用性：把约束从『和 <= k』换成『不同字符数 <= k』『0 的个数 <= k』『乘积 < k』只改 while 的判定与统计量；把求最长改成求最短，就把 while 换成『满足约束时继续收缩并顺手更新答案』。无论如何，更新答案都要放在窗口合法之后。"
+          },
+          {
+            "note": "min_arrows 先处理空列表；sorted(key=lambda p: p[1]) 按右端点升序且不修改入参。判断写 start > last 而不是 start >= last：区间端点相接（[1,2] 与 [2,3]）可以用同一支箭，写成 >= 会多算一支。last 初值必须是 -inf 而不是 0，否则坐标含负数时会漏算。"
+          },
+          {
+            "note": "__main__ 里 12 条断言覆盖空树、单节点、单链树、空数组、全 0 数组、k 小于所有元素、空区间、区间两两不交，以及右视图与扎气球的官方样例；本机 python 3.12.9 运行输出 all tests passed。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "空树：直接返回 []，不要返回 [None]，也不要抛异常。",
+        "只有根节点 / 单链树（一直往左或一直往右）：右视图长度等于树高，每层只有 1 个节点，level=1 时 i==0 就是末位。",
+        "节点值全部相同：右视图里会出现重复值，这题不去重，不要手滑写 set。",
+        "数组为空：滑动窗口返回 0（空子数组长度为 0）。",
+        "k 为负或小于所有元素：窗口被收缩到空，best 保持 0，不能返回 -1。",
+        "数组元素含 0：0 <= k 时窗口可以一直把它们含进来，长度正常增长。",
+        "数组含负数：和不再随窗口单调，本模板失效，需前缀和 + 单调队列/二分（题面没有说明是否有负数）。",
+        "区间列表为空：扎气球返回 0。",
+        "区间退化成点（start == end）：仍按右端点排序贪心，结果不变。",
+        "区间端点相接（[1,2] 与 [2,3]）：一支箭射在 2 上即可同时覆盖，所以判断必须是 start > last。",
+        "大量区间两两不交：箭数等于区间数，贪心每轮都会新增一支箭。"
+      ],
+      "pitfalls": [
+        "BFS 忘了在 for 之前冻结 level = len(q)，跨层取节点，右视图多出元素。",
+        "右视图写成先序遍历后取每层最后一个、或 DFS 时忘了先递归右子树，得到的是左视图。",
+        "把每层结果整体入答案（二维列表），而题目要的是每层一个值的一维列表。",
+        "滑动窗口用 if 而不是 while 收缩左指针：一次右移可能让窗口破坏多个单位，if 只收一格会留下非法窗口。",
+        "先更新答案再收缩窗口：顺序反了会把非法窗口的长度记进 best。",
+        "滑动窗口里忘记同步维护 total（移了 left 却忘了减 nums[left]，或减错下标写成 nums[right]）。",
+        "对含负数的数组直接套滑动窗口：和不再单调，答案会错，必须换前缀和 + 单调队列/二分。",
+        "扎气球按左端点排序：经典错误，左端点最小的长区间会把箭推到很左边，覆盖不到后面的区间。",
+        "覆盖判断写成 start >= last：端点相接的区间被误判为覆盖不到，箭数多算一支。",
+        "last 初值写成 0 而不是负无穷：坐标含负数时会少算一支箭。",
+        "贪心点不射在 end 上（例如射在区间中点或 start）：会减少对后续区间的覆盖机会，破坏最优性。"
+      ],
+      "followUps": [
+        "右视图改用 DFS：按深度覆盖答案数组时，为什么必须先递归右子树？",
+        "如果改成左视图或俯视图（每列最上面的节点），BFS/DFS 分别要改哪里？",
+        "滑动窗口改成『和 >= target 的最短子数组』：约束方向变了，收缩与更新答案的时机怎么变？",
+        "数组含负数时，如何在 O(n log n) 内求『和 <= k 的最长子数组』？（前缀和 + 单调队列/Fenwick）",
+        "用交换论证完整证明扎气球的贪心：为什么存在一个最优解，其某支箭可以放在第一个未覆盖区间的右端点？",
+        "为什么按左端点排序会错？请给出反例（[1,10]、[2,3]、[4,5] 按左端点要 3 支，按右端点只要 2 支）。",
+        "扎气球与无重叠区间（LC435）、会议室 II（LC253）这三道区间贪心的共同点与差异是什么？",
+        "如果要求输出每支箭的具体位置或每组气球，代码怎么改？"
+      ],
+      "variations": [
+        "左视图 / 俯视图：同一份 BFS/DFS 只换收集位置。",
+        "右视图的迭代 DFS 版本（显式栈里存 (node, depth) 对）。",
+        "定长滑动窗口：窗口大小固定为 k，右指针到位后每次同时移除 nums[right-k]（如定长最大和）。",
+        "求最短的窗口：长度最小的子数组（和 >= target），把 while 换成『满足约束就继续收缩并更新答案』。",
+        "乘积小于 K 的子数组个数：窗口维护乘积，答案累加 right-left+1。",
+        "无重叠区间 / 会议室 II：同样是按右端点（或起点）排序的区间贪心家族。",
+        "扎气球的对偶问法：用最少点覆盖所有区间之后，输出方案或问覆盖点数最多的选法。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "三题核心一步",
+        "caption": "三张手撕题各自的关键动作：右视图靠 BFS 分层取末位，滑动窗口靠右扩左缩维护合法区间，扎气球靠按右端点排序后把每支箭射在最右端点上。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='手撕三连：右视图、滑动窗口、扎气球各自的核心一步'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='18' font-size='14' fill='currentColor'>手撕三连：各自的核心一步</text><rect x='12' y='30' width='456' height='52' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='24' y='49' font-size='13' fill='var(--accent)'>① 右视图 BFS 分层</text><text x='24' y='69' font-size='13' fill='currentColor'>先记 level=len(q)，本层最后一个节点入答案</text><rect x='12' y='94' width='456' height='52' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='24' y='113' font-size='13' fill='var(--accent)'>② 滑动窗口 右扩左缩</text><text x='24' y='133' font-size='13' fill='currentColor'>total 破坏约束时 while 移 left，合法后再取长度</text><rect x='12' y='158' width='456' height='52' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='24' y='177' font-size='13' fill='var(--accent)'>③ 扎气球 按右端点排序</text><text x='24' y='197' font-size='13' fill='currentColor'>start &gt; last 才补一支箭，并把 last 更新为 end</text><text x='14' y='228' font-size='13' fill='currentColor'>共同点：定序之后，每个元素只被访问常数次</text></svg>",
+        "alt": "三个横条流程图：①右视图 BFS 先冻结本层宽度、取每层最后一个节点；②滑动窗口右指针扩张、和超出阈值时左指针 while 收缩，合法后再更新最大长度；③扎气球按右端点升序，起点大于当前箭位置时才新增一支箭并把箭放在该区间右端点上。"
+      },
+      "selfTest": [
+        "给定树 [1,2,3,null,5,null,4]，右视图返回什么？（答：[1,3,4]；第 3 层只有节点 4，它是左孩子但仍是本层唯一的节点。）",
+        "longest_subarray_sum_at_most([4,4], 1) 返回多少？为什么不是 1？（答：0；任何长度 1 的子数组和都是 4 > 1，窗口被收缩成空，长度为 0。）",
+        "min_arrows([[1,2],[2,3]]) 返回几支？（答：1；两区间在端点 2 相接，判断 start > last 时 2 > 2 为假，不新增箭。）",
+        "为什么扎气球不能按左端点排序？（答：左端点最小的区间可能很长，会把箭射得过于靠左，覆盖不到后续短区间，如 [1,10]、[2,3]、[4,5] 会从 2 支变成 3 支。）",
+        "滑动窗口里为什么必须先收缩再更新答案？（答：更新答案时要保证 [left, right] 是合法窗口，否则会把违反约束的长度记进 best。）"
+      ],
+      "keyPoints": [
+        "右视图：BFS 每轮先冻结 level=len(q)，取本层最后一个节点；DFS 则先右后左按深度覆盖答案。",
+        "滑动窗口：right 只扩、left 只缩，约束破坏时 while 收缩，收缩到合法之后再更新答案。",
+        "滑动窗口依赖『统计量随窗口单调』，所以要求元素非负；含负数要换前缀和 + 单调队列。",
+        "扎气球即区间选点：按右端点升序，start > last 才补箭并令 last = end（用 > 而非 >=，端点相接可共用一箭）。",
+        "三题统一为定序 + 一次线性扫描：分层 / 双指针 / 排序，复杂度分别 O(n)、O(n)、O(n log n)。"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "题面只有一句话：阿里云多模态大模型暑期实习手撕，内容为二叉树右视图、一道非 hot100 的滑动窗口、以及扎破所有气球的最少箭数（题面自注即区间贪心）；题面没有给出输入输出格式、数据范围与任何样例，滑动窗口那题连题号都没有。",
+          "输入文件的 origin 为 curated、sourceUrl 为 null、sourceName 为人工整理（research/jobs_kb.json），has 字段为 solution/keyPoints/pitfalls 全 false、answerOutline 为 true，substance 为 7.0；因此本条目按人工题处理，sources 写成 []，全篇没有出现任何 URL。",
+          "本文件 code.source 已在本机 python 3.12.9 上实际运行，12 条断言全部通过并打印 all tests passed；其中右视图样例树返回 [1,3,4]，与 LC199 官方样例一致。",
+          "本机运行验证 min_arrows([[10,16],[2,8],[1,6],[7,12]]) == 2，与 LC452 官方样例一致；min_arrows([[1,2],[2,3]]) == 1 验证了端点相接的区间可共用一支箭。",
+          "本机运行验证 longest_subarray_sum_at_most([1,2,1,1,1], 3) == 3、([4,4], 1) == 0、([0,0,0], 0) == 3、([], 5) == 0，覆盖了窗口正常增长、窗口收缩成空与空输入三种边界。",
+          "方法论来源：三题分属二叉树层序遍历、变长滑动窗口（同向双指针）、区间选点贪心三个经典模型；题面 topics 只标了『二叉树、双指针』，与右视图/滑动窗口对应，扎气球的贪心属双指针思想之外的补充模型。"
+        ],
+        "uncertain": [
+          "滑动窗口那题只写了『非 hot100 的滑动窗口』，题号、具体约束与样例全部未知；本条目给出的只是一个通用变长窗口模板（和 <= k 的最长子数组），函数签名、阈值 k 与非负前提都是模板载体，不代表原题。",
+          "题面没有给数据范围（节点个数、数组长度、气球个数与坐标范围），复杂度按各题通用情况给出；若坐标范围极大而区间很少，排序仍是瓶颈。",
+          "『非 hot100』这一描述无法从题面之外证实：右视图与扎气球分别是 LC199 与 LC452（都在 Hot100 内），滑动窗口那题被明确排除在外，我只按字面转述，未改动题面。",
+          "是否要求 ACM 模式自己解析输入输出而非写函数，题面未说明；本实现按『函数 + 自测』的形式给出，若现场要求 IO 模式需要补一层解析。",
+          "右视图返回的是节点值列表还是节点列表，题面未说明，这里按 LC199 的约定返回可见值。",
+          "扎气球的区间是否保证 start <= end、坐标是否为整数、是否可能为空，题面均未说明；代码对空列表做了边界处理，并假设输入已是合法闭区间。",
+          "滑动窗口模板假设数组元素非负；若原题数组含负数（例如求最长的和不超过 k 的子数组），本模板不适用，需改用前缀和 + 单调队列，这一点已在正文与 pitfalls 中标注。"
+        ]
+      }
+    }
+  ]
+}

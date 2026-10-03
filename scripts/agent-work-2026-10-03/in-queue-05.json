@@ -6,175 +6,171 @@
   "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
   "items": [
     {
-      "id": "a237aabcd4ae8069",
-      "title": "Cross-entropy optimization with prioritized constraints",
-      "category": "worldmodel",
-      "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2610.01319v1",
-      "sources": [
-        {
-          "url": "https://arxiv.org/abs/2610.01319v1",
-          "name": "arxiv"
-        }
-      ],
-      "tags": [
-        "cs.RO"
-      ],
-      "summary": "When constraints conflict, an optimizer must determine which requirements to preserve and which to relax. On the one hand, a priority ordering specifies which requirements take precedence. On the other hand, penalty-based formulations encode their relative importance through numerical weights. Depending on these weights, a solution can improve its weighted score while violating intended priorities. We introduce TierCEM, a variant of the cross-entropy method that incorporates strict constraint priorities directly into elite selection without requiring per-constraint importance weights. TierCEM works by sequentially filtering sampled candidates, from highest- to lowest-priority constraint. If and when a constraint eliminates all remaining candidates, TierCEM returns to the last nonempty set and selects elites with the smallest violations of that blocking constraint, recursively preserving satisfaction of all higher-priority constraints. We evaluate TierCEM on 2D navigation and contact-rich pushing tasks in proprioceptive and learned world-model settings. Experiments show that reversing the constraint ordering changes which constraints are violated under conflict. Prioritizing progress toward the task objective also enables TierCEM to relax lower-priority constraints when they would otherwise prevent further progress.",
-      "authors": [
-        "Francisco Roldan Sanchez",
-        "Pau de las Heras Molins",
-        "David Fridovich-Keil",
-        "Georgios Bakirtzis"
-      ],
-      "publishedAt": "2026-10-01T16:48:12+08:00",
-      "knowledgeType": "method",
-      "why": "归属「世界模型」方向；命中关键词 world-model；疑似附带开源实现",
-      "relevanceScore": 72.3,
-      "qualitySignals": {},
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 72.3,
-      "planDepthScore": 68.45
-    },
-    {
-      "id": "6fa3fa31816e0d5b",
-      "title": "Debias It Yourself: Teaching LLMs Cognitive Bias Mitigation Interventions",
+      "id": "8de457329ff33065",
+      "title": "Kepler: Auditable World Models for ARC-AGI-3",
       "category": "posttraining",
       "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2609.40124v1",
+      "url": "https://arxiv.org/abs/2610.00834v1",
       "sources": [
         {
-          "url": "https://arxiv.org/abs/2609.40124v1",
+          "url": "https://arxiv.org/abs/2610.00834v1",
           "name": "arxiv"
         }
       ],
       "tags": [
-        "cs.CL"
+        "cs.AI",
+        "cs.MA"
       ],
-      "summary": "Bias has long been studied in social psychology and cognitive science, where decades of research have produced a body of validated interventions that reduce stereotypical thinking and prejudiced responses in humans. We propose Debias It Yourself (DIY), a cognitively grounded framework that translates five such interventions into debiasing procedures for large language models and delivers them through three established paradigms: Show (in-context examples), Train (instruction tuning), and Revise (guided self-revision). Across three models, five bias benchmarks, eleven debiasing baselines, and three reasoning benchmarks, Train+Revise and Revise alone attain the top two average ranks, lead the bias-reasoning tradeoff (mean bias as low as 2% at 90% reasoning accuracy), and reduce bias on unseen dimensions by up to 14.8%. Our code and data are publicly available.",
+      "summary": "ARC-AGI-3 evaluates agents in interactive environments whose rules and objectives must be inferred from observation. We present Kepler, an open-source harness that represents hypotheses as executable world models and validates them through retrospective transition checks and conditional prediction checks. Under one frozen Claude Opus 5 configuration, Kepler obtained a server-verified 100.00 RHAE on all 25 public games, with no per-game model selection or score-conditioned reruns. On 181 of 183 completed levels, the final Opus attempt used no more actions than the corresponding median-human baseline. The retained board runs used 8,256 environment actions, of which 7,292 occurred in scored levels. Retained local provider-session records yield 858.0 million tokens, 97.37% cache reads, and a \\$777.72 cost at September 1, 2026 API list-equivalent rates. We also report three evaluation failures: source-code leakage that produced an invalid perfect run, agents reconstructing a removed harness in a control condition, and autonomous repair masking a broken planner. A single-game observation case study showed that animation frames contained task-relevant information absent from settled text grids. Across the final Claude Opus 5 and GPT-5.6 Sol boards, 48 of 50 game-model cells reached 100. These results indicate that public-set score alone has limited discriminative value and motivate first-attempt, cost-conditioned, and verification-aware reporting.",
       "authors": [
-        "Chahat Raj",
-        "Sina Mansouri",
-        "Aylin Caliskan",
-        "Antonios Anastasopoulos",
-        "Ziwei Zhu"
+        "Wensen Wu"
       ],
-      "publishedAt": "2026-09-30T04:46:19+08:00",
+      "publishedAt": "2026-10-01T07:46:59+08:00",
       "knowledgeType": "method",
-      "why": "归属「后训练」方向；命中关键词 instruction tuning；疑似附带开源实现",
-      "relevanceScore": 71.5,
+      "why": "归属「后训练」方向；疑似附带开源实现；领域核心工作",
+      "relevanceScore": 57.6,
       "qualitySignals": {},
       "peerReviewed": false,
       "codeAvailable": true,
-      "planRelevanceScore": 71.5,
-      "planDepthScore": 67.64
+      "planRelevanceScore": 57.6,
+      "planDepthScore": 72.83
     },
     {
-      "id": "e1903dd600f227bc",
-      "title": "Devils in Question Relay: Source-Conditioned Relay Steering to Mitigate Hallucinations in Audio-visual Large Language Models",
+      "id": "c30d1d5bd0bc6992",
+      "title": "Pragmatic DML with AI-Learned Representations",
       "category": "multimodal",
-      "channel": "hf_papers",
-      "url": "https://huggingface.co/papers/2609.37568",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.01935v1",
       "sources": [
         {
-          "url": "https://huggingface.co/papers/2609.37568",
-          "name": "hf_papers"
-        },
-        {
-          "url": "https://arxiv.org/abs/2609.37568",
-          "name": "canonical"
+          "url": "https://arxiv.org/abs/2610.01935v1",
+          "name": "arxiv"
         }
       ],
-      "tags": [],
-      "summary": "Audio-visual large language models (AVLLMs) have made remarkable progress in multimodal understanding and reasoning through interactions among visual, auditory, and linguistic information. However, recent studies show that AVLLMs face a critical challenge: source-confused grounding hallucination, where cues from the unused modality induce responses that the required modality does not support, undermining reliability in real-world applications. Existing methods have made progress in mitigating this failure, yet how it arises from internal cross-modal interactions remains insufficiently understood. To address this gap, we conduct path-intervention and representation analyses, revealing a question-relay mechanism: question states carry interfering cues alongside required-source evidence, undermining grounding in required-modality evidence. Cutting pathways from interfering modality to question states yields greater correct-answer logit recovery than cutting those to the generation position. Motivated by these findings, we propose SECRET (SourcE-Conditioned RElay sTeering), a training-free method that mitigates cross-modal interference at the question relay. Using contrasting question representations elicited through different modality-pathway interventions, SECRET steers the original question states toward required-source evidence. Experiments on two widely adopted benchmarks CMM and AVHBench across three AVLLMs show that SECRET consistently outperforms prior training-free methods, substantially mitigating source-confused grounding hallucinations (e.g., up to +18.0 and +7.1 percentage points over base models). Modality-specific captioning further demonstrates its generalizability to open-ended generation.",
-      "authors": [
-        "Yu Zhang",
-        "Pingrui Zhang",
-        "Xuefeng Bai",
-        "Pengfei Zhang",
-        "Yang Xiang",
-        "Kehai Chen"
+      "tags": [
+        "econ.EM",
+        "stat.ML"
       ],
-      "publishedAt": "2026-09-29T08:00:00+08:00",
+      "summary": "Text, images, and other rich covariates are increasingly compressed into AI-learned representations and then used as controls in causal analysis. We study when this approach is valid and develop a practical framework for causal inference with learned representations. For a broad class of estimands, an imperfect representation distorts the target causal parameter by the product of two representation errors: one in the outcome regression and one in the balancing weight (or Riesz representer). This yields three constructive results. First, cross-fitted double machine learning (DML) provides valid Wald inference for the representation-dependent target. When representation errors are small, the same interval covers the causal parameter, and it can even attain the semiparametric efficiency bound. Second, fold-wise representation learning (or fine-tuning) is compatible with DML inference for the causal parameter. To this end, we develop convex- and star-aggregation pipelines for learning and combining representations. Third, when representation errors are substantial, we can provide interpretable sensitivity regions and root-$n$ inference for their endpoints. In a multi-modal demand application, seven representation-specific estimates and their star aggregate all imply a negative near-unit elasticity for rank-based price response, and the result remains robust over the reported sensitivity grid.",
+      "authors": [
+        "Andres Aradillas Fernandez",
+        "Victor Chernozhukov",
+        "Carlos Cinelli",
+        "Sven Klaassen",
+        "Whitney Newey",
+        "Martin Spindler",
+        "Jan Teichert-Kluge",
+        "Suhas Vijaykumar"
+      ],
+      "publishedAt": "2026-10-02T00:05:18+08:00",
       "knowledgeType": "method",
-      "why": "归属「多模态算法」方向；命中关键词 multimodal、cross-modal、audio-visual；社区热度 3",
-      "relevanceScore": 87.1,
-      "qualitySignals": {
-        "upvotes": 3
-      },
+      "why": "归属「多模态算法」方向；命中关键词 multi-modal；领域核心工作",
+      "relevanceScore": 73.0,
+      "qualitySignals": {},
       "peerReviewed": false,
       "codeAvailable": false,
-      "planRelevanceScore": 87.1,
-      "planDepthScore": 67.32
+      "planRelevanceScore": 73.0,
+      "planDepthScore": 71.92
     },
     {
-      "id": "4f5b506dfea832c7",
-      "title": "liyupi/mianshiya — 持续维护的企业面试题库网站，帮你拿到满意 offer！⭐️ 2026年最新Java面试题、前端面试题、AI大模型面试题、AI Agent面试",
-      "category": "agent",
-      "channel": "github_algo",
-      "url": "https://github.com/liyupi/mianshiya",
-      "sources": [
-        {
-          "url": "https://github.com/liyupi/mianshiya",
-          "name": "github_algo"
-        }
-      ],
-      "tags": [
-        "GitHub",
-        "算法仓库",
-        "面试题库",
-        "八股"
-      ],
-      "summary": "持续维护的企业面试题库网站，帮你拿到满意 offer！⭐️ 2026年最新Java面试题、前端面试题、AI大模型面试题、AI Agent面试题、RAG面试题、C++面试题、Go面试题、Python面试题、测试面试题、运维面试题、后端面试题、操作系统面试题、计算机网络面试题、Redis面试题、MySQL数据库面试题、算法面试题、Spring面试题、JVM面试题、Java并发面试题、Linux面试题、LLM面试题、Prompt工程面试题、系统设计面试题等1万多道高频程序员求职必备八股文。面试刷题就选面试鸭 💎 React 前端 + Node 后端 + 云开发全栈项目 by 程序员鱼皮｜5927 stars｜TypeScript｜最近更新 2026-02-04｜主题：ai、ai-agents、algorithm、ant-design、backend、cpp、css、database",
-      "authors": [],
-      "publishedAt": "2026-02-04T10:47:29Z",
-      "knowledgeType": "fundamentals",
-      "why": "归属「Agent 理论与实践」方向；命中关键词 agent、react；GitHub 5927 stars；疑似附带开源实现；中文来源，贴近国内求职语境",
-      "relevanceScore": 58.3,
-      "qualitySignals": {
-        "stars": 5927
-      },
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 58.3,
-      "planDepthScore": 67.14
-    },
-    {
-      "id": "d94ed02fbc3c269b",
-      "title": "Mem++: Non-Destructive Memory for Long-Term Organizational LLM Agents",
+      "id": "0f7c333f87356008",
+      "title": "Local Support Learning",
       "category": "posttraining",
       "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2610.02002v1",
+      "url": "https://arxiv.org/abs/2610.02126v1",
       "sources": [
         {
-          "url": "https://arxiv.org/abs/2610.02002v1",
+          "url": "https://arxiv.org/abs/2610.02126v1",
           "name": "arxiv"
         }
       ],
       "tags": [
-        "cs.CL",
+        "cs.LG",
         "cs.AI"
       ],
-      "summary": "Large Language Model (LLM) agents now take part in organizational work, where many authors record decisions across documents over months. Because a revised decision arrives as a new document rather than an edit, answering a question requires knowing which version held at a given time. However, most memory systems compress the record at write time. By distilling each document into facts, notes or graph edges, these methods fix what can be answered before any question is asked. To address this, we propose Mem++, a non-destructive memory framework shifting from write-time distillation to read-time selection. Mem++ stores every document whole with its date and author, and it calls no generative model at write time. At read time, it retrieves only documents dated up to the time a question asks about and fuses lexical and semantic rankings. Unlike systems that overwrite older versions, Mem++ keeps them and leaves the choice to the answering model. Evaluations on the organizational benchmark OrgMemBench demonstrate that Mem++ surpasses the strongest memory system baseline by 8.0 to 13.1 points across two answering models. With gpt-4.1-mini, it also achieves the best overall score, 2.6 points above RAG. In addition, Mem++ achieves the best average LLM-judge score on LoCoMo and ranks second on LongMemEval-S, behind only its entity-graph variant. Code for benchmark evaluation is available at https://github.com/AIDAChip-Inc/mem-plus-plus.",
+      "summary": "We explore catastrophic forgetting in the context of large pre-trained models. By considering forgetting as a geometric problem in the input space of each weight matrix, we uncover a natural retention objective under which updates produced by gradient-based optimizers are suboptimal. Following this observation, we propose Local Support Learning (LSL), a general-purpose framework that augments gradient-based training for retention of prior capabilities without access to prior data. During a new learning phase, LSL pairs two components with distinct roles: a standard weight adapter, trained as usual to minimize the loss, and a gating function that enables the adapter only on input activations from its own training distribution, making the update local to that distribution. The key challenge is that this gate must route data from all learning phases while training only on data from the current one. We address this with a gate based on a Gaussian Mixture Model (GMM), whose likelihood decays rapidly away from its training data, giving it a natural tendency to stay closed on data from prior phases. We show that this post-training approach can resolve forgetting in LLMs of up to 7 billion parameters, retaining both pretrained and finetuned capabilities across multiple training phases, while being efficient in memory and compute, robust to hyperparameter choice, and showing scaling potential.",
       "authors": [
-        "Ahmad Yehia",
-        "Aly O. Abdelkareem",
-        "Islam Ahmed",
-        "Hesham Omran",
-        "Khaled Alashmouny",
-        "Christian Claudel",
-        "Abduallah Mohamed"
+        "Assaf Ben-Kish",
+        "Akarsh Kumar",
+        "James Glass",
+        "Raja Giryes"
       ],
-      "publishedAt": "2026-10-02T00:32:38+08:00",
+      "publishedAt": "2026-10-02T01:39:03+08:00",
       "knowledgeType": "method",
-      "why": "归属「后训练」方向；命中关键词 distillation；疑似附带开源实现",
-      "relevanceScore": 68.4,
+      "why": "归属「后训练」方向；命中关键词 post-training；领域核心工作",
+      "relevanceScore": 73.0,
       "qualitySignals": {},
       "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 68.4,
-      "planDepthScore": 66.96
+      "codeAvailable": false,
+      "planRelevanceScore": 73.0,
+      "planDepthScore": 71.92
+    },
+    {
+      "id": "c01d8e1196c7d976",
+      "title": "Learn the Directions, Normalize the Gains: Post-Training Normalization for LoRA",
+      "category": "posttraining",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.02067v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.02067v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.LG"
+      ],
+      "summary": "While Low-Rank Adaptation (LoRA) enables efficient task specialization, its learned updates can compromise capabilities beyond the target task. We identify \\textbf{adaptation imbalance}: a few singular directions dominate the trained update, leaving its performance sensitive to how gains are allocated. We argue that \\textbf{learning where to adapt does not ensure that adaptation gains are well balanced}. This motivates \\textbf{LoRA-Norm}, a post-training normalization method that retains learned directions while rebalancing their gains. LoRA-Norm combines spectral rebalancing, a fixed nonlinear transformation of singular values, with nuclear-norm restoration, which preserves the original total spectral mass. It requires no calibration data or additional training and introduces no inference overhead. Across two backbones and three adaptation tasks, LoRA-Norm improves average specialization and capability retention, outperforming the evaluated post-hoc spectral pruning and gradient-guided editing configurations on both measures. Stronger functional equalization brings no consistent additional gains, revealing that balancing adapter gains and equalizing their responses are distinct objectives.",
+      "authors": [
+        "Zailong Tian",
+        "Yanzhe Chen",
+        "Zhuoheng Han",
+        "Houfeng Wang",
+        "Lizi Liao"
+      ],
+      "publishedAt": "2026-10-02T01:07:21+08:00",
+      "knowledgeType": "method",
+      "why": "归属「后训练」方向；命中关键词 post-training；领域核心工作",
+      "relevanceScore": 73.0,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 73.0,
+      "planDepthScore": 71.92
+    },
+    {
+      "id": "48da160f81e4f589",
+      "title": "Unsupervised Domain Adaptation for Enhanced Radiometer Image Precipitation Estimation using Conditional Flow Matching",
+      "category": "generative",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.01890v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.01890v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "summary": "Deep generative networks have recently achieved unprecedented performance in precise image and video editing using sophisticated textual prompts. However, the effectiveness of such models heavily depends on access to very large supervised and annotated image datasets, which can be very difficult to obtain. This is particularly true for satellite instruments, which very rarely overlap with labelled data, and suffer from domain shifts in the rare occasions they do. In this paper, we investigate the potential of flow matching models for unsupervised domain adaptation of satellite radiometer images. Our main contribution is a novel unsupervised method that achieves precise domain alignment by leveraging parts of the deterministic ordinary differential equations in flow matching models, conditioned on different satellite instruments. A key strength of our approach is its ability to preserve essential information while adapting across any domains since the perturbations are in theory bijective. Extensive experiments conducted on the GPM-Core constellation show the benefit of our conditional domain adaptation, particularly in improving rain precipitation estimation from radiometer imagery.",
+      "authors": [
+        "Victor Enescu",
+        "Assaad Zeghina",
+        "Matthieu Meignin",
+        "Nicolas Viltard",
+        "Cécile Mallet"
+      ],
+      "publishedAt": "2026-10-01T23:40:49+08:00",
+      "knowledgeType": "method",
+      "why": "归属「生成式模型」方向；命中关键词 flow matching；领域核心工作",
+      "relevanceScore": 80.0,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 80.0,
+      "planDepthScore": 70.72
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "date": "2026-10-03",
-  "generatedAt": "2026-10-03T02:31:20+08:00",
+  "generatedAt": "2026-10-04T00:08:55+08:00",
   "generatedBy": "scripts/plan_agent_batches.py",
   "policy": "深读清单里可被证据证伪的条目按规则剔除；剔除不删除语料，条目仍留在卡片库可搜索、参与去重。",
   "rules": {
@@ -125,7 +125,7 @@
       "id": "c0494b509b63aae3",
       "rule": "off-domain",
       "reason": "摘要为无序蛋白区域的生成式设计，属蛋白质工程；训练目标虽借用了 RL/稀疏自编码器，但结论不可迁移。",
-      "inPlanQueue": true,
+      "inPlanQueue": false,
       "title": "Generative modeling of intrinsically disordered protein regions by reinforcing sparse autoencoder features",
       "category": "posttraining",
       "channel": "arxiv",
@@ -213,7 +213,7 @@
       "id": "87e3a2859a767275",
       "rule": "off-domain",
       "reason": "摘要为埃舍尔《画廊》版画与彭罗斯镶嵌的共形几何分析，属数学/艺术。",
-      "inPlanQueue": true,
+      "inPlanQueue": false,
       "title": "Moore, Escher, Penrose: A Conformal Golden Braid",
       "category": "generative",
       "channel": "arxiv",
@@ -240,17 +240,6 @@
       "category": "agent",
       "channel": "gh_trending",
       "url": "https://github.com/t8y2/dbx",
-      "stillSearchableInCardLibrary": true
-    },
-    {
-      "id": "df9779ef2a1128bd",
-      "rule": "noise",
-      "reason": "标题与正文是 Codex 海外手机号/GPT-5.6 API 替代的 SEO 导流文，无可核实的工程结论（trend 类）。",
-      "inPlanQueue": true,
-      "title": "Codex一定要海外手机号吗？登录验证与GPT-5.6 API替代方案",
-      "category": "trend",
-      "channel": "programmercarl",
-      "url": "https://programmercarl.com/daichong/0015.codex-phone-verification.html",
       "stillSearchableInCardLibrary": true
     },
     {

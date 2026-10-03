@@ -1,0 +1,149 @@
+{
+ "batchId": "prob-cur-03",
+ "entries": [
+  {
+   "id": "layernorm-rmsnorm",
+   "tldr": "手写 LayerNorm 与 RMSNorm 前向；大模型选后者是因为少一次减均值与 bias、更快。",
+   "restated": "题意澄清：实现两个归一化层的前向。输入张量形状 [B, S, d]（通用写法为 [..., d]），归一化轴固定为最后一维 d；两者输出与输入同形 [B, S, d]。LayerNorm 输出 (x-mean)/sqrt(var+eps)*g+b，RMSNorm 输出 x/sqrt(mean(x^2)+eps)*g。另需口头回答为什么现在大模型普遍用 RMSNorm。人工题干未给具体输入形状与样例数值，按通用约定处理。",
+   "approach": [
+    {
+     "step": "朴素写法（逐元素手动循环）",
+     "detail": "用 for 循环遍历 [B, S, d] 的每一个“行”，先求和得 mean，再第二遍算平方偏差得 var，第三遍写出输出。它能算对，但把一个本该由一次归约 + 一次广播完成的算子写成了 3d 次标量运算：Python 层循环把常数抬高几个数量级，无法在 GPU 上并行，也无法融合访存，面试现场还容易把第二遍的 (x-mean) 写成 x 而默默算错方差。不够用的核心不是“慢一点”，而是它压根不是这个算子应有的形状：LayerNorm 的语义是“沿最后一维整体归约”，不是逐元素。"
+    },
+    {
+     "step": "第一版“看起来对”的张量写法",
+     "detail": "用了 x.mean(-1) / x.var(-1)，但漏掉 keepdim=True，得到形状 [B, S]；再用 x - mu 相减时，[B, S, d] 与 [B, S] 会按“从右往左对齐”广播：mu 的 S 维会被当成 d 维去对齐，要么直接报形状错误，要么在 B 与 S 恰好相等的“方阵”输入下静默算错。这是本题最常见的“本地过、一测就挂”写法。"
+    },
+    {
+     "step": "正确写法的关键设计一：归约轴 keepdim=True",
+     "detail": "mean/var/mean(x^2) 一律写成 dim=-1 且 keepdim=True，统计量形状就是 [B, S, 1]。这样 x - mu、x * rsqrt(ms+eps) 的广播方向唯一且确定，同一份代码天然支持 [B, S, d]、[B, d]、[d] 任意前导维，不需要为“3 维还是 2 维”写两套分支。"
+    },
+    {
+     "step": "正确写法关键设计二：方差用有偏估计（unbiased=False）",
+     "detail": "LayerNorm 的分母是 sqrt(var+eps)，而框架里的 var 指总体方差（除以 N），不是无偏样本方差（除以 N-1）。PyTorch 的 torch.var 默认 unbiased=True，直接 x.var(-1) 会得到 N/(N-1) 倍偏大的方差，和 nn.LayerNorm、以及论文口径都对不上；写成 x.var(dim=-1, keepdim=True, unbiased=False) 才与框架一致。这也是人工 keyPoints 强调的点。"
+    },
+    {
+     "step": "正确写法关键设计三：RMSNorm 换成均方，且去掉减均值与 b",
+     "detail": "RMSNorm 用 ms = x.pow(2).mean(dim=-1, keepdim=True) 直接得到 E[x^2]，注意它不是方差、不含减均值；分母是 sqrt(ms+eps)，等价于乘 torch.rsqrt(ms+eps)（一次求逆比先 sqrt 再逐元素除更省）。g 必须保留（否则整层退化成纯归一化、丢掉可学习容量），b 通常不要——这正是它比 LayerNorm 少一次归约、少一次减法、少一组 bias 读写的原因，大模型里因此普遍用它替代 LayerNorm。"
+    }
+   ],
+   "complexity": {
+    "time": "O(B·S·d)（正比于张量元素数）",
+    "space": "O(B·S·d) 存输出 + O(B·S) 存统计量",
+    "why": "两个算子都只对最后一维做一次归约再广播，每个元素常数次读写；RMSNorm 比 LayerNorm 少一次 reduce 与一次减法，常数更小。"
+   },
+   "code": {
+    "language": "python",
+    "source": "import torch\nfrom torch import nn\n\n\nclass RMSNorm(nn.Module):\n    \"\"\"y = x / sqrt(mean(x^2) + eps) * g —— 不减均值、无 bias。\"\"\"\n\n    def __init__(self, d, eps=1e-6):\n        super().__init__()\n        self.eps = eps\n        self.g = nn.Parameter(torch.ones(d))     # 与 LayerNorm 一样保留缩放 g\n\n    def forward(self, x):\n        # 边界：x 为 [B, S, d]（或 [..., d]），特征维必须等于 d\n        assert x.shape[-1] == self.g.shape[0], \"last dim 必须等于 d\"\n        ms = x.pow(2).mean(dim=-1, keepdim=True)  # [..., 1] 均方 E[x^2]\n        return x * torch.rsqrt(ms + self.eps) * self.g   # rsqrt 广播回 [..., d]\n\n\nclass LayerNormManual(nn.Module):\n    \"\"\"y = (x - mean) / sqrt(var + eps) * g + b —— var 必须用有偏（unbiased=False）。\"\"\"\n\n    def __init__(self, d, eps=1e-5):\n        super().__init__()\n        self.eps = eps\n        self.g = nn.Parameter(torch.ones(d))\n        self.b = nn.Parameter(torch.zeros(d))\n\n    def forward(self, x):\n        assert x.shape[-1] == self.g.shape[0], \"last dim 必须等于 d\"\n        mu = x.mean(dim=-1, keepdim=True)                     # [..., 1]\n        var = x.var(dim=-1, keepdim=True, unbiased=False)     # [..., 1] 除以 N\n        return (x - mu) / torch.sqrt(var + self.eps) * self.g + self.b\n\n\ndef check(x, eps=1e-5):\n    \"\"\"形状自检：输出与输入同形；LayerNorm 输出逐样本均值 0、方差 1。\"\"\"\n    ln = LayerNormManual(x.shape[-1], eps=eps)\n    rn = RMSNorm(x.shape[-1], eps=eps)\n    y_ln, y_rn = ln(x), rn(x)\n    if y_ln.shape != x.shape or y_rn.shape != x.shape:\n        raise ValueError(\"输出形状应与输入一致\")\n    # g=1, b=0 时 LayerNorm 输出是标准化结果，直接核验统计量\n    mu = y_ln.mean(dim=-1)\n    var = y_ln.var(dim=-1, unbiased=False)                # 是 [..., 1] 的展平结果\n    for m in mu.flatten().tolist():\n        assert abs(m) < 1e-4, \"LayerNorm 输出均值应为 0\"\n    for v in var.flatten().tolist():\n        assert abs(v - 1.0) < 1e-3, \"LayerNorm 输出方差应为 1\"\n    return y_ln, y_rn\n\n\nif __name__ == \"__main__\":\n    torch.manual_seed(0)\n    x = torch.randn(2, 4, 8)                              # [B, S, d]\n    y_ln, y_rn = check(x)\n    print(\"out shape:\", tuple(y_ln.shape), tuple(y_rn.shape))\n    scale = torch.tensor([1.0, 1.0, 1.0, 1.0] +\n                         [0.0] * 4)                       # 只放大前 4 维\n    ratio = ((y_rn * scale).norm() / y_rn.norm()).item()\n    print(\"输出被 g 放大后前 4 维范数占比: %.3f\" % ratio)\n",
+    "walkthrough": [
+     {
+      "note": "依赖说明：本实现只用 PyTorch（import torch / torch.nn），语义与人工 referenceSolution 完全一致——RMSNorm 用 x.pow(2).mean(dim=-1, keepdim=True) + torch.rsqrt，LayerNormManual 用 x.var(dim=-1, keepdim=True, unbiased=False)。为什么要用张量运算而不是 Python 循环：归约与广播交给框架后，CPU 上是向量化循环、GPU 上是一次 block 内归约，代码行数更少而正确性更可控。"
+     },
+     {
+      "note": "RMSNorm.__init__：只注册一个缩放参数 g = ones(d) 和 eps。注意没有 bias，这不是遗漏，而是人工 keyPoints 里“RMSNorm 保留 g 但通常不需要 bias”的直接落地；g 用 ones 初始化保证初始状态等价于恒等缩放，训练初期不会扰动激活尺度。"
+     },
+     {
+      "note": "RMSNorm.forward 的第 1 行 assert 是形状边界处理：g 的维度必须等于输入的最后一维，否则后面广播会静默成功但算错（例如 d 与 g 不等时 rsqrt 结果的最后一维是 1，乘 g 会被广播成 g 的长度）。第 2 行 ms 沿 dim=-1 求均方并 keepdim=True，得到 [..., 1]；第 3 行 rsqrt(ms+eps) 把 [..., 1] 广播到 [..., d]，再乘 g 得到输出。eps 加在归一化项上（ms+eps）而不是加在分母外侧，顺序反了数值上不同。"
+     },
+     {
+      "note": "LayerNormManual 的两个参数是 g 与 b，与 RMSNorm 的唯一差别就在这里加偏置、输出里多加一项 b；同时 eps 默认给 1e-5（PyTorch nn.LayerNorm 的默认量级），而 RMSNorm 常用更小的 1e-6。"
+     },
+     {
+      "note": "LayerNormManual.forward：先算 mu = x.mean(dim=-1, keepdim=True)，再算 var = x.var(dim=-1, keepdim=True, unbiased=False)。这一行是本题的扣分高发点：unbiased 默认是 True，落了它方差会大 N/(N-1) 倍。最后 (x - mu) / sqrt(var + eps) * g + b 全程依靠 keepdim 带来的广播，无需任何 reshape。"
+     },
+     {
+      "note": "check() 是自检辅助，不改变算法：它断言输出与输入同形，并在 g=1、b=0 的初始状态下核验 LayerNorm 输出逐样本均值≈0、方差≈1。这一步把“形状对不对”和“数值对不对”分开验证——形状对但方差口径错时，这里的方差断言会直接失败。"
+     },
+     {
+      "note": "__main__ 里用 torch.manual_seed 固定随机数跑一次 [2, 4, 8] 输入，打印两个输出的形状；末尾用只放大前 4 个通道的 g 展示“RMSNorm 保留的是逐通道缩放能力”，这就是它相对 LayerNorm 没有丢掉的表达力。"
+     }
+    ]
+   },
+   "edgeCases": [
+    "d = 1：LayerNorm 的 var 为 0，输出只剩 b（g 项被 0 乘掉），必须靠 eps 兜住 sqrt(0+eps)；RMSNorm 退化成符号函数乘 g（x/|x| 的连续化版本），也不会除零。",
+    "整行全 0：RMSNorm 的 ms=0，分母变 sqrt(eps)，输出为 0（安全）；LayerNorm 的 var=0 同样由 eps 兜底，输出为 b。",
+    "d 很小（如 2、4）：有偏与无偏方差差异达 2 倍或 4/3 倍，unbiased 写错时结果肉眼可见地不对，是最容易暴露该 bug 的用例。",
+    "形状不是 3 维：归一化只关心最后一维，[B, d]、[d]、甚至 5 维张量都应能跑；因此实现里只能用 dim=-1 + keepdim，不能写死成 dim=2。",
+    "输入含 inf/nan：mean 与 var 都会把异常扩散到整行，归一化后该行整体变成 nan；求稳可先 clamp 或改用更数值稳定的两步方差公式，但这超出本题范围。",
+    "FP16/BF16 下的 eps 量级：eps 若小于该 dtype 的机器精度（FP16 约 6e-8，eps=1e-6 尚可；再小就会被舍入吃掉），除零风险回归，因此大模型里常见的做法是把归约部分升到 FP32 再降回。",
+    "行内存在极端离群值（如 1e4）：LayerNorm 的 var 被该值主导，其余维度被压成接近 0；RMSNorm 同样被抬高，但因为没有减均值，输出不会被“平移”到零中心附近。"
+   ],
+   "pitfalls": [
+    "LayerNorm 用 unbiased=True（torch.var 的默认值！）导致与框架数值不一致 —— 人工 pitfalls 原话，务必显式写 unbiased=False。",
+    "RMSNorm 忘记加 eps 导致 d=1 或全零行时除零 —— 人工 pitfalls 原话。",
+    "把 RMSNorm 写成除以 sqrt(var) 而不是 sqrt(mean(x^2)) —— 人工 pitfalls 原话；RMSNorm 里根本没有减均值这一步，写成 var 等于偷偷做了 LayerNorm。",
+    "归约忘记 keepdim=True：mu/var 变成 [B, S]，再与 [B, S, d] 广播时按从右对齐的规则错位，B==S 时静默算错。",
+    "把 eps 加在分母外面（写成 x / (sqrt(var) + eps)）或加在归一化之后，与框架口径不一致，d 大时误差微小、d 小时会明显偏移。",
+    "RMSNorm 随手加上 bias：与人工 keyPoints“通常不需要 bias”冲突，也丢掉了“少一次读写”的性能理由。",
+    "g 的 shape 写成 (1, d) 或标量：标量会让整层退化成无参数的归一化，[1, d] 则在 d 与别的维度相等时又能悄悄跑通，属于最难查的一类错误。",
+    "误以为归一化是沿序列维 S 做（把统计量算成 [B, d]）：方向反了会得到看似合理但完全不同的结果，且在小 batch 下更难察觉；记住是“最后一个维度、逐 token 归一化”。",
+    "在 FP16 下用 1e-8 这类 eps：被浮点精度吃掉后等价于没有 eps。",
+    "把 rsqrt 与 sqrt-then-divide 混用后忘记顺序（rsqrt(ms+eps) 是先加后开方），或在 rsqrt 里漏加 eps 而在外层补，数值上不等价。"
+   ],
+   "followUps": [
+    "为什么不用 BatchNorm？因为归一化统计量跨样本共享，batch 小或变长序列（推理时 batch=1）时统计量不可靠、还要维护 running stats；LayerNorm/RMSNorm 逐 token、与 batch 无关，训练和推理行为一致。",
+    "RMSNorm 会不会丢表达能力（不能重新中心化）？实践上影响很小，因为前一层的投影天然带 bias、且 LayerNorm 的中心化在残差流里几乎不改变信息；如果担心，可以给 RMSNorm 加一个可学习的逐维偏移来补回平移自由度。",
+    "eps 该取多大？它要与 dtype 精度匹配（FP16 常用 1e-5/1e-6，FP32 可以更小），并且要在归约里升精度；面试时说明“eps 是防除零下限，不是精度参数”即可。",
+    "在什么位置加（Pre-LN 还是 Post-LN）？现代大模型几乎都是 Pre-LN/Pre-RMSNorm：把归一化放在子层输入侧，残差路径上无归一化，梯度可以直通，训练更稳、也不需要 warmup 来救深层的梯度尺度。",
+    "怎么和 PyTorch 等价性验证？对同一输入与同一组 g/b，用 torch.allclose 对比 nn.LayerNorm 与手写实现（LayerNormManual 已验证输出均值≈0、方差≈1）。",
+    "如果要求反向传播，需要额外做什么？只要用 torch 张量运算，autograd 自动接管；RMSNorm 的反向要经过 rsqrt 与 mean 两处耦合（每行内各元素互相关联），手推梯度时应写成 (g - mean(g·x_hat)·x_hat/rms)/rms 这类形式，不能当逐元素算子求导。",
+    "RMSNorm 能否和量化/融合 kernel 结合？可以，正因为它只有一次归约、无 bias，更容易写成单个 fused kernel 并且更容易与量化归一化（如把输出直接量化）合并。"
+   ],
+   "variations": [
+    "手写 BatchNorm1d/2d（训练态用 batch 统计、推理态用 running_mean/running_var）作对比。",
+    "手写 GroupNorm（把通道分组后在组内归一化）或 InstanceNorm（GroupNorm 的 num_groups=C 特例），体会归一化轴的选择如何改变语义。",
+    "给 RMSNorm 增加可学习的逐维偏移（即改写为“有中心化的 RMSNorm”），说明它何时会退化成 LayerNorm。",
+    "实现带权重的 LayerNorm（elementwise_affine=False）或把 g/b 换成低秩参数化以省参数。",
+    "手写 Qwen/Llama 中带残差融合的 RMSNorm（归一化输入与残差相加合并成一个 kernel）。",
+    "面试官追问数值稳定性：不用 x.var，改用 E[x^2]-mean^2 的两步式写法，并解释它在什么情况下会损失精度（大均值、小方差时发生灾难性抵消）。"
+   ],
+   "diagram": {
+    "kind": "flow",
+    "title": "两条归一化路径与形状流转",
+    "caption": "输入 [B, S, d] 分两路：LayerNorm 减均值再除标准差，RMSNorm 只除均方根；统计量都 keepdim 成 [B, S, 1] 再靠广播放大回 [B, S, d]，所以输出形状不变、归一化只发生在最后一维。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='100' y='12' width='280' height='30' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='240' y='32' text-anchor='middle' font-size='14' fill='currentColor'>输入 x：[B, S, d]（归一化轴 = 最后一维 d）</text><path d='M240 42 L140 60' stroke='currentColor' stroke-width='1.5'/><path d='M240 42 L340 60' stroke='currentColor' stroke-width='1.5'/><rect x='16' y='60' width='212' height='112' rx='6' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='28' y='82' font-size='14' fill='currentColor' font-weight='bold'>LayerNorm</text><text x='28' y='102' font-size='13' fill='currentColor'>mu = x.mean(-1, keepdim=True)</text><text x='28' y='122' font-size='13' fill='currentColor'>var = x.var(-1, unbiased=False)</text><rect x='28' y='132' width='188' height='26' rx='5' fill='var(--accent)'/><text x='122' y='150' text-anchor='middle' font-size='13' fill='currentColor'>(x-mu)/sqrt(var+1e-5)*g + b</text><rect x='252' y='60' width='212' height='112' rx='6' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='264' y='82' font-size='14' fill='currentColor' font-weight='bold'>RMSNorm</text><text x='264' y='102' font-size='13' fill='currentColor'>不做减均值，也不设 b</text><text x='264' y='122' font-size='13' fill='currentColor'>ms = x.pow(2).mean(-1, keepdim=True)</text><rect x='264' y='132' width='188' height='26' rx='5' fill='var(--accent)'/><text x='358' y='150' text-anchor='middle' font-size='13' fill='currentColor'>x * rsqrt(ms + 1e-6) * g</text><text x='240' y='190' text-anchor='middle' font-size='13' fill='currentColor'>两条路径都只沿最后一维 reduce，keepdim=True 使统计量形状为 [B, S, 1]</text><text x='240' y='210' text-anchor='middle' font-size='13' fill='currentColor'>靠广播放大回 [B, S, d]，输出逐样本沿 d 归一化：RMSNorm 输出均方约为 1</text><text x='240' y='230' text-anchor='middle' font-size='13' fill='var(--fg-1)'>d 方向独立、S 方向不共享统计量，所以与 batch 大小无关</text></svg>",
+    "alt": "图：输入 x 形状 [B,S,d] 分成两路。左路 LayerNorm 依次算 mu=x.mean(-1,keepdim=True)、var=x.var(-1,unbiased=False)，再算 (x-mu)/sqrt(var+1e-5)*g+b；右路 RMSNorm 不做减均值、也没有 b，算 ms=x.pow(2).mean(-1,keepdim=True) 后算 x*rsqrt(ms+1e-6)*g。两路的统计量形状都是 [B,S,1]，广播回 [B,S,d]，输出与输入同形；RMSNorm 输出沿 d 的均方约为 1，且 d 方向独立、S 方向不共享统计量，因此与 batch 大小无关。"
+   },
+   "selfTest": [
+    "把 LayerNormManual.forward 里的 unbiased=False 删掉，输入 [1, 1, d] 与 d=4 的随机张量，手写实现与 nn.LayerNorm 的输出差多少倍？为什么是 N/(N-1)？",
+    "RMSNorm 的 rms 与 LayerNorm 的 var 有什么本质区别？在什么输入下两者数值恰好相等？",
+    "如果 x.mean(dim=-1) 忘了 keepdim=True，输入 [B, S, d] 且 B == S 时会发生什么？为什么不是每次都报错？",
+    "为什么 RMSNorm 去掉减均值能省一次归约？这次归约省下的是 FLOPs 还是访存？"
+   ],
+   "keyPoints": [
+    "LayerNorm: (x-mean)/sqrt(var+eps)*g+b；RMSNorm: x/sqrt(mean(x^2)+eps)*g —— 与人工 keyPoints 完全一致，别改公式。",
+    "RMSNorm 去掉均值中心化与 bias，少一次 reduce 与减法，kernel 更简单、更快，这是大模型普遍用它替代 LayerNorm 的直接原因。",
+    "var 用 unbiased=False（有偏方差），与 PyTorch 默认一致。",
+    "RMSNorm 保留缩放参数 g，但通常不需要 bias。",
+    "两个算子都只沿最后一维归约并 keepdim=True 后广播，输出形状与输入相同。"
+   ],
+   "sources": [
+    {
+     "title": "人工题库 research/jobs_kb.json（layernorm-rmsnorm）",
+     "url": ""
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "人工题面明确要求：实现 LayerNorm 与 RMSNorm 的前向，并说明现在大模型为什么普遍用 RMSNorm 而不是 LayerNorm。",
+     "人工 keyPoints 明确给出两条公式：LayerNorm 为 (x-mean)/sqrt(var+eps)*g+b，RMSNorm 为 x/sqrt(mean(x^2)+eps)*g。",
+     "人工 keyPoints 明确要求 var 用 unbiased=False（有偏方差），与 PyTorch 默认一致。",
+     "人工 keyPoints 明确 RMSNorm 保留缩放参数 g、通常不需要 bias。",
+     "人工 pitfalls 明确指出三个扣分点：LayerNorm 用 unbiased=True、RMSNorm 忘记加 eps、把 RMSNorm 写成除以 sqrt(var)。",
+     "本实现的算法与人工 referenceSolution 一致：RMSNorm 用 x.pow(2).mean(dim=-1, keepdim=True) 与 torch.rsqrt；LayerNormManual 用 x.mean / x.var(unbiased=False)，输出 (x-mu)/sqrt(var+eps)*g+b。",
+     "复杂度结论 O(B·S·d) 来自两个算子各需一次沿最后一维的归约加一次广播写出，每个元素常数次读写。",
+     "图解中的形状流转（[B,S,d] → 统计量 [B,S,1] → 广播回 [B,S,d]）是 keepdim=True 语义的直接推论。"
+    ],
+    "uncertain": [
+     "人工题干未给具体输入形状，本解按通用约定写成 [B, S, d]（归一化轴为最后一维 d）；若面试要求写成 [B, T, C] 或 [N, d] 需自行改名，语义不变。",
+     "题干未给任何数值样例或期望输出，因此无法给出逐元素对拍结果；本解只做形状自检与统计量自检（输出均值≈0、方差≈1），未经目标框架 nn.LayerNorm 逐位对拍。",
+     "题干未指定 eps 取值；本解沿用人工 referenceSolution 的 LayerNorm eps=1e-5、RMSNorm eps=1e-6，实际项目常按 dtype 调整。",
+     "“RMSNorm 更快”是定性结论（少一次 reduce 与减法、kernel 更简单），本解未做 benchmark，因此没有给出具体加速比数字。",
+     "“现在大模型普遍用 RMSNorm”是人工 keyPoints 的观点，本解沿用并未逐一枚举各开源模型的归一化选择，未做横向统计。",
+     "代码运行时依赖 PyTorch；本解只保证 API 语义（pow/mean/var(unbiased=False)/rsqrt 与广播）正确，未在真实 GPU 上做过性能与 FP16 数值验证。",
+     "反向传播只按 torch autograd 自动求导描述，未手写并验证梯度公式。"
+    ]
+   }
+  }
+ ]
+}

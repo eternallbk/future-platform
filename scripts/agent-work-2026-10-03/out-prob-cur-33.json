@@ -1,0 +1,144 @@
+{
+  "batchId": "prob-cur-33",
+  "entries": [
+    {
+      "id": "deepseek-visual-primitive",
+      "tldr": "视觉原语量化成坐标 token，与文本拼成一条序列做自回归，靠规范形与约束解码保证几何合法。",
+      "restated": "题干原文：为“视觉原语”（point/box/mask/polygon）推理框架建立数学建模，说明如何把文本 token 与几何原语统一到一个混合序列的生成问题中（DeepSeek 笔试第七题）。题面只有这一句，没有输入输出样例、原语字段顺序、坐标取值范围、mask 表示方式、词表与分辨率约束；下文按最常见做法补齐假设（坐标归一化到 [0,1]、box 取 x1y1x2y2、坐标量化成 1000 个桶），不确定处全部记入 selfCheck.uncertain。",
+      "approach": [
+        {
+          "step": "定符号：把问题写成统一词表上的联合分布",
+          "detail": "题干要的是数学建模，所以第一步不是写代码而是把对象定义清楚。设图像 I；文本 token 取自 V_txt；四种原语的几何量分别是 point=(x,y)∈[0,1]^2、box=(x1,y1,x2,y2)、polygon=(v_1..v_K)（K≥3）、mask∈{0,1}^(H×W)。定义混合词表 V=V_txt ∪ V_struct ∪ C：V_struct 是 <point>/<box>/<polygon>/<mask> 与块结束符，C={<c_0>..<c_{B-1}>} 是坐标桶，另有 <r_k> 表示 RLE 段长。任一图文理解结果于是都是一个序列 x∈V^T，生成问题就是 p_θ(x)=∏_t p_θ(x_t|x_{<t})。这一步回答了“如何统一”：文本与几何统一在词表层与似然层，共用同一个 softmax 与同一条位置编码，而不是各自一套损失。"
+        },
+        {
+          "step": "坐标量化：把几何回归换成 B 分类",
+          "detail": "连续坐标不能直接进词表，于是定义 q(c)=clamp(round(c·(B-1)),0,B-1)、ĉ=q/(B-1)，误差上界 |c-ĉ|≤1/(2(B-1))；B=1000 时是 5.005e-4，即 1000 像素图上的 0.5 px（本机实测最大误差正好等于上界）。为什么不直接回归：point/box/polygon 的坐标交错在同一条序列里，回归头无法知道当前 token 是第几个坐标，长度可变的多边形也没有固定输出维度；改成分类后所有 token 共享同一套输出层，多边形只是多吐几个 <c_i>。代价是量化误差地板，突破办法是再加一个小的连续头（对坐标做 L1 或 Laplace NLL）、残差量化或多尺度桶，权重 λ 取小值只负责抹掉地板。"
+        },
+        {
+          "step": "序列化与长度预算：一条序列装下全部原语",
+          "detail": "序列化规则：文本 token 原样输出，每个原语写成 <tag> 若干个 token 结束符；变长的多边形还要先吐一个顶点数 token <k>，这样约束解码知道还要读几个坐标，块体也自带校验位。各原语长度因此可预测：point 4 token（标签 1 + 坐标 2 + 结束 1）、box 6、polygon 3+2K（标签 + 顶点数 + 2K 个坐标 + 结束）、mask 2+R（R 为 RLE 段数）。这一步直接决定成本：1000×1000 的 mask 若用稠密栅格 token 是 10^6 量级，任何上下文都装不下，而干净的 RLE 通常只有几百段；本机自测里 9 位小掩码的 RLE 是 (2,3,3,1) 四段共 6 个 token，稠密写法要 11 个。多原语时还要定顺序：原语集合本身无序，统一做法是按 (y_min, x_min) 排序（图上阅读顺序），或在训练时用匈牙利匹配做集合级似然，否则同一张图有 n! 种等价序列，NLL 会鼓励模型学会全部排列。"
+        },
+        {
+          "step": "规范形：让同一几何只有一种写法",
+          "detail": "同一个 box 有 4 种角点顺序，同一个 K 边形有 K 个起点 × 2 个绕向 = 2K 种写法（首尾重复写闭合点更糟）。不规范化时目标不唯一，概率质量被摊到 2K 条序列上，等价于 NLL 里凭空多出 log(2K)；模型还会学到“一会儿顺时针一会儿逆时针、起点乱跳”的不一致输出。规范形做法：box 排序成 x1≤x2、y1≤y2；polygon 先去相邻重复点，用鞋带公式判定绕向并统一为逆时针，再取字典序最小的顶点作为起点。本机自测中 4 种 box 写法收敛为 1 种，4 边形的 8 种写法也收敛为 1 种。"
+        },
+        {
+          "step": "训练目标与约束解码：CE + 坐标头 + 结构损失，RL 再加格式门控",
+          "detail": "目标函数 L=-Σ_t m_t·log p_θ(x_t|x_{<t}) + λ·(1/|G|)Σ_{g∈G}||ĉ_g-c_g||_1 + μ·L_struct：m_t 是 loss mask（prompt/图像段为 0，只算文本与原语 token），L_struct 是几何一致性（box 可用中心+尺度或 CIoU，polygon 用面积/周长，mask 用 Dice）。解码侧用约束解码：在 <box> 块内按位屏蔽非法桶（例如第三个坐标必须不小于第一个），或先自由生成再 repair 到规范形。RL 阶段（GRPO/DPO 类）的 reward 必须门控：格式非法直接 0 分，合法串上再加坐标 L1 与 IoU，否则策略会先学会刷分的无效串；而 RL 只能优化 base model 已经能走通的格式，所以词表与语法要先定死。"
+        }
+      ],
+      "complexity": {
+        "time": "O(T^2·d + T·B)：注意力随混合序列长度 T 平方增长，输出层每步是 B 桶的 softmax",
+        "space": "O(T·d) 的 KV cache 与激活；mask 用 RLE 时 T=O(R) 而不是 O(H·W)",
+        "why": "全部代价压在 T 上：point 4、box 6、polygon 3+2K、mask 2+R 个 token；B=1000 只让词表多 O(B) 项，不增加 T。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''视觉原语（point/box/polygon/mask）与文本 token 的统一混合序列建模。\n\n三件事：坐标离散化把几何回归变成分类；文本与原语块拼成一条序列做自回归\np(x)=prod_t p(x_t | x 的前缀)；用规范形与约束解码保证几何合法、可反解。\n纯标准库实现，直接运行，末尾自带断言自测。\n'''\nimport math\n\nBINS = 1000\nTAGS = {'point': '<point>', 'box': '<box>', 'polygon': '<polygon>', 'mask': '<mask>'}\nCLOSE = '</prim>'\nARITY = {'point': 2, 'box': 4}\n\n\ndef quantize(c, bins=BINS):\n    '''把 [0,1] 的连续坐标映射成桶号；越界 clamp，NaN/inf 直接报错。'''\n    if bins < 2:\n        raise ValueError('bins 至少为 2，否则反量化会除零')\n    if not math.isfinite(c):\n        raise ValueError('坐标必须是有限数: %r' % (c,))\n    q = int(round(max(0.0, min(1.0, c)) * (bins - 1)))\n    return max(0, min(bins - 1, q))\n\n\ndef dequantize(q, bins=BINS):\n    '''桶号 -> [0,1] 坐标，误差上界 1/(2*(bins-1))。'''\n    if bins < 2 or not 0 <= q <= bins - 1:\n        raise ValueError('桶号越界或 bins 非法: %r / %r' % (q, bins))\n    return q / (bins - 1)\n\n\ndef canon_box(box):\n    '''任意角点顺序 -> 唯一表示（x1<=x2 且 y1<=y2），4 种写法收敛成 1 种。'''\n    x1, y1, x2, y2 = box\n    return (min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))\n\n\ndef area2(poly):\n    '''鞋带公式的两倍有向面积，正数表示逆时针。'''\n    s = 0.0\n    n = len(poly)\n    for i in range(n):\n        x1, y1 = poly[i]\n        x2, y2 = poly[(i + 1) % n]\n        s += x1 * y2 - x2 * y1\n    return s\n\n\ndef canon_polygon(poly):\n    '''去相邻重复点 -> 逆时针 -> 以字典序最小顶点为起点，2K 种写法收敛成 1 种。'''\n    pts = []\n    for p in poly:\n        if not pts or tuple(p) != pts[-1]:\n            pts.append(tuple(p))\n    if len(pts) > 1 and pts[0] == pts[-1]:\n        pts.pop()\n    if len(pts) < 3:\n        raise ValueError('多边形至少需要 3 个不重复顶点: %r' % (poly,))\n    if area2(pts) < 0:\n        pts = [pts[0]] + pts[:0:-1]\n    k = min(range(len(pts)), key=lambda i: pts[i])\n    return tuple(pts[k:] + pts[:k])\n\n\ndef rle_encode(bits):\n    '''二值掩码（行优先展平）-> 段长；约定第 0 段是 0 的个数，前导 1 补长度 0。'''\n    if not bits:\n        return ()\n    counts = []\n    cur = bits[0]\n    if cur == 1:\n        counts.append(0)\n    run = 0\n    for b in bits:\n        if b == cur:\n            run += 1\n        else:\n            counts.append(run)\n            cur = b\n            run = 1\n    counts.append(run)\n    return tuple(counts)\n\n\ndef rle_decode(counts, total=None):\n    '''段长 -> 二值掩码；total 给定时右侧补 0，超出尺寸则报错。'''\n    bits = []\n    val = 0\n    for c in counts:\n        if c < 0:\n            raise ValueError('RLE 段长不能为负: %r' % (c,))\n        bits.extend([val] * c)\n        val ^= 1\n    if total is not None:\n        if len(bits) > total:\n            raise ValueError('RLE 解出 %d 位，超过掩码尺寸 %d' % (len(bits), total))\n        bits.extend([0] * (total - len(bits)))\n    return bits\n\n\ndef prim_to_tokens(kind, geom):\n    '''一个几何原语 -> 结构 token 块：标签 + 顶点数或 RLE + 坐标 token + 结束符。'''\n    if kind == 'mask':\n        return [TAGS['mask']] + ['<r%d>' % c for c in geom] + [CLOSE]\n    if kind == 'polygon':\n        pts = canon_polygon(geom)\n        flat = [v for p in pts for v in p]\n        head = [TAGS['polygon'], '<k%d>' % len(pts)]\n        return head + ['<c%d>' % quantize(v) for v in flat] + [CLOSE]\n    if kind not in ARITY:\n        raise ValueError('未知原语类型: %r' % (kind,))\n    box = canon_box(geom) if kind == 'box' else tuple(geom)\n    return [TAGS[kind]] + ['<c%d>' % quantize(v) for v in box] + [CLOSE]\n\n\ndef encode(text_tokens, prims):\n    '''文本 token 与所有原语块拼成一条混合序列，它就是生成问题里的 x。'''\n    seq = list(text_tokens)\n    for kind, geom in prims:\n        seq.extend(prim_to_tokens(kind, geom))\n    return seq\n\n\ndef _read_block(tokens, i):\n    '''从 i 往后读到结束符，返回 (块体, 下一位置)；缺结束符说明序列被截断。'''\n    j = i\n    while j < len(tokens) and tokens[j] != CLOSE:\n        j += 1\n    if j >= len(tokens):\n        raise ValueError('原语块缺少结束符 %s' % CLOSE)\n    return tokens[i:j], j + 1\n\n\ndef parse_prim(tag, body):\n    '''把块体还原成 (类型, 几何量)，顺带做结构合法性检查。'''\n    if tag == TAGS['mask']:\n        counts = []\n        for t in body:\n            if not (t.startswith('<r') and t.endswith('>')):\n                raise ValueError('mask 块里出现非 RLE token: %r' % (t,))\n            counts.append(int(t[2:-1]))\n        return ('mask', tuple(counts))\n    k_tok = None\n    if tag == TAGS['polygon']:\n        if not body or not (body[0].startswith('<k') and body[0].endswith('>')):\n            raise ValueError('polygon 块必须以顶点数 token 开头')\n        k_tok = int(body[0][2:-1])\n        body = body[1:]\n    nums = []\n    for t in body:\n        if not (t.startswith('<c') and t.endswith('>')):\n            raise ValueError('坐标块里出现非坐标 token: %r' % (t,))\n        nums.append(int(t[2:-1]))\n    if len(nums) % 2:\n        raise ValueError('%s 的坐标个数必须是偶数，实际 %d' % (tag, len(nums)))\n    vals = [dequantize(q) for q in nums]\n    if tag == TAGS['point']:\n        if len(vals) != 2:\n            raise ValueError('point 必须恰好 2 个坐标')\n        return ('point', tuple(vals))\n    if tag == TAGS['box']:\n        if len(vals) != 4:\n            raise ValueError('box 必须恰好 4 个坐标')\n        return ('box', canon_box(vals))\n    if k_tok != len(vals) // 2:\n        raise ValueError('顶点数 token %r 与实际 %d 不符' % (k_tok, len(vals) // 2))\n    pts = [(vals[k], vals[k + 1]) for k in range(0, len(vals), 2)]\n    return ('polygon', canon_polygon(pts))\n\n\ndef decode(tokens):\n    '''混合序列 -> (文本 token, 原语列表)，即约束解码之后的反解步骤。'''\n    text, prims = [], []\n    by_tag = {}\n    for k in TAGS:\n        by_tag[TAGS[k]] = k\n    i = 0\n    while i < len(tokens):\n        t = tokens[i]\n        if t in by_tag:\n            body, i = _read_block(tokens, i + 1)\n            prims.append(parse_prim(t, body))\n        elif t == CLOSE:\n            raise ValueError('多余的结束符 %s' % CLOSE)\n        else:\n            text.append(t)\n            i += 1\n    return text, prims\n\n\ndef budget(prims):\n    '''token 预算：point 4、box 6、polygon 3+2K、mask 2+R（R 为 RLE 段数）。'''\n    n = 0\n    for kind, geom in prims:\n        if kind == 'mask':\n            n += 2 + len(geom)\n        elif kind == 'polygon':\n            n += 3 + 2 * len(geom)\n        elif kind == 'box':\n            n += 6\n        elif kind == 'point':\n            n += 4\n        else:\n            raise ValueError('未知原语类型: %r' % (kind,))\n    return n\n\n\nclass BigramLM:\n    '''玩具语言模型：p(x_t | x 的前缀) 只依赖上一个 token，用来演示统一 NLL。'''\n\n    def __init__(self, alpha=0.5):\n        self.alpha = alpha\n        self.vocab = set()\n        self.pair = {}\n        self.uni = {}\n\n    def fit(self, seqs):\n        for s in seqs:\n            prev = '<bos>'\n            self.vocab.add(prev)\n            for t in s:\n                self.vocab.add(t)\n                self.pair[(prev, t)] = self.pair.get((prev, t), 0) + 1\n                self.uni[prev] = self.uni.get(prev, 0) + 1\n                prev = t\n            self.pair[(prev, '<eos>')] = self.pair.get((prev, '<eos>'), 0) + 1\n            self.vocab.add('<eos>')\n\n    def prob(self, prev, nxt):\n        v = len(self.vocab)\n        num = self.pair.get((prev, nxt), 0) + self.alpha\n        den = self.uni.get(prev, 0) + self.alpha * v\n        return num / den\n\n\ndef masked_nll(tokens, model, loss_mask=None):\n    '''-sum_t m_t log p(x_t | x 的前缀)；loss_mask 用来跳过 prompt 段。'''\n    total = 0.0\n    kept = 0\n    prev = '<bos>'\n    for i, t in enumerate(tokens):\n        if loss_mask is None or loss_mask[i]:\n            total -= math.log(max(model.prob(prev, t), 1e-12))\n            kept += 1\n        prev = t\n    return total, kept\n\n\ndef main():\n    # 1) 量化误差上界 |c - dequantize(quantize(c))| <= 1/(2*(BINS-1))\n    worst = 0.0\n    for i in range(2001):\n        for c in (i / 2000.0, 1.0 - i / 2000.0):\n            worst = max(worst, abs(c - dequantize(quantize(c))))\n    bound = 1.0 / (2 * (BINS - 1))\n    tol = bound + 1e-12                      # 浮点往返留一点余量\n    assert worst <= tol, (worst, bound)\n    print('量化误差 max=%.3e，上界 1/(2(B-1))=%.3e，换到 1000 像素图是 %.2f px'\n          % (worst, bound, worst * 1000))\n\n    # 2) 规范形把等价写法收敛成 1 种：box 有 4 种角点顺序，K 边形有 2K 种写法\n    box = (0.8, 0.7, 0.2, 0.1)\n    orders = ((0, 1, 2, 3), (2, 1, 0, 3), (0, 3, 2, 1), (2, 3, 0, 1))\n    assert len({canon_box(tuple(box[k] for k in o)) for o in orders}) == 1\n    poly = ((0.4, 0.1), (0.9, 0.5), (0.4, 0.9), (0.1, 0.5))\n    forms = set()\n    for k in range(len(poly)):\n        rot = poly[k:] + poly[:k]\n        forms.add(canon_polygon(rot))\n        forms.add(canon_polygon(tuple(reversed(rot))))\n    print('多边形等价写法 %d 种，规范化后 %d 种' % (2 * len(poly), len(forms)))\n    assert len(forms) == 1, forms\n\n    # 3) 文本 + 四种原语的混合序列往返，长度与预算函数一致\n    bits = [0, 0, 1, 1, 1, 0, 0, 0, 1]\n    prims = [\n        ('point', (0.1234, 0.8765)),\n        ('box', (0.8, 0.7, 0.2, 0.1)),\n        ('polygon', ((0.4, 0.1), (0.9, 0.5), (0.4, 0.9), (0.1, 0.5))),\n        ('mask', rle_encode(bits)),\n    ]\n    seq = encode(['猫', '在', '左上'], prims)\n    text, back = decode(seq)\n    assert text == ['猫', '在', '左上'] and len(back) == 4\n    assert len(seq) == 3 + budget(prims), (len(seq), budget(prims))\n    assert abs(back[0][1][0] - 0.1234) <= tol and abs(back[0][1][1] - 0.8765) <= tol\n    want_box = (0.2, 0.1, 0.8, 0.7)\n    assert max(abs(a - b) for a, b in zip(back[1][1], want_box)) <= tol\n    want_poly = canon_polygon(prims[2][1])\n    assert len(back[2][1]) == len(want_poly)\n    for got, want in zip(back[2][1], want_poly):\n        assert max(abs(got[0] - want[0]), abs(got[1] - want[1])) <= tol\n    assert rle_decode(back[3][1], len(bits)) == bits\n    print('混合序列 %d token = 文本 3 + 原语 %d；mask RLE %s 只要 %d token，稠密栅格要 %d'\n          % (len(seq), budget(prims), tuple(rle_encode(bits)),\n             2 + len(rle_encode(bits)), 2 + len(bits)))\n\n    # 4) 统一自回归 NLL：p(x) 是全部 token 的联合，loss_mask 只跳过 prompt 段\n    lm = BigramLM(alpha=0.5)\n    lm.fit([seq, encode(['狗', '在', '右下'], prims[:2])])\n    nll_all, n_all = masked_nll(seq, lm)\n    loss_mask = [False, False, False] + [True] * (len(seq) - 3)\n    nll_ans, n_ans = masked_nll(seq, lm, loss_mask)\n    assert n_all == len(seq) and n_ans == len(seq) - 3 and nll_ans <= nll_all\n    print('统一 NLL：全序列 %.3f（%d token），只算答案段 %.3f（%d token）'\n          % (nll_all, n_all, nll_ans, n_ans))\n\n    # 5) 边界：越界坐标 clamp、截断序列被拒、退化多边形被拒、全 0/全 1 掩码\n    assert quantize(-0.5) == 0 and quantize(1.5) == BINS - 1\n    assert rle_decode(rle_encode([0] * 6), 6) == [0] * 6\n    assert rle_decode(rle_encode([1] * 3), 3) == [1] * 3\n    bad_seqs = [seq[:-1], ['<box>', '<c10>', '<c20>', '<c30>', CLOSE]]\n    for bad in bad_seqs:\n        try:\n            decode(bad)\n        except ValueError as exc:\n            print('非法序列被拒绝: %s' % exc)\n            continue\n        raise AssertionError('非法输入应当报错: %r' % (bad,))\n    try:\n        canon_polygon(((0.1, 0.1), (0.1, 0.1), (0.2, 0.2)))\n    except ValueError as exc:\n        print('退化多边形被拒绝: %s' % exc)\n    else:\n        raise AssertionError('退化多边形应当报错')\n    print('边界用例全部通过：clamp、截断、退化多边形、空白掩码')\n\n\nif __name__ == '__main__':\n    main()",
+        "walkthrough": [
+          {
+            "note": "量化与反量化：quantize 先把坐标 clamp 到 [0,1]（模型吐出画面外的坐标是常态），再乘 B-1 四舍五入取桶；dequantize 除以 B-1 回到连续值。误差上界 1/(2(B-1)) 是 round 的固有性质，不是经验值。"
+          },
+          {
+            "note": "规范形两件套：canon_box 把 4 种角点顺序压成 1 种；canon_polygon 先去相邻重复点（包括首尾重复的闭合点），用鞋带公式 area2 判定绕向并统一成逆时针，再旋转到字典序最小的顶点。这一步是“目标唯一”的前提，直接决定 NLL 里会不会多出 log(2K)。"
+          },
+          {
+            "note": "RLE 编解码：约定第 0 段恒为 0 的个数（所以全 1 掩码解码成 (0,N)），段长交替还原；total 用于右侧补 0 并检查溢出。掩码用 RLE 而不是稠密栅格，是让 mask 原语的序列长度从 O(H×W) 降到 O(段数) 的关键。"
+          },
+          {
+            "note": "序列化与反解：prim_to_tokens 把单个原语变成 <tag> 块（多边形先带顶点数 token，mask 带 RLE 段长），encode 把文本 token 与所有原语块拼成一条混合序列（它就是生成问题里的 x）；decode 反过来解析，缺结束符（生成被截断）、块内出现非法 token、坐标个数为奇数、顶点数与实际不符都会显式报错。"
+          },
+          {
+            "note": "budget 把四种原语的 token 数写成闭式（point 4、box 6、polygon 3+2K、mask 2+R），这样在设计阶段就能估出多原语任务的序列长度上限与截断策略，而不必先跑一遍分词。"
+          },
+          {
+            "note": "BigramLM + masked_nll 是玩具版的统一似然：p(x_t|x 的前缀) 用加 alpha 的二阶计数近似，masked_nll 逐 token 累加 -log p 并用 loss_mask 跳过 prompt 段，演示“整条序列一个联合似然、哪些 token 计 loss 由 mask 决定”这两件事。"
+          },
+          {
+            "note": "main 里五组自测：量化误差与理论上界对齐；规范形把 box 的 4 种、4 边形的 8 种写法各收敛成 1 种；文本加四种原语的往返与预算函数一致；统一 NLL 在整条序列与仅答案段上分别计算并校验 mask 条数；边界用例（clamp、截断、退化多边形、空白掩码）全部按预期行为。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "空原语列表：序列退化成纯文本，encode/decode 正常，decode 返回空的 prims 列表。",
+        "坐标越界（模型吐出画面外的坐标）：quantize 先 clamp 到 [0,1] 再取桶，不抛异常，只是被吸附到边界。",
+        "退化几何：量化后 x1==x2（零宽框）需要靠结构损失约束；多边形去重后不足 3 个顶点时 canon_polygon 直接报错。",
+        "掩码全 0 或全 1：RLE 分别是 (N,) 与 (0,N)，解码时用 total 补齐右侧的 0。",
+        "序列被截断（上下文用尽、生成到块中间）：_read_block 找不到结束符会报错，工程上应丢弃该样本或回滚到最近的块边界。",
+        "bins=1：dequantize 会除零，quantize 显式拒绝 bins<2。",
+        "多边形含共线点：规范化只去相邻重复点，不删共线点，所以共线写法仍不唯一，要么在数据侧统一要么额外做化简。",
+        "首尾重复写闭合点：canon_polygon 会弹掉最后一个重复点，避免 K+1 个点被当成 K+1 边形。",
+        "prompt 与答案同批：loss_mask 必须与分词结果逐 token 对齐，否则会把图像/题面 prompt 也算进 loss。"
+      ],
+      "pitfalls": [
+        "把坐标当连续回归量直接塞进同一个输出头：交错的混合序列里无法定位“当前是第几个坐标”，长度可变的多边形也没有固定输出维度，等于放弃了统一建模。",
+        "不做规范形：K 边形有 2K 种等价写法，NLL 凭空多出 log(2K)，模型还会输出起点/绕向不一致的串。",
+        "mask 用稠密栅格 token：H×W 直接爆上下文，正确做法是 RLE 或 polygon 化。",
+        "量化桶数 B 选太小（如 64）：误差约 8e-3，小目标框直接糊掉；B 太大又让 softmax 与词表膨胀。",
+        "把坐标 1.0 映射到桶 B 而不是 B-1：最典型的一处 off-by-one，越界后 vocab 索引直接崩。",
+        "约束解码只检查前一个 token：box 的合法性要四个坐标一起看，局部合法推不出全局合法。",
+        "RL 阶段 reward 不做格式门控：策略学会输出格式正确但坐标乱写的串来刷分。",
+        "训练用原始角点顺序、推理按规范形输出：训练/推理表示不一致，loss 看着正常但可视化全错。",
+        "忘记 loss mask 或对齐错位：把 prompt 段也计入 loss，模型学会复读题面而不是生成原语。"
+      ],
+      "followUps": [
+        "量化误差地板怎么破？（小权重连续头 + L1/Laplace、残差量化、多尺度桶，或对反量化坐标做可微损失）",
+        "多个原语构成的集合是无序的，排列歧义怎么处理？（规范排序 vs 匈牙利匹配的集合似然 vs 置换不变的自回归）",
+        "mask 怎么在同一框架里表示？（RLE、polygon-with-holes、下采样栅格、continuous latent token）各自长度与精度代价如何？",
+        "坐标 token 要不要独立的类型/空间嵌入（把 x 与 y 分开、或给坐标 token 加 2D 位置先验）？",
+        "为什么不用 diffusion/flow 头直接生成连续坐标？混合序列 AR + 连续头与纯连续生成在似然、采样、RL 上的差别是什么？",
+        "RL 阶段 format reward 与精度 reward 怎么配比？为什么格式门控比调权重更关键？",
+        "多原语任务的 token budget 怎么估？长尾大 mask 怎么截断或分层？",
+        "结构化评测怎么做（格式合法率、坐标 L1、box IoU、polygon 面积误差、mask Dice），它们与最终任务指标的关系是什么？"
+      ],
+      "variations": [
+        "box 换成 (cx, cy, w, h) 表示，规范化退化成只需保证 w>0、h>0。",
+        "point 集合（关键点/关节）连续排布成多个 <point> 块，或用一层 <points> 包起来。",
+        "mask 用 polygon-with-holes 表示，把光栅化放到反解（detokenizer）阶段做。",
+        "连续坐标 token 版：把 <c_i> 换成 latent embedding（continuous token），输出头改成回归加混合损失。",
+        "引用式指代：<box ref=3> 复用前文原语，序列更短但引入指代解析与一致性约束。",
+        "把图像 patch token 也放进同一条序列（early fusion），视觉原语只是输出侧的结构 token。",
+        "把规范排序换成 DETR 式匈牙利匹配 + 集合 NLL，允许同一张图有多种合法排列。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "混合序列生成流程",
+        "caption": "记住四个环节：① 一条序列同时装下文本与四种原语块；② 坐标量化把回归变分类，误差上界 1/(2(B-1))；③ 联合似然只乘同一个 softmax；④ 规范形加约束解码保证反解唯一且几何合法。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='文本 token 与视觉原语统一的混合序列生成流程'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='12' y='18' font-size='13' fill='currentColor'>混合序列：文本 token 与视觉原语</text><rect x='10' y='26' width='40' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='17' y='44' font-size='13' fill='currentColor'>猫</text><rect x='52' y='26' width='52' height='26' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='59' y='44' font-size='13' fill='currentColor'>&lt;box&gt;</text><rect x='106' y='26' width='42' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='113' y='44' font-size='13' fill='currentColor'>c312</text><rect x='150' y='26' width='42' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='157' y='44' font-size='13' fill='currentColor'>c088</text><rect x='194' y='26' width='42' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='201' y='44' font-size='13' fill='currentColor'>c721</text><rect x='238' y='26' width='42' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='245' y='44' font-size='13' fill='currentColor'>c540</text><rect x='282' y='26' width='52' height='26' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='289' y='44' font-size='13' fill='currentColor'>&lt;/box&gt;</text><rect x='336' y='26' width='58' height='26' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='343' y='44' font-size='13' fill='currentColor'>&lt;point&gt;</text><rect x='396' y='26' width='36' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='402' y='44' font-size='13' fill='currentColor'>c005</text><rect x='434' y='26' width='36' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='440' y='44' font-size='13' fill='currentColor'>c900</text><text x='12' y='68' font-size='13' fill='currentColor'>一个词表 V：文本 token ⊕ 结构标签 ⊕ B 个坐标桶</text><rect x='10' y='80' width='460' height='32' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='101' font-size='13' fill='currentColor'>① 序列化：文本与原语块拼成一条序列 x</text><line x1='240' y1='112' x2='240' y2='117' stroke='var(--line-1)' stroke-width='1'/><polygon points='240,120 236,114 244,114' fill='var(--line-1)'/><rect x='10' y='120' width='460' height='32' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='141' font-size='13' fill='currentColor'>② 坐标量化 q(c)=round(c(B-1))：回归变分类</text><line x1='240' y1='152' x2='240' y2='157' stroke='var(--line-1)' stroke-width='1'/><polygon points='240,160 236,154 244,154' fill='var(--line-1)'/><rect x='10' y='160' width='460' height='32' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='18' y='181' font-size='13' fill='currentColor'>③ 联合似然 p(x)=prod p(x_t | 前缀)：一个 softmax</text><line x1='240' y1='192' x2='240' y2='197' stroke='var(--line-1)' stroke-width='1'/><polygon points='240,200 236,194 244,194' fill='var(--line-1)'/><rect x='10' y='200' width='460' height='32' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='18' y='221' font-size='13' fill='currentColor'>④ 规范形 + 约束解码：同一几何只有一种合法写法</text></svg>",
+        "alt": "一张流程图：顶部是混合 token 条（文本词“猫”、结构标签 box、坐标桶 c312/c088/c721/c540、结束符、point 标签与坐标桶），下面四个阶段框依次是序列化、坐标量化把回归变分类、联合似然只乘一个 softmax、规范形加约束解码保证几何合法。"
+      },
+      "selfTest": [
+        "为什么必须做坐标量化而不是直接回归？（答：交错的混合序列里回归头无法定位“当前是第几个坐标”，长度可变的多边形也没有固定输出维度；量化后所有 token 共享一个 B 分类 softmax，代价是 1/(2(B-1)) 的误差地板。）",
+        "B=1000 时量化误差上界是多少，换算到 1000 像素图上是多少？（答：1/(2×999)≈5.005e-4，约 0.5 px。）",
+        "K 边形有多少种等价写法，不规范化会让 NLL 多出什么？（答：K 个起点 × 2 个绕向 = 2K 种，等价于凭空多 log(2K)；规范化后只剩 1 种。）",
+        "1000×1000 的 mask 用稠密栅格和 RLE，序列长度差多少？（答：稠密是 10^6 量级 token，RLE 是 O(段数)，通常几百，差三四个数量级。）",
+        "为什么要 loss mask？（答：p(x) 是整条序列的联合似然，但 prompt/图像段不是要学的目标，用 m_t=0 跳过，否则模型学会复读题面。）"
+      ],
+      "keyPoints": [
+        "统一发生在词表层：V = 文本 token ∪ 结构标签 ∪ B 个坐标桶，p(x)=∏_t p(x_t|x_{<t}) 一条序列一个损失",
+        "坐标量化 q(c)=clamp(round(c(B-1)))，误差 ≤1/(2(B-1))（B=1000 约 0.5 px），把几何回归变成分类",
+        "四种原语的 token 预算：point 4、box 6、polygon 3+2K、mask 2+R（RLE 段数），mask 别用稠密栅格",
+        "规范形消除等价写法：box 4→1、polygon 2K→1，否则 NLL 凭空多出 log(2K)",
+        "训练 = 带 loss mask 的 CE + λ·坐标 L1 + μ·几何一致性；RL 的 reward 必须做格式门控"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "题干原文只有一句：“为‘视觉原语’（point/box/mask/polygon）推理框架建立数学建模，说明如何把文本 token 与几何原语统一到一个混合序列的生成问题中”；输入文件标注 origin=curated、sourceUrl=null、kind=exam、difficulty=hard、topics=[大模型与RL]。",
+          "量化误差上界 1/(2(B-1)) 是可证的数学结论：|c(B-1)-round(c(B-1))|≤0.5，两边同除 B-1 即得；本机在 [0,1] 上以 0.0005 步长扫描 4002 个点，实测最大误差 5.005e-4，正好等于上界。",
+          "规范形把 box 的 4 种角点顺序收敛成 1 种，把 4 边形的 4 个起点 × 2 个绕向共 8 种写法收敛成 1 种（本机断言通过）。",
+          "code.source 在本机 python 3.12.9 上实际运行通过：混合序列 30 token = 文本 3 + 原语 27，与 budget() 一致；9 位掩码的 RLE=(2,3,3,1) 只要 6 个 token，稠密栅格要 11 个；截断序列、坐标个数为奇数的块、退化多边形都按预期抛 ValueError；越界坐标被 clamp；统一 NLL 在整条序列与仅答案段上分别计算并通过断言。",
+          "本机 toy bigram（add-0.5 平滑、两条语料）实测：全序列 NLL=62.716（30 token），只算答案段 NLL=55.982（27 token），答案段更小且 token 条数等于 len(seq)-3；这两个绝对值只是演示，可复现的是这两条关系本身。"
+        ],
+        "uncertain": [
+          "题干只有一句话，没有样例、原语字段顺序、坐标取值范围、mask 表示方式、词表与分辨率约束；本文件的 box=(x1,y1,x2,y2)、坐标归一化到 [0,1]、B=1000 桶都是按最常见做法补的假设，不是题面给定。",
+          "题面没有说明考核形式（白板推导还是落到某套具体实现），因此本文件按“数学建模 + 可运行验证”两条线写；若面试只要白板推导，代码部分属于加分项。",
+          "mask 的表示题面未指定，本文件选了 RLE 并只定义了段长与起始值的约定，未涉及列优先、游程压缩等具体实现细节；换成 polygon-with-holes 或下采样栅格，预算公式也要跟着变。",
+          "多原语的排列约定题面未给；本文件给了“按 (y_min, x_min) 排序”与“匈牙利匹配做集合似然”两种方案，实现里选了前者，后者未验证。",
+          "token 预算中的常数（point 4、box 6、polygon 3+2K、mask 2+R）依赖“一个坐标一个 token、一个块结束符一个 token”的约定，换分词或加额外类型 token 后数字会变。",
+          "本题是人工整理题（sourceUrl=null），没有任何可引用的外部链接，因此 sources 留空，也未在正文中写任何链接。"
+        ]
+      }
+    }
+  ]
+}

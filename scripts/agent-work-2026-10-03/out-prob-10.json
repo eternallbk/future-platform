@@ -1,0 +1,137 @@
+{
+ "batchId": "prob-10",
+ "entries": [
+  {
+   "id": "pb-6b4fea8c9d73c5b4",
+   "itemId": "6b4fea8c9d73c5b4",
+   "tldr": "最大子矩阵：枚举行区间把二维压成一维列和，再用 Kadane 求最大子段和，总复杂度 O(N³)。",
+   "restated": "输入 N×N 矩阵（题面写 N ≤ 100、元素在 [-127,127]）。第一行是 N，其后 N² 个整数按行给出、由空白字符（空格或换行）分隔。求大小至少 1×1、行连续且列连续的子矩阵的最大元素和。样例 4×4 矩阵输出 15，最优块是 9 2 / -4 1 / -1 8。题面「0 N = 100」与 topics 只有「数组与矩阵」；未声明多组数据。",
+   "approach": [
+    {
+     "step": "暴力（枚举四个边界）",
+     "detail": "枚举上、下、左、右四个边界 r1≤r2、c1≤c2，共 O(N⁴) 个子矩阵，每个再花 O(N²) 求和，总 O(N⁶)；即使用二维前缀和把单次求和降到 O(1)，仍是 O(N⁴)≈10⁸ 次枚举，N=100 时不可接受。但它划定了搜索空间，也说明「必须减少被枚举的自由度」。"
+    },
+    {
+     "step": "中间一步（前缀和 + 枚举边界）",
+     "detail": "用二维前缀和可以把求和压到 O(1)，复杂度 O(N⁴)。仍然不够；瓶颈在于枚举了 4 个自由度。注意：把 O(N⁶) 说成「O(N⁴) 就够了」是常见口误，O(1) 求和只省掉最内层的 O(N²)，减少不了枚举本身。"
+    },
+    {
+     "step": "最优（行区间 + 一维 Kadane，降维）",
+     "detail": "关键观察：一旦把行区间 [top,bottom] 固定，子矩阵的列区间就是「在数组 col 上的一个连续子段」，其中 col[j]=Σ_{r=top..bottom} A[r][j]。这正是最大子段和（Kadane）问题：令 cur = max(col[j], cur+col[j])，cur<0 时从当前列重新起段，扫一遍即得该行区间下的最优列区间。所以枚举 O(N²) 个行区间，每个用 O(N) 扫描，总计 O(N³)。三个必要细节：① col 随 bottom 递增增量累加，否则退化成 O(N⁴)；② 必须非空，cur 初始化为 -inf 而不是 0，否则全负矩阵会错答 0；③ 让 m 为较短的维度、外层枚举它，内层扫描维度更长——总乘数不变，但更长的内层循环用局部变量相加更快。"
+    },
+    {
+     "step": "次优（DP 视角 / 分治）",
+     "detail": "同一问题也可写成二维 DP 或分治（O(N³ log N)），Kadane 公式本质上就是「以 j 结尾的最大子段和」这个 DP 的状态转移；面试里能把它说成 DP 而不是背代码，是加分项。另有 O(N³) 但常数更小的写法（先固定左右列再对行做 Kadane），与本题解对称。"
+    }
+   ],
+   "complexity": {
+    "time": "O(N³)，N ≤ 100 约 10⁶ 次基本运算",
+    "space": "O(N)（只多一个长度为 N 的列和数组；输入矩阵本身 O(N²)）",
+    "why": "O(N²) 个行区间 × 每个 O(N) 的列累加与 Kadane 扫描；空间只放一维 col 数组，不存子矩阵前缀和。"
+   },
+   "code": {
+    "language": "python",
+    "source": "import sys\n\n\ndef max_submatrix(matrix):\n    \"\"\"返回矩阵中最大非空子矩阵的元素和（行连续、列也连续）。\"\"\"\n    n = len(matrix)\n    if n == 0 or not matrix[0]:\n        return 0                      # 空矩阵：按「至少 1*1」的题面，调用方不该传空\n    m = min(len(row) for row in matrix)\n    if m == 0:\n        return 0\n    # 优化：让外层枚举短的那一维，内层扫描长的那一维（内外层工作量不同）\n    if m > n:\n        matrix = [list(col) for col in zip(*matrix)]\n        n, m = m, n\n\n    best = None                       # None 代表「还没取到任何合法子矩阵」\n    for top in range(n):              # 枚举子矩阵上边界\n        col = [0] * m                 # col[j] 是行 [top..bottom] 在第 j 列的和\n        for bottom in range(top, n):\n            row = matrix[bottom]\n            for j in range(m):        # 增量累加：只加新进来的这一行\n                col[j] += row[j]\n            # 一维 Kadane：必须非空，所以用 -inf 初始化而不是 0\n            cur = float(\"-inf\")\n            for j in range(m):\n                cur = col[j] if cur < 0 else cur + col[j]\n                if best is None or cur > best:\n                    best = cur\n    return best\n\n\ndef read_matrix(text):\n    \"\"\"题面声明整数之间由任意空白分隔，所以整段 split 再取数即可。\"\"\"\n    data = text.split()\n    if not data:\n        return []\n    n = int(data[0])\n    values = [int(v) for v in data[1:1 + n * n]]\n    if len(values) < n * n:\n        raise ValueError(\"矩阵元素不足：需要 %d 个，实际 %d 个\" % (n * n, len(values)))\n    return [values[i * n:(i + 1) * n] for i in range(n)]\n\n\ndef solve(text):\n    matrix = read_matrix(text)\n    if not matrix:\n        return 0\n    return max_submatrix(matrix)\n\n\nif __name__ == \"__main__\":\n    sample = \"\"\"4\n    0 -2 -7 0\n    9 2 -6 2\n    -4 1 -4 1\n    -1 8 0 -2\"\"\"\n    assert solve(sample) == 15, solve(sample)                      # 题面样例\n    assert max_submatrix([[5]]) == 5                               # N=1 正数\n    assert max_submatrix([[-7]]) == -7                             # N=1 负数：非空，不能返回 0\n    assert max_submatrix([[-1, -2], [-3, -4]]) == -1               # 全负：答案为最大单元素\n    assert max_submatrix([[1, 1], [1, 1]]) == 4                    # 全正：整块最优\n    # 与 O(N^4) 暴力枚举对照（随机小矩阵，固定种子以保证可复现）\n    import random\n    rng = random.Random(20261003)\n    for _ in range(300):\n        size = rng.randint(1, 5)\n        mat = [[rng.randint(-9, 9) for _ in range(size)] for _ in range(size)]\n        brute = max(\n            sum(mat[r][c] for r in range(r1, r2 + 1) for c in range(c1, c2 + 1))\n            for r1 in range(size) for r2 in range(r1, size)\n            for c1 in range(size) for c2 in range(c1, size)\n        )\n        assert max_submatrix(mat) == brute, (mat, max_submatrix(mat), brute)\n    # 非方阵（2x3、3x1）与「全摊在一行」的输入都要能正确解析\n    assert max_submatrix([[1, -2, 3], [4, 5, -6]]) == 9       # 最优块是第二行前两列 [4, 5]\n    assert max_submatrix([[2], [-9], [3]]) == 3\n    assert solve(\"3 1 2 3 4 5 6 7 8 9\") == 45\n    print(\"all tests passed\")\n",
+    "walkthrough": [
+     {
+      "note": "max_submatrix 先取 n=行数、m=列数；若 m>n 就 zip(*matrix) 转置，让被枚举的维度是最短的那一维（总复杂度不变，但内层循环多，这样做常数更小）。转置不改变任何子矩阵的和，是对称性优化。"
+     },
+     {
+      "note": "外层 top 枚举上边界；col 在 top 变化时清空一次。内层 bottom 递增时只用「加上新的一行」来更新 col，这就是增量前缀和 —— 少了它，每个行区间都要重新累加 O(N²)，复杂度会退回到 O(N⁴)。"
+     },
+     {
+      "note": "Kadane 内层把 col[j] 当作单元素数组做最大子段和：cur<0 说明过去的段拖后腿，就从 col[j] 重新起段；否则并入。best 用 None 初始化（等价 -inf），保证「至少取一个元素」的语义。"
+     },
+     {
+      "note": "read_matrix 按题面要求把输入整体 split()，因此换行、空格、制表符都无所谓；随后按行切成 N 行 N 列，并对元素个数不足的情况抛错，避免静默读入半个矩阵。"
+     },
+     {
+      "note": "__main__ 先断言题面样例 = 15；再覆盖 N=1 正/负、全负 2×2、全正 2×2；然后用固定种子随机生成 300 个 1..5 阶小矩阵，与 O(N⁴) 暴力枚举逐一对拍，确保主逻辑不是「碰巧对样例」。"
+     },
+     {
+      "note": "最后验证非方阵（2×3 与 3×1）以及「所有数摊在一行」的输入能被正确解读：2×3 用例的答案是 9（取第二行前两列 [4,5]），说明转置分支与短维枚举在非方阵上无越界，也提醒自己最优块不一定是整块矩阵（整块和只有 5）。"
+     }
+    ]
+   },
+   "edgeCases": [
+    "N=1：矩阵退化为一个数，答案为该数本身（可能是负数），此时 Kadane 的行为必须是非空的。",
+    "矩阵元素全为负数：最优子矩阵退化成「最大的单个元素」，绝不能被写成 0（空子矩阵）；这是本题第一大坑。",
+    "矩阵元素全为正数：最优是整个矩阵，前缀和与 Kadane 都应给出总和。",
+    "N=1 的 1×100 或 100×1（退化为一行/一列）：应等价于经典最大子段和，代码不做任何特判也要正确。",
+    "上边界与下边界相同（单行）、左右边界相同（单列）都要被枚举到：代码里 bottom 从 top 起、Kadane 允许长度 1 的子段，天然覆盖。",
+    "输入换行/空格混排，甚至所有数字挤在一行：split() 解析天然兼容；还要注意只取前 N² 个数字，多余空白不报错。",
+    "元素值达到 ±127 且 N=100：列和最大绝对值约 127×100=12700，远在 int 范围内；即使换 32 位整数也不会溢出。"
+   ],
+   "pitfalls": [
+    "用 0 初始化 Kadane 的 cur：这道题的整数可以为负，初始化 0 等价于允许「空子矩阵」，全负矩阵会输出 0 而不是最大负数。",
+    "每个 bottom 都重新累加列和（每次 O(N)），复杂度悄悄退化成 O(N⁴)=10⁸，在 Python 里直接超时，却被误以为「思路一样」。",
+    "把「二维前缀和把 O(N⁶) 降到 O(N⁴)」说成 O(N³)：讲复杂度时必须区分「减少枚举」与「减少单次求和」。",
+    "外层枚举行、内层又对行求和：把行区间压缩成列和后，内层必须只对列做 Kadane，不要再碰行。",
+    "忘记「非空」约束而回答「最大子矩阵可以是空所以答案是 max(0, …)」：题面明确写「非空（大小至少是 1*1）」。",
+    "解析输入时按行 readline：题面说整数之间由空白分隔，行长度不固定（题目自己提示空格和空行都合法），必须整段 split。",
+    "对拍时只测样例：样例矩阵含正数，无法暴露初始化 0 与 -inf 的差别，必须补全负用例。"
+   ],
+   "followUps": [
+    "如果要返回最大子矩阵的四个边界（而不只是和）？答：Kadane 里额外记录当前段起点，best 被刷新时同步记下 (top, bottom, left, right)。",
+    "如果要求「恰好 K 行」的最大子矩阵？答：行区间只能枚举长度恰为 K 的窗口（N-K+1 个），其余不变，仍是 O(N³) 级别。",
+    "如果矩阵很大但稀疏（非零元素 M 个）？答：可改为对每个行区间只累加非零列并做坐标压缩，复杂度与 M 相关。",
+    "如果元素有界且矩阵极大，能否降到 O(N³/word)？答：可以用 bitset/分块技巧或子立方枚举的剪枝，但常数与实现代价要高得多。",
+    "如果把「矩形」换成「任意连通的子图」（最大权闭合/连通子图）？答：问题变为最大权闭合子图或树形 DP，不再有 Kadane 这种贪心结构。",
+    "如果要求最大子矩阵的乘积（元素可正可负可 0）？答：Kadane 需要同时维护最大/最小两个量（因为负负得正），不能只维护最大。",
+    "如果 N 升至 1000？答：O(N³)=10⁹ 在 Python 里不可行，需要考虑 NumPy 向量化（对每个 top 做 prefix+逐 bottom 的批量操作）或 C 扩展。"
+   ],
+   "variations": [
+    "一维最大子段和（Kadane 本身，本题的降维子问题）。",
+    "最大子矩阵的边界输出与方案还原。",
+    "「最大子矩阵和不超过 K」的变体（需要有序前缀和 + 二分，复杂度 O(N³logN)）。",
+    "「子矩阵平均值最大」且长度至少 L（二分答案 + 前缀和判定）。",
+    "「全 1 最大矩形 / 最大全 1 正方形」（单调栈或 DP，与本题同属二维枚举 + 一维结构复用）。",
+    "「恰好 K 行的最大子矩阵」与「至多 K 行的最大子矩阵」（行区间窗口化）。",
+    "环形最大子段和（环形矩阵的行区间/列区间要考虑首尾相接，需要「总和减最小子段」的补集技巧）。"
+   ],
+   "diagram": {
+    "kind": "matrix",
+    "title": "行压缩 + Kadane",
+    "caption": "固定行区间→逐列压缩成一维→Kadane 找最大子段；答案 = 该子段对应的矩形和。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='把最大子矩阵问题压缩成一维：固定行区间 top 到 bottom 后逐列求和得到一维数组，再用 Kadane 扫描求最大子段和'><text x='12' y='16' font-size='13' fill='currentColor' text-anchor='start'>N=4，取行区间 top=1..bottom=3（阴影行）</text><text x='12' y='40' font-size='13' fill='var(--fg-1)' text-anchor='start'>矩阵</text><rect x='12' y='48' width='46' height='26' fill='none' stroke='var(--line-1)'/><text x='35' y='46' font-size='13' fill='var(--fg-1)' text-anchor='middle'>0</text><rect x='58' y='48' width='46' height='26' fill='none' stroke='var(--line-1)'/><text x='81' y='46' font-size='13' fill='var(--fg-1)' text-anchor='middle'>-2</text><rect x='104' y='48' width='46' height='26' fill='none' stroke='var(--line-1)'/><text x='127' y='46' font-size='13' fill='var(--fg-1)' text-anchor='middle'>-7</text><rect x='150' y='48' width='46' height='26' fill='none' stroke='var(--line-1)'/><text x='173' y='46' font-size='13' fill='var(--fg-1)' text-anchor='middle'>0</text><rect x='12' y='74' width='46' height='26' fill='none' stroke='var(--line-1)'/><rect x='58' y='74' width='46' height='26' fill='none' stroke='var(--line-1)'/><rect x='104' y='74' width='46' height='26' fill='none' stroke='var(--line-1)'/><rect x='150' y='74' width='46' height='26' fill='none' stroke='var(--line-1)'/><text x='35' y='92' font-size='13' fill='currentColor' text-anchor='middle'>9</text><text x='81' y='92' font-size='13' fill='currentColor' text-anchor='middle'>2</text><text x='127' y='92' font-size='13' fill='currentColor' text-anchor='middle'>-6</text><text x='173' y='92' font-size='13' fill='currentColor' text-anchor='middle'>2</text><rect x='12' y='100' width='46' height='26' fill='none' stroke='var(--line-1)'/><rect x='58' y='100' width='46' height='26' fill='none' stroke='var(--line-1)'/><rect x='104' y='100' width='46' height='26' fill='none' stroke='var(--line-1)'/><rect x='150' y='100' width='46' height='26' fill='none' stroke='var(--line-1)'/><text x='35' y='118' font-size='13' fill='currentColor' text-anchor='middle'>-4</text><text x='81' y='118' font-size='13' fill='currentColor' text-anchor='middle'>1</text><text x='127' y='118' font-size='13' fill='currentColor' text-anchor='middle'>-4</text><text x='173' y='118' font-size='13' fill='currentColor' text-anchor='middle'>1</text><rect x='12' y='126' width='46' height='26' fill='none' stroke='var(--line-1)'/><rect x='58' y='126' width='46' height='26' fill='none' stroke='var(--line-1)'/><rect x='104' y='126' width='46' height='26' fill='none' stroke='var(--line-1)'/><rect x='150' y='126' width='46' height='26' fill='none' stroke='var(--line-1)'/><text x='35' y='144' font-size='13' fill='currentColor' text-anchor='middle'>-1</text><text x='81' y='144' font-size='13' fill='currentColor' text-anchor='middle'>8</text><text x='127' y='144' font-size='13' fill='currentColor' text-anchor='middle'>0</text><text x='173' y='144' font-size='13' fill='currentColor' text-anchor='middle'>-2</text><text x='6' y='92' font-size='13' fill='var(--fg-1)' text-anchor='end'>0</text><text x='6' y='118' font-size='13' fill='var(--fg-1)' text-anchor='end'>1</text><text x='6' y='144' font-size='13' fill='var(--fg-1)' text-anchor='end'>2</text><text x='6' y='170' font-size='13' fill='var(--fg-1)' text-anchor='end'>3</text><text x='216' y='80' font-size='13' fill='var(--accent)' text-anchor='start'>top=1</text><text x='216' y='166' font-size='13' fill='var(--accent)' text-anchor='start'>bottom=3</text><line x1='206' y1='74' x2='206' y2='100' stroke='var(--accent)' stroke-width='2'/><line x1='206' y1='152' x2='206' y2='178' stroke='var(--accent)' stroke-width='2'/><rect x='58' y='74' width='138' height='78' fill='var(--accent)' fill-opacity='0.18' stroke='var(--accent)' stroke-width='2'/><line x1='204' y1='113' x2='258' y2='113' stroke='currentColor' stroke-width='2'/><polygon points='268,113 256,107 256,119' fill='currentColor'/><text x='272' y='40' font-size='13' fill='var(--fg-1)' text-anchor='start'>逐列求和：col[0..3]</text><rect x='272' y='48' width='40' height='26' fill='none' stroke='var(--line-1)'/><rect x='316' y='48' width='40' height='26' fill='none' stroke='var(--line-1)'/><rect x='360' y='48' width='40' height='26' fill='none' stroke='var(--line-1)'/><rect x='404' y='48' width='40' height='26' fill='none' stroke='var(--line-1)'/><text x='292' y='66' font-size='13' fill='currentColor' text-anchor='middle'>4</text><text x='336' y='66' font-size='13' fill='currentColor' text-anchor='middle'>11</text><text x='380' y='66' font-size='13' fill='currentColor' text-anchor='middle'>-10</text><text x='424' y='66' font-size='13' fill='currentColor' text-anchor='middle'>1</text><text x='292' y='42' font-size='13' fill='var(--fg-1)' text-anchor='middle'>0</text><text x='336' y='42' font-size='13' fill='var(--fg-1)' text-anchor='middle'>1</text><text x='380' y='42' font-size='13' fill='var(--fg-1)' text-anchor='middle'>2</text><text x='424' y='42' font-size='13' fill='var(--fg-1)' text-anchor='middle'>3</text><rect x='316' y='48' width='128' height='26' fill='var(--accent)' fill-opacity='0.18' stroke='var(--accent)' stroke-width='2'/><text x='380' y='92' font-size='13' fill='var(--accent)' text-anchor='middle'>最大子段 cols1-3 = 11-10+1 = 2</text><text x='272' y='118' font-size='13' fill='var(--fg-1)' text-anchor='start'>Kadane 扫描（cur = max(col[j], cur+col[j])）</text><text x='272' y='142' font-size='13' fill='var(--fg-1)' text-anchor='start'>j</text><text x='272' y='162' font-size='13' fill='currentColor' text-anchor='start'>cur</text><text x='272' y='182' font-size='13' fill='currentColor' text-anchor='start'>best</text><text x='312' y='142' font-size='13' fill='var(--fg-1)' text-anchor='middle'>0</text><text x='356' y='142' font-size='13' fill='var(--fg-1)' text-anchor='middle'>1</text><text x='400' y='142' font-size='13' fill='var(--fg-1)' text-anchor='middle'>2</text><text x='444' y='142' font-size='13' fill='var(--fg-1)' text-anchor='middle'>3</text><text x='312' y='162' font-size='13' fill='currentColor' text-anchor='middle'>4</text><text x='356' y='162' font-size='13' fill='currentColor' text-anchor='middle'>15</text><text x='400' y='162' font-size='13' fill='currentColor' text-anchor='middle'>5</text><text x='444' y='162' font-size='13' fill='currentColor' text-anchor='middle'>6</text><text x='312' y='182' font-size='13' fill='var(--accent)' text-anchor='middle'>4</text><text x='356' y='182' font-size='13' fill='var(--accent)' text-anchor='middle'>15</text><text x='400' y='182' font-size='13' fill='var(--accent)' text-anchor='middle'>15</text><text x='444' y='182' font-size='13' fill='var(--accent)' text-anchor='middle'>15</text><text x='12' y='200' font-size='13' fill='currentColor' text-anchor='start'>压缩后 col[1]=9+1+1=11  col[2]=-6-4+0=-10  col[3]=2+1-2=1</text><text x='12' y='222' font-size='13' fill='var(--accent)' text-anchor='start'>答案 = 11-10+1 = 2（行1..3、列1..3）= max over 全部行区间</text><rect x='368' y='228' width='11' height='11' fill='var(--accent)' fill-opacity='0.18' stroke='var(--accent)'/><text x='386' y='238' font-size='13' fill='var(--fg-1)' text-anchor='start'>当前行区间</text></svg>",
+    "alt": "左侧是 4×4 矩阵与其 top=1、bottom=3 的阴影行；箭头指向压缩出的一维数组 col=[4,11,-10,1]，其中 col[1..3] 被高亮；下方列出 Kadane 扫描各列的 cur 与 best（4,15,5,6 与 4,15,15,15），说明以第 1 列起步、第 2 列达到峰值 15 的子段即最优矩形行列区间。"
+   },
+   "selfTest": [
+    "把样例的初始化从 -inf 改成 0，输出会变成多少？再对一个全为负数的 3×3 矩阵手动验证一次。",
+    "为什么 col 数组必须随 bottom 递增增量累加？如果每个 (top,bottom) 都重算列和，复杂度具体退化到多少？",
+    "给定矩阵 [[1,-2,3],[4,5,-6]]，手算 top=1、bottom=1 时的 col 数组，说明为什么最优子矩阵是第二行前两列 [4,5]（和为 9），而整块矩阵只有 5。"
+   ],
+   "keyPoints": [
+    "核心是降维：固定行区间后，问题等同于一维最大子段和，所以直接调用 Kadane。",
+    "必须非空 → Kadane 的 cur 用 -inf 初始化，不能在 0 处截断（全负矩阵会错答 0）。",
+    "列和随下边界增量累加，这是把 O(N⁴) 压到 O(N³) 的关键，不只是「写法更简洁」。",
+    "复杂度表述要分清：二维前缀和只把 O(N⁶) 降到 O(N⁴)，真正降到 O(N³) 的是减少枚举自由度。",
+    "空间只要 O(N) 的一维列和数组，不需要存整个二维前缀和或所有子矩阵。"
+   ],
+   "sources": [
+    {
+     "title": "牛客题库 · 最大子矩阵",
+     "url": "https://nowcoder.com/practice/a5a0b05f0505406ca837a3a76a5419b3"
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "题意：给定矩阵，求大小至少 1×1、行列都连续的最大子矩阵元素和（题面原文「最大的非空(大小至少是1 * 1)子矩阵」）。",
+     "样例：4×4 矩阵输出 15，题面同时给出了取到的那个 3×3 子块（9 2 / -4 1 / -1 8）。",
+     "输入格式：第一行 N，其后依次给出 N² 个整数，题面明确「整数之间由空白字符分隔（空格或者空行）」，因此不能按行定长读取。",
+     "元素范围题面写为 [-127, 127]，并给出输入规模的文字「N (0 N = 100)」。",
+     "本题在计划清单里的 id 为 pb-6b4fea8c9d73c5b4、itemId 为 6b4fea8c9d73c5b4，difficulty 标为 medium，topics 为「数组与矩阵」。",
+     "交付代码中 O(N³) 主逻辑与 O(N⁴) 暴力枚举在 300 个固定种子随机小矩阵上逐一对拍通过，样例 15 通过。"
+    ],
+    "uncertain": [
+     "题面里的规模约束被采集文本吞掉了不等号：「输入的第一行给出 N (0 N = 100)」原文无法确定是 1≤N≤100 还是 0<N≤100（是否可能出现 N=0）。代码对 N=0 返回 0 作为防御，但题面对 N=0 的输出未作说明，需人工核对原页。",
+     "题面未声明是否有多组测试数据；从「输入是一个 N*N 的矩阵」单数表述看是单组，但牛客部分题目实际是多组，需核对原页。",
+     "题面只给了一个样例（输出 15），没有给全负矩阵、N=1、单行/单列等边界样例；「答案为最大单个负数」是由「非空」这一约束严格推出的，但未经样例证实。",
+     "题面未给出时空限制；O(N³) 在 Python 下 N=100 约 10⁶ 次内层运算，实测可在 1 秒内跑完（本机 CPython 3.12），但若判题机限时很紧，可能仍需 PyPy 或向量化优化。",
+     "未在题面看到「要求：空间复杂度」一栏，O(N) 空间是我给出的解法分析，不是题面硬性要求。",
+     "题面提到另有一个更规整的输入版式（示例中输入与输出被并排贴出，末尾又重复了一遍数字与答案），推测是牛客页面拼接样例时的重复渲染，原始 I/O 格式以「第一行 N、其后 N² 个整数」为准。"
+    ]
+   }
+  }
+ ]
+}

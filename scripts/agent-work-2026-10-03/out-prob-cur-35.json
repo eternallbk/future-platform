@@ -1,0 +1,126 @@
+{
+  "batchId": "prob-cur-35",
+  "entries": [
+    {
+      "id": "meituan-ce-vocab-calc",
+      "tldr": "LLM 的损失是交叉熵 loss=-log p(目标)。10w 词表随机初始化时 p≈1/V，loss≈ln(1e5)≈11.51，PPL≈10w。",
+      "restated": "题面：LLM 的损失函数是什么？给一个 10w 词表的模型，算出损失值。可确定：语言模型在每个位置对 V=100000 个词输出 logits，用逐 token 交叉熵 loss = -(1/N)Σ log p(y_i)，N 为参与平均的 token 数，V 决定 logits 末维与 logsumexp 规模。随机初始化时 logits≈0，softmax 近似均匀、p≈1/V，于是 loss≈ln V = ln(100000) ≈ 11.5129 nats（=16.6 bit，PPL≈100000）。题面未给 batch、序列长度与训练阶段；末句「计算出事的损失值」疑为转写讹误。",
+      "approach": [
+        {
+          "step": "先答题：LLM 的损失函数是逐 token 交叉熵",
+          "detail": "语言模型在每个位置输出 V 维 logits，把正确 token 的 softmax 概率取负对数，再对参与计算的 token 求平均：L = -(1/N) Σ_i log p(y_i | x_<i)，其中 p = softmax(logits)。它等价于「对正确 token 做 V 分类的交叉熵」，困惑度 PPL = exp(L) 表示模型每一步的等效候选词个数。注意题面只问损失函数是什么、给 10w 词表算损失值，答这一层即可：不要扯到 RLHF/DPO 的损失，也不要用 MSE；分类交叉熵与语言模型交叉熵完全同构，只是把类别数 C 换成词表大小 V。"
+        },
+        {
+          "step": "量级：随机初始化时 loss = ln V",
+          "detail": "刚初始化时输出层权重很小，logits 近似为 0（一般地近似同分布），softmax 退化成均匀分布 p = 1/V。此时每个 token 的 loss = -log(1/V) = ln V；V = 100000 时 ln V = 5·ln10 ≈ 5 × 2.302585 = 11.5129 nats，换成 bit 除以 ln2 得 16.61 bit，困惑度恰好是 100000。这就是「10w 词表」真正想考的数字直觉：训练第一步的 loss 应该落在 11.5 附近，既不是 0 附近，也不会是几十、几百；它是一条随 V 移动的基准线（词表变 5w 就变成 ln(50000)≈10.82，差 ln2≈0.69）。"
+        },
+        {
+          "step": "实现：log_softmax → 取目标 → 取负 → 平均，一步都不能省",
+          "detail": "工程上用 F.cross_entropy(logits.view(-1, V), labels.view(-1), ignore_index=pad_id)，它把 log_softmax 与 nll 融合在一起，先减最大值再算 logsumexp，避免概率下溢到 0 后 log(0) = -inf。手写顺序必须是 softmax → 取目标概率 → 取 log → 取负 → 求平均。最经典的坑是「先 softmax 再把概率当 logits 喂给交叉熵」：等于又做了一次 softmax，概率被压到 1/V 附近，loss 会永远卡在 11.5 左右不下降，看起来像模型完全不学。语言模型还要把序列错位一格：logits[:, :-1] 对齐 labels[:, 1:]，并让 padding 位置的 token 不计入平均的 N。"
+        },
+        {
+          "step": "10w 词表的代价，以及把 11.5 当诊断线",
+          "detail": "logits 形状是 [B, S, V]，V=1e5 比隐藏维 d_model 大几十倍：B=8、S=2048、fp32 时仅 logits 就是 8 × 2048 × 100000 × 4 字节 ≈ 6.1 GiB，反向还要再存一份，所以实际训练必须靠融合交叉熵（不落地大张量）、分块计算、张量并行切词表维或候选采样。反过来，loss 偏离 11.5 就是排查线索：远大于 11.5 多半是标签没错位、pad 被算进平均、或 logits 数值爆炸；长期卡在 11.5 不降多半是双 softmax；出现 nan 则是 softmax 后再取 log 或半精度溢出。"
+        }
+      ],
+      "complexity": {
+        "time": "O(B·S·V)：每个 token 都要对 10w 个词算 logit 与 logsumexp",
+        "space": "O(B·S·V)：logits 张量本身（B=8,S=2048,V=1e5 的 fp32 约 6.1 GiB），loss 是标量 O(1)，融合/分块实现可把峰值降到分块大小",
+        "why": "前向最后一次投影与逐 token logsumexp 都要扫遍词表维 V，所以时间和显存都由 V 主导；V=1e5 是 d_model 的几十倍，这也是本题「10w 词表」的工程含义，而损失值本身仍只是一个标量。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''交叉熵损失速算：10w 词表在均匀 / 随机初始化下的 loss 量级。\n\nLLM 的损失函数就是逐 token 交叉熵：loss = -(1/N) * sum_i log softmax(logits_i)[y_i]。\n随机初始化时 logits 接近 0，softmax 近似均匀分布 p = 1/V，\n于是 loss 约等于 -log(1/V) = ln V；V = 100000 时 ln V = 11.5129 nats（16.61 bit，PPL = 1e5）。\n只依赖标准库，现场手算与自测都能直接跑。\n'''\nfrom math import exp, log\n\n\ndef log_softmax(row):\n    '''数值稳定的 log_softmax：先减去最大值，再算 logsumexp。'''\n    if not row:\n        raise ValueError('词表不能为空')\n    m = max(row)\n    s = sum(exp(v - m) for v in row)\n    return [v - m - log(s) for v in row]\n\n\ndef cross_entropy(logits, targets):\n    '''logits: [N][V] 的二维列表；targets: 长度 N 的正确 token 下标。\n\n    返回按 token 求平均的交叉熵（单位 nats）。空输入、维度不一致、标签越界都显式报错。\n    '''\n    if not logits:\n        raise ValueError('logits 不能为空')\n    if len(logits) != len(targets):\n        raise ValueError('logits 与 targets 数量不一致')\n    vocab = len(logits[0])\n    total = 0.0\n    for i, row in enumerate(logits):\n        if len(row) != vocab:\n            raise ValueError('第 %d 行词表维度不一致' % i)\n        t = targets[i]\n        if not 0 <= t < vocab:\n            raise ValueError('标签 %r 越界' % (t,))\n        total -= log_softmax(row)[t]\n    return total / len(logits)\n\n\ndef uniform_loss(vocab):\n    '''均匀分布下每个 token 的交叉熵：-log(1/V) = ln V。'''\n    return log(vocab)\n\n\nif __name__ == '__main__':\n    V = 100_000\n    print('ln(V) = %.4f nats = %.2f bits, PPL = %d' % (uniform_loss(V), uniform_loss(V) / log(2), V))\n    # 1) 随机初始化：logits 全 0，实测 loss 应与 ln V 完全一致\n    print('all-zero logits loss = %.6f' % cross_entropy([[0.0] * V for _ in range(2)], [0, V - 1]))\n    # 2) 模型很自信且答对：loss 趋近 0\n    hot = [-1e9] * V\n    hot[7] = 20.0\n    print('confident loss = %.6f' % cross_entropy([hot], [7]))\n    # 3) 边界：空输入显式报错，而不是静默返回 nan\n    try:\n        cross_entropy([], [])\n    except ValueError as exc:\n        print('empty input ->', exc)\n",
+        "walkthrough": [
+          {
+            "note": "log_softmax 是全篇的地基：先取该 token 上 logits 的最大值 m，算出 logsumexp，再返回每个位置的 (v - m - log(s))。减去最大值是为了让 exp 不溢出，这正是把 softmax 和 log 合成一步的原因——先 softmax 再取 log 会在概率下溢到 0 时得到 -inf。"
+          },
+          {
+            "note": "cross_entropy 把「取目标位置的 log p、取负、按 token 平均」三件事写全：total -= ls[target]，最后除以样本数 N。边界都显式报错：空输入、行数不一致、某一行词表维度不一致、标签越界。这一步对应面试现场最容易糊掉的细节——平均而不是求和。"
+          },
+          {
+            "note": "uniform_loss 是解析解：均匀分布下 loss = -log(1/V) = ln V。它是整道题的答案来源，10w 词表就代 V = 100000，得到 11.5129 nats，也是训练 loss 曲线的理论起点。"
+          },
+          {
+            "note": "main 里做了三组自测：全 0 logits 上实测 loss 是否等于 ln V（本机实测 11.512925，与 ln(100000) 完全一致）；一个极度自信且答对的样本 loss 是否趋近 0；以及空输入是否抛 ValueError 而不是静默返回 nan。这三组正好覆盖「量级直觉 + 退化边界 + 错误处理」。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "N=0（一个 batch 里所有 token 都是 padding）：平均变成 0/0，loss 会是 nan；实现里要用 ignore_index 或先判空。",
+        "N=1 或 B=S=1：公式不变，但 loss 就是单个 token 的 -log p，没有平均效应，方差很大。",
+        "logits 全 0（随机初始化）：loss 恰好等于 ln V ≈ 11.5129，这是正常上限基准，不是 bug。",
+        "目标概率为 0：先 softmax 再取 log 会得到 -inf/nan，必须用 log_softmax（logsumexp 形式）。",
+        "标签越界、或负标签不是约定的 ignore_index：交叉熵会报错或静默取错位置，要先对齐 -100 之类的约定。",
+        "fp16/bf16 训练：logits 与 logsumexp 的累加最好在 fp32 里做，否则 1e5 项求和的精度和范围都不够。",
+        "词表大小变化：基准线是 ln V，换词表后不要拿旧的 11.5 当基准（5w 词表约 10.82）。",
+        "tokenizer 的 vocab_size 含未使用的占位/特殊 token 时，有效词表比 V 小，实际基准线略低于 ln V。"
+      ],
+      "pitfalls": [
+        "先 softmax 再把概率当 logits 传给 CrossEntropyLoss（双 softmax），loss 永远卡在 ln V 附近不降。",
+        "把 ln、log2、log10 搞混：ln(1e5)≈11.51，log10=5，log2≈16.6，说错单位就露底。",
+        "忘记错位一格（logits[:, :-1] 对 labels[:, 1:]），等于让模型预测自己。",
+        "reduction 用 sum 而不是 mean，loss 被放大 N 倍，看着像「出事」其实只是没平均。",
+        "把 padding 位置算进平均的 token 数，N 虚高、loss 偏低、梯度被稀释。",
+        "softmax 之后再取 log（而不是 log_softmax），概率下溢到 0 时 log(0) = -inf。",
+        "以为随机初始化的 loss 应该接近 0：10w 词表下 11.5 才是正常起点，接近 0 反而说明标签泄漏或双 softmax 之外的问题。"
+      ],
+      "followUps": [
+        "把「均匀分布下 loss = ln V」的推导完整写一遍（softmax 在 logits 全相等时的取值）。",
+        "词表从 10w 扩到 20w，随机初始化的 loss 会变成多少？为什么只涨 ln2？",
+        "困惑度怎么和 loss 换算？PPL = 1e5 说明模型处于什么状态？",
+        "训练收敛后 10w 词表上的 loss 大概是多少？bits-per-token 怎么换算、和 ln2 什么关系？",
+        "10w 词表的 softmax 显存怎么省（融合交叉熵、分块、张量并行、sampled softmax、adaptive softmax）？各自代价是什么？",
+        "label smoothing 会把随机初始化的 loss 抬到多少？ε 取 0.1 时大概抬多少？",
+        "训练中 loss 突然尖峰（loss spike）常见原因有哪些，和本文的 11.5 基准线怎么区分？",
+        "词表大小与模型能力、推理成本怎么权衡？为什么主流大模型词表在 1e5 量级？"
+      ],
+      "variations": [
+        "同源手算题：给定一个小 batch 的 logits 与标签，手算交叉熵与困惑度。",
+        "改成算 bits per token：CE / ln2，考察单位换算。",
+        "有监督分类的交叉熵：C 个类别时随机初始化基准是 ln C，与本题同构。",
+        "label smoothing 版：-(1-ε)·log p_y - ε/(V-1)·Σ_{i≠y} log p_i。",
+        "KL 视角：CE = H(p, q) = H(p) + KL(p‖q)，p 取均匀时 H(p) = ln V，正好解释基准线。",
+        "扩展到序列级：把 [B,S,V] 展平成 [B·S,V] 后求平均，并处理 padding 位置。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "CE 损失量级推导",
+        "caption": "记住这条链：logits → log_softmax → 取目标 token 的 log p → 取负求平均；随机初始化时 p≈1/V，所以 loss 就等于 ln V，10w 词表约 11.51，这条线是排查训练问题的基准。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='交叉熵损失量级流程：logits 经 log_softmax 取目标 token 的 log p，取负后按 token 求平均得 loss；随机初始化时 p 约等于 V 分之一，loss 等于 ln V，V 为 10 万时约 11.51'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='17' font-size='14' fill='currentColor'>CE 损失 ≈ ln V 推导</text><rect x='10' y='30' width='150' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='16' y='47' font-size='13' fill='currentColor'>logits [B,S,V=1e5]</text><line x1='85' y1='54' x2='85' y2='58' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,64 81,58 89,58' fill='var(--line-1)'/><rect x='10' y='64' width='150' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='16' y='81' font-size='13' fill='currentColor'>log_softmax(-1)</text><line x1='85' y1='88' x2='85' y2='92' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,98 81,92 89,92' fill='var(--line-1)'/><rect x='10' y='98' width='150' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='16' y='115' font-size='13' fill='currentColor'>取 log p(目标 token)</text><line x1='85' y1='122' x2='85' y2='126' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,132 81,126 89,126' fill='var(--line-1)'/><rect x='10' y='132' width='150' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='16' y='149' font-size='13' fill='currentColor'>取负后按 token 平均</text><line x1='85' y1='156' x2='85' y2='160' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,166 81,160 89,160' fill='var(--line-1)'/><rect x='10' y='166' width='150' height='24' fill='none' stroke='var(--accent)' stroke-width='1.4'/><text x='16' y='183' font-size='13' fill='currentColor'>loss ≈ ln V ≈ 11.51</text><rect x='178' y='26' width='294' height='176' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='188' y='48' font-size='13' fill='currentColor'>随机初始化：logits ≈ 0</text><text x='188' y='66' font-size='13' fill='currentColor'>softmax → p ≈ 1/V 均匀</text><text x='188' y='90' font-size='13' fill='currentColor'>loss = -log(1/V) = ln V</text><text x='188' y='108' font-size='13' fill='currentColor'>V=1e5 → ln V ≈ 11.51 nats</text><text x='188' y='126' font-size='13' fill='currentColor'>= 16.6 bit，PPL = V = 10w</text><text x='188' y='152' font-size='13' fill='currentColor'>训练后应显著低于 11.5</text><text x='188' y='170' font-size='13' fill='currentColor'>卡在 11.5 不降 → 双 softmax</text><text x='188' y='188' font-size='13' fill='currentColor'>远大于 11.5 → 标签没错位</text></svg>",
+        "alt": "左侧竖排流程：logits [B,S,V=1e5] → log_softmax → 取目标 token 的 log p → 取负后按 token 平均 → loss ≈ ln V ≈ 11.51；右侧标注随机初始化时 logits≈0、p≈1/V，因此 loss = ln V，V=1e5 时约 11.51 nats、16.6 bit、PPL=10w，并给出「卡在 11.5 不降是双 softmax、远大于 11.5 是标签没错位」两条诊断。"
+      },
+      "selfTest": [
+        "10w 词表、随机初始化、logits 全 0 时，第一个 step 的 loss 大约是多少？（答：p 均匀为 1/V，loss = ln(1e5) ≈ 11.51 nats，即 16.6 bit，PPL = 1e5。）",
+        "训练几万步后 loss 一直停在 11.5 附近不动，最可能是什么 bug？（答：双 softmax——把 softmax 后的概率又当 logits 喂给交叉熵，概率被二次压平；其次是标签没错位。）",
+        "算出来的 loss 是 11.5 × S，哪里写错了？（答：reduction 用了 sum 而不是 mean，被 token 数放大了。）",
+        "为什么不能先 softmax 再取 log？（答：概率下溢到 0 时 log(0) = -inf，必须用 log_softmax 的 logsumexp 形式。）",
+        "换成 5w 词表，随机初始化的 loss 基准线变成多少？（答：ln(5e4) ≈ 10.82，正好比 11.51 小 ln2 ≈ 0.69。）"
+      ],
+      "keyPoints": [
+        "损失函数：逐 token 交叉熵 L = -(1/N)Σ log p(y_i)，困惑度 PPL = exp(L)",
+        "随机初始化时 logits≈0 → p≈1/V → loss = ln V；V=1e5 时 ≈11.51 nats（16.6 bit，PPL=10w）",
+        "实现顺序 log_softmax → 取目标 → 取负 → 平均，禁止双 softmax、禁止先 softmax 再 log",
+        "标签错位一格（logits[:, :-1] 对 labels[:, 1:]），padding 不计入平均的 N",
+        "[B,S,V] 是算力与显存瓶颈，V=1e5 时靠融合、分块、并行或采样省"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "人工题干为：美团大模型算法二面第 6 题，问 LLM 的损失函数是什么，并给一个 10w 词表计算 loss 值，考察对 CE 量级、均匀分布与随机初始化 loss 的直觉。",
+          "词表规模 10w = 100000 直接来自题面，因此 ln V = ln(100000) ≈ 11.5129 的推导只用到题面给出的这一个数字。",
+          "交叉熵 L = -(1/N)Σ log p(y_i) 与 softmax p_i = exp(z_i)/Σ_j exp(z_j) 是本题所属主题「机器学习基础」的标准定义，题面未给其它约束。",
+          "本文件 code.source 已在本机 python 上实际运行通过：全 0 logits 上实测 loss = 11.512925，与 ln(100000) = 11.512925 完全一致；自信样本 loss = 0.000000；空输入抛 ValueError 而非返回 nan。",
+          "本机实测 ln(100000) = 11.5129 nats = 16.61 bit，exp(11.5129) ≈ 100000，即困惑度等于词表大小。"
+        ],
+        "uncertain": [
+          "题面末句「计算出事的损失值」疑为转写或 OCR 讹误（原意可能是「计算出初始的损失值」或「算出具体的损失值」）；本文件按「随机初始化/均匀分布下的交叉熵量级」来解读，若人工本意是给定某个具体 batch 求 loss，需要人工确认。",
+          "题面没有给出 batch size、序列长度、隐藏维、训练阶段、数据类型与样例输入输出，本文件里的 11.51 nats / 16.6 bit / PPL=1e5 都是「随机初始化 + 词表 10w」这一设定下的推导值，不代表任何具体实验数据。",
+          "「二面第 6 题」的原始出处、完整题目与评分口径无法从题面核实。",
+          "本题是人工整理条目、sourceUrl 为 null，按规则 sources 必须为空数组，正文也没有引用任何外部链接；若人工题库另有出处链接，需要在合并时补上。",
+          "「10w 词表」按精确 100000 处理；若实际是约 10 万（例如 99998 或 128000 的取整说法），ln V 会有 0.01~0.25 的偏差，不影响量级结论。"
+        ]
+      }
+    }
+  ]
+}

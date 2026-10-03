@@ -1,31 +1,35 @@
 {
- "generatedAt": "2026-10-03T02:50:20+08:00",
+ "generatedAt": "2026-10-04T00:06:42+08:00",
  "source": "build_interview_index.py (deterministic rules, no LLM)",
- "count": 28,
+ "count": 35,
  "note": "面经时效性最强，按发布时间倒序；公司/轮次/结果/主题由规则抽取，可逐条核对",
  "companies": [
   {
    "name": "字节跳动",
-   "count": 5
+   "count": 6
   },
   {
    "name": "华为",
    "count": 4
   },
   {
+   "name": "小红书",
+   "count": 3
+  },
+  {
    "name": "腾讯",
    "count": 3
   },
   {
-   "name": "理想汽车",
-   "count": 1
+   "name": "快手",
+   "count": 2
   },
   {
    "name": "京东",
-   "count": 1
+   "count": 2
   },
   {
-   "name": "小红书",
+   "name": "理想汽车",
    "count": 1
   },
   {
@@ -41,10 +45,6 @@
    "count": 1
   },
   {
-   "name": "快手",
-   "count": 1
-  },
-  {
    "name": "vivo",
    "count": 1
   }
@@ -52,7 +52,7 @@
  "rounds": [
   {
    "name": "一面",
-   "count": 15
+   "count": 19
   },
   {
    "name": "二面",
@@ -81,20 +81,24 @@
    "count": 7
   },
   {
+   "name": "大模型/LLM",
+   "count": 5
+  },
+  {
    "name": "手撕/算法题",
    "count": 5
   },
   {
-   "name": "大模型/LLM",
-   "count": 4
-  },
-  {
    "name": "强化学习",
-   "count": 3
+   "count": 4
   },
   {
    "name": "多模态/CV",
    "count": 2
+  },
+  {
+   "name": "机器学习基础",
+   "count": 1
   }
  ],
  "outcomes": [
@@ -113,6 +117,116 @@
  ],
  "withCoding": 5,
  "items": [
+  {
+   "id": "c3be2e0b9000747d",
+   "title": "小红书面经 小红书后端开发岗面经-02",
+   "url": "https://nowcoder.com/discuss/934239351909732352",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-03T23:01:24+08:00",
+   "lastSeen": "2026-10-03T23:08:26+08:00",
+   "company": "小红书",
+   "round": "",
+   "outcome": "",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "4faae2d3ac3660aa",
+   "title": "字节 260907 一面面经",
+   "url": "https://nowcoder.com/discuss/935858952644939776",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-03T22:49:43+08:00",
+   "lastSeen": "2026-10-03T22:56:14+08:00",
+   "company": "字节跳动",
+   "round": "一面",
+   "outcome": "",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "9b23e623279c9bb7",
+   "title": "9.18快手可灵策略梯度岗一面",
+   "url": "https://nowcoder.com/discuss/933402920173699072",
+   "channel": "nowcoder",
+   "category": "rl",
+   "publishedAt": "2026-10-03T22:49:23+08:00",
+   "lastSeen": "2026-10-03T22:56:14+08:00",
+   "company": "快手",
+   "round": "一面",
+   "outcome": "",
+   "topics": [
+    "机器学习基础",
+    "强化学习"
+   ],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "a66ad75592a8d2d4",
+   "title": "面经62：超聚变| 一面 | 嵌入式软件",
+   "url": "https://nowcoder.com/discuss/934469012094742528",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-03T22:49:23+08:00",
+   "lastSeen": "2026-10-03T22:56:14+08:00",
+   "company": "",
+   "round": "一面",
+   "outcome": "",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "08218205a7f9193e",
+   "title": "小红书面经 小红书大模型算法岗面经-02",
+   "url": "https://nowcoder.com/discuss/934238226980622336",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-03T22:24:21+08:00",
+   "lastSeen": "2026-10-03T22:30:59+08:00",
+   "company": "小红书",
+   "round": "",
+   "outcome": "",
+   "topics": [
+    "大模型/LLM"
+   ],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "7ee24bfbf5f5d0cc",
+   "title": "宏图智能一面",
+   "url": "https://nowcoder.com/discuss/934206754898866176",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-03T22:24:01+08:00",
+   "lastSeen": "2026-10-03T22:30:59+08:00",
+   "company": "",
+   "round": "一面",
+   "outcome": "",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
+  {
+   "id": "c492a209d579751c",
+   "title": "京东面经 京东后端开发岗面经-01",
+   "url": "https://nowcoder.com/discuss/934255208178155520",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-03T20:01:02+08:00",
+   "lastSeen": "2026-10-03T20:07:56+08:00",
+   "company": "京东",
+   "round": "",
+   "outcome": "",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "牛客社区公开讨论页，可能包含面经或招聘信息。"
+  },
   {
    "id": "54178cd095b5c1c3",
    "title": "理想汽车嵌入式面经一面（嵌入式大厂面经22）",
@@ -496,21 +610,6 @@
    "summary": "bg本2硕9，在秋招和春招一共拿到了 15+ 家大厂嵌软Offer，包括华为、OPPO、vivo、蔚来、影石及荣耀等。在每次面试完成后，我自己进行整理汇总，总结出大厂面经专栏。专栏累计已有6.2w+ 同学阅读，共整理100+篇文章、60+篇大厂面经(持续更新中)每道题也都配备了解答(代码块+框架图)_牛客网_牛客在手,offer不愁"
   },
   {
-   "id": "52e617684045fc77",
-   "title": "（诺瓦星云）双非硕秋招实录！9 月斩获 4 份嵌入式开发 offer，面经连载中",
-   "url": "https://nowcoder.com/discuss/935200647861792768",
-   "channel": "nowcoder",
-   "category": "coding",
-   "publishedAt": "2026-10-01T16:46:27+08:00",
-   "lastSeen": "2026-10-01T16:48:06+08:00",
-   "company": "",
-   "round": "一面",
-   "outcome": "通过",
-   "topics": [],
-   "hasCoding": false,
-   "summary": "前言：双非电子信息硕士，秋招 9 月拿下 4 个嵌入式开发 offer。一路踩坑整理面试真题，本专栏持续更新各家嵌入式面经，包含众多厂商面试原题与考点复盘，嵌入式求职小伙伴可以收藏蹲后续！🎓学历背景：双非电子信息硕👨‍💻意向职位：嵌入式软件开发📍求职类型：秋招🔑本篇：诺瓦星云嵌入式一面面经_牛客网_牛客在手,offer不愁"
-  },
-  {
    "id": "5f47316656dd4eeb",
    "title": "分享｜5年Java面字节，虚拟线程和GraalVM深挖，三面终于OC",
    "url": "https://nowcoder.com/discuss/934417678071058432",
@@ -527,6 +626,21 @@
    ],
    "hasCoding": false,
    "summary": "先交代背景：普通本科，Java后端，5年经验，上一家是某电商平台，负责过订单系统的架构优化，带过5人团队。字节5年经验的面试，一面45分钟，围绕虚拟线程、GraalVM原生镜像、Spring Boot 3.x三个方向深挖。面试官不满足于“知不知道”，而是追问“为什么这么设计”和“线上怎么落地”。三轮_牛客网_牛客在手,offer不愁"
+  },
+  {
+   "id": "52e617684045fc77",
+   "title": "（诺瓦星云）双非硕秋招实录！9 月斩获 4 份嵌入式开发 offer，面经连载中",
+   "url": "https://nowcoder.com/discuss/935200647861792768",
+   "channel": "nowcoder",
+   "category": "coding",
+   "publishedAt": "2026-10-01T16:46:27+08:00",
+   "lastSeen": "2026-10-01T16:48:06+08:00",
+   "company": "",
+   "round": "一面",
+   "outcome": "通过",
+   "topics": [],
+   "hasCoding": false,
+   "summary": "前言：双非电子信息硕士，秋招 9 月拿下 4 个嵌入式开发 offer。一路踩坑整理面试真题，本专栏持续更新各家嵌入式面经，包含众多厂商面试原题与考点复盘，嵌入式求职小伙伴可以收藏蹲后续！🎓学历背景：双非电子信息硕👨‍💻意向职位：嵌入式软件开发📍求职类型：秋招🔑本篇：诺瓦星云嵌入式一面面经_牛客网_牛客在手,offer不愁"
   },
   {
    "id": "a269d242962e0bae",

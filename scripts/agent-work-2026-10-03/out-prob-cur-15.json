@@ -1,0 +1,154 @@
+{
+  "batchId": "prob-cur-15",
+  "entries": [
+    {
+      "id": "union-find",
+      "tldr": "并查集靠路径减半 + 按秩合并做到均摊 O(α(n))；岛屿题把格子压成一维、只 union 左/上邻居。",
+      "restated": "两道题写在一个文件里。①手写并查集 DSU(n)：n 个元素各自独立，支持 find(x) 返回根、union(a,b) 合并两个集合，并用一个变量 O(1) 读出连通分量数；同时要说明路径压缩与按秩合并各自贡献了什么复杂度。②lc200 岛屿数量：输入是 R 行 C 列的字符矩阵 grid，grid[r][c] 取 '1'（陆地）或 '0'（水），上下左右相邻的陆地属同一座岛（对角不算），返回岛的个数 k（int）。人工题干未给 R、C 的具体规模与字符取值域，也没给样例。",
+      "approach": [
+        {
+          "step": "朴素一：对每个 '1' 格子各跑一次洪泛",
+          "detail": "最直观的写法是遍历每个格子，遇到 '1' 就从它出发 DFS/BFS 把整座岛淹掉并计数。问题在于这层「淹没」如果没有全局标记，同一座岛会被每个格子重复遍历一次，最坏 O((R·C)²)（全是陆地时尤其明显）。即使用一个全局 visited 把它压到 O(R·C)，这套解法也只能离线一次算完：图一变（加/删一块陆地、流式来数据）就得整张重算，因为它没有任何可增量的中间状态。"
+        },
+        {
+          "step": "朴素二：会写的并查集，但不做任何优化",
+          "detail": "把 find 写成老老实实一层层爬到根、union 一律 self.p[rb] = ra，正确性没问题，但形态完全由输入顺序决定：只要按 0-1、1-2、2-3… 的顺序合并（一条链），父数组就长成一条长度为 n 的链，单次 find 要爬 O(n)，N 次操作退化到 O(N²)。这正是「先生成树，再查询」的最坏情况，也是本题要考的第一个优化点。"
+        },
+        {
+          "step": "关键设计一：路径压缩（本题用路径减半）→ 让 find 摊销掉自己走过的路",
+          "detail": "在 find 的爬行循环里加一行 p[x] = p[p[x]]：让 x 直接指向祖父。这样一趟走下去，路径上每个节点都跳过了自己的父节点，路径长度大约减半；反复 find 同一片区域时，路径长度会指数级缩短。它解决的是「同一个集合被反复查询」的代价，读操作越快后面的 union 越快。选路径减半而不是递归版完全压缩，是因为迭代循环不消耗 Python 递归栈：一条 10⁵ 节点的链用递归 find 会直接撞上默认递归上限（1000）报 RecursionError，而减半写法一条 while 就够，常数也更小。"
+        },
+        {
+          "step": "关键设计二：按秩（或按大小）合并 → 保证树高是 O(log n) 而不是 O(n)",
+          "detail": "光压缩不控制「往哪挂」仍可能造出长链，所以 union 时比较两棵树根的 rank：rank 小的根挂到 rank 大的根下面；只有两棵树等高时才给新根 rank += 1。理由可以直接数出来——rank 为 h 的树至少有 2^h 个节点（每次 rank 增加都来自两棵等高树合并），所以 h ≤ log₂n。它解决的是「树形态」的问题：让最坏情况下的树高有硬上界，而路径压缩解决的是「重复访问」的问题；两者叠加才有 Tarjan 的均摊上界 O(α(n))，α(n) 在实际 n（≤ 2^65536）内不超过 4~5，可以当常数看。"
+        },
+        {
+          "step": "关键设计三：count 变量 + 二维压一维 + 只 union 左/上邻居",
+          "detail": "连通分量数不需要每次重新数根：count 初值 n，只在「两个根确实不同」时减 1，于是 O(1) 可读。把格子 (r,c) 映射成 id = r·C + c（行主序）后，并查集就只管一维下标。邻居只取左 (0,-1) 与上 (-1,0) 两个方向：无向边 (u,v) 只要处理一次，右/下的那条边会在遍历到那个格子时以它自己的「左/上」身份被处理（四个方向都写也不会错，只是每条边白做一次 find）。最后岛数 = '1' 格子中不同根的个数；因为 '0' 格子从不 union，每个都还是独立分量，所以也能写成 count − (R·C − ones)，两种读数在代码里用断言互相验证。"
+        }
+      ],
+      "complexity": {
+        "time": "并查集：n 个元素上做 m 次操作的严格上界 O(m·α(n))，均摊单次 O(α(n))≈O(1)；lc200：O(R·C·α(R·C))，即近似 O(R·C)",
+        "space": "O(R·C)：父数组 p 与 rank 各 R·C 个整数的额外空间（grid 本身不算）；lc200 里没有额外的 visited/队列",
+        "why": "每个格子建一个元素（O(R·C) 初始化），每个 '1' 最多处理左/上两条边、即最多 O(R·C) 次 union，每次 union 两次 find，均摊 α(n)；最后数根再扫一遍 O(R·C)。空间全部来自两个长度为 R·C 的数组，与陆地数量无关。"
+      },
+      "code": {
+        "language": "python",
+        "source": "\"\"\"并查集（路径减半压缩 + 按秩合并）与 lc200 岛屿数量。\n\n与人工 referenceSolution 同一算法路径：\n  DSU.__init__ : p = list(range(n))、rank = [0]*n、count = n\n  find         : 迭代式路径减半 self.p[x] = self.p[self.p[x]]\n  union        : rank 小的根挂到 rank 大的根；等高才 rank[新根] += 1；成功合并才 count -= 1\n  num_islands  : 二维坐标压成一维 id = r*C + c，每个 '1' 只与左、上邻居 union\n纯 Python 标准库实现，不需要 torch / numpy（图形无关的数据结构题）。\n本文件额外加了：下标/形状校验、connected() 便捷方法、以及一段可运行的 _self_test。\n\"\"\"\n\n\nclass DSU:\n    \"\"\"路径减半压缩 + 按秩合并：单次操作均摊近似 O(alpha(n))。\"\"\"\n\n    def __init__(self, n):\n        if n < 0:\n            raise ValueError('元素个数不能为负: %r' % (n,))\n        self.p = list(range(n))     # 父指针；根满足 p[x] == x\n        self.rank = [0] * n         # 树高（rank）上界，只增不减\n        self.count = n              # 连通分量个数：初值 n，成功合并才减 1\n\n    def find(self, x):\n        \"\"\"返回 x 所在树的根，顺手把路径减半。迭代写法，不吃递归深度。\"\"\"\n        if not 0 <= x < len(self.p):\n            raise IndexError('find 下标越界: %r' % (x,))\n        while self.p[x] != x:\n            self.p[x] = self.p[self.p[x]]   # 指向祖父：走过的路径大约减半\n            x = self.p[x]\n        return x\n\n    def union(self, a, b):\n        \"\"\"合并 a、b 所在集合；返回 True 表示这次真的合并了两个分量。\"\"\"\n        ra, rb = self.find(a), self.find(b)\n        if ra == rb:\n            return False                    # 已在同一集合：count 不能再减\n        if self.rank[ra] < self.rank[rb]:\n            ra, rb = rb, ra                 # 保证 ra 是更高的那棵树的根\n        self.p[rb] = ra                     # 矮树挂到高树根下\n        if self.rank[ra] == self.rank[rb]:\n            self.rank[ra] += 1              # 只有等高时新树高才 +1\n        self.count -= 1\n        return True\n\n    def connected(self, a, b):\n        return self.find(a) == self.find(b)\n\n\ndef num_islands(grid):\n    \"\"\"lc200：grid 是 R 行 C 列字符矩阵，'1' 陆地 / '0' 水；返回岛的个数。\"\"\"\n    if not grid or not grid[0]:\n        return 0                                # [] 与 [[]] 两个边界\n    R, C = len(grid), len(grid[0])\n    dsu = DSU(R * C)\n    ones = 0\n    for r in range(R):\n        if len(grid[r]) != C:\n            raise ValueError('第 %d 行 %d 列，首行 %d 列（锯齿矩阵）' % (r, len(grid[r]), C))\n        for c in range(C):\n            if grid[r][c] != '1':\n                continue                        # '0' 不 union，也不计入 ones\n            ones += 1\n            for dr, dc in ((0, -1), (-1, 0)):   # 只看左、上：每条边只处理一次\n                nr, nc = r + dr, c + dc\n                if 0 <= nr < R and 0 <= nc < C and grid[nr][nc] == '1':\n                    dsu.union(r * C + c, nr * C + nc)\n    roots = {dsu.find(r * C + c) for r in range(R) for c in range(C) if grid[r][c] == '1'}\n    # 等价读数：每个 '0' 格子仍是独立分量，故 k = count - (R*C - ones)。\n    assert len(roots) == dsu.count - (R * C - ones), 'k 的两种算法应当一致'\n    return len(roots)\n\n\ndef _self_test():\n    cases = [\n        ([], 0),\n        ([[]], 0),\n        (['0'], 0),\n        (['1'], 1),\n        (['111', '010', '111'], 1),                  # 环：少写一个方向就会算成 5\n        (['11000', '11000', '00100', '00011'], 3),   # lc200 官方样例\n        (['111', '111', '111'], 1),\n        (['101', '010', '101'], 5),                  # 对角不算连通\n    ]\n    for grid, want in cases:\n        got = num_islands(grid)\n        assert got == want, 'grid=%r 期望 %d 实得 %d' % (grid, want, got)\n\n    dsu = DSU(10)\n    assert dsu.find(0) == 0\n    for i in range(1, 10):\n        dsu.union(i - 1, i)                          # 0-1-2-...-9：全并成一个分量\n    assert dsu.count == 1 and dsu.connected(0, 9)\n\n    chain = DSU(6)\n    for i in range(5):\n        chain.p[i] = i + 1                           # 手工造 0->1->2->3->4->5 的链\n    assert chain.find(0) == 5\n    assert chain.p[0] != 1, '路径减半后 0 应指向祖父，而不是仍指向父节点'\n    print('自测通过：%d 组岛屿用例 + DSU 连通性 + 路径减半验证' % len(cases))\n\n\nif __name__ == '__main__':\n    _self_test()\n",
+        "walkthrough": [
+          {
+            "note": "DSU.__init__ 三行定基调：p = list(range(n)) 让每个元素自成一棵树（根就是自己），rank 全 0 表示每棵树的高度上界都是 0，count = n 就是「n 个元素、n 个分量」的初值。把分量数做成一个只在合并成功时变化的计数器，是后面 O(1) 读岛数的前提——否则每次都要重新扫一遍父数组数根。入口处对 n < 0 直接报错，避免 list(range(-1)) 静默给出空表。"
+          },
+          {
+            "note": "find 的核心是那个 while 里的两行：p[x] != x 说明 x 还不是根；p[x] = p[p[x]] 把 x 的父指针直接改成祖父（这正是「路径减半」的名字来源），然后 x 走到祖父上，循环继续。效果是一趟下来路径长度大约折半，而且被修改的指针永久保留，下次再访问这片区域更短——这就是路径压缩「让 find 为自己付账」的含义。用迭代而不是递归，是为了不在长链上撞 Python 的递归上限（默认 1000）；手工造一条 6 节点的链做自测时，find(0) 之后 p[0] 从 1 变成 2，可以直接看到它跳过了父节点。"
+          },
+          {
+            "note": "union 的动作有严格顺序：先用 find 拿到两个根（find 顺手做了压缩），根相同就立刻 return False——漏掉这一步会让 count 在同一集合上被反复多减。接着比 rank 并交换，让 ra 成为更高那棵树的根，再执行 p[rb] = ra（矮的挂到高的下面）。最后才是影响树高的那半句：只有合并前两棵树 rank 相等，新根 rank 才 +1；其余情况高树的高度不变。交换必须发生在 p[rb] = ra 之前，否则会被挂到一棵矮树上，rank 保不住 O(log n) 的性质。"
+          },
+          {
+            "note": "num_islands 的坐标映射与邻居选择：id = r*C + c 是按行主序把 [R, C] 压成一维，C 是列数而不是 R——写成 c*R + r 会在 R != C 时把两个不同格子映到同一个 id，程序不报错、答案静默地错，这也是人工 pitfalls 里「行列写反」那条的由来。邻居只取左 (0,-1) 与上 (-1,0)：无向边只需处理一次，右/下的边会在遍历到那个格子时以「左/上」的身份出现；写四个方向结果也对，只是每条边白做一次 find。"
+          },
+          {
+            "note": "计数的两种等价写法都在代码里：roots 集合是「所有 '1' 格子的不同根」，正好就是岛数（人工实现用的就是这条）；dsu.count 则是把从不参与 union 的每个 '0' 也当成一个独立分量，所以 k = count − (R·C − ones)。我没有改人工的返回方式，而是把恒等式写成一行断言：如果哪天推导错了（比如把 ones 记成非 '1' 的个数），自测会立刻炸出来，而不是给出一个看起来合理的错答案。"
+          },
+          {
+            "note": "_self_test 覆盖三类东西：岛屿用例 8 组（空网格 [] / [[]]、全 0、单格、环状 ['111','010','111'] 必须得 1、lc200 官方样例 ['11000','11000','00100','00011'] 得 3、全 1 得 1、对角相邻 ['101','010','101'] 得 5，用来钉死「只连上下左右、不连对角」）；DSU 连通性（0-1-…-9 依次合并后 count == 1 且 connected(0,9)）；路径减半的直接证据（手工造链后 find(0)，断言 p[0] != 1）。这些断言保证代码不是「看起来对」，而是真的跑过。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "grid = []：第一层就空，直接返回 0（人工作品用 `if not grid or not grid[0]` 同时覆盖这一条）。",
+        "grid = [[]]：有行但没有列，grid[0] 为假 → 返回 0；不要在取 C 之前先做 R*C 的并查集初始化。",
+        "全 '0'：ones = 0，没有任何 union，roots 为空集合 → 返回 0（正确，不是 1）。",
+        "单个格子 ['1'] / ['0']：无邻居可 union，分别返回 1 与 0。",
+        "全 '1' 的 R×C：所有格子连成一片，返回 1；这也是检验「只 union 左/上」会不会漏边的最强用例。",
+        "对角相邻 ['101','010','101']：四连通下是 5 座岛，不是 1 座；题干说的相邻是上下左右。",
+        "R != C（非方阵）：id = r*C + c 与行列顺序必须配对，写反会静默出错；本实现在 C 确定后再遍历。",
+        "锯齿矩阵（各行长度不等）：人工实现没定义；本实现显式抛 ValueError，避免 grid[nr][nc] 抛出的 IndexError 掩盖真实原因。",
+        "grid 传成整数 0/1 而不是字符 '0'/'1'：`!= '1'` 会把 1 判成非陆地，返回 0（静默错）；要支持 int 就得改判据，不要混用。",
+        "n 极大的链（例如按 0-1、1-2… 顺序合并 10⁵ 个元素）：迭代式路径减半不会 RecursionError；若换成递归版完全压缩就会撞默认递归上限。",
+        "重复 union 同一个 pair：第二次 find 出同根返回 False，count 不会被多减——但要靠 connected()/返回值确认，不能凭感觉。"
+      ],
+      "pitfalls": [
+        "只写路径压缩不写按秩合并仍然可以，但只写按秩合并不压缩会退化（人工 pitfall）：含义是拿不到 α(n) 的均摊上界——每次 find 都要真的走完 O(log n) 那条路，重复查询同一片区域时这些代价不能互相抵消。反过来，只压缩不按秩合并（均摊 O(log n) 量级）在绝大多数输入下已经够快。",
+        "二维转一维时行列写反（人工 pitfall）：必须 id = r * C + c，其中 C 是列数；写成 c * R + r 只在方阵的部分情形下凑巧不出错，且不抛异常。",
+        "岛屿计数忘记排除非 '1' 的格子（人工 pitfall）：'0' 不是陆地，既不能进 ones，也不能参与 union，更不能被当成一座岛。",
+        "直接把 dsu.count 当成岛数返回：count 里还包含 R*C - ones 个各自独立的 '0' 分量，忘记减掉就永远偏大。正确读数是 len(roots) 或 count − (R*C − ones)。",
+        "union 里漏掉 `if ra == rb: return False`：同集合反复 union 会把 count 减到负数。",
+        "rank 的比较/交换放在 `p[rb] = ra` 之后，或用了交换前的旧根：会把高树挂到矮树下，按秩合并的保护直接失效。",
+        "等高时才 +1 写成无条件 `rank[ra] += 1`：rank 不再等于树高上界，后续比较失去意义（结果仍正确，但复杂度保证没了）。",
+        "find 用递归实现完全压缩：长链上 RecursionError；本题参考实现选择迭代式路径减半正是为了绕开它。",
+        "union 传的是节点值而不是下标（例如把 grid 里的字符 '1' 传进去）：Python 里会直接报错或算到错误对象上；接口约定是 0..n-1 的整数 id。",
+        "在 num_islands 里对每个 '1' 现场 new 一个 DSU，或对每个格子重新扫一遍 root：前者找不到跨格子的边，后者把 O(R·C) 变成 O((R·C)²)。",
+        "把邻居判断写成 `grid[nr][nc] == '1'` 却漏掉边界检查 0 <= nr < R：右下角越界后抛 IndexError，或更糟——负数下标在 Python 里是合法的，会绕过边界悄悄读到错误格子（例如 nc = -1 读到本行最后一列）。"
+      ],
+      "followUps": [
+        "为什么路径压缩 + 按秩合并之后是 O(α(n))？能说清「按秩合并给树高 O(log n)」与「路径压缩让重复访问变便宜」这两半各自管什么吗？",
+        "只做路径压缩（不做按秩合并）的均摊复杂度是多少？能构造出让按秩合并单独失效的输入序列吗（按 0-1、1-2… 顺序合并）？",
+        "lc200 的 DFS/BFS、并查集两种解法各自的适用场景是什么？如果陆地是流式一块块到达的（lc305 岛屿数量 II），哪种还能用？",
+        "如果要支持删边/回退（可撤销并查集），为什么必须放弃路径压缩、只保留按秩合并 + 操作栈？",
+        "带权并查集（种类并查集）怎么做？用它解 lc990 等式方程的可满足性、lc399 除法求值、POJ1182 食物链时，权值数组维护的是什么量？",
+        "并查集能并行或在 GPU 上做吗？Shiloach-Vishkin / 连通分量标签传播的迭代思路与并查集相比代价如何？",
+        "连通分量数能不能不用 count 变量、也不最后扫一遍就 O(1) 得到？(DSU 维护 count 的本质是什么？)",
+        "n 多大时 α(n) 才会超过 5？给出「rank 为 h 的树至少 2^h 个节点」的归纳证明。"
+      ],
+      "variations": [
+        "lc547 省份数量：输入是 n×n 邻接矩阵，二重循环里对 matrix[i][j] == 1 的位置 union(i, j)，返回 dsu.count。",
+        "lc684 冗余连接：按顺序 union 每条边，第一条两端已经同根的边就是答案（成环边）。",
+        "lc685 冗余连接 II：有向图上分「入度为 2」与「成环」两类情况讨论，仍以并查集判环为主干。",
+        "lc990 等式方程的可满足性：先把所有 a==b 的 union，再检查 a!=b 是否同根，冲突即返回 False。",
+        "lc721 账户合并：用「邮箱 → 人」的并查集把同一人的邮箱归并，再按根聚合输出，属于并查集 + 哈希映射的模板题。",
+        "lc695 岛屿的最大面积：DSU 额外维护每个根的 size，union 成功时合并 size，最后取最大（本题 count 的姊妹变量）。",
+        "lc305 岛屿数量 II（动态加陆地）：每加一块陆地先 count += 1，再与四个方向的既有陆地 union，返回当前 count——这正是并查集比 DFS 强的地方。",
+        "lc200 的另一条路：把「数分量」换成「逐行扫描 + 轮廓等价类合并」的两遍连通域标记（CCL），标签数只需 O(C)。",
+        "带权并查集：lc399 除法求值（维护到根的权重比值）、POJ1182 食物链（权值 mod 3 表示同类/吃/被吃）。",
+        "在线动态连通性：加边容易、删边难，删边要走线段树分治 + 可撤销并查集，或 Link-Cut Tree。"
+      ],
+      "diagram": {
+        "kind": "matrix",
+        "title": "lc200：网格 → 一维 id",
+        "caption": "记住三件事：格子用 id = r·C + c 压成一维（C 是列数）；每个 '1' 只与左、上邻居 union，所以 3×3 例子里只发生了 union(1,0) 与 union(4,1)；岛数等于 '1' 的不同根个数，也等于 count − (R·C − ones)。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='12' y='18' font-size='14' fill='currentColor'>lc200：网格 → 一维 id → 并查集</text><text x='14' y='38' font-size='13' fill='currentColor'>grid 3×3（R=3, C=3）</text><rect x='20' y='44' width='46' height='36' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='27' y='61' font-size='13' fill='currentColor'>1</text><text x='27' y='76' font-size='13' fill='currentColor'>#0</text><rect x='72' y='44' width='46' height='36' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='79' y='61' font-size='13' fill='currentColor'>1</text><text x='79' y='76' font-size='13' fill='currentColor'>#1</text><rect x='124' y='44' width='46' height='36' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='131' y='61' font-size='13' fill='currentColor'>0</text><text x='131' y='76' font-size='13' fill='currentColor'>#2</text><rect x='20' y='86' width='46' height='36' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='27' y='103' font-size='13' fill='currentColor'>0</text><text x='27' y='118' font-size='13' fill='currentColor'>#3</text><rect x='72' y='86' width='46' height='36' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='79' y='103' font-size='13' fill='currentColor'>1</text><text x='79' y='118' font-size='13' fill='currentColor'>#4</text><rect x='124' y='86' width='46' height='36' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='131' y='103' font-size='13' fill='currentColor'>0</text><text x='131' y='118' font-size='13' fill='currentColor'>#5</text><rect x='20' y='128' width='46' height='36' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='27' y='145' font-size='13' fill='currentColor'>0</text><text x='27' y='160' font-size='13' fill='currentColor'>#6</text><rect x='72' y='128' width='46' height='36' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='79' y='145' font-size='13' fill='currentColor'>0</text><text x='79' y='160' font-size='13' fill='currentColor'>#7</text><rect x='124' y='128' width='46' height='36' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='131' y='145' font-size='13' fill='currentColor'>1</text><text x='131' y='160' font-size='13' fill='currentColor'>#8</text><text x='14' y='182' font-size='13' fill='currentColor'>id = r·C + c（行主序）</text><text x='14' y='200' font-size='13' fill='currentColor'>只与左/上邻居 union</text><text x='14' y='218' font-size='13' fill='currentColor'>例：#4 与上邻居 #1</text><text x='196' y='38' font-size='13' fill='currentColor'>p = [1,1,2,3,1,5,6,7,8]</text><text x='196' y='60' font-size='13' fill='currentColor'>find(#0)=find(#4)=1, find(#8)=8</text><text x='196' y='80' font-size='13' fill='currentColor'>→ k = 2（根 1 与根 8 各一座岛）</text><circle cx='250' cy='105' r='14' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='250' y='110' font-size='13' fill='currentColor' text-anchor='middle'>1</text><circle cx='215' cy='148' r='14' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='215' y='153' font-size='13' fill='currentColor' text-anchor='middle'>0</text><circle cx='285' cy='148' r='14' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='285' y='153' font-size='13' fill='currentColor' text-anchor='middle'>4</text><line x1='215' y1='134' x2='237' y2='119' stroke='var(--line-1)' stroke-width='1'/><polygon points='240,117 231,124 229,117' fill='var(--line-1)'/><line x1='285' y1='134' x2='263' y2='119' stroke='var(--line-1)' stroke-width='1'/><polygon points='260,117 269,124 271,117' fill='var(--line-1)'/><text x='272' y='100' font-size='13' fill='currentColor'>rank=1</text><text x='272' y='122' font-size='13' fill='currentColor'>count=7</text><text x='196' y='174' font-size='13' fill='currentColor'>find：路径减半 p[x] = p[p[x]]</text><text x='196' y='194' font-size='13' fill='currentColor'>union：rank 小的挂到 rank 大的根</text><text x='196' y='214' font-size='13' fill='currentColor'>count 初值 R·C，成功合并才 −1</text><text x='196' y='234' font-size='13' fill='currentColor'>k = count − (R·C − ones) = 7 − 5 = 2</text></svg>",
+        "alt": "左侧是 3×3 网格，四个 '1' 格分别标号 #0、#1、#4、#8，说明 id = r·C+c 且每个 '1' 只与左、上邻居 union；右侧给出合并后的父数组 p = [1,1,2,3,1,5,6,7,8]、以 1 为根挂着 0 与 4 的树、count=7，并用 k = count − (R·C − ones) = 7 − 5 = 2 得出岛数 2。"
+      },
+      "selfTest": [
+        "为什么按秩合并能保证树高 O(log n)？（答：rank 只在两棵等高树合并时才 +1，归纳可得 rank 为 h 的树至少含 2^h 个节点，所以 h ≤ log₂n。）",
+        "路径压缩与按秩合并各自解决什么问题？（答：按秩合并管「树形态」，把最坏树高压到 O(log n)；路径压缩管「重复访问」，让 find 走过的路变短、代价被摊销掉。两者叠加才是均摊 O(α(n))。）",
+        "lc200 用并查集为什么只 union 左、上两个方向？（答：无向边只需处理一次；右/下的边会在遍历到那个格子时以它自己的「左/上」身份被处理。写四个方向结果也对，但每条边白做一次 find。）",
+        "如果直接把 dsu.count 当岛数返回会怎样？正确读数是什么？（答：会偏大，count 里还含 R*C − ones 个从不合并的 '0' 分量；正确读数是 len(roots) 或 count − (R*C − ones)。）",
+        "什么情况下按秩合并不足以避免 O(n) 的 find？（答：不做任何压缩、且按 0-1、1-2… 顺序合并时，虽然按秩合并本身仍能把高度控制在 O(log n)（这条链会被挂到同一根下），但如果合并顺序刻意构造（例如每次把大树挂到新单点上而不比较 rank，即漏写 rank 判断），树会退化成链，find 变 O(n)——所以 rank 比较那一行不能省。）"
+      ],
+      "keyPoints": [
+        "find 用路径减半或完全压缩，均摊近似 O(alpha(n))（人工 keyPoint）",
+        "union 按秩/按大小合并避免退化成链（人工 keyPoint）",
+        "维护 count 变量即可 O(1) 得到连通分量数（人工 keyPoint）",
+        "岛屿问题把二维坐标映射到一维 id，只与左、上邻居 union 即可（人工 keyPoint）",
+        "id 必须是 r*C + c（C = 列数）；'0' 格子从不 union，所以 k 也可写成 count − (R*C − ones)，两种读数可互验"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（union-find）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题干（web/data/jobs.json 的 handWrittenCoding[id=union-find] 与 web/data/problem-bank.json 的 curated[id=union-find]）要求：手写并查集并支持连通分量计数、用并查集解 lc200、说明路径压缩与按秩合并各自的复杂度贡献。",
+          "人工 referenceSolution 的算法路径为：p=list(range(n)) / rank=[0]*n / count=n；find 迭代式路径减半 p[x]=p[p[x]]；union 先 find、同根返回 False、按 rank 交换后 p[rb]=ra、等高才 rank[ra]+=1、成功才 count-=1；num_islands 建 DSU(R*C)，对每个 '1' 与 (0,-1)、(-1,0) 两个方向的 '1' 邻居 union(r*C+c, nr*C+nc)，最后返回 '1' 格子不同根的集合大小。本文件代码与之逐步一致。",
+          "人工 keyPoints 四条（路径压缩近似 O(alpha(n))、按秩合并避免退化、count 变量 O(1) 读分量数、二维映射一维且只 union 左/上）与人工 pitfalls 三条均未被改写；本文件只在其上补充了 why/复杂度/图解/边界/追问/变形。",
+          "人工实现里的 ones 变量在返回值上没有被用到（返回的是 roots 集合大小）；我保留该变量，并用断言验证了恒等式 k = count − (R*C − ones)（grid 中每个 '0' 都是从未 union 的独立分量），因此没有改动人工的接口与返回方式。",
+          "本文件 code.source 已在本机纯 Python 环境实际执行通过（无第三方依赖）：8 组岛屿用例（含 []、[[]]、全 0、单格、环状 ['111','010','111']=1、lc200 官方样例 ['11000','11000','00100','00011']=3、全 1=1、对角 ['101','010','101']=5）、DSU 连通性（0-1-…-9 合并后 count==1 且 connected(0,9)）、以及路径减半的直接证据（手工造 0→1→2→3→4→5 的链，find(0) 后 p[0] 由 1 变为 2）均通过。",
+          "图解中的数字是手算并核对过的具体状态：该 3×3 网格有 ones=4、R*C=9，只发生 union(1,0) 与 union(4,1) 两次成功合并，故 count=7、父数组为 [1,1,2,3,1,5,6,7,8]、'1' 的根为 {1,8}、k=2，且 7 − (9−4) = 2。",
+          "复杂度结论来自公开的经典结果：单独按秩（按大小）合并的树高上界为 O(log n)（rank 为 h 的树至少 2^h 个节点），路径压缩与按秩合并叠加的均摊上界为 O(m·α(n))（Tarjan / Tarjan & van Leeuwen 的分析），α(n) 在 n ≤ 2^65536 内不超过 5。"
+        ],
+        "uncertain": [
+          "人工题干只说「用并查集解 lc200」，未给 R、C 的具体规模、字符取值域与样例；代码里用的是 3×3、4×5 等通用小样例，只为自测，不代表题目约束（真按 lc200 规模 R,C ≤ 300，本文实现依然适用）。",
+          "人工 pitfall「只写路径压缩不写按秩合并仍然可以，但只写按秩合并不压缩会退化」的措辞需要一点口径说明：严格地讲，单独按秩合并的树高上界是 O(log n)，并不会退化成 O(n) 的链；「退化」应理解为拿不到 α(n) 的均摊上界、每次 find 都要真的走满 O(log n)。为避免与人工结论冲突，正文按人工口径表述并把这点记录在此，供人工确认。",
+          "人工 referenceSolution 未定义锯齿矩阵（各行长度不等）、grid 里出现 '1'/'0' 以外字符、以及 grid 传成 int 0/1 时的行为；本实现只对锯齿矩阵加了显式 ValueError，其余情况保持与人工一致的「非 '1' 即非陆地」判据，未改算法。",
+          "本文件运行的是与人工实现逐步等价的改写版（多了下标校验、connected() 与 _self_test），我没有逐字执行人工原文代码本身。",
+          "本题没有外部可引用链接（人工题库只标了来源面经，题干中无 URL），sources.url 因此留空，未编造任何链接。"
+        ]
+      }
+    }
+  ]
+}

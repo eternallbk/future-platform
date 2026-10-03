@@ -6,202 +6,185 @@
   "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
   "items": [
     {
-      "id": "fe8effbbe5b24d57",
-      "title": "Decoding Looped Transformers Better for (Almost) Free",
-      "category": "engineering",
-      "channel": "hf_papers",
-      "url": "https://huggingface.co/papers/2610.02185",
+      "id": "483f6b709cc8709e",
+      "title": "Toward Real-Time VLAs: Stage-Aware Two-Step Flow Denoising and System-Level Evaluation",
+      "category": "worldmodel",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.39822v1",
       "sources": [
         {
-          "url": "https://huggingface.co/papers/2610.02185",
+          "url": "https://arxiv.org/abs/2609.39822v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.RO"
+      ],
+      "summary": "Vision-language-action (VLA) models face a timing gap between low-rate inference and high-rate robot execution. We characterize this gap through end-to-end latency measurements of model inference and the robot execution chain. Repeated Flow Matching denoising contributes substantially to inference cost, while robot-side delays mainly arise from perception acquisition, communication scheduling, and physical response. Analysis of the velocity field shows relatively stable magnitude and direction in early integration, followed by stronger directional correction near the terminal steps. Based on this stage heterogeneity, we propose two-stage non-uniform denoising, reducing the number of steps from 10 to 2 and model-inference time from 61.557 ms to 21.956 ms. We also develop a distributed real-time VLA framework with independent inference, action-publication, and robot-control rates, modular observation acquisition, and action-provenance logging. Using π0.5 as the baseline, we evaluate six real-time execution methods on a long-horizon physical garment-folding task. Legato performs best overall among training-based methods, while Temporal Smoothing leads among training-free methods; both perform strongly in task success, completion time, action continuity, and acceleration smoothness. Combining two-step denoising with representative execution methods substantially reduces inference cost with a small reduction in task performance. These results motivate joint optimization of model-inference efficiency and robot-system timing.",
+      "authors": [
+        "Di Wu",
+        "Rongtian Shen",
+        "Ping Liu",
+        "Yan Shen",
+        "Zhenhan Yin",
+        "Shun Zuo",
+        "Xuhua Chen",
+        "He Zheng",
+        "Lingfeng Zhang",
+        "Jianglin Zhang",
+        "Tao Zhang"
+      ],
+      "publishedAt": "2026-09-30T02:25:44+08:00",
+      "knowledgeType": "method",
+      "why": "归属「世界模型」方向；命中关键词 vla、vision-language-action；领域核心工作",
+      "relevanceScore": 84.0,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 84.0,
+      "planDepthScore": 76.13
+    },
+    {
+      "id": "6970d2bfa1b76ac3",
+      "title": "Audible World Models: Spatially Aware Sound Generation for 3D Worlds",
+      "category": "multimodal",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.38444v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2609.38444v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.CV",
+        "cs.SD"
+      ],
+      "summary": "Text- and image-conditioned world generators can create visually rich 3D environments, yet these worlds often remain silent or rely on soundtracks synthesized solely from text or rendered video. Although such audio can convey what should be heard, it lacks an explicit representation of where sound sources are located and how their perceived sound should vary with listener movement. We introduce Audible World Models, a training-free framework that incorporates sound into the generated world state. Starting from a text prompt, our system constructs a panoramic 3D proxy, separates it into semantic layers, identifies sound-producing foreground objects and ambient background regions, and synthesizes dry audio for each sound label. It then anchors these sources to reconstructed geometry and renders listener-dependent spatial audio using geometric acoustic propagation. By explicitly linking semantics, geometry, and sound propagation, the framework maintains persistent source locations while adapting the rendered audio to changes in listener viewpoint and motion. Experiments across 80 generated scenes demonstrate substantial gains in spatial consistency over text-, video-, and panorama-conditioned baselines, while preserving competitive semantic alignment. VLM-based assessments and human evaluations further indicate that our soundtracks are preferred for their audio-visual consistency, spatial plausibility, and motion-dependent behavior.",
+      "authors": [
+        "Duowen Chen",
+        "Jinjin He",
+        "Gouthaman KV",
+        "Sandeep Bangalore Venkatesh",
+        "Bo Zhu"
+      ],
+      "publishedAt": "2026-09-29T07:37:16+08:00",
+      "knowledgeType": "method",
+      "why": "归属「多模态算法」方向；命中关键词 vlm、audio-visual；领域核心工作",
+      "relevanceScore": 83.6,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 83.6,
+      "planDepthScore": 75.98
+    },
+    {
+      "id": "579733cec8a05533",
+      "title": "Range-GRPO: Policy Optimization via Pairwise Relations among Reward Intervals",
+      "category": "posttraining",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.01548v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.01548v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.LG"
+      ],
+      "summary": "As the use of large language models (LLMs) expands, post-training has become increasingly important for adapting them to downstream tasks. However, obtaining reliable supervision remains costly, especially in domains without reference answers or executable verifiers. LLM-as-a-Judge provides scalable pseudo-rewards for unlabeled responses, but a single point score does not explicitly represent reward uncertainty. This motivates representing pseudo-rewards as conformally calibrated reward ranges. We propose Range-GRPO, a semi-supervised post-training framework that combines limited labeled data with unlabeled prompts. In Group Relative Policy Optimization (GRPO), learning signals depend on relative reward comparisons within each rollout group. The proposed objective compares reward ranges pairwise rather than reducing them to point rewards, allowing interval uncertainty to affect both the magnitude and direction of these signals. Our theoretical analysis characterizes this distinction and shows that the proposed objective recovers the Dr.GRPO advantage when all reward ranges collapse to points. Empirically, Range-GRPO achieves the highest in-distribution and out-of-distribution average performance among the evaluated semi-supervised methods while requiring fewer training resources.",
+      "authors": [
+        "Ryunyi Lee",
+        "Kangjun Noh",
+        "Somin Kim",
+        "Heedong Kim",
+        "Kyungwoo Song"
+      ],
+      "publishedAt": "2026-10-01T20:16:34+08:00",
+      "knowledgeType": "method",
+      "why": "归属「后训练」方向；命中关键词 post-training、grpo；领域核心工作",
+      "relevanceScore": 80.9,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 80.9,
+      "planDepthScore": 74.94
+    },
+    {
+      "id": "fd3bb0fd738612e2",
+      "title": "BiasReducer: Adaptive Bias Mitigation for Reward Models",
+      "category": "posttraining",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.32720",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.32720",
           "name": "hf_papers"
         },
         {
-          "url": "https://arxiv.org/abs/2610.02185",
+          "url": "https://arxiv.org/abs/2609.32720",
           "name": "canonical"
         }
       ],
       "tags": [],
-      "summary": "Looped Transformers achieve parameter efficiency by repeatedly executing a shared block across recurrent loops. Each loop yields an intermediate representation decodable for the same next token, yet standard decoding discards earlier states. Because earlier loops embody less computation, recurrence inherently supplies aligned weak-and-strong prediction pairs without auxiliary models or external training. We introduce LoopCD, a training-free contrastive decoding framework that guides token selection by contrasting the final prediction with an earlier recurrent pass, operating either in logit space with one extra output pass (LoopCD-Logits) or in hidden-state space with zero output overhead (LoopCD-Hidden). Across four looped Transformer families, LoopCD delivers substantial, consistent gains at full recurrent depth: LoopCD-Logits raises Ouro-2.6B-Thinking's AIME 2024 pass@1 from 61.88% to 73.33%, while LoopCD-Hidden lifts Huginn's HumanEval pass@1 from 22.56% to 31.71%. Crucially, these performance gains enable halving the number of recurrent loops while still matching or exceeding full-depth unguided baselines, reducing forward FLOPs by 22.5% to 48.2%. By transforming intermediate recurrent states into effective guidance signals, LoopCD achieves superior decoding quality while substantially reducing inference compute.",
+      "summary": "Reward models score responses from large language models (LLMs) and guide LLM training toward human preferences. However, reward models can favor superficial attributes such as length or confidence, leading LLMs to produce higher-scoring but not more correct responses. Existing mitigation methods either retrain the reward model or apply a fixed correction to one known bias, such as a preference for longer responses. Retraining requires additional data and computational resources, while existing editing methods require the target bias to be specified in advance and use a fixed edit for that bias. To this end, we propose BiasReducer, a lightweight framework that edits only the linear reward head and selects the relevant edits for each new dataset. First, BiasReducer uses a sparse autoencoder (SAE)-style encoder to learn which attributes (e.g., length and confidence) the reward model is sensitive to. Second, it learns how to reduce the reward model's dependence on each attribute by determining which direction to adjust the reward head and how much to adjust it. Third, for a new dataset, it ranks the attributes by their influence on reward scores, selects the relevant ones, and edits the reward model accordingly. BiasReducer consistently improves reward-model robustness to biases toward superficial response attributes. Across five reward models, BiasReducer-M improves the three benchmarks by 8.3, 18.0, and 6.9 percentage points on average, outperforming the two training-based baselines. The gains transfer downstream, reducing unnecessary verbosity and sycophancy while maintaining comparable judged quality.",
       "authors": [
-        "Weihao Liu",
-        "Huangjie Zheng",
-        "Tianrong Chen",
-        "Rohit Dilip",
-        "Richard He Bai",
-        "Yizhu Jiao",
-        "Yuyang Wang",
-        "Ruixiang Zhang"
+        "Shuang Liu",
+        "Yongliang Miao",
+        "Yanguang Liu",
+        "Haoyi Xiong",
+        "Mengnan Du"
       ],
-      "publishedAt": "2026-10-01T08:00:00+08:00",
-      "knowledgeType": "fundamentals",
-      "why": "归属「工程与系统」方向；命中关键词 inference；社区热度 10",
-      "relevanceScore": 61.3,
+      "publishedAt": "2026-09-26T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「后训练」方向；命中关键词 reward model；社区热度 21；领域核心工作",
+      "relevanceScore": 80.9,
+      "qualitySignals": {
+        "upvotes": 21
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 80.9,
+      "planDepthScore": 74.94
+    },
+    {
+      "id": "e6d52698eb6bc0d3",
+      "title": "CorrGRPO: Correlation-Normalized GRPO for Multi-Reward Learning",
+      "category": "posttraining",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.36820",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.36820",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.36820",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Group Relative Policy Optimization (GRPO) is widely used to train reasoning language models, where it computes advantages by centering and normalizing rewards across rollouts of the same prompt. For multiple rewards, GRPO sums the reward components and normalizes the total reward by its within-group standard deviation. The corresponding variance equals the sum of all pairwise reward covariances. For a fixed centered reward, larger aggregate covariance produces smaller advantages, and vice versa, allowing update magnitudes to adapt to reward dependence. However, correlated rewards with large scales can dominate this normalization and suppress signals from smaller-scale rewards. We propose Correlation-Normalized GRPO (CorrGRPO), which normalizes pairwise covariances into Pearson correlation coefficients. CorrGRPO keeps the centered total reward unchanged while balancing the influence of differently scaled rewards on the correlation-based normalization. This allows advantage magnitudes to adapt to reward correlations without the normalization being dominated by large-scale reward components. We compare CorrGRPO with GRPO and other variants on code generation, tool calling, and agent security, using models ranging from 0.5B to 8B parameters. These tasks all involve multiple rewards that can improve together or present tradeoffs. Results show improvements across three domains, including code generation, tool calling, and agent security. Our code is available at https://github.com/HKUST-KnowComp/CorrGRPO.",
+      "authors": [
+        "Wenbin Hu",
+        "Huihao Jing",
+        "Haochen Shi",
+        "Yuxuan Liu",
+        "Haoran Li",
+        "Yangqiu Song"
+      ],
+      "publishedAt": "2026-09-29T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「后训练」方向；命中关键词 grpo；社区热度 10；领域核心工作",
+      "relevanceScore": 76.9,
       "qualitySignals": {
         "upvotes": 10
       },
       "peerReviewed": false,
       "codeAvailable": false,
-      "planRelevanceScore": 61.3,
-      "planDepthScore": 81.37
-    },
-    {
-      "id": "622683b4a1f31b43",
-      "title": "jmaczan/tiny-vllm - Build your own high performance LLM inference engine in C++ and CUDA - a smaller version of vLLM",
-      "category": "engineering",
-      "channel": "github",
-      "url": "https://github.com/jmaczan/tiny-vllm",
-      "sources": [
-        {
-          "url": "https://github.com/jmaczan/tiny-vllm",
-          "name": "github"
-        }
-      ],
-      "tags": [
-        "ai",
-        "attention",
-        "batching",
-        "course",
-        "cpp",
-        "cuda",
-        "hpc",
-        "inference",
-        "C++"
-      ],
-      "summary": "Build your own high performance LLM inference engine in C++ and CUDA - a smaller version of vLLM",
-      "authors": [
-        "jmaczan"
-      ],
-      "publishedAt": "2026-09-24T02:47:56+08:00",
-      "knowledgeType": "fundamentals",
-      "why": "归属「工程与系统」方向；命中关键词 inference、vllm、cuda；GitHub 1137 stars；疑似附带开源实现",
-      "relevanceScore": 76.5,
-      "qualitySignals": {
-        "stars": 1137,
-        "forks": 94,
-        "codeAvailable": true
-      },
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 76.5,
-      "planDepthScore": 79.88
-    },
-    {
-      "id": "527f4b1f6ad840c7",
-      "title": "The Geometry of Inference in Transformer Residual Streams",
-      "category": "engineering",
-      "channel": "hf_papers",
-      "url": "https://huggingface.co/papers/2609.37824",
-      "sources": [
-        {
-          "url": "https://huggingface.co/papers/2609.37824",
-          "name": "hf_papers"
-        },
-        {
-          "url": "https://arxiv.org/abs/2609.37824",
-          "name": "canonical"
-        }
-      ],
-      "tags": [],
-      "summary": "Transformer language models build predictions through successive residual updates, but how their representations become specific to an eventual outcome remains unclear. We study this process by comparing intermediate residual states with their own final states and an empirical bank of final states from other contexts. Across six pretrained language models, the own endpoint becomes preferable to the average alternative early, while many individual endpoints remain closer. These competing sets generally shrink with depth, but their membership changes and their surviving endpoints need not become more similar to one another. Directional alignment and endpoint rank can therefore improve while Euclidean distance to the final state changes little. We develop a simple high-dimensional model that separates the roles of norm, alignment, and endpoint geometry, showing how gradual directional changes can produce sharp reductions in competition. We also prove that a straight path toward the own endpoint cannot introduce new competitors under either Euclidean or cosine distance; observed entries thus establish departures from straight-line convergence. Finally, endpoints associated with lower-ranked output tokens tend to lie farther away in cosine distance across all studied models, connecting residual geometry to output organization. Together, these findings characterize increasing geometric specificity during transformer inference and explain why distance, competitor count, and concentration of the surviving endpoints provide distinct views of that process.",
-      "authors": [
-        "Timur Mudarisov",
-        "Mikhail Burtsev",
-        "Radu State"
-      ],
-      "publishedAt": "2026-09-28T12:00:00+08:00",
-      "knowledgeType": "fundamentals",
-      "why": "归属「工程与系统」方向；命中关键词 inference；社区热度 1",
-      "relevanceScore": 58.1,
-      "qualitySignals": {
-        "upvotes": 1
-      },
-      "peerReviewed": false,
-      "codeAvailable": false,
-      "planRelevanceScore": 58.1,
-      "planDepthScore": 79.64
-    },
-    {
-      "id": "8be496c85ad5ec3b",
-      "title": "JetBrains/koog - Koog is a JVM (Java and Kotlin) framework for building predictable, fault-tolerant and enterprise-ready AI agents across all platforms – from backend services to Android and iOS, JVM, and even in-browser environments. Koog is based on our AI products expertise and provides proven solutions for complex LLM and AI problems",
-      "category": "agent",
-      "channel": "github",
-      "url": "https://github.com/JetBrains/koog",
-      "sources": [
-        {
-          "url": "https://github.com/JetBrains/koog",
-          "name": "github"
-        }
-      ],
-      "tags": [
-        "agentframework",
-        "agentic-ai",
-        "agents",
-        "ai",
-        "ai-agents-framework",
-        "aiagentframework",
-        "android-ai",
-        "anthropic",
-        "Kotlin"
-      ],
-      "summary": "Koog is a JVM (Java and Kotlin) framework for building predictable, fault-tolerant and enterprise-ready AI agents across all platforms – from backend services to Android and iOS, JVM, and even in-browser environments. Koog is based on our AI products expertise and provides proven solutions for complex LLM and AI problems",
-      "authors": [
-        "JetBrains"
-      ],
-      "publishedAt": "2026-09-24T17:09:09+08:00",
-      "knowledgeType": "fundamentals",
-      "why": "归属「Agent 理论与实践」方向；命中关键词 agentic；GitHub 4596 stars；疑似附带开源实现",
-      "relevanceScore": 65.9,
-      "qualitySignals": {
-        "stars": 4598,
-        "forks": 483,
-        "codeAvailable": true
-      },
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 65.9,
-      "planDepthScore": 77.73
-    },
-    {
-      "id": "6e9fe3c163df33a0",
-      "title": "genkit-ai/genkit - Open-source framework for building agentic apps in JavaScript, Go, Dart, and Python, built and used in production by Google",
-      "category": "agent",
-      "channel": "github",
-      "url": "https://github.com/genkit-ai/genkit",
-      "sources": [
-        {
-          "url": "https://github.com/genkit-ai/genkit",
-          "name": "github"
-        }
-      ],
-      "tags": [
-        "agents",
-        "ai",
-        "embedders",
-        "genkit",
-        "llm",
-        "multimodal",
-        "rag",
-        "vector-database",
-        "TypeScript"
-      ],
-      "summary": "Open-source framework for building agentic apps in JavaScript, Go, Dart, and Python, built and used in production by Google",
-      "authors": [
-        "genkit-ai"
-      ],
-      "publishedAt": "2026-09-30T18:18:45+08:00",
-      "knowledgeType": "fundamentals",
-      "why": "归属「Agent 理论与实践」方向；命中关键词 agentic；GitHub 6463 stars；疑似附带开源实现",
-      "relevanceScore": 64.8,
-      "qualitySignals": {
-        "stars": 6465,
-        "forks": 855,
-        "codeAvailable": true
-      },
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 64.8,
-      "planDepthScore": 72.47
+      "planRelevanceScore": 76.9,
+      "planDepthScore": 73.41
     }
   ]
 }

@@ -1,0 +1,24 @@
+{
+  "batchId": "prob-cur-33",
+  "problem": {
+    "id": "deepseek-visual-primitive",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "多模态视觉原语推理框架的数学建模",
+    "topics": [
+      "大模型与RL"
+    ],
+    "difficulty": "hard",
+    "statement": "DeepSeek 笔试第七题：为“视觉原语”（point/box/mask/polygon）推理框架建立数学建模，说明如何把文本 token 与几何原语统一到一个混合序列的生成问题中。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

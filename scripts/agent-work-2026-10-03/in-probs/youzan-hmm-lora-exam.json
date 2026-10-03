@@ -1,0 +1,24 @@
+{
+  "batchId": "prob-cur-24",
+  "problem": {
+    "id": "youzan-hmm-lora-exam",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "AI 岗笔试综合题：RNN/HMM/强化学习/LoRA/激活函数",
+    "topics": [
+      "大模型与RL"
+    ],
+    "difficulty": "medium",
+    "statement": "牛客用户记录的“联想 ai 岗笔试”结构：20 道单选 + 1 道编程 + 1 道 AI coding。选择涉及算法题补充代码、RNN、HMM、强化学习、LoRA、SQL、激活函数、简单排序；编程题面试者用贪心但只通过 18% 用例；AI coding 首次遇到，需要自己指定关键约束。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

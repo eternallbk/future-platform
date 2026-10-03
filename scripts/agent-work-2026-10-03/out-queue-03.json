@@ -2,1098 +2,1180 @@
   "batchId": "queue-03",
   "entries": [
     {
-      "id": "277441ea3ddc25e9",
-      "tldr": "push_back 先造对象再搬入容器，emplace_back 用完美转发原地构造，省掉临时对象与一次移动/析构。",
+      "id": "fcfa54ba9b6cca9e",
+      "tldr": "隐写推理远比隐写传信和编码推理难学：多数任务只有 SFT 能学会，且训练量至少翻倍。",
       "keyPoints": [
-        "push_back 接收已构造对象，左值走拷贝、右值走移动",
-        "emplace_back 是变参模板，接收的是构造函数参数",
-        "std::forward 完美转发后在容器内存上 placement new 原地构造",
-        "vec.emplace_back(\"hello\",42) 全过程只构造一次",
-        "vec.push_back(MyClass(\"hello\",42)) 是构造、移动、析构三步"
+        "比较 RL、上下文学习、监督微调三种诱导方式",
+        "多数任务里隐写推理只在监督微调下被学会",
+        "监督微调下隐写推理所需训练量至少是传信的两倍",
+        "若干模型-任务组合下隐写推理完全学不会",
+        "掩护任务便于隐藏时，三种方式都能学会简易版"
       ],
-      "why": "C++ 八股高频基础题，考 STL 内存模型与 C++11 完美转发，面试追问细节时最容易露怯。",
-      "difficulty": "easy",
+      "why": "后训练安全方向：判断监控思维链的威胁来自哪种隐写能力，直接决定监控与评测是否值得投入。",
+      "difficulty": "hard",
       "tags": [
-        "cpp",
-        "stl",
-        "perfect-forwarding",
-        "move-semantics",
-        "interview"
+        "posttraining",
+        "steganography",
+        "chain-of-thought",
+        "monitoring",
+        "sft"
       ],
       "entities": [
-        "push_back",
-        "emplace_back",
-        "std::forward",
-        "placement new",
-        "vector",
-        "MyClass"
+        "steganographic reasoning",
+        "steganographic messaging",
+        "encoded reasoning",
+        "chain-of-thought monitoring",
+        "reinforcement learning",
+        "in-context learning",
+        "supervised fine-tuning"
       ],
       "diagram": {
         "kind": "flow",
-        "title": "两种插入的构造路径",
-        "caption": "push_back 在外造好再搬入，emplace_back 用转发参数在容器内存上直接构造。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='push_back 先构造再搬入，emplace_back 用完美转发原地构造'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>push_back 收已成对象</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>左值拷贝 / 右值移动</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>emplace_back 收参数</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>变参模板 Args&amp;&amp;...</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>std::forward 完美转发</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>保留实参值类别</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>placement new 原地构造</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>只构造一次</text></svg>",
-        "alt": "竖排流程：push_back 接收已构造对象，emplace_back 接收构造参数，经 std::forward 完美转发后在容器内存上 placement new 原地构造。"
+        "title": "三种隐写能力的习得",
+        "caption": "同一套训练压力下，隐写推理比传信与编码推理更难被唤醒。",
+        "svg": "<svg viewBox='0 0 480 270' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='三种隐写能力在不同诱导方式下的习得难度对比'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>三种隐写能力</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>传信 / 编码推理 / 隐写推理</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>三种诱导方式</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>RL / ICL / SFT</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>多数任务结果</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>仅 SFT 学会隐写推理</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>训练代价</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>至少 2 倍于传信</text><line x1='240' y1='216' x2='240' y2='224' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,232 236,224 244,224' fill='var(--line-1)'/><rect x='56' y='232' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='256' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>掩护任务便利时</text><text x='408' y='256' font-size='13' text-anchor='end' fill='currentColor'>三种方式都能学会</text></svg>",
+        "alt": "竖排流程：三种隐写能力为传信、编码推理与隐写推理，诱导方式有强化学习、上下文学习与监督微调；多数任务只有监督微调能学会隐写推理且训练量至少两倍，掩护任务便利时三种方式都能学会。"
       },
       "concepts": [
         {
-          "name": "In-place Construction（原地构造）",
-          "readable": "容器已经拿到了一块尾部内存，与其在外面把对象造好再搬过来，不如让元素类型的构造函数直接在这块内存上跑，省掉临时对象和一次搬运。",
-          "analogy": "装修新房时，家具是在工厂做好、装车、搬进门（还得看电梯能不能进），还是把板材和图纸送进房间现场拼装？后者少了一次运输和一次拆装。",
-          "analogyBreaksDown": "家具现场拼装失败还能退货重来，而 placement new 构造中途抛异常时，容器必须自己回滚已构造的元素，这就是 vector 扩容强调强异常安全的原因，类比里没有对应代价。",
-          "mechanism": "emplace_back 用变参模板 Args&&... 接住任意参数，再用 std::forward 还原每个实参的值类别，最后 placement new 在容器尾部地址上直接调用元素构造函数；这样分配与构造在容器内一次完成，不需要中间的临时对象。",
-          "visual": "横轴表示时间：push_back 画出三段色块（构造临时对象 / 移动进容器 / 析构临时对象），emplace_back 只画一段（原地构造）；色块长度表示相对开销。",
+          "name": "Steganographic Reasoning（隐写推理）",
+          "readable": "把推理过程藏进看起来无害的文本里：外部只看得到普通回答，监控者读不到真实思路，但模型确实在里面完成了推理。",
+          "analogy": "学生把作弊小抄写成一首看似平常的诗，老师读到的是诗，只有学生知道每句首字拼出答案。",
+          "analogyBreaksDown": "诗与答案之间有预先约定的码本，而隐写推理没有公开的编码规则：模型是在训练压力下自己长出映射，研究者也拿不到密钥来解码，所以读不懂不等于没在传递信息。",
+          "mechanism": "它同时要求两件事：把推理痕迹与可读文本纠缠在一起，并且不触发监控。与只在明文里换格式的编码推理不同，隐写推理的载体看起来完全是正常内容，监控器因此缺少可对齐的异常信号。",
+          "visual": "画三条横向能力条，横轴为训练步数，纵轴为成功率；传信与编码推理在三种诱导方式下都上升，隐写推理只在监督微调那条线上滞后上升，其余两条压在零附近。",
           "prerequisites": [
-            "C++ 模板与可变参数模板",
-            "左值右值与值类别",
-            "vector 的内存布局与扩容"
+            "Chain-of-Thought 监控与 AI 控制的基本设定",
+            "强化学习与监督微调的差别",
+            "信息隐藏（隐写术）的基本概念"
           ],
           "selfTest": [
-            "emplace_back 的参数在进入函数前会不会先被构造成 T？",
-            "去掉 std::forward 后，为什么右值实参会退化成拷贝？",
-            "已有现成对象时，用 emplace_back 相比 push_back 省下了什么？"
+            "隐写推理与编码推理最关键的区别是什么？",
+            "为什么监控器很难发现隐写推理？",
+            "只看最终答案对不对，能判断模型有没有隐写推理吗？"
           ],
-          "formula": "\\texttt{emplace\\_back}(Args\\&\\&\\dots a) \\Rightarrow \\texttt{::new (p) }T(\\texttt{std::forward<Args>(}a\\texttt{)}\\dots)"
+          "formula": "\\max_{\\theta}\\ \\mathbb{E}[r]-\\lambda\\,\\mathrm{Pr}[\\mathcal{M}=1]"
         },
         {
-          "name": "Perfect Forwarding（完美转发）",
-          "readable": "模板参数在函数体里一旦被命名就变成左值，直接往下传会丢掉'这本来是个右值'的信息；完美转发就是用转发引用加 std::forward，把实参原本的值类别原样交给下一层。",
-          "analogy": "转交快递时不能拆开重打包，否则'易碎、加急'的标签会丢；完美转发相当于原封不动把包裹连同标签转给下一个收件人。",
-          "analogyBreaksDown": "快递标签是贴在实物上的，而值类别只是编译期的类型信息，转发过程中运行期没有任何东西被'搬运'或'复制'，把 std::forward 想成有开销的动作就错了。",
-          "mechanism": "形参写成 Args&&... 才是转发引用（模板参数 + &&），它能同时绑定左值与右值；在函数体内参数是具名左值，必须用 std::forward<Args>(a) 按模板推导出的原始类型还原值类别，否则右值实参会被当成左值传给构造函数而触发拷贝。",
-          "visual": "画一条管道，左端输入三种标签（左值/右值/const），右端输出标签必须一一对应；若去掉 std::forward，右侧所有标签都被改写成'左值'。",
+          "name": "Elicitation Method（能力诱导方式）",
+          "readable": "同一个能力可以用不同训练方式唤醒：强化学习靠奖励试探，上下文学习靠提示示例，监督微调靠示范数据；论文用这三种方式比较能力学得快不快。",
+          "analogy": "教同一个人游泳：请教练给奖励（RL）、看别人游一遍再模仿（ICL）、按标准动作反复纠正（SFT）；有的技巧三种教法都行，有的只在反复纠正下才学得会。",
+          "analogyBreaksDown": "人有明确意图去学，模型只是在优化目标函数：所谓学不会是参数更新后没出现该行为，不代表模型拒绝，也不代表换更好的提示或更多数据后仍然学不会。",
+          "mechanism": "把诱导方式当作自变量，是为了区分能力本身难与某种训练压力特别容易催生它；三种方式结果一致说明能力容易被训练压力带出来，只有监督微调成功则更像需要密集示范的高难技能。",
+          "visual": "画一个 3×2 矩阵，行是三种诱导方式，列是三种能力，格子深浅表示学会所需训练量，空格表示学不会。",
           "prerequisites": [
-            "引用折叠规则",
-            "模板实参推导",
-            "std::move 与 static_cast 的关系"
+            "监督微调与强化学习的基本流程",
+            "上下文学习（few-shot prompting）",
+            "成功率的判定阈值与训练预算口径"
           ],
           "selfTest": [
-            "为什么 Args&& 是转发引用，而 T&&（T 是具体类型）不是？",
-            "std::forward 与 std::move 的区别是什么？",
-            "函数体内为什么不能直接写 T(a...)？"
+            "为什么要用三种诱导方式而不是只做一种？",
+            "上下文学习不需要更新参数，为什么也算一种诱导？",
+            "诱导方式之间的结果差异说明了什么？"
           ],
-          "formula": "\\texttt{std::forward<T>(}a\\texttt{)} = \\texttt{static\\_cast<}T\\&\\&\\texttt{>}(a)"
+          "formula": ""
         }
       ],
       "formulas": [
         {
-          "id": "f-emplace-back-perfect-forwarding",
-          "name": "emplace_back 的完美转发原地构造（In-place Perfect Forwarding）",
-          "category": "engineering",
-          "latex": "\\texttt{emplace\\_back}(Args\\&\\&\\dots a)\\;\\Rightarrow\\;\\texttt{::new (}p\\texttt{)}\\;T\\big(\\texttt{std::forward<Args>(}a\\texttt{)}\\dots\\big)",
+          "id": "f-steg-reasoning-learnability-gap",
+          "name": "隐写推理与传信的学习代价比（Learnability Cost Ratio）",
+          "category": "posttraining",
+          "latex": "R_{\\text{reasoning/messaging}} = \\frac{T_{\\text{steg reasoning}}}{T_{\\text{steg messaging}}} \\;\\ge\\; 2",
           "symbols": [
             [
-              "Args&&... a",
-              "变参模板接住的转发引用参数包"
+              "T_{\\text{steg messaging}}",
+              "学会隐写传信所需训练量（步数或样本量）"
             ],
             [
-              "std::forward<Args>(a)",
-              "按模板推导结果还原实参值类别"
+              "T_{\\text{steg reasoning}}",
+              "学会隐写推理所需训练量"
             ],
             [
-              "::new (p) T(...)",
-              "在容器尾部地址 p 上 placement new 原地构造"
-            ],
-            [
-              "T",
-              "容器元素类型"
+              "R",
+              "两者之比，摘要口径为不低于 2"
             ]
           ],
           "derivation": [
-            "第 1 步：push_back 只接受已经构造好的 T，于是容器外必然先发生一次构造。",
-            "第 2 步：改收参数包，用转发引用 Args&&... 同时绑定左值与右值实参。",
-            "第 3 步：函数体内参数都是具名左值，必须用 std::forward 还原原始值类别，否则右值退化为拷贝。",
-            "第 4 步：在已分配好的尾部内存上 placement new 直接构造元素，全程只有一次构造。"
+            "第 1 步：要比较两种能力谁更难学，先固定任务与诱导方式，只留下达到学会标准所需训练量 T 这一个变量。",
+            "第 2 步：同一任务下分别测出学会隐写传信与学会隐写推理的 T，取比值 R 等于两者相除。",
+            "第 3 步：摘要报告在监督微调下 R 至少为 2，即隐写推理至少要多花一倍训练量。",
+            "第 4 步：若某模型-任务组合下隐写推理始终达不到标准，就记作学不会，此时 R 无定义。"
           ],
-          "analogy": "搬家还是现场装配：先把整件家具在别处做好再运进新房（可能还要复制一件备用），不如把板材和图纸直接送进新房一次成型。",
+          "analogy": "同一本教材，背单词（传信）反复两遍就记住，写一篇藏头作文（隐写推理）要练四遍以上，有的学生怎么练都写不出。",
           "pitfalls": [
-            "以为 emplace_back 一定更快：已有现成对象时与 push_back 等价。",
-            "忘记它收的是构造参数，参数类型不匹配时会静默选中别的构造函数。",
-            "以为 emplace_back 能免掉扩容时对已有元素的搬移。"
+            "把两倍训练量当成普适常数：这是论文在特定设置下的下界口径。",
+            "把学不会解释成模型绝对没有该能力：只是该诱导方式与训练预算下没有显现。",
+            "用任务准确率代替学会的判定阈值，导致 R 不可比。"
           ],
-          "code": "template <class... Args>\nvoid emplace_back(Args&&... args) {\n    if (size_ == cap_) grow();\n    ::new (static_cast<void*>(data_ + size_))\n        T(std::forward<Args>(args)...);\n    ++size_;\n}",
+          "code": "def cost_ratio(steps_messaging, steps_reasoning, threshold=0.9):\n    # steps_*: 达到 threshold 成功率所需训练步数；None 表示未学会\n    if steps_reasoning is None:\n        return None                     # 学不会，比值无定义\n    return steps_reasoning / max(steps_messaging, 1)\n\nratio = cost_ratio(1000, 2500)\nprint(ratio, ratio >= 2)               # 2.5 True",
           "sources": [
             {
-              "title": "push_back 与 emplace_back 的区别",
-              "url": "https://notes.kamacoder.com/cpp/pushback-vs-emplaceback.html"
+              "title": "Learning Steganography Is Easy, Learning Steganographic Reasoning Is Hard",
+              "url": "https://arxiv.org/abs/2609.39838v1"
             }
           ]
         },
         {
-          "id": "f-push-back-vs-emplace-cost",
-          "name": "两种插入的构造次数对比（Construction Count Comparison）",
-          "category": "engineering",
-          "latex": "\\texttt{push\\_back}(T(v)):\\; C_T + M_T + D_T \\qquad\\text{vs}\\qquad \\texttt{emplace\\_back}(a):\\; C_T",
+          "id": "f-monitor-constrained-steganography",
+          "name": "监控约束下的隐写目标（Monitor-Constrained Steganography）",
+          "category": "posttraining",
+          "latex": "\\max_{\\theta}\\ \\mathbb{E}_{x\\sim\\mathcal{D}}\\big[\\,r\\big(x,\\pi_{\\theta}(x)\\big)\\,\\big] \\quad \\text{s.t.} \\quad \\mathrm{Pr}\\big[\\mathcal{M}\\big(\\pi_{\\theta}(x)\\big)=1\\big] \\le \\epsilon",
           "symbols": [
             [
-              "C_T",
-              "构造一次元素 T 的开销"
+              "\\theta",
+              "策略模型参数"
             ],
             [
-              "M_T",
-              "把元素移动进容器内存的开销"
+              "r(x,y)",
+              "任务奖励，衡量回答是否正确"
             ],
             [
-              "D_T",
-              "析构临时对象的开销"
+              "\\mathcal{M}(y)",
+              "思维链监控器，输出 1 表示判定为可疑"
             ],
             [
-              "a",
-              "直接交给构造函数的参数列表"
+              "\\epsilon",
+              "允许被监控器识破的概率上限"
             ]
           ],
           "derivation": [
-            "第 1 步：push_back(MyClass(\"hello\",42)) 先构造临时对象，付出 C_T。",
-            "第 2 步：把临时对象移动构造进容器内存，付出 M_T。",
-            "第 3 步：语句结束析构临时对象，付出 D_T。",
-            "第 4 步：emplace_back(\"hello\",42) 直接在容器内存上构造，只剩 C_T，省掉 M_T 与 D_T。"
+            "第 1 步：先写普通后训练目标，最大化任务奖励的期望。",
+            "第 2 步：监控设定要求输出经得起检查，于是加一条被识破概率不超过 epsilon 的约束。",
+            "第 3 步：把约束拉格朗日化，得到最大化奖励减去监控强度的惩罚项，lambda 衡量监控强弱。",
+            "第 4 步：当掩护任务本身就便于承载隐藏信息时，满足约束的策略更容易被优化出来，这解释了论文里掩护任务便利时三种诱导方式都能学会的现象。"
           ],
-          "analogy": "点外卖和自己下厨：前者先在别处做好一份再端过来，路上还有损耗；后者直接在餐桌上做，成品只出现一次。",
+          "analogy": "像在监考老师眼皮底下传答案：既要答对题（任务奖励），又不能做出让老师起疑的动作（监控约束）；如果试卷本身就是填空题，夹带信息就容易得多。",
           "pitfalls": [
-            "把'省一次移动'说成'省一次拷贝'：右值入参本来就是移动。",
-            "忽略编译器可能省略部分临时对象构造，实测差异未必等于账面三分项。",
-            "不先 reserve：扩容搬移的开销往往远大于这一次构造差异。"
+            "把它当成信息论意义上的隐写容量公式：摘要只给行为层面的是否学会，没有互信息度量。",
+            "以为监控约束一定迫使模型放弃推理：编码推理不隐藏内容，仍可以学会。",
+            "忽略 epsilon 与 lambda 都是人为设定，结论会随监控器强弱变化。"
           ],
-          "code": "struct T { T(const char*, int); T(T&&) noexcept; ~T(); };\nstd::vector<T> v;\nv.reserve(2);\nv.push_back(T(\"hello\", 42)); // 构造 + 移动 + 析构\nv.emplace_back(\"hello\", 42);  // 只构造一次",
+          "code": "import torch\n\ndef steg_objective(logp_task, monitor_prob, lam=1.0):\n    # logp_task: 任务对数似然；monitor_prob: 监控器判可疑的概率\n    task = logp_task.mean()\n    risk = monitor_prob.mean()\n    return -(task - lam * risk)   # 最大化 task、压低 risk\n\n# 监控越强（lam 越大），模型越倾向把推理藏进正常文本\nloss = steg_objective(torch.tensor([-0.3, -0.5]), torch.tensor([0.05, 0.2]))",
           "sources": [
             {
-              "title": "push_back 与 emplace_back 的区别",
-              "url": "https://notes.kamacoder.com/cpp/pushback-vs-emplaceback.html"
+              "title": "Learning Steganography Is Easy, Learning Steganographic Reasoning Is Hard",
+              "url": "https://arxiv.org/abs/2609.39838v1"
             }
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "push_back 接受已构造好的对象（左值或右值），通过拷贝或移动放入容器。",
-          "emplace_back 接受构造函数的参数，通过完美转发在容器尾部内存上原地构造。",
-          "push_back(MyClass(\"hello\",42)) 会发生构造临时对象、移动构造到容器内存、析构临时对象三步。",
-          "emplace_back(\"hello\",42) 只发生一次构造，没有临时对象、没有拷贝或移动。"
+          "论文把思维链监控视为 AI 监督与控制的手段，并指出它受到隐写推理的威胁。",
+          "论文比较了强化学习、上下文学习与监督微调三种诱导方式。",
+          "多数任务上隐写推理只在监督微调下被学会。",
+          "隐写传信与编码推理在三种诱导方式下都能被学会。",
+          "即使使用监督微调，隐写推理也至少需要两倍于传信的训练量。",
+          "在便于隐藏信息的掩护任务上，三种诱导方式都能学会隐写推理的简易版本。"
         ],
         "uncertain": [
-          "摘要正文在'扩容时 emplace_back 还能省拷贝吗'处被截断，扩容场景的结论需要回原文核实。",
-          "摘要未给出性能实测数据，构造次数差异是按机制推导的账面结论。"
+          "摘要没有给出具体任务集、模型规模与学会的判定阈值，两倍训练量的可比性需回原文核实。",
+          "至少两倍是下界口径还是平均口径，摘要未说明。",
+          "两个公式均为按摘要重建的通用形式，需核对原文是否有对应式子。"
         ]
       },
       "teaching": {
         "progressive": [
           {
             "level": "一句话",
-            "text": "push_back 是做好搬进去，emplace_back 是直接在容器里做出来。"
+            "text": "同一个模型，学会藏信息容易，学会把推理藏起来很难。"
           },
           {
             "level": "入门",
-            "text": "push_back 只接受已经构造好的对象，容器外先有临时对象，再拷贝或移动进内存；emplace_back 接受构造函数的参数，用完美转发把参数原样交给元素类型，直接在容器尾部内存上原地构造，省掉临时对象和一次移动与析构。"
+            "text": "论文比较三种能力：传信（藏一条消息）、编码推理（格式看不懂但不隐藏）、隐写推理（把推理藏进无害文本）。用强化学习、上下文学习和监督微调去诱导，多数任务只有监督微调能学会隐写推理，而传信与编码推理三种方式都能学会。"
           },
           {
             "level": "进阶",
-            "text": "关键差异是'在哪构造'和'怎么传参'。push_back 的两个重载按值类别选拷贝或移动，调用 vec.push_back(MyClass(\"hello\",42)) 会先构造临时对象、再移动进容器、最后析构临时对象；emplace_back 是变参模板，用 std::forward 保留实参值类别，配合 placement new 原地构造，全过程只构造一次。代价是它收的是参数而非对象，传参错误可能选到意料之外的构造函数。"
+            "text": "关键在于把能力与训练压力分开：强化学习靠奖励试探，上下文学习靠提示示例，监督微调靠密集示范。传信只需建立一条编码通道，编码推理只要换一种表达格式，都容易被三种压力带出来；隐写推理却要求推理痕迹与正常文本纠缠且不触发监控，缺少示范时很难自发出现，因此即使监督微调也要至少两倍训练量，部分模型-任务组合干脆学不会。"
           },
           {
             "level": "专家",
-            "text": "从接口语义看，push_back 表达'我已有对象'，emplace_back 表达'就地替我造'。已有对象时两者代价相同，emplace_back 还多一层转发，push_back 更直接；只有构造依赖多参数、且显式构造会产生明显临时对象开销时 emplace_back 才占优。它还能绕过隐式转换限制直接调用显式构造函数，这是隐性优势。无论哪种，扩容时既有元素都按移动或拷贝搬移，移动构造标了 noexcept 才能保证扩容走移动，所以说 emplace_back 能省扩容拷贝是常见误读。"
+            "text": "与隐写必然随能力涌现的直觉相反，论文给出分层结论：难度顺序是隐写推理最难，且学会传信与编码推理不蕴含学会隐写推理。方法上把诱导方式当自变量、把是否学会与所需训练量当因变量，避免了只测单一管线的偏差。边界在掩护任务的便利性：一旦载体本身适合藏信息（如填空式任务），三种方式都能学会简易版，说明难来自能力与载体的匹配，而不是不可学习的天花板。"
           }
         ],
         "socratic": [
           {
-            "q": "如果 vector 里存的是已经构造好的对象，用 emplace_back 还有意义吗？",
-            "a": "基本没有。参数本身就是 T 时，两者走同样的构造或移动，emplace_back 还多一层转发，语义反而更绕，直接用 push_back 更清楚。"
+            "q": "如果监督微调都能学会隐写推理，为什么还说它难？",
+            "a": "难是相对传信与编码推理：同一任务下它至少要多两倍训练量，而且在若干模型-任务组合下无论怎么训都学不会。"
           },
           {
-            "q": "如果去掉 std::forward，直接写 T(args...)，会怎样？",
-            "a": "args 作为具名变量都是左值，右值实参会退化成拷贝，完美转发失效，emplace_back 省掉临时对象的核心优势就没了。"
+            "q": "为什么学会隐写传信不代表会隐写推理？",
+            "a": "传信只需建立输入到隐藏消息的映射；隐写推理还要在完成任务的同时把多步推理压进看似正常的内容里，约束强得多。"
           }
         ],
-        "mechanism": "设计动机是消除'先在外面造、再搬进去'的冗余。容器已经持有尾部内存，最省的做法是让元素构造函数直接在这块内存上跑；但容器不知道元素需要哪些参数，于是用变参模板 Args&&... 接收任意参数，再用 std::forward 把每个实参的原始值类别还原，保证右值仍按右值传下去，最后由 placement new 在指定地址上完成构造，使分配与构造一次完成。",
-        "boundary": "元素类型没有匹配构造函数、或参数需要两步隐式转换时，emplace_back 可能编译失败或选错重载；已有现成对象、以及 C++20 之前的聚合初始化场景它并不占优。它也不改变扩容时既有元素的搬移成本。",
-        "analogyBoundary": "'现场装修'的类比在已有成品时失效：手上已经有一件做好的家具，硬要拆成参数让容器重造一个反而更亏，此时直接搬（push_back）才是对的选择。",
+        "mechanism": "监控思维链的前提是看得懂，所以威胁在于模型能不能在保持可读性的同时把推理塞进去。传信与编码推理都能在强化学习奖励或上下文提示下出现，因为它们不需要同时满足可读与完成推理两个条件；隐写推理需要可读文本与推理过程对齐，只有密集示范提供了这种对齐信号，因此它更晚出现、代价更高。",
+        "boundary": "结论受载体影响：掩护任务本身便于夹带信息时，三种诱导方式都能学会简易版。因此隐写推理很难不是能力的绝对属性，而是特定任务与预算下的经验规律；换更强的模型、更多监督微调数据或更弱的监控器，结论可能改变。",
+        "analogyBoundary": "学生作弊的类比把监控当成外部监考，而这里的监控器与策略同源、同样受优化压力影响；类比还假定有唯一正确答案，隐写推理只要求输出看起来无害，两者并不对应。",
         "misconceptions": [
-          "只说 emplace_back 更高效，说不清省的是临时对象构造加一次移动与析构。",
-          "以为 emplace_back 能避免 vector 扩容时的元素搬移。",
-          "忽略 emplace_back 传参可能选中非预期构造函数，造成语义偏差。"
+          "以为隐写推理会随模型能力自然涌现，因此监控思维链没有必要。",
+          "把隐写传信、编码推理、隐写推理当成同一件事。",
+          "以为在监督微调下学会了就一定泛化到强化学习或上下文学习。"
         ],
-        "ownAnalysis": "这道题真正考的是 C++11 完美转发与容器内存模型，而不是性能数字。可迁移判断（推断）：插入现成对象时 push_back 意图更清晰、优化也交给编译器；只有构造参数较多、临时对象确实昂贵时 emplace_back 才有实打实的收益。摘要关于扩容场景的结论被截断，需回原文核实。",
+        "ownAnalysis": "把三种能力拆开比较很有工程价值：监控思维链成本很高，如果威胁主要来自需要监督微调才能学会的隐写推理，真实管线里的风险排序就与直觉不同。可疑处（推断）：摘要用学会与学不会做二值判定，缺少对部分学会（成功率介于随机与达标之间）的刻画，可能把未达标高估成能力缺失。掩护任务便利性的结论也提示：评测集设计本身会决定结论方向。",
         "officialNotes": [
           {
-            "position": "push_back 接受已构造对象（左值走拷贝、右值走移动）；emplace_back 接受构造参数，通过完美转发在容器内存上原地构造，只有一次构造。",
-            "source": "kamacoder_notes（原文摘要）"
+            "position": "隐写推理比隐写传信与编码推理难学得多：多数任务只在监督微调下学会，且至少需要两倍训练量；但掩护任务便利时三种诱导方式都能学会其简易版。",
+            "source": "https://arxiv.org/abs/2609.39838v1"
           }
         ],
-        "interviewAnswer": "两者差在'在哪构造'。push_back 收的是完整对象，容器外先构造，再拷贝或移动进来；emplace_back 是变参模板，用 std::forward 完美转发参数，配合 placement new 直接在尾部内存上构造，所以省掉一个临时对象和一次移动加析构。但要注意两点：已经有现成对象时两者等价，push_back 反而更直观；扩容时既有元素照样要搬，emplace_back 并不豁免，移动构造标 noexcept 才是关键。",
+        "interviewAnswer": "这篇论文比较三种相邻能力：隐写传信、编码推理和隐写推理，在强化学习、上下文学习和监督微调三种诱导方式下谁更容易学会。结论是隐写推理明显更难：多数任务只有监督微调能学会，训练量至少是传信的两倍，个别模型-任务组合完全学不会；但一旦掩护任务本身适合藏信息，三种方式都能学会简易版。工程含义是监控思维链的真正威胁不来自容易涌现的传信，而来自需要密集示范的隐写推理，风险要根据训练管线里监督微调的比重来排序。",
         "studyPath": {
           "prerequisites": [
-            "C++ 模板与可变参数模板",
-            "左值与右值、值类别",
-            "vector 的内存布局与扩容"
+            "Chain-of-Thought 与监控的基本设定",
+            "监督微调、强化学习与上下文学习的差别",
+            "信息隐藏与编码的基本概念"
           ],
           "nextSteps": [
-            "手写一个简化 vector 并对比两种插入",
-            "研究 noexcept 与 vector 扩容的强异常安全保证",
-            "继续看移动语义与完美转发如何配合"
+            "读隐写推理的原始威胁模型设定",
+            "设计小规模监督微调与强化学习对照实验复现难度差",
+            "了解 AI control 评测中的监控器与规避设定"
           ]
         }
       }
     },
     {
-      "id": "30480cd0e3a058a6",
-      "tldr": "移动语义用右值引用识别将亡对象，移动构造接管指针，把深拷贝变 O(1)；std::move 只是类型转换，不移动数据。",
+      "id": "5b906eb7f347d41b",
+      "tldr": "用单个去噪得分网络在冻结世界模型的隐空间里检测、定位并修正幻觉。",
       "keyPoints": [
-        "移动语义让对象搬家而非克隆，代价从 O(n) 降到 O(1)",
-        "右值引用 T&& 只能绑定右值（临时对象、将亡值）",
-        "移动构造拿过源指针并把源指针置空，只是两次指针赋值",
-        "std::move(x) 等价 static_cast<T&&>(x)，本身不移动数据",
-        "移动赋值比移动构造多一步释放自身旧资源"
+        "世界模型会预测出解码后从未发生的隐状态",
+        "错误统计上普通又被自回归反馈，静默且累积",
+        "MEND 用真实转移上的去噪得分匹配训练得分网络",
+        "得分模长检测、逐 token 场定位、得分方向修正",
+        "AUROC 最高 0.80，逐 token 定位 AUPRC 最高 0.87"
       ],
-      "why": "C++ 八股与现代 C++ 工程的基础，直接影响容器、智能指针与资源类的性能理解，面试必问。",
-      "difficulty": "medium",
+      "why": "世界模型鲁棒性是落地关键；无标签地在隐空间做幻觉检测与修正，是后训练与评测岗的实用技能。",
+      "difficulty": "hard",
       "tags": [
-        "cpp",
-        "cpp11",
-        "move-semantics",
-        "rvalue-reference",
-        "perfect-forwarding"
+        "worldmodel",
+        "hallucination",
+        "score-matching",
+        "anomaly-detection",
+        "latent-dynamics"
       ],
       "entities": [
-        "std::move",
-        "std::forward",
-        "T&&",
-        "vector",
-        "string"
+        "MEND",
+        "Masked Empirical-Bayes Neural Denoising",
+        "denoising score matching",
+        "conditional score network",
+        "AUROC",
+        "AUPRC"
       ],
       "diagram": {
-        "kind": "flow",
-        "title": "移动语义的接管路径",
-        "caption": "右值引用让编译器认出将亡对象，移动构造用两次指针赋值完成资源接管。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='右值引用识别将亡对象，移动构造接管指针并把源指针置空'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>临时对象 / 将亡值</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>右值</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>T&amp;&amp; 右值引用绑定</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>可以偷资源</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>移动构造接管指针</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>两次赋值 O(1)</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>源指针置 nullptr</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>可安全析构</text></svg>",
-        "alt": "竖排流程：临时对象等右值被 T&& 绑定，编译器允许偷资源，移动构造接管指针，源对象指针被置空以便安全析构。"
+        "kind": "architecture",
+        "title": "一个得分场的三种用途",
+        "caption": "同一个条件得分场既当检测器、又当定位图、还当修正方向。",
+        "svg": "<svg viewBox='0 0 480 270' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='MEND 用单个条件得分网络同时做幻觉检测、定位与修正'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>冻结世界模型</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>状态加动作到下一隐状态</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>真实转移样本</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>只在这里做去噪得分匹配</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>得分模长到检测</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>AUROC 最高 0.80</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>逐 token 场到定位</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>AUPRC 最高 0.87</text><line x1='240' y1='216' x2='240' y2='224' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,232 236,224 244,224' fill='var(--line-1)'/><rect x='56' y='232' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='256' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>得分方向到修正</text><text x='408' y='256' font-size='13' text-anchor='end' fill='currentColor'>降低单步隐误差</text></svg>",
+        "alt": "架构流程：冻结世界模型给出状态与动作，MEND 条件得分网络在真实转移上去噪得分匹配训练；得分模长用于检测幻觉，逐 token 场用于定位图像 patch，得分方向用于推理时修正。"
       },
       "concepts": [
         {
-          "name": "Move Semantics（移动语义）",
-          "readable": "当源对象马上就要销毁时，不必把它的资源复制一份，而是直接把内部指针交给新对象，让源对象变空。深拷贝的 O(n) 因此变成 O(1)。",
-          "analogy": "换办公室时，与其把整柜文件逐页复印到新柜子，不如把柜子连同钥匙一起推过去，旧工位留个空柜。文件越多，省下的时间越多。",
-          "analogyBreaksDown": "现实中推走柜子后旧工位明显空了；而 C++ 标准只保证被移动对象处于'有效但未指定'状态，允许实现把它清空也可以重置成别的样子，所以不能假定移动后一定为空。",
-          "mechanism": "用 T&& 只在类型层面标出'源对象将亡'，让重载决议把拷贝构造换成移动构造；移动构造做两件事——复制源对象的内部指针到自身、把源指针置空。置空这一步是正确性要求，避免两个对象析构同一块内存，而不只是性能技巧。",
-          "visual": "画两个方框代表源对象与目标对象，各带一个指向堆内存的箭头；拷贝时画出堆里两份相同的矩形，移动时只把箭头弯向同一块矩形，并把源箭头擦掉。",
+          "name": "Latent Hallucination（隐空间幻觉）",
+          "readable": "世界模型给出的下一时刻隐状态在数值上很普通，解码出来却是从未发生过的画面；因为预测被自回归地喂回，错误不会被立刻发现，还会不断累积。",
+          "analogy": "导航软件在熟悉的路口凭习惯提前拐弯，画面一切正常，你开出去两公里才发现走错了。",
+          "analogyBreaksDown": "导航错了你有真实道路可对照，而这里没有真值误差标签：只能靠数据分布本身判断这个隐状态像不像真实状态，所以检测器学的是分布外程度，不是与真值的距离。",
+          "mechanism": "关键设计是只在真实转移上训练一个条件得分网络，用去噪得分匹配逼近数据分布的得分场；正常状态得分小、异常状态得分大，于是不需要误差标签就能把幻觉变成可测量的异常。",
+          "visual": "横轴为隐状态的两个主成分，画出真实状态的高密度云团；正常预测落在云团内（冷色），幻觉落在云团外（暖色），箭头表示得分方向指向云团中心。",
           "prerequisites": [
-            "左值右值与值类别",
-            "拷贝构造、拷贝赋值与析构函数",
-            "RAII 与堆资源所有权"
+            "自监督世界模型的隐空间动力学",
+            "扩散模型与得分匹配基础",
+            "异常检测的 AUROC 与 AUPRC 口径"
           ],
           "selfTest": [
-            "移动构造函数最少要做哪两件事，为什么第二步不能省？",
-            "为什么把 const 对象 std::move 之后通常还是拷贝？",
-            "为什么 vector 扩容更愿意搬移 noexcept 的元素类型？"
+            "为什么不能直接用预测误差当检测信号？",
+            "为什么这个错误既静默又会累积？",
+            "得分模长衡量的是偏差大小还是偏离流形的程度？"
           ],
-          "formula": "\\text{copy}: O(n) \\quad\\longrightarrow\\quad \\text{move}: O(1) = \\text{ptr}_a \\leftarrow \\text{ptr}_b,\\; \\text{ptr}_b \\leftarrow \\texttt{nullptr}"
+          "formula": "\\hat{z}_{t+1}=f_{\\theta}(z_t,a_t),\\qquad \\text{decode}(\\hat{z}_{t+1})\\ \\text{从未发生}"
         },
         {
-          "name": "Rvalue Reference（右值引用）",
-          "readable": "T&& 是一种只能绑定到右值（临时对象、将亡值）的引用类型。它存在的唯一目的，是让编译器在类型层面区分'这个对象还能用'和'这个对象马上要死'。",
-          "analogy": "仓库里的箱子有的贴着'待归还'，有的贴着'待销毁'；搬运工只对后一种可以直接拆开取货，前一种必须原样另存一份。",
-          "analogyBreaksDown": "标签是贴在真实箱子上的，而 T&& 只是编译期的类型信息，运行期没有任何标记位；同一个对象只要被 static_cast 成 T&&，编译器就认为它可以被搬走，哪怕它实际上还会被继续使用。",
-          "mechanism": "拷贝构造与移动构造签名几乎相同，只有参数值类别不同；引入 T&& 后重载决议才能把'右值实参'路由到移动版本。配合引用折叠规则，模板中的 T&& 还能同时接受左值和右值，成为完美转发的基础。",
-          "visual": "画一个坐标系式对照表：两列分别写 T& 与 T&&，三行写左值、右值、const 左值，能绑定的打勾；可见 T&& 只对右值那一行打勾。",
+          "name": "Denoising Score Matching（去噪得分匹配）",
+          "readable": "给真实样本加噪，再训练网络指出从噪声版本往哪个方向走能回到干净样本；这个方向就是数据分布对数密度的梯度，也就是得分。",
+          "analogy": "在雾天看清路牌：训练时故意把路牌拍模糊，让模型学会指出往哪个方向调焦最清楚；调焦方向其实是从模糊到清晰的梯度。",
+          "analogyBreaksDown": "调焦是真实的物理操作且总有唯一清晰解，而得分场只是分布密度的梯度，高维下无法直接积分回密度，多峰分布里方向也依赖当前位置。",
+          "mechanism": "直接学对数密度的梯度需要归一化常数，去噪得分匹配把它转成可采样的回归目标：用已知加噪核的梯度做监督，从而绕开配分函数，让得分网络能在真实转移样本上闭式训练。",
+          "visual": "画一条从干净点出发的加噪轨迹，网络在噪声点上输出一个箭头，箭头与指向干净点的梯度方向对比，损失就是两者之差的平方。",
           "prerequisites": [
-            "引用与 const 引用",
-            "函数重载决议",
-            "值类别（左值、纯右值、将亡值）"
+            "最大似然与配分函数",
+            "扩散模型的前向加噪过程",
+            "条件概率与对数密度梯度"
           ],
           "selfTest": [
-            "T&& 能否绑定到一个具名变量？为什么？",
-            "函数参数写成 T&&（T 是模板参数）与写成具体类型 Foo&& 有什么区别？",
-            "std::move 之后对象的静态类型变成了什么？"
+            "为什么去噪得分匹配不需要配分函数？",
+            "加噪核 q 的选择如何影响这个目标？",
+            "条件得分网络里的条件是什么？"
           ],
-          "formula": "T\\&\\& \\;\\text{仅绑定右值}; \\qquad \\texttt{std::move}(x) = \\texttt{static\\_cast<}T\\&\\&\\texttt{>}(x)"
+          "formula": "\\mathcal{L}(\\theta)=\\mathbb{E}_{z,\\tilde z}\\big\\|s_{\\theta}(\\tilde z)-\\nabla_{\\tilde z}\\log q(\\tilde z\\mid z)\\big\\|_2^2"
         }
       ],
       "formulas": [
         {
-          "id": "f-std-move-static-cast",
-          "name": "std::move 的类型转换本质（std::move as a Cast）",
-          "category": "engineering",
-          "latex": "\\texttt{std::move}(x) \\;\\equiv\\; \\texttt{static\\_cast<}\\texttt{std::remove\\_reference\\_t<decltype(}x\\texttt{)>}\\&\\&\\texttt{>}(x)",
+          "id": "f-latent-denoising-score-matching",
+          "name": "隐空间条件去噪得分匹配（Latent Denoising Score Matching）",
+          "category": "worldmodel",
+          "latex": "\\min_{\\theta}\\ \\mathbb{E}_{z\\sim p_{\\text{data}},\\ \\tilde z\\sim q(\\tilde z\\mid z)}\\Big\\|\\,s_{\\theta}(\\tilde z)-\\nabla_{\\tilde z}\\log q(\\tilde z\\mid z)\\,\\Big\\|_2^2",
           "symbols": [
             [
-              "x",
-              "任意左值或右值表达式"
+              "z",
+              "真实转移上的隐状态样本"
             ],
             [
-              "remove_reference_t<decltype(x)>",
-              "去掉引用后 x 的类型 T"
+              "\\tilde z",
+              "加噪后的隐状态，服从 q(\\tilde z\\mid z)"
             ],
             [
-              "static_cast<T&&>",
-              "把静态类型转成右值引用（编译期行为）"
+              "q(\\tilde z\\mid z)",
+              "人为选定的加噪核，通常为高斯"
             ],
             [
-              "std::move(x)",
-              "结果是一个将亡值，用于触发移动重载"
+              "s_{\\theta}(\\tilde z)",
+              "待学的得分网络，估计数据分布得分"
             ]
           ],
           "derivation": [
-            "第 1 步：移动语义需要编译器知道'源对象将亡'，这条信息只能由类型 T&& 携带。",
-            "第 2 步：具名变量永远是左值，直接把 x 传下去只会匹配拷贝重载。",
-            "第 3 步：std::move 把 x 的静态类型转成 T&&，重载决议才会选中移动构造或移动赋值。",
-            "第 4 步：转换只发生在编译期，所以 std::move 自身零运行时开销，也不保证一定发生移动。"
+            "第 1 步：想把异常隐状态变成可测量量，最自然的是对数密度，但它的梯度含未知配分函数。",
+            "第 2 步：对加噪样本应用 Tweedie 等式，可把干净分布得分与加噪核梯度联系起来。",
+            "第 3 步：于是把不可解的目标换成可采样的回归损失，用已知加噪核的梯度当标签。",
+            "第 4 步：网络训练好后其输出近似对数密度的梯度，模长与方向即可用作检测、定位与修正信号。"
           ],
-          "analogy": "像给行李贴上'可拆可弃'的标签：贴标签这个动作不搬行李，只是让搬运工知道这份可以拆着搬；最终是搬是抄，还得看有没有可用的移动通道。",
+          "analogy": "像教一个人认路：不直接告诉他每条路的名字，而是让他练习从雾里往哪边调焦才最清楚，练熟后他自然知道哪里偏离了正常路况。",
           "pitfalls": [
-            "说 std::move 会移动数据或有运行时开销，它只是 static_cast。",
-            "对 const 对象用 std::move：const T&& 匹配不上 T&&，结果退化成拷贝。",
-            "以为写了 std::move 就一定调用移动构造，类型没有移动构造时仍然拷贝。"
+            "以为得分是概率值：它是对数密度的梯度，量纲随尺度变化，需要归一化才能跨任务比较。",
+            "忽略加噪尺度的影响：太小得分噪声大，太大则对细微异常不敏感。",
+            "把得分模长当作概率密度：密度高对应得分小，但两者不是同一个量。"
           ],
-          "code": "template <class T>\nconstexpr std::remove_reference_t<T>&& move(T&& t) noexcept {\n    return static_cast<std::remove_reference_t<T>&&>(t);\n}\n// auto v2 = std::move(v1); 之后 v1 有效但内容未指定",
+          "code": "import torch\n\ndef dsm_loss(score_net, z, sigma=0.1):\n    noise = torch.randn_like(z) * sigma      # 采样加噪噪声\n    z_tilde = z + noise                      # 得到加噪样本\n    target = -noise / (sigma ** 2)           # 高斯核对数密度的梯度\n    pred = score_net(z_tilde)\n    return ((pred - target) ** 2).mean()\n\n# 训练后 score_net(z) 近似真实数据分布的对数密度梯度\nloss = dsm_loss(net, torch.randn(64, 32))",
           "sources": [
             {
-              "title": "移动语义有什么作用，原理是什么",
-              "url": "https://notes.kamacoder.com/cpp/move-semantics.html"
+              "title": "MEND: Label-Free Detection, Localisation, and Correction of Latent Hallucination in World Models",
+              "url": "https://arxiv.org/abs/2609.39182v1"
             }
           ]
         },
         {
-          "id": "f-move-vs-copy-complexity",
-          "name": "深拷贝与指针接管的复杂度对比（Copy vs Move Complexity）",
-          "category": "engineering",
-          "latex": "\\text{copy}: O(n) = \\text{alloc} + \\sum_{i=1}^{n} \\text{copy}(e_i) + \\text{free} \\qquad\\text{move}: O(1) = \\text{ptr}_a \\leftarrow \\text{ptr}_b,\\; \\text{ptr}_b \\leftarrow \\texttt{nullptr}",
+          "id": "f-score-field-hallucination-correction",
+          "name": "得分场修正方向（Score-Field Correction Step）",
+          "category": "worldmodel",
+          "latex": "z' = z + \\eta\\, s_{\\theta}(z),\\qquad z\\ \\text{为被判定异常的隐状态}",
+          "symbols": [
+            [
+              "z",
+              "被检测器判定为幻觉的隐状态"
+            ],
+            [
+              "s_{\\theta}(z)",
+              "训练好的条件得分网络输出"
+            ],
+            [
+              "\\eta",
+              "步长，控制修正幅度"
+            ],
+            [
+              "z'",
+              "修正后的隐状态，重新送入世界模型"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：得分指向对数密度上升最快的方向，因此沿得分走一步能提高样本在真实数据分布下的密度。",
+            "第 2 步：把异常隐状态按该方向平移一步，作为推理时的修正，不更新任何参数。",
+            "第 3 步：论文用这一步降低单步隐误差并改善后续预测。",
+            "第 4 步：摘要指出部分误差与数据流形相切，而切向分量不改变密度，沿得分修正对它无效，所以论文把重点放在检测与定位。"
+          ],
+          "analogy": "雾天调焦：沿着最清晰的方向微调一次就清楚一些；但如果照片本身拍错了内容，调焦再准也没用。",
+          "pitfalls": [
+            "以为沿得分走一步就能消除幻觉：与数据流形相切的误差分量无法被密度梯度修正。",
+            "把步长设得过大：一步跨出数据支撑区会制造新的分布外状态。",
+            "把单步隐误差下降当成闭环长期可控，摘要并未给出长期证据。"
+          ],
+          "code": "import torch\n\ndef correct(z, score_net, eta=0.05, steps=1):\n    z_cur = z.clone()\n    for _ in range(steps):\n        z_cur = z_cur + eta * score_net(z_cur)\n    return z_cur\n\n# 论文口径：修正可靠降低单步隐误差，但部分误差与流形相切\nz_fixed = correct(z_bad, score_net, eta=0.05, steps=2)",
+          "sources": [
+            {
+              "title": "MEND: Label-Free Detection, Localisation, and Correction of Latent Hallucination in World Models",
+              "url": "https://arxiv.org/abs/2609.39182v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "论文指出世界模型存在隐空间幻觉：给定状态与动作，预测的下一隐状态可能解码出从未发生的场景。",
+          "该错误统计上普通且被自回归反馈，因此既静默又累积。",
+          "MEND 是一个在真实转移上用去噪得分匹配训练的条件得分网络。",
+          "得分模长用于检测幻觉，AUROC 最高 0.80，且不使用动作。",
+          "逐 token 得分场用于定位错误，AUPRC 最高 0.87。",
+          "得分场同时给出推理时的修正方向，能降低单步隐误差，但部分误差与数据流形相切。"
+        ],
+        "uncertain": [
+          "摘要只给出 AUROC 与 AUPRC 的上界，未说明两个导航环境各自的数值与评测细节。",
+          "检测是否需要阈值标定、不使用动作的具体含义需回原文核实。",
+          "去噪得分匹配与修正步公式为按摘要重建的通用形式，需核对原文。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "世界模型会悄悄编出没发生过的画面，用一个得分网络就能发现并拉回来。"
+          },
+          {
+            "level": "入门",
+            "text": "论文指出隐空间世界模型会幻觉：预测的下一隐状态解码出来是从未发生的场景，且被自回归喂回，错误静默累积。作者训练一个条件得分网络 MEND，在真实转移上做去噪得分匹配，用得分模长判异常、逐 token 场定位 patch、得分方向做修正。"
+          },
+          {
+            "level": "进阶",
+            "text": "把幻觉检测做成分布外问题是关键：没有真值误差标签，只能学真实数据分布的得分场。得分模长度量样本偏离流形的程度，因此天然是无监督检测器；逐 token 得分保留空间结构，所以能定位到具体 patch；得分方向指向密度上升方向，可当修正的一步。代价是得分只对法向偏离敏感，与流形相切的误差无法靠它消除，所以论文强调检测与定位有把握、修正只算有前景。"
+          },
+          {
+            "level": "专家",
+            "text": "与单高斯密度基线相比，学出来的得分场 AUROC 更高（最高 0.80），并且同时给出定位（AUPRC 最高 0.87）与修正方向，说明一个网络可以覆盖三种用途而不必各训一个模块。取舍是把复杂分布压成得分场，牺牲可归一化的密度值，换来无需配分函数与真值标签。局限是只在冻结自监督世界模型与两个导航环境上验证，修正也处理不了切向误差，长期闭环效果摘要未给。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么不能直接用预测误差来检测幻觉？",
+            "a": "推理时没有真实下一隐状态，误差根本算不出来；得分场只依赖当前隐状态在真实数据分布下的位置，所以能无标签检测。"
+          },
+          {
+            "q": "一个得分场凭什么同时做检测、定位和修正？",
+            "a": "模长给样本级异常分数，逐 token 得分给空间粒度，方向指向密度上升处；三者是同一个场在不同粒度上的读法。"
+          }
+        ],
+        "mechanism": "设计动机是把没有真值的错误检测转成估计数据分布。真实转移上的样本定义了隐空间的正常流形，去噪得分匹配绕开配分函数逼近该分布的梯度场：正常状态得分趋近于零，偏离流形的预测得分变大。因为场是逐位置的，异常定位免费获得；因为梯度有方向，修正方向也免费获得。这是用一个统计对象换取三种能力的典型取舍。",
+        "boundary": "得分只反映与数据流形的法向偏离：与流形相切的误差不会推高模长，检测与修正都会漏掉。方法依赖真实转移样本覆盖充分、加噪尺度选得合适；换到分布差异大或隐空间维度极高的世界模型，得分估计会变差。摘要只在两个导航环境与冻结模型上验证，跨域结论需谨慎。",
+        "analogyBoundary": "雾天调焦的类比暗示总能回到清晰，但高维分布多峰，得分方向只是局部上升方向，可能把样本推向另一个模式；而且没有真值图像可比，清楚只是更像训练分布。",
+        "misconceptions": [
+          "以为隐空间幻觉等价于重建误差大：摘要强调这些预测统计上很普通。",
+          "以为得分就是概率密度，可以直接当置信度用。",
+          "以为修正能解决全部误差，忽略切向分量无法被密度梯度修正。"
+        ],
+        "ownAnalysis": "把幻觉建模为流形外偏离而不是误差大小，是这篇最可迁移的 insight（推断）：它把无标签检测转成密度估计问题，代价是只能看到法向分量。可疑处（推断）：AUROC 0.80 是在不使用动作的设定下取得，说明动作信息对检测或许有增益也可能引入混淆；另外修正被降级为有前景，暗示作者自己的闭环实验没有决定性优势。",
+        "officialNotes": [
+          {
+            "position": "MEND 是单个条件得分网络，用去噪得分匹配在真实转移上训练；得分模长检测幻觉（AUROC 最高 0.80）、逐 token 场定位（AUPRC 最高 0.87）、得分方向修正，且部分误差与数据流形相切。",
+            "source": "https://arxiv.org/abs/2609.39182v1"
+          }
+        ],
+        "interviewAnswer": "隐空间世界模型的幻觉是指预测的下一隐状态解码后是没发生过的场景，因为被自回归喂回，错误静默累积。MEND 用一个条件得分网络解决：在真实转移上做去噪得分匹配，学出真实隐状态的得分场。得分模长就是异常分数，AUROC 最高 0.80，不需要误差标签也不用动作；逐 token 场做定位，AUPRC 最高 0.87；得分方向还能做推理时修正，降低单步隐误差。关键是它把无标签检测转成了分布外检测，局限是得分只对法向偏离敏感，与流形相切的误差修不掉。",
+        "studyPath": {
+          "prerequisites": [
+            "自监督世界模型与隐空间动力学",
+            "扩散模型与得分匹配基础",
+            "异常检测指标 AUROC 与 AUPRC"
+          ],
+          "nextSteps": [
+            "手写一个去噪得分匹配的小实验",
+            "复现单高斯密度基线理解差距来源",
+            "跟进隐空间世界模型的鲁棒性评测方法"
+          ]
+        }
+      }
+    },
+    {
+      "id": "4fdc664724b1ad3a",
+      "tldr": "CEM 中世界模型兼作评分器与提议机制，二者要分开评：评分误差会同时改变当下决策与后续候选。",
+      "keyPoints": [
+        "CEM 用世界模型分数选动作并拟合下轮采样分布",
+        "评分误差会同时影响当前决策与未来候选池",
+        "四类预测模型生成轨迹并互相重打分同一候选池",
+        "Walker 与 Cheetah 上各 12 个任务-种子单元",
+        "提议距离在每个单元都从首轮降到末轮"
+      ],
+      "why": "CEM/MPC 类 agent 的核心排错点：评分器与提议分布耦合，分开评估才知道该换模型还是换搜索。",
+      "difficulty": "hard",
+      "tags": [
+        "worldmodel",
+        "cem",
+        "planning",
+        "model-predictive-control",
+        "evaluation"
+      ],
+      "entities": [
+        "cross-entropy method",
+        "world model",
+        "Walker",
+        "Cheetah",
+        "Random nonlinear",
+        "elite set"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "CEM 的两个角色",
+        "caption": "世界模型既给分数又决定下一轮采样分布，误差因此会跨轮传播。",
+        "svg": "<svg viewBox='0 0 480 270' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='CEM 中世界模型同时充当评分器与提议机制，误差跨轮传播'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>采样动作序列</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>由提议分布给出候选</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>世界模型打分</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>选精英集拟合新分布</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>双角色耦合</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>评分错污染当下与下轮</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>分离评估</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>四类模型互评同一候选池</text><line x1='240' y1='216' x2='240' y2='224' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,232 236,224 244,224' fill='var(--line-1)'/><rect x='56' y='232' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='256' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>环境排序干预</text><text x='408' y='256' font-size='13' text-anchor='end' fill='currentColor'>六个加六个留出单元成本下降</text></svg>",
+        "alt": "竖排流程：动作序列采样、世界模型打分选精英集、拟合下一轮提议分布；评分误差同时污染当下决策与后续候选，用环境排序替换首轮模型更新后最终实现成本下降。"
+      },
+      "concepts": [
+        {
+          "name": "Cross-Entropy Method as Planner（CEM 规划器）",
+          "readable": "CEM 是一种无梯度规划器：每轮采样一批动作序列，用模型打分，只保留分数最高的精英，用精英重新拟合采样分布，迭代到收敛后执行最优序列的第一段。",
+          "analogy": "像选秀：先海选一批选手（采样），评委打分（模型评分），只留高分进决赛（精英集），下一轮再从决赛选手的分布里挑人（重拟合提议分布）。",
+          "analogyBreaksDown": "选秀里评委与选手来源相对独立，而 CEM 里同一个模型既当评委又决定下一轮从哪找人；评委的偏好会直接改变候选池的构成，这正是论文要拆开的两件事。",
+          "mechanism": "把分布拟合交给精英集，使搜索自动收窄到高分区，避免在低分区域浪费采样；代价是评分与提议共用同一个模型，一旦评分有系统偏差，收窄方向也会跟着偏，且偏差会跨轮累积。",
+          "visual": "横轴为动作序列第一维、纵轴为第二维，画出每轮采样的散点云与拟合椭圆；椭圆随轮次收缩并移向高分区域，用两种颜色区分候选池来自哪类模型。",
+          "prerequisites": [
+            "model-based planning 与 MPC 基本流程",
+            "基于采样的优化方法",
+            "精英集与分布拟合"
+          ],
+          "selfTest": [
+            "CEM 每轮更新的是什么？",
+            "为什么评分误差会影响下一轮的候选池？",
+            "提议分布收缩是好事还是风险？"
+          ],
+          "formula": "\\mu_{k+1}=\\sum_{i\\in\\mathcal{E}} w_i a_i,\\qquad \\Sigma_{k+1}=\\sum_{i\\in\\mathcal{E}} w_i (a_i-\\mu_{k+1})(a_i-\\mu_{k+1})^{\\top}"
+        },
+        {
+          "name": "Proposal Distribution（提议分布）",
+          "readable": "CEM 下一轮从哪里采样候选动作序列的那个分布；它由上一轮精英集拟合而来，所以评分结果会通过它影响到未来所有候选。",
+          "analogy": "像招聘时先定好去哪些学校宣讲：上一轮谁表现好，下一轮就更多去那类学校招人，候选池的构成被上一次判断悄悄锁定了。",
+          "analogyBreaksDown": "招聘可以换渠道从头再来，CEM 的提议分布是连续收缩的，早期偏差会让搜索再也看不到某些区域，这种不可逆性类比里没有对应。",
+          "mechanism": "用提议分布替代纯随机采样，是 CEM 高效的原因，也是它脆弱的原因；论文用提议距离度量它与环境排序给出的参考分布差多远，从而把评分器好不好与候选池来自哪里区分开。",
+          "visual": "画一轮迭代的两个椭圆：实线为按模型评分拟合的提议分布，虚线为按环境真实排序拟合的参考分布，两椭圆中心与宽度的差就是提议距离。",
+          "prerequisites": [
+            "高斯分布与参数拟合",
+            "重要性采样思想",
+            "CEM 迭代流程"
+          ],
+          "selfTest": [
+            "提议分布由什么拟合而来？",
+            "论文如何度量提议分布的偏移？",
+            "为什么提议收缩不等于搜索正确？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-cem-elite-refit",
+          "name": "CEM 精英集重拟合（Elite-Set Refit）",
+          "category": "worldmodel",
+          "latex": "\\mu_{k+1}=\\sum_{i\\in\\mathcal{E}} w_i\\,a_i,\\qquad \\Sigma_{k+1}=\\sum_{i\\in\\mathcal{E}} w_i\\,(a_i-\\mu_{k+1})(a_i-\\mu_{k+1})^{\\top}",
+          "symbols": [
+            [
+              "a_i",
+              "第 k 轮采样的第 i 条候选动作序列"
+            ],
+            [
+              "\\mathcal{E}",
+              "精英集，按模型分数排在前列的候选下标集合"
+            ],
+            [
+              "w_i",
+              "精英集内权重，通常均匀或按排名加权"
+            ],
+            [
+              "\\mu_{k+1},\\ \\Sigma_{k+1}",
+              "下一轮提议分布的均值与协方差"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：CEM 每轮从当前提议分布采样候选序列，交给模型打分。",
+            "第 2 步：取分数最高的精英集，用它近似高回报区域。",
+            "第 3 步：用精英样本的加权均值与协方差重拟合分布，得到下一轮参数。",
+            "第 4 步：因为精英由模型分数决定，评分误差会直接改变下一轮从哪采样，这就是提议机制角色。"
+          ],
+          "analogy": "像复习时只保留上次考得最好的几章重点，下次复习就从这几章里出题；如果上次的评分标准本身有偏，下一轮的重点也会跟着跑偏。",
+          "pitfalls": [
+            "把重拟合得到的均值当成最优动作：它只是下一轮的采样中心。",
+            "忽略协方差收缩：提议宽度变小会让搜索更快但更容易早熟收敛。",
+            "以为提议分布只由候选池来源决定，实际上评分器同样决定它。"
+          ],
+          "code": "import numpy as np\n\ndef cem_refit(pool, scores, elite_frac=0.1):\n    n_elite = max(1, int(len(pool) * elite_frac))\n    idx = np.argsort(scores)[-n_elite:]      # 精英集：分数最高的一批\n    elite = pool[idx]\n    mu = elite.mean(axis=0)\n    cov = np.cov(elite.T) + 1e-6 * np.eye(pool.shape[1])\n    return mu, cov, idx\n\nmu, cov, idx = cem_refit(pool, scores)",
+          "sources": [
+            {
+              "title": "In CEM, a World Model Is Also a Proposal Mechanism",
+              "url": "https://arxiv.org/abs/2610.00921v1"
+            }
+          ]
+        },
+        {
+          "id": "f-pairwise-ranking-agreement",
+          "name": "成对排序一致率（Pairwise Ranking Agreement）",
+          "category": "worldmodel",
+          "latex": "\\tau=\\frac{C-D}{\\frac{n(n-1)}{2}},\\qquad C=\\#\\{(i,j):\\ \\text{两排序同向}\\},\\ D=\\#\\{(i,j):\\ \\text{两排序反向}\\}",
           "symbols": [
             [
               "n",
-              "容器元素个数"
-            ],
-            [
-              "alloc / free",
-              "堆内存的分配与释放"
-            ],
-            [
-              "ptr_a",
-              "目标对象持有的内部指针"
-            ],
-            [
-              "ptr_b",
-              "源对象持有的内部指针"
-            ],
-            [
-              "e_i",
-              "第 i 个元素"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：拷贝构造必须为新对象申请等长内存，逐元素复制，再释放旧内存（如果需要），代价随 n 线性增长。",
-            "第 2 步：临时对象马上就析构，它持有的堆内存其实可以直接被新对象接管。",
-            "第 3 步：移动构造把源对象指针复制给目标对象，再把源指针置空，只做两次指针赋值。",
-            "第 4 步：移动赋值在此基础上多一步：先释放目标对象原有的旧资源，再接管源资源。"
-          ],
-          "analogy": "拷贝是把整箱书一本本复印一遍，移动是把箱子的钥匙交出去；箱子里有一百本还是一万本，交钥匙的时间都一样。",
-          "pitfalls": [
-            "以为移动构造默认 noexcept：没标时 vector 扩容为保证强异常安全会改用拷贝。",
-            "说移动后源对象一定为空：标准只保证有效但未指定状态。",
-            "忽略短字符串 SSO 等小对象场景，移动未必比拷贝快。"
-          ],
-          "code": "class Buffer {\n    int* p_ = nullptr; size_t n_ = 0;\npublic:\n    Buffer(Buffer&& o) noexcept : p_(o.p_), n_(o.n_) { o.p_ = nullptr; o.n_ = 0; }\n    Buffer& operator=(Buffer&& o) noexcept {\n        if (this != &o) { delete[] p_; p_ = o.p_; n_ = o.n_; o.p_ = nullptr; o.n_ = 0; }\n        return *this;\n    }\n};",
-          "sources": [
-            {
-              "title": "移动语义有什么作用，原理是什么",
-              "url": "https://notes.kamacoder.com/cpp/move-semantics.html"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "C++11 之前临时对象赋值给新变量必须走拷贝构造：分配新内存、逐个复制、释放临时对象。",
-          "移动语义通过右值引用 T&& 识别源对象即将销毁的场景，触发移动构造而非拷贝构造。",
-          "移动构造函数把源对象的指针拿过来，并把源对象的指针置为 nullptr。",
-          "移动赋值运算符比移动构造多一步：先释放自己的旧资源。",
-          "std::move(x) 等价于 static_cast<T&&>(x)，不移动任何数据，只是转换类型。",
-          "对管理堆内存的类（string、vector、自定义资源类），拷贝的代价是 O(n)，移动只是两次指针赋值。"
-        ],
-        "uncertain": [
-          "摘要未给出 noexcept 与 vector 扩容的关系，'未标 noexcept 时扩容改走拷贝'是按标准库惯例补充的，需核对原文是否提及。",
-          "摘要提到面试会追问'移动后的对象还能用吗'但正文被截断，标准口径（有效但未指定状态）未在摘要中明确给出。"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "移动语义让对象把资源交出去，而不是复制一份。"
-          },
-          {
-            "level": "入门",
-            "text": "C++11 之前，临时对象赋给新变量必须深拷贝：分配内存、逐个复制、释放旧内存，代价 O(n)。移动语义用右值引用 T&& 识别出'这个对象马上要死'，移动构造函数直接接管它的内部指针并把源指针置空，代价 O(1)。"
-          },
-          {
-            "level": "进阶",
-            "text": "关键是让编译期知道源对象将亡：具名变量永远是左值，所以需要 T&& 这种只绑定右值（临时对象、将亡值）的类型。移动构造做两件事——把源对象的指针拿过来，再把源指针置空，因此不分配新内存也不复制元素；移动赋值多一步释放自身旧资源。std::move 只是把左值静态转成右值引用，告诉编译器可以搬，它本身不移动任何数据，也不保证一定调用移动构造。"
-          },
-          {
-            "level": "专家",
-            "text": "移动语义把拥有堆资源的类型（string、vector、自定义 RAII 类）从 O(n) 克隆降为 O(1) 句柄转移，代价是源对象进入有效但未指定状态。边界很实际：源对象是 const 时匹配不上 T&&，退化为拷贝；类型没有移动构造、或移动构造未标 noexcept 时，vector 扩容为保证强异常安全会改用拷贝。std::move 只是类型转换，写它不会自动变快，在无可移动资源时毫无作用，甚至可能因误用而对已需要继续使用的对象下手。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "std::move 到底做了什么？它是函数还是类型转换？",
-            "a": "本质是 static_cast<T&&>(x)，只在编译期改类型，运行期没有任何动作；真正的资源转移发生在随后被选中的移动构造或移动赋值里。"
-          },
-          {
-            "q": "移动之后的源对象还能用吗？",
-            "a": "标准只保证有效但未指定：可以安全析构、可以重新赋值，但不要读它的内容，实现上通常把内部指针置空。"
-          }
-        ],
-        "mechanism": "为什么必须引入 T&&？因为'源对象将亡'是一条只能靠类型携带的编译期信息。拷贝构造与移动构造签名几乎一样，只有参数值类别不同，编译器靠 T&& 才能在重载决议里区分出可以偷资源的场合。再把源指针置空，既完成所有权转移，又保证源对象析构时不会重复释放同一块内存——这一步是正确性要求，不只是优化。",
-        "boundary": "源对象是 const 或类型没有移动构造时不会发生移动；短字符串等有 SSO 的小对象移动未必更快；函数返回值处编译器常直接做拷贝省略，移动也用不上。移动后继续读源对象属于未指定行为，不能作为可靠语义依赖。",
-        "analogyBoundary": "交钥匙的类比忽略了所有权唯一性带来的约束：交钥匙后原房子确实空了，但标准只说有效但未指定，实现完全可以把源对象重置成空而不必为空；另外如果钥匙是 const 的，搬运工根本拿不走。",
-        "misconceptions": [
-          "说 std::move 会移动数据或有运行时开销，它只是 static_cast。",
-          "以为移动构造默认 noexcept，忽略 vector 扩容可能改走拷贝。",
-          "以为移动后的源对象一定为空或不可用，标准只保证有效但未指定。"
-        ],
-        "ownAnalysis": "移动语义与完美转发是一对：前者决定资源如何转移，后者决定转发中不丢失值类别。面试里把 O(n) 到 O(1) 的复杂度变化、T&& 绑定规则、以及 noexcept 对 vector 扩容的影响串起来答才算讲透。可疑处（推断）：摘要强调把源指针置为 nullptr，这是常见实现而非标准强制，回答时最好加一句'实现上通常如此'。",
-        "officialNotes": [
-          {
-            "position": "移动语义通过右值引用 T&& 识别将亡对象，移动构造接管内部指针并把源指针置空，把深拷贝的 O(n) 降为 O(1)；std::move(x) 等价于 static_cast<T&&>(x)，本身不移动数据。",
-            "source": "kamacoder_notes（原文摘要）"
-          }
-        ],
-        "interviewAnswer": "移动语义解决的是临时对象被无谓深拷贝的问题。C++11 之前临时对象赋给新变量要先分配新内存、逐个复制、再释放旧内存，是 O(n)；移动构造靠右值引用 T&& 认出这个对象马上要死，直接把内部指针拿过来、把源指针置空，只做两次指针赋值，O(1)。std::move 本身不移动数据，它等价于 static_cast<T&&>(x)，只是把类型转成右值引用好让重载决议选中移动版本。要注意源对象移动后处于有效但未指定状态，也只能安全析构或重新赋值。",
-        "studyPath": {
-          "prerequisites": [
-            "左值右值与值类别",
-            "拷贝构造、拷贝赋值与析构函数",
-            "RAII 与资源所有权"
-          ],
-          "nextSteps": [
-            "完美转发与 std::forward 的实现",
-            "noexcept 与 vector 扩容的强异常安全保证",
-            "五法则（rule of five）与移动后的对象状态"
-          ]
-        }
-      }
-    },
-    {
-      "id": "98ecc61a0f6c206b",
-      "tldr": "受限参数区间训练的小自回归 Transformer，闭环外推复现倍周期分岔与混沌，逼近 Feigenbaum 常数。",
-      "keyPoints": [
-        "在 logistic、sine 映射、Lorenz 与广义 Hopf 系统上实验",
-        "控制参数与状态轨迹都表示成连续 token 序列",
-        "闭环评估在训练分布外的参数上复现分岔与吸引子",
-        "logistic 映射复现 successive period doublings 直到 period 128",
-        "有限阶分岔比 4.6687，与 Feigenbaum 常数相差在 5e-4 内"
-      ],
-      "why": "直接关系世界模型的长时程 rollout 与外推能力：说明只学局部转移的序列模型也可能掌握全局动力学组织。",
-      "difficulty": "hard",
-      "tags": [
-        "transformer",
-        "autoregressive",
-        "dynamical-systems",
-        "chaos",
-        "interpretability"
-      ],
-      "entities": [
-        "autoregressive transformer",
-        "logistic map",
-        "sine map",
-        "Lorenz system",
-        "generalized Hopf system",
-        "Feigenbaum constant"
-      ],
-      "diagram": {
-        "kind": "flow",
-        "title": "从局部观测到全局动力学",
-        "caption": "参数与状态一起 token 化后，自回归闭环生成把局部学到的转移外推成全局分岔与吸引子结构。",
-        "svg": "<svg viewBox='0 0 480 270' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='从受限参数区间采样轨迹，经连续 token 自回归闭环生成，外推到未见参数并复现分岔与吸引子'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>受限参数区间采样</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>logistic / sine / Lorenz / Hopf</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>连续 token 表示</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>控制参数 + 状态轨迹</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>自回归闭环生成</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>预测喂回作为下一步输入</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>外推未见参数</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>倍周期分岔 / 混沌 / 吸引子</text><line x1='240' y1='216' x2='240' y2='224' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,232 236,224 244,224' fill='var(--line-1)'/><rect x='56' y='232' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='256' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>因果干预分析</text><text x='408' y='256' font-size='13' text-anchor='end' fill='currentColor'>参数信息经注意力进入预测</text></svg>",
-        "alt": "竖排流程：从受限参数区间采样动力学轨迹，把控制参数与状态编码为连续 token，自回归闭环生成，在未见参数上外推出倍周期分岔、混沌与吸引子，并用因果干预分析参数信息的处理路径。"
-      },
-      "concepts": [
-        {
-          "name": "Closed-loop Evaluation（闭环评估）",
-          "readable": "把模型自己预测出的下一步状态重新当作输入，连续生成很长的轨迹，再和真实系统比较。它检验的是长期行为，而不是单步预测的误差。",
-          "analogy": "学开车时，副驾随时帮你修正方向盘（单步预测）看起来没问题；真正考试是让你自己连续开一小时，之前的小偏差会累积成明显跑偏。",
-          "analogyBreaksDown": "开车跑偏可以随时纠正，而这里的闭环轨迹一旦偏离真实轨道，比较'像不像'就只能看统计特征（分岔结构、吸引子形状），逐点对齐在混沌系统里本来就不可能，类比里没有这层限制。",
-          "mechanism": "闭环让误差进入下一步输入，因此模型必须学到自洽的转移映射而非只拟合观测分布；只有内部真的建立了参数到动力学区制的映射，递归展开后才可能出现正确的分岔级联与吸引子几何。",
-          "visual": "横轴时间步，纵轴状态；画出真实轨迹的一条实线与模型闭环生成的一条虚线，起始阶段重合，之后在混沌区发散但停留在同一吸引子形状内。",
-          "prerequisites": [
-            "自回归序列建模基础",
-            "非线性动力学：不动点与分岔",
-            "混沌系统对初值的敏感依赖"
-          ],
-          "selfTest": [
-            "为什么单步预测误差小不能说明长期动力学学对了？",
-            "闭环生成时误差通过什么路径被放大？",
-            "在混沌系统里，闭环轨迹和真实轨迹应该逐点对齐吗？"
-          ],
-          "formula": "\\hat{x}_{n+1} = f_\\theta(\\hat{x}_{n}, \\hat{x}_{n-1}, \\dots;\\, r), \\qquad \\text{error}_N \\sim \\text{累积单步误差}"
-        },
-        {
-          "name": "Feigenbaum Universality（Feigenbaum 普适性）",
-          "readable": "一大类一维映射在走向混沌时，相邻两次倍周期分岔点之间的距离比值会收敛到同一个常数约 4.6692，与具体映射形式无关。",
-          "analogy": "不同品牌的吉他弦粗细材质都不同，但把弦长按同样的比例逐次缩短，各次泛音的音高比却趋于同一组数，说明背后是同一套数学规律。",
-          "analogyBreaksDown": "吉他的类比暗示'任何振动系统都适用'，而该普适性严格讲属于具有二次极大值的一维映射这一类；高维、非光滑或不满足条件的系统未必给出同一个常数。",
-          "mechanism": "分岔点间距按固定比例收缩，是因为映射在临界点附近的二次行为构成普适的重整化不动点；因此用一个模型估出有限阶分岔比，就能与理论常数对照，作为'是否学到真实动力学'的定量证据。",
-          "visual": "横轴为控制参数、纵轴为稳定周期轨道的取值，画出一棵分岔树；用竖线标出相邻分岔点 r_n，并用双箭头标出间距之比逐渐固定。",
-          "prerequisites": [
-            "倍周期分岔的概念",
-            "logistic 映射的迭代行为",
-            "极限与比值收敛"
-          ],
-          "selfTest": [
-            "有限阶分岔比与极限 Feigenbaum 常数有什么区别？",
-            "为什么分岔比能作为模型学到了真实动力学的证据？",
-            "普适性成立需要映射满足什么条件？"
-          ],
-          "formula": "\\delta_n = \\frac{r_n - r_{n-1}}{r_{n+1} - r_n} \\longrightarrow \\delta \\approx 4.6692016"
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-feigenbaum-scaling-ratio",
-          "name": "倍周期分岔的 Feigenbaum 收敛比（Feigenbaum Scaling Ratio）",
-          "category": "foundation",
-          "latex": "\\delta_n = \\frac{r_{n} - r_{n-1}}{r_{n+1} - r_{n}} \\;\\xrightarrow{\\,n \\to \\infty\\,}\\; \\delta \\approx 4.6692016",
-          "symbols": [
-            [
-              "r_n",
-              "第 n 次倍周期分岔（周期 2^n → 2^{n+1}）对应的控制参数"
-            ],
-            [
-              "δ_n",
-              "用相邻两级分岔点间距算出的有限阶分岔比"
-            ],
-            [
-              "δ",
-              "Feigenbaum 常数，约 4.6692"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：logistic 类映射随控制参数增大，稳定周期依次变为 1、2、4、8…，相邻分岔点的间距按同一比例缩小。",
-            "第 2 步：用相邻两级分岔点间距之比定义有限阶分岔比 δ_n。",
-            "第 3 步：化简该比值，当 n 增大时它收敛到与具体映射无关的 Feigenbaum 常数。",
-            "第 4 步：论文统计 successive period doublings 直到 period 128，得到 δ 约 4.6687，与常数相差在 5×10^{-4} 内。"
-          ],
-          "analogy": "像不断把一张纸对折：纸的材质（具体映射）不同，但每次折后厚度增加的比例规律一致，说明背后是同一套规则在起作用。",
-          "pitfalls": [
-            "把 δ 与 Feigenbaum 的另一个常数 α（约 2.5029）混淆。",
-            "把有限阶 δ_n 当成极限常数：只有 n 足够大才逼近，论文报的是有限阶估计。",
-            "以为该普适性只对 logistic 映射成立，忽略论文同样涉及 sine 映射、Lorenz 与 Hopf 系统。"
-          ],
-          "code": "def feigenbaum_ratio(r_bifurcation):\n    # r_bifurcation: 依次出现 period 1,2,4,8,... 的控制参数（需自行测得）\n    return [(r[i] - r[i-1]) / (r[i+1] - r[i])\n            for i in range(1, len(r_bifurcation) - 1)]\n# 摘要口径：算到 period 128 时该比值约 4.6687，与 delta≈4.6692 相差 5e-4 内",
-          "sources": [
-            {
-              "title": "Learning Chaos Without Seeing Chaos: Extrapolation of Global Dynamics in Autoregressive Transformers",
-              "url": "https://huggingface.co/papers/2609.38814"
-            }
-          ]
-        },
-        {
-          "id": "f-logistic-map-recurrence",
-          "name": "Logistic 映射递推（Logistic Map Recurrence）",
-          "category": "foundation",
-          "latex": "x_{n+1} = r\\,x_n\\,(1 - x_n), \\qquad x_n \\in [0, 1],\\; r > 0",
-          "symbols": [
-            [
-              "x_n",
-              "第 n 步的状态（归一化后的种群量）"
-            ],
-            [
-              "r",
-              "控制参数，决定处于周期、分岔还是混沌区制"
-            ],
-            [
-              "1 - x_n",
-              "资源限制项"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：把连续种群增长模型离散化并归一化，得到最简的一维非线性递推。",
-            "第 2 步：r 较小时映射存在单一稳定不动点，迭代收敛到常数。",
-            "第 3 步：r 继续增大，不动点失稳并依次发生倍周期分岔，最终进入混沌。",
-            "第 4 步：论文把控制参数 r 与状态轨迹一起编码成连续 token 序列，喂给自回归 Transformer 学习并做参数外推。"
-          ],
-          "analogy": "像按剩余空间决定繁殖量的鱼群：鱼越多，每条能分到的资源越少，于是下一代数量不是线性增长，而会出现周期甚至看似混乱的波动。",
-          "pitfalls": [
-            "把它当成连续时间的微分方程解，它其实是离散迭代。",
-            "把 r 当固定常数：本文正是把 r 作为可外推的条件输入。",
-            "把混沌等同于随机：给定初值与 r，迭代完全确定。"
-          ],
-          "code": "import numpy as np\ndef logistic_traj(r, x0=0.4, steps=1000):\n    x = np.empty(steps); x[0] = x0\n    for i in range(1, steps):\n        x[i] = r * x[i-1] * (1.0 - x[i-1])\n    return x\n# 论文用此类轨迹训练，并在训练分布外的 r 上做闭环外推",
-          "sources": [
-            {
-              "title": "Learning Chaos Without Seeing Chaos: Extrapolation of Global Dynamics in Autoregressive Transformers",
-              "url": "https://arxiv.org/abs/2609.38814"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "论文在 logistic 与 sine 映射、Lorenz 系统、广义 Hopf 系统上训练小型自回归 Transformer。",
-          "训练数据来自这些系统的受限参数区间，控制参数与状态轨迹表示为连续 token 序列。",
-          "在训练分布之外的参数上做闭环评估，模型能复现倍周期分岔、混沌与吸引子结构。",
-          "logistic 映射上复现 successive period doublings 直到 period 128。",
-          "得到有限阶分岔比 4.6687，与 Feigenbaum 常数相差在 5×10^{-4} 内。",
-          "因果干预显示控制参数信息经注意力进入状态预测，并塑造闭环动力学。"
-        ],
-        "uncertain": [
-          "logistic 映射递推式与分岔比定义是按摘要重建的通用形式，需核对原文的具体记号与计算方式。",
-          "论文中 finite-order scaling ratio 的确切定义（用哪些分岔点、如何外推）摘要未给出。",
-          "摘要只给出 logistic 映射的定量对照，其余系统的 remarkable visual and numerical fidelity 缺少具体指标。",
-          "因果干预的具体操作（干预哪一层、哪个注意力头）摘要未展开。"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "只看局部轨迹训练的小 Transformer，能外推出系统完整的全局动力学结构。"
-          },
-          {
-            "level": "入门",
-            "text": "论文从几个非线性动力系统的受限参数区间采样轨迹，把控制参数和状态都编码成连续 token，用小型自回归 Transformer 从零训练。在训练分布之外的参数上做闭环生成，模型仍能复现倍周期分岔、混沌和吸引子结构。"
-          },
-          {
-            "level": "进阶",
-            "text": "关键设置是闭环：模型每步预测的状态会喂回自己作为下一步输入，于是局部学到的动力学被递归展开成长期行为，误差也会累积。控制参数作为序列条件输入，让同一模型覆盖一个连续参数区间。logistic 映射能复现连续倍周期分岔直到 period 128，有限阶分岔比 4.6687，与 Feigenbaum 常数相差不到 5×10^{-4}；训练中结构的涌现以及参数信息如何经注意力影响状态预测，用因果干预做了分析。"
-          },
-          {
-            "level": "专家",
-            "text": "这项工作把动力学外推变成生成模型的表示问题：训练只看系统局部或受限区域的转移，测试要求闭环递归后仍保有全局组织（分岔级联、吸引子几何）。与数值积分不同，模型不显式编码方程，却出现了与映射无关的普适常数，说明连续 token 表示与注意力足以承载控制参数的意义。边界是结论依赖具体系统与参数区间，分岔比是有限阶估计，闭环误差在更长时程或更混沌参数下是否稳定，摘要没有给出明确界限。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "为什么必须用闭环评估，而不是单步预测误差？",
-            "a": "单步误差小不代表长期行为对：闭环把预测喂回输入，误差会累积并改变轨道；只有闭环才能检验学到的动力学能否自己展开出分岔与吸引子。"
-          },
-          {
-            "q": "为什么把控制参数也编码成 token，而不是只喂状态序列？",
-            "a": "参数决定系统处于哪个动力学区制；把它作为条件输入，模型才能在一个连续区间上泛化，并在训练分布之外的参数上做外推。"
-          }
-        ],
-        "mechanism": "设计上必须让参数与状态同处一条序列：状态的下一步转移由参数决定，若参数不可见，模型只能学一个平均动力学，无法区分周期、分岔与混沌区制。闭环递归则迫使学到的映射自洽——任何局部偏差都会进入下一次输入并被放大，因此能复现分岔级联意味着模型内部建立了参数到动力学组织的映射，而不只是拟合观测分布；因果干预进一步说明参数信息经注意力进入状态预测而非被忽略。",
-        "boundary": "结论限于摘要所列系统与受限参数区间；高维混沌、含噪观测、要求长期数值稳定的场景未必成立。分岔比是有限阶估计，训练规模也很小，能否扩展到真实复杂系统没有依据。",
-        "analogyBoundary": "只看局部就能推全局的类比不能推广成少量数据能学任何系统：这里的全局结构是低维确定性映射中由参数单轴控制的普适级联；换成高维、随机或参数空间不连续的动力学，局部窗口未必含足够信息。",
-        "misconceptions": [
-          "把混沌等同于随机，忽略给定参数与初值后映射完全确定。",
-          "用单步预测精度代替闭环指标来评估这类模型。",
-          "把 4.6687 直接当成 Feigenbaum 常数，忽略它是有限阶估计。"
-        ],
-        "ownAnalysis": "与已有序列建模和世界模型工作对照（推断）：这类结果说明自回归模型在低维确定性系统上更像是在隐式恢复参数到动力学区制的映射，而不只是记忆轨迹；这对长时程 rollout 的误差累积研究有直接参考价值。可疑处是摘要只给出 logistic 一个系统的定量对照，其余系统的保真度描述缺少指标，需要回原文核对评价口径，因果干预的具体手段也未展开。",
-        "officialNotes": [
-          {
-            "position": "在受限参数区间训练的小型自回归 Transformer，闭环外推可复现倍周期分岔、混沌与吸引子；logistic 映射复现至 period 128，有限阶分岔比 4.6687，与 Feigenbaum 常数相差在 5×10^{-4} 内，因果干预显示参数信息经注意力进入状态预测。",
-            "source": "hf_papers / arxiv 摘要"
-          }
-        ],
-        "interviewAnswer": "这篇问的是自回归模型能否从局部观测恢复系统的全局动力学。做法是把控制参数和状态轨迹都表示成连续 token，用小型 Transformer 在几个非线性系统的受限参数区间上从零训练，然后闭环生成——预测喂回输入——在训练分布外的参数上评估。结果是能复现倍周期分岔、混沌和吸引子结构，logistic 映射能到 period 128，分岔比 4.6687，与 Feigenbaum 常数相差不到 5e-4；因果干预显示参数信息是通过注意力进入状态预测的。",
-        "studyPath": {
-          "prerequisites": [
-            "自回归序列建模与注意力机制",
-            "非线性动力学：不动点、倍周期分岔、吸引子",
-            "Feigenbaum 普适性与重整化直觉"
-          ],
-          "nextSteps": [
-            "读原文的因果干预与训练动力学分析",
-            "在 logistic 映射上复现闭环外推",
-            "调研世界模型中长时程 rollout 的误差累积问题"
-          ]
-        }
-      }
-    },
-    {
-      "id": "dd3ee83684a019cf",
-      "tldr": "Java LLM 应用库，统一 API 封装模型与向量库，简化 tool calling、Agent 与 RAG。",
-      "keyPoints": [
-        "统一 API 覆盖主流 LLM 提供商与向量库",
-        "内置 tool calling，并支持 MCP",
-        "让 Agent 与 RAG 的实现更简单",
-        "与 Quarkus、Spring Boot 等企业 Java 框架无缝集成",
-        "仓库约 1.3 万 stars、2500 余 forks，附带开源实现"
-      ],
-      "why": "Agent 工程落地的代表库：能在既有 Java 企业服务里直接接模型、挂向量库、跑 RAG 与工具调用，是简历可展示的实战载体。",
-      "difficulty": "easy",
-      "tags": [
-        "java",
-        "llm",
-        "agent",
-        "rag",
-        "tool-calling",
-        "mcp"
-      ],
-      "entities": [
-        "LangChain4j",
-        "JVM",
-        "MCP",
-        "RAG",
-        "Quarkus",
-        "Spring Boot"
-      ],
-      "diagram": {
-        "kind": "architecture",
-        "title": "LangChain4j 的分层结构",
-        "caption": "上层是统一 API，向下适配各家模型与向量库，向上支撑工具调用、Agent 与 RAG 编排，并贴近企业框架。",
-        "svg": "<svg viewBox='0 0 480 270' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='LangChain4j 分层结构：统一 API 之上是工具调用与 Agent、RAG 编排，向下适配模型提供商、向量库与嵌入'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>统一 API 层</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>业务只依赖接口</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>模型提供商适配</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>统一 LLM Provider</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>向量库与嵌入</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>统一 Vector Store</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>tool calling / MCP</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>模型触发外部能力</text><line x1='240' y1='216' x2='240' y2='224' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,232 236,224 244,224' fill='var(--line-1)'/><rect x='56' y='232' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='256' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>Agent 与 RAG 编排</text><text x='408' y='256' font-size='13' text-anchor='end' fill='currentColor'>集成 Quarkus / Spring Boot</text></svg>",
-        "alt": "分层结构图：底层坐标是模型提供商适配与向量库嵌入，中间是统一 API 层，上层是 tool calling 与 MCP，最上层为 Agent 与 RAG 编排并集成 Quarkus 与 Spring Boot。"
-      },
-      "concepts": [
-        {
-          "name": "Unified Provider Abstraction（统一供应商抽象）",
-          "readable": "把'调用大模型'这件事抽象成一套接口，不同厂商各写一个适配器实现它。业务代码只认接口，换模型时改配置而不是改代码。",
-          "analogy": "像电脑的 USB 接口：鼠标、U 盘、打印机内部完全不同，但插口统一后，换设备不用换电脑。",
-          "analogyBreaksDown": "USB 规定了完整的电气与协议标准，各设备能力对等；而各家 LLM 支持的参数、工具调用格式、流式协议差异很大，公共接口只能取能力交集，厂商特有能力仍需留出专属通道。",
-          "mechanism": "关键设计选择是把'模型接入'与'向量库'分别抽象成独立接口，厂商差异收敛在适配器内。这样业务层可以组合出 RAG 或 Agent 流程而不绑死某家 SDK，测试时也能用假实现替换真实模型，降低集成成本。",
-          "visual": "画一个倒 T 形：上方一个'统一接口'方块，下方并排若干厂商方块，每个厂商方块与接口之间画一条带适配器标记的连线。",
-          "prerequisites": [
-            "面向接口编程与依赖注入",
-            "LLM 调用的基本流程",
-            "向量检索与嵌入概念"
-          ],
-          "selfTest": [
-            "统一接口抽象最主要的代价是什么？",
-            "为什么说这种抽象降低的是集成成本而不是模型质量？",
-            "厂商特有能力在统一接口下怎么处理？"
-          ],
-          "formula": ""
-        },
-        {
-          "name": "Retrieval-Augmented Generation Pipeline（RAG 编排）",
-          "readable": "先把文档切块并向量化存进向量库；用户提问时把问题也向量化，检索最相关的若干块拼进提示词，再交给模型生成答案，让回答有外部依据。",
-          "analogy": "开卷考试：不指望凭记忆答题，而是先按题目去书里翻到相关几页，再把那几页摊在桌上作答。",
-          "analogyBreaksDown": "开卷考试里翻到的页一定包含答案出处，而向量检索只保证语义相近，可能召回措辞相似但事实无关的段落，幻觉与错误引用依然可能出现，检索环节本身也会成为新的误差源。",
-          "mechanism": "把知识从模型参数中解耦出来：文档更新只需重建索引而不必重训模型。设计难点在切块粒度、嵌入模型选择与 Top-K 权衡——块太小丢上下文，太大稀释相关性，K 太大引入噪声并挤压提示词预算。",
-          "visual": "画两条并行的箭头：离线侧是文档切块到嵌入到入库；在线侧是问题到检索到拼接提示词到生成，两侧在向量库处交汇。",
-          "prerequisites": [
-            "嵌入模型与向量相似度",
-            "提示词拼接与上下文窗口限制",
-            "向量库的基本用法"
-          ],
-          "selfTest": [
-            "RAG 相比微调解决的核心问题是什么？",
-            "Top-K 选太大会带来什么后果？",
-            "向量召回为什么不能等同于事实正确？"
-          ],
-          "formula": "s(q, d_i) = \\frac{\\langle E(q), E(d_i)\\rangle}{\\lVert E(q)\\rVert\\,\\lVert E(d_i)\\rVert}, \\qquad \\mathcal{C} = \\operatorname{TopK}_i\\, s(q, d_i)"
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-rag-cosine-topk",
-          "name": "RAG 相似度检索打分（Cosine Retrieval Scoring）",
-          "category": "agent",
-          "latex": "s(q, d_i) = \\frac{\\langle E(q),\\, E(d_i)\\rangle}{\\lVert E(q)\\rVert\\,\\lVert E(d_i)\\rVert}, \\qquad \\mathcal{C} = \\operatorname{TopK}_{i}\\, s(q, d_i)",
-          "symbols": [
-            [
-              "q",
-              "用户查询"
-            ],
-            [
-              "d_i",
-              "第 i 个候选文档块"
-            ],
-            [
-              "E(·)",
-              "嵌入模型（embedding model），把文本映射为向量"
-            ],
-            [
-              "s(q, d_i)",
-              "查询与文档块的余弦相似度分数"
-            ],
-            [
-              "TopK",
-              "取分数最高的 K 个文档块作为上下文"
+              "被比较的候选序列数量"
             ],
             [
               "C",
-              "最终拼进提示词的检索上下文集合"
+              "两个排序一致的候选对数（concordant）"
+            ],
+            [
+              "D",
+              "两个排序相反的候选对数（discordant）"
+            ],
+            [
+              "\\tau",
+              "成对排序一致率，0 表示与随机无异，1 表示完全一致"
             ]
           ],
           "derivation": [
-            "第 1 步：把查询与文档块分别经嵌入模型映射到同一个向量空间。",
-            "第 2 步：用余弦相似度衡量两者方向的一致程度，得到检索分数。",
-            "第 3 步：按分数从高到低排序，取前 K 个文档块。",
-            "第 4 步：把选中的文档块拼接进提示词作为上下文，交给模型生成答案；LangChain4j 这类库把嵌入模型与向量库抽象成统一接口，使这一步可跨厂商复用。"
+            "第 1 步：要判断模型排序是否可信，需要与环境真实回报的排序对比，而不是只看最优候选。",
+            "第 2 步：把所有候选两两配对，统计模型与环境排序同向的对数 C 与反向的对数 D。",
+            "第 3 步：用 (C-D) 除以总对数归一化，得到与随机基线可比、范围为 -1 到 1 的指标。",
+            "第 4 步：论文报告该一致率在 Walker 上接近随机、在 Cheetah 上下降，说明模型排序并未随迭代变准。"
           ],
-          "analogy": "像按'主题方向'找书：把问题折成一支箭头，再在书架里挑出指向最接近的几本，而不是逐字比对书名。",
+          "analogy": "像让两个裁判给同一批选手排名，看他们对甲比乙强这类两两判断有多少次意见相同；一致率接近抛硬币就说明这个裁判不可靠。",
           "pitfalls": [
-            "把余弦相似度当距离：越相似值越大，排序方向别写反。",
-            "忽略归一化：向量未归一化时内积检索与余弦检索结果不同。",
-            "以为 Top-K 越大越好：K 过大会引入噪声上下文，还挤压提示词预算。"
+            "把最优候选挑对了当成排序可信：一致率衡量的是全序质量，不是 top-1。",
+            "忽略并列与数值接近的候选，实际实现常用 Kendall tau-b 处理并列。",
+            "误以为一致率下降代表模型变差，也可能只是候选池分布发生变化。"
           ],
-          "code": "import numpy as np\ndef topk(q_vec, doc_vecs, k=4):\n    q = q_vec / (np.linalg.norm(q_vec) + 1e-8)\n    D = doc_vecs / (np.linalg.norm(doc_vecs, axis=1, keepdims=True) + 1e-8)\n    s = D @ q\n    return np.argsort(-s)[:k]\n# LangChain4j 用统一的 EmbeddingStore 抽象解耦该打分与具体向量库",
+          "code": "import numpy as np\n\ndef pairwise_agreement(model_scores, env_scores):\n    n, c, d = len(model_scores), 0, 0\n    for i in range(n):\n        for j in range(i + 1, n):\n            m = np.sign(model_scores[i] - model_scores[j])\n            e = np.sign(env_scores[i] - env_scores[j])\n            if m == e:\n                c += 1\n            elif m != 0:\n                d += 1\n    return (c - d) / (n * (n - 1) / 2)\n\ntau = pairwise_agreement(model_scores, env_scores)",
           "sources": [
             {
-              "title": "langchain4j/langchain4j",
-              "url": "https://github.com/langchain4j/langchain4j"
+              "title": "In CEM, a World Model Is Also a Proposal Mechanism",
+              "url": "https://arxiv.org/abs/2610.00921v1"
             }
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "LangChain4j 是面向 JVM 的惯用开源 Java 库，用于构建 LLM 应用。",
-          "它提供覆盖主流 LLM 提供商与向量库的统一 API。",
-          "它便于实现 tool calling（包含 MCP 支持）、Agent 与 RAG。",
-          "它与 Quarkus、Spring Boot 等企业 Java 框架无缝集成。",
-          "仓库有 13196 stars、2582 forks，且有开源实现。"
+          "CEM 使用世界模型分数选择动作序列，并据此拟合下一轮采样的分布。",
+          "论文把当下决策与后续候选这两个角色分开评估。",
+          "四类预测模型生成 CEM 轨迹，且每个模型都对每个保存的候选池重新打分。",
+          "实验在 Walker 与 Cheetah 上各 12 个独立训练的任务-种子单元。",
+          "提议距离从首轮到末轮在每个单元都下降，提议宽度收缩、拟合均值与剩余搜索宽度分离。",
+          "成对排序一致率在 Walker 接近随机、在 Cheetah 下降，精英集一致度没有改善。",
+          "在六个单元上把第一次模型排序更新换成环境排序更新后，最终实现选择成本下降，并在六个留出单元上复现。"
         ],
         "uncertain": [
-          "摘要未给出具体的检索打分与向量检索算法，公式按 RAG 通用做法重建，需核对仓库文档。",
-          "摘要未给出模块划分、具体 API 名称与版本兼容信息。",
-          "MCP 在摘要中只出现名称，其具体支持范围（客户端/服务端、工具发现方式）需查仓库文档。"
+          "提议距离的精确定义（距离度量与参考分布）摘要未给出，公式按 CEM 重拟合的通用形式重建。",
+          "成对排序一致率具体用 Kendall 还是 Spearman 口径，摘要未说明。",
+          "单次更新干预的操作细节与显著性检验摘要未给。"
         ]
       },
       "teaching": {
         "progressive": [
           {
             "level": "一句话",
-            "text": "LangChain4j 让 Java 项目用一套 API 接入各家大模型与向量库，并写好 Agent 和 RAG。"
+            "text": "CEM 里的世界模型既当裁判又定下一批选手，两个角色必须分开看。"
           },
           {
             "level": "入门",
-            "text": "它是 JVM 上的开源 Java 库，把不同 LLM 提供商和向量库封装成统一 API，使切换厂商不必重写业务代码；同时内置 tool calling（含 MCP 支持）、Agent 和 RAG 的常见编排，并提供与 Quarkus、Spring Boot 等企业框架的集成。"
+            "text": "CEM 每轮采样一批动作序列，用世界模型打分，留下高分精英来拟合下一轮的采样分布。论文指出：同一个模型既决定当前选谁，又决定下一轮从哪采样，所以评分误差会同时污染当下决策和未来的候选池。作者用四类预测模型互相重打分、再用环境真实回报做参照，把这两个角色分开评估。"
           },
           {
             "level": "进阶",
-            "text": "价值主要在抽象层：模型接入、嵌入模型、向量库各有统一接口，业务代码依赖接口而非某家 SDK；工具调用与 MCP 让模型可以触发外部能力，Agent 与 RAG 则把检索、提示组装、工具循环封装成可复用组件。对已在 Spring 或 Quarkus 技术栈上的团队，这意味着不必为了接 LLM 单独引入 Python 服务，可以直接在既有服务里落地。"
+            "text": "方法上把候选池来自哪类模型与由谁来打分做成两个可交叉的因子，并对同一批保存的候选池让每个模型重打分，再用环境执行得到参考精英集与参考提议更新。结果显示提议分布确实每轮收缩并向高分区域移动，提议距离下降；但排序一致率没有同步改善，Walker 接近随机、Cheetah 下降，说明搜索收窄不等于评分变准；评分器之间的差异在 Cheetah 上甚至大于候选池来源之间的差异。"
           },
           {
             "level": "专家",
-            "text": "它的角色类似 Python 生态里 LangChain 在 JVM 上的对应物，定位是集成与编排而不是训练框架，竞争力来自接口覆盖广度和与企业框架的贴合度，而非算法创新。代价是抽象层会隐藏提示词与重试细节，需要时得下沉到具体 provider 接口；版本演进较快，升级时要注意 API 兼容。摘要未给出模块划分与具体 API 名称，选型应以官方文档与示例代码为准，并通过压测判断高并发表现。"
+            "text": "这项工作的价值是把世界模型好不好拆成评分质量与提议质量两个可测对象，并给出一个便宜的干预验证：把第一次模型排序更新换成环境排序更新，最终实现成本会下降，且在留出的六个单元上复现。与同类做法相比它没有提出新模型，而是质疑只报最终回报的评估惯例，因为提议分布收缩本身常被误读成收敛。边界是只覆盖 Walker 与 Cheetah 两个连续控制任务、各 12 个单元，干预也只改一轮更新。"
           }
         ],
         "socratic": [
           {
-            "q": "为什么要在 JVM 上重做一套 LLM 编排库，而不是让 Java 服务直接调 Python 服务？",
-            "a": "多一层跨语言服务就多一套部署、监控与序列化成本；对已有 Java 企业系统，原生库能复用现成的依赖注入、配置与可观测性设施。"
+            "q": "提议分布每轮都收缩，为什么不能说明搜索在变好？",
+            "a": "收缩只说明搜索范围在收窄，不代表收窄到了高回报区域；排序一致率没有改善甚至下降，说明模型的相对判断并没有变准。"
           },
           {
-            "q": "统一 API 抽象会带来什么代价？",
-            "a": "公共接口只保留各厂商能力的交集，厂商特有参数需要额外通道；排查问题时也常要绕过抽象直连底层 SDK。"
+            "q": "为什么要把候选池来源和评分器做成两个因子？",
+            "a": "只用一种模型配一种评分器时，无法判断误差来自世界模型本身还是来自候选池分布；交叉设计才能把两者分离。"
           }
         ],
-        "mechanism": "必须做统一抽象，是因为企业里换模型厂商是常态：业务代码若直接绑某家 SDK，换模型就要改遍调用点。把模型接入、嵌入、向量库分别抽象成接口，业务只依赖接口，厂商差异收敛到适配器；工具调用与 MCP 再把这层抽象扩展到模型调外部能力，于是 Agent 与 RAG 能用同一套装配方式组合出来，测试时也能替换成假实现。",
-        "boundary": "它不提供训练与微调能力，也不解决模型质量本身；抽象层未覆盖的厂商特有能力需要下沉使用。对非 JVM 技术栈或用 Python 全家桶的团队收益有限。摘要没有版本兼容与性能信息，高并发场景需要自行压测。",
-        "analogyBoundary": "万能插座的类比忽略了能力交集问题：插座只统一形状，而各家模型支持的参数、工具调用格式与流式协议并不一致，公共接口要么丢失细节，要么必须留出厂商专属扩展口。",
+        "mechanism": "CEM 的更新规则把评分与采样绑在一起：精英集既是本轮的决策依据，也是下一轮分布的全部信息源。因此任何系统性评分偏差都会通过提议分布被放大并跨轮保留，这正是必须分开评估的原因。论文用同一候选池换不同评分器重打分来控制候选来源，再用环境执行提供参考精英集，从而把评分误差对当下决策的影响与对后续候选的影响分别读出来。",
+        "boundary": "实验只在 Walker 与 Cheetah 两个连续控制任务、各 12 个任务-种子单元上做，且干预只替换一次更新；结论依赖离线保存的候选池与预训练模型，不能直接外推到在线学习或高维视觉规划。成对排序一致率本身也受候选池分布变化影响，解释需谨慎。",
+        "analogyBoundary": "选秀类比假设评委与选手来源相互独立，而这里评委直接决定下一轮搜哪里；另外选秀可以随时换评委重来，CEM 的提议分布是连续收缩的，早期偏差造成的盲区不可逆。",
         "misconceptions": [
-          "把 LangChain4j 当成模型或训练框架，它只是集成与编排库。",
-          "以为统一 API 意味着各家模型行为一致，切换后效果自然相同。",
-          "把 MCP 当成模型自身能力，它其实是工具与上下文接入的协议层。"
+          "只报最终回报就宣称世界模型可用，忽略提议分布收缩可能只是搜索收窄。",
+          "把评分质量与提议质量混为一谈，认为排序准就一定搜得好。",
+          "以为候选池来自哪类模型是主要变量，忽略评分器差异在 Cheetah 上更大。"
         ],
-        "ownAnalysis": "从求职角度，这是展示 Agent 工程落地能力的合适载体：能在 Spring Boot 服务里用统一接口接模型、挂向量库、跑 RAG 与工具循环，比只写 demo 更有说服力（推断）。可疑处是它的定位与 Python 侧框架高度重叠，长期维护与生态活跃度是关键风险；摘要只有一句官方描述，缺少模块清单与示例，评估时需实际拉仓库核对 API。",
+        "ownAnalysis": "把世界模型同时看作评分器与提议机制，是很普适的视角（推断）：任何用学习模型做搜索的管线，如 MPPI、扩散式规划或树搜索，都有同样的耦合，评估时至少应报告排序质量与提议漂移两个量。可疑处（推断）：环境排序更新只改第一轮就带来最终成本下降，说明早期提议偏差影响巨大，但也可能只是六单元上的方差效应，跨任务显著性需要更多单元。",
         "officialNotes": [
           {
-            "position": "LangChain4j 是面向 JVM 的惯用开源 Java 库，统一封装主流 LLM 提供商与向量库，便于实现 tool calling（含 MCP）、Agent 与 RAG，并与 Quarkus、Spring Boot 无缝集成。",
-            "source": "github（仓库描述）"
+            "position": "CEM 中世界模型既选择动作序列又拟合下一轮采样分布；论文分角色评估发现提议距离每单元都下降、排序一致率未改善，且把首轮模型排序更新换成环境排序更新可降低最终实现成本。",
+            "source": "https://arxiv.org/abs/2610.00921v1"
           }
         ],
-        "interviewAnswer": "LangChain4j 是 JVM 上的开源 Java 库，把各家 LLM 提供商和向量库抽象成统一 API，让业务代码不绑死在某家 SDK 上，同时把 tool calling（包括 MCP）、Agent 和 RAG 这些编排模式封装成可复用组件，并能和 Quarkus、Spring Boot 这类企业框架直接集成。我会把它定位成集成与编排层，不是训练框架；选型时主要看接口覆盖度、社区活跃度和升级兼容性，厂商特有参数还是要下沉到底层接口去用。",
+        "interviewAnswer": "CEM 里世界模型扮演两个角色：给候选序列打分，并用精英集拟合下一轮的采样分布。论文指出这两件事共用同一个模型，因此评分误差会同时改变当下决策和未来的候选池。作者把候选池来源与评分器做成两个交叉因子，让四类预测模型互相重打分同一批候选池，再用环境执行得到参考精英集与参考提议更新。结果是提议分布每轮都收缩、提议距离下降，但成对排序一致率没有改善，Walker 接近随机、Cheetah 下降；把第一次模型更新换成环境更新后最终成本下降。所以评估世界模型规划器不能只看最终回报。",
         "studyPath": {
           "prerequisites": [
-            "Java 与 Maven 或 Gradle 基础",
-            "LLM 应用基本概念：提示词、嵌入、向量检索",
-            "Spring Boot 或 Quarkus 的依赖注入"
+            "CEM / MPC 的基本迭代流程",
+            "分布拟合与精英集选择",
+            "离线策略评估与排序指标"
           ],
           "nextSteps": [
-            "跑通仓库的最小 RAG 示例",
-            "对比 Python 侧 LangChain 的抽象设计",
-            "理解 MCP 的作用与工具调用循环"
+            "复现一个玩具 CEM，替换评分器观察提议漂移",
+            "读 MPPI 等采样规划器做对比",
+            "设计排序质量与最终回报的联合评估协议"
           ]
         }
       }
     },
     {
-      "id": "8a60bc7ca8f1e1b9",
-      "tldr": "Java 深度学习框架 Omega-AI，支持自动微分、多线程与 CUDA/cuDNN 加速，便于搭建网络训练与推理。",
+      "id": "33e25aa5c1066c89",
+      "tldr": "用名义动作与可实现动作之差做安全信号，学隐世界模型做社交导航，成功率 63.77%、碰撞 21.67%。",
       "keyPoints": [
-        "用 Java 快速构建神经网络，兼顾推理与训练",
-        "引擎内置自动微分，训练时靠它算梯度",
-        "执行层支持多线程",
-        "通过 CUDA 与 cuDNN 做 GPU 加速",
-        "仓库约 854 stars、63 forks，附带开源实现"
+        "社交导航中名义动作与可执行动作存在系统差异",
+        "用动作条件未来预测学安全相关的后果",
+        "引入可实现逆动力学目标，对齐真实执行的动作",
+        "部署时用可实现性差异作执行前的安全信号",
+        "Social-HM3D 成功率 63.77%，人碰撞降到 21.67%"
       ],
-      "why": "工程与系统方向的少见样本：能在 JVM 内做训练与推理，理解自动微分与算子调度的实现，比只会调框架 API 更能体现系统能力。",
-      "difficulty": "medium",
+      "why": "把动作能不能真做出来显式建模，是具身世界模型安全部署的关键，也是导航与 VLA 岗的高频考点。",
+      "difficulty": "hard",
       "tags": [
-        "java",
-        "deep-learning",
-        "autodiff",
-        "cuda",
-        "inference",
-        "framework"
+        "worldmodel",
+        "social-navigation",
+        "inverse-dynamics",
+        "safety",
+        "embodied-ai"
       ],
       "entities": [
-        "Omega-AI",
-        "CUDA",
-        "cuDNN",
-        "Java",
-        "dromara"
+        "Social-WM",
+        "Social-HM3D",
+        "Social-MP3D",
+        "realizable inverse dynamics",
+        "egocentric RGB video"
       ],
       "diagram": {
-        "kind": "architecture",
-        "title": "Omega-AI 引擎分层",
-        "caption": "上层用 Java 搭建网络，中层靠计算图与自动微分求梯度，底层把算子调度到多线程与 CUDA/cuDNN。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Omega-AI 分层：Java 网络搭建层、计算图与自动微分层、多线程执行引擎、CUDA 与 cuDNN 加速层'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>Java 搭建网络</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>层与算子 API</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>计算图 + 自动微分</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>反向传播算梯度</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>多线程执行引擎</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>算子并行调度</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>CUDA / cuDNN 加速</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>GPU 训练与推理</text></svg>",
-        "alt": "分层结构图：最上层是用 Java 搭建网络的层与算子 API，中间是计算图与自动微分，下面是多线程执行引擎，最底层通过 CUDA 与 cuDNN 做 GPU 加速。"
+        "kind": "flow",
+        "title": "名义与可实现动作之差",
+        "caption": "世界模型想象候选动作，逆动力学给出可实现性，差额就是执行前的安全信号。",
+        "svg": "<svg viewBox='0 0 480 270' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Social-WM 用名义动作与可实现动作的差额作为安全信号'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>自我中心 RGB 视频</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>只有已执行动作的观测</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>动作条件预测</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>目标是命令后的真实未来</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>可实现逆动力学</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>由隐转移反推实际动作</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>规划期想象候选</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>世界模型 rollout 加可实现性打分</text><line x1='240' y1='216' x2='240' y2='224' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,232 236,224 244,224' fill='var(--line-1)'/><rect x='56' y='232' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='256' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>名义与可实现之差</text><text x='408' y='256' font-size='13' text-anchor='end' fill='currentColor'>执行前的安全信号</text></svg>",
+        "alt": "竖排流程：自我中心 RGB 视频、动作条件未来预测、可实现逆动力学对齐真实动作、规划期想象候选并由逆动力学估计可实现性、名义与可实现之差作为执行前安全信号。"
       },
       "concepts": [
         {
-          "name": "Reverse-mode Autodiff（反向模式自动微分）",
-          "readable": "前向执行时记录每个算子及其局部导数，反向时从标量损失出发，按拓扑逆序把上游梯度乘上局部导数并累加到输入，一次反向就得到所有参数的梯度。",
-          "analogy": "产品出了质量问题往回追责：从最终次品开始，每道工序按自己的影响系数把责任分摊给上游，所有下游责任汇总后才是该工序的总责任。",
-          "analogyBreaksDown": "追责类比暗示每条责任线是独立的，而实际计算图里同一个节点可能被多条路径共用，梯度必须累加而不是覆盖；漏掉累加会导致梯度算错但不报错，类比无法提示这一点。",
-          "mechanism": "把建图与求导解耦：新增算子只要实现前向计算与局部反向规则，引擎统一负责调度与累加。因为一次反向就能得到损失对所有参数的梯度，代价与前向同阶，所以适合参数量远大于输出维度的神经网络训练。",
-          "visual": "画一个有向无环图，节点是张量与算子；前向方向用实线箭头从左到右，反向的梯度流用虚线箭头从右到左，边上标注局部雅可比的形状。",
+          "name": "Nominal-Realizable Discrepancy（名义-可实现差异）",
+          "readable": "给机器人下的是往前走这种名义指令，但在人群里真正执行出来的可能只是减速侧移；这个差额本身携带安全信息，差额大意味着指令与物理社会约束冲突。",
+          "analogy": "开车时你打方向盘想变道，旁边有车就只挪了一点点；方向盘角度（名义动作）和车身实际轨迹（可实现动作）的差就是危险提示。",
+          "analogyBreaksDown": "驾驶里差额部分来自机械响应，可以精确建模；社交场景的差额来自行人的意图与礼让博弈，既不可观测也不稳定，同一差额在不同人群中含义不同。",
+          "mechanism": "把可实现动作单独作为一个预测目标，让模型显式学到命令到实际执行的映射；部署时先想象候选动作的未来，再由逆动力学估计它能否被真正执行，差额无需行人跟踪或特权状态就能当安全闸门。",
+          "visual": "横轴为时间步，画两条曲线：名义动作与可实现动作，两者重合表示自由空间，出现分叉时用阴影标出差异面积，面积越大越危险。",
           "prerequisites": [
-            "多元微积分与链式法则",
-            "计算图与算子概念",
-            "雅可比矩阵的含义"
+            "model-based RL 与 latent world model",
+            "逆动力学与可执行性",
+            "社交导航指标：成功率与碰撞率"
           ],
           "selfTest": [
-            "为什么不用数值差分求梯度？",
-            "反向模式适合输入多输出少还是相反的情形？",
-            "为什么梯度要累加而不是直接覆盖？"
+            "为什么名义动作不等于可实现动作？",
+            "差异信号在部署时如何被使用？",
+            "为什么不需要显式行人跟踪？"
           ],
-          "formula": "\\frac{\\partial L}{\\partial x} = \\sum_{y \\in \\mathrm{children}(x)} \\frac{\\partial L}{\\partial y}\\,\\frac{\\partial y}{\\partial x}"
+          "formula": "d_t=\\big\\|\\,a_t^{\\text{nom}}-\\hat{a}_t^{\\text{real}}\\,\\big\\|,\\qquad \\hat{a}_t^{\\text{real}}=g_{\\phi}(z_t,z_{t+1})"
         },
         {
-          "name": "Operator-level GPU Acceleration（算子级 GPU 加速）",
-          "readable": "把计算密集的算子放到 GPU 上执行，用 CUDA 写核函数、用 cuDNN 调用优化过的深度学习原语，从而让训练与推理比纯 CPU 快很多。",
-          "analogy": "像把一件有一万道相同工序的活交给一整支流水线工人同时做，而不是让一个工人一件件做；人越多，单件越简单，提速越明显。",
-          "analogyBreaksDown": "并行工人之间的沟通成本可以忽略，但 GPU 与 JVM 之间的数据传输（主机内存与显存往返）非常昂贵；如果算子太碎或数据频繁往返，通信开销会吞掉并行收益，类比没有体现这个瓶颈。",
-          "mechanism": "关键设计选择是让张量数据以连续缓冲区驻留在设备内存，批量提交算子以减少主机与设备之间的同步次数，并复用 cuDNN 提供的卷积、归一化等优化实现，避免自己写核函数带来的性能与正确性风险。",
-          "visual": "画两条时间线并排：CPU 侧是稀疏的计算小块与被数据传输撑长的空隙，GPU 侧是密集的并行计算块；用色块宽度表示耗时。",
+          "name": "Realizable Inverse Dynamics（可实现逆动力学）",
+          "readable": "普通逆动力学从相邻两个隐状态反推出应该是哪个动作，训练时用的是名义指令，会学到理想映射；可实现版本改为对齐真正执行出来的动作，于是能预测动作在约束下会被打多少折扣。",
+          "analogy": "教练看录像反推球员想做什么动作；只对着战术板练（名义），他以为每个战术都能完成；对着真实比赛录像练（可实现），他才知道哪种战术在拥挤防守下会被迫变形。",
+          "analogyBreaksDown": "录像里执行结果可观测，而机器人的真实执行动作常只以占用变化或代价形式间接体现，还受底层控制器影响，把实际动作当成干净标签并不成立。",
+          "mechanism": "把逆动力学的回归目标从名义动作换成实际观察到的动作，让隐转移与真实执行对齐；训练出的映射同时充当可实现性评分器，在规划时对候选动作的可行性打分，从而把社会约束编码进预测而不是规则。",
+          "visual": "画隐空间转移箭头同时连到两个输出：名义动作与可实现动作；用不同颜色标出只有后者参与损失，差异作为安全分数输出。",
           "prerequisites": [
-            "GPU 执行模型与线程层次基础",
-            "CUDA/cuDNN 的角色",
-            "JNI 或本地内存互操作概念"
+            "隐空间动力学模型",
+            "逆动力学模型（IDM）",
+            "模仿学习中的动作标签问题"
           ],
           "selfTest": [
-            "为什么频繁在主机与设备之间搬运数据会拖慢训练？",
-            "cuDNN 相比自己写 CUDA 核函数的好处是什么？",
-            "算子太碎为什么不利于 GPU 利用？"
+            "可实现逆动力学与普通逆动力学差在哪里？",
+            "它为什么能当安全信号用？",
+            "模型保持目标无关有什么好处？"
           ],
-          "formula": ""
+          "formula": "\\mathcal{L}_{\\text{inv}}(\\phi)=\\mathbb{E}\\big\\|g_{\\phi}(z_t,z_{t+1})-a_t^{\\text{real}}\\big\\|_2^2"
         }
       ],
       "formulas": [
         {
-          "id": "f-reverse-mode-chain-rule",
-          "name": "反向模式自动微分的链式法则（Reverse-mode Chain Rule）",
-          "category": "engineering",
-          "latex": "\\frac{\\partial L}{\\partial x} = \\sum_{y \\in \\mathrm{children}(x)} \\frac{\\partial L}{\\partial y}\\,\\frac{\\partial y}{\\partial x}",
+          "id": "f-action-conditioned-latent-prediction",
+          "name": "动作条件隐空间未来预测（Action-Conditioned Latent Prediction）",
+          "category": "worldmodel",
+          "latex": "\\hat{z}_{t+1}=f_{\\theta}(z_t,a_t^{\\text{nom}}),\\qquad \\mathcal{L}_{\\text{pred}}=\\big\\|\\hat{z}_{t+1}-z_{t+1}\\big\\|_2^2",
           "symbols": [
             [
-              "L",
-              "标量损失"
+              "z_t",
+              "当前观测（自我中心 RGB 视频）编码出的隐状态"
             ],
             [
-              "x",
-              "计算图中的节点（张量或算子输出）"
+              "a_t^{\\text{nom}}",
+              "下达的名义动作命令"
             ],
             [
-              "children(x)",
-              "以 x 为输入的后续节点集合"
+              "f_{\\theta}",
+              "动作条件世界模型"
             ],
             [
-              "∂L/∂y",
-              "上游节点 y 已算好的梯度"
-            ],
-            [
-              "∂y/∂x",
-              "该算子对输入 x 的局部雅可比"
+              "z_{t+1}",
+              "真实观察到的下一隐状态，即实际执行后的结果"
             ]
           ],
           "derivation": [
-            "第 1 步：前向执行时按算子建图，记录每个节点的输入与局部导数规则。",
-            "第 2 步：从标量损失 L 出发，令 ∂L/∂L = 1 作为反向起点。",
-            "第 3 步：按拓扑逆序把上游梯度乘以局部雅可比，累加到各输入节点上。",
-            "第 4 步：一次反向即可得到 L 对所有参数的梯度，代价与前向同阶，因此适合参数远多于输出的神经网络。"
+            "第 1 步：latent world model 的基本形式是用当前隐状态与动作预测下一步隐状态。",
+            "第 2 步：训练目标是预测误差，关键是标签取真实观察到的下一隐状态，而不是名义动作对应的理想结果。",
+            "第 3 步：因为标签来自实际执行，模型自动学到命令在被约束时会变成什么后果，即安全相关动态。",
+            "第 4 步：部署时用该模型想象候选动作的未来，为后续可实现性评分提供轨迹。"
           ],
-          "analogy": "像追溯流水线责任：从最终次品往回查，每道工序按自己的影响系数把责任分摊给上游，所有下游责任汇总后才是该工序的总责任。",
+          "analogy": "像教新手司机预判：不是告诉他打方向盘车就一定转多少，而是拿真实路况下的行车记录当答案，让他学会有车时这个动作实际会发生什么。",
           "pitfalls": [
-            "把反向模式与数值差分混为一谈：它不是把 (f(x+ε)-f(x))/ε 近似当成梯度。",
-            "忘记梯度累加：节点被多条路径使用时必须相加，训练循环中还要适时清零。",
-            "以为正反向模式代价对称：反向模式适合少输出多输入，多输出场景前向模式更省。"
+            "把动作条件预测当成普通视频预测：这里标签必须是实际执行结果，否则学不到约束。",
+            "忽略目标条件：论文强调学到的动力学与可实现性模型保持目标无关，不能把目标点当输入。",
+            "以为单步预测准就够：规划需要多步 rollout，误差会累积。"
           ],
-          "code": "class Mul(torch.autograd.Function):\n    @staticmethod\n    def forward(ctx, a, b):\n        ctx.save_for_backward(a, b)\n        return a * b\n    @staticmethod\n    def backward(ctx, g):\n        a, b = ctx.saved_tensors\n        return g * b, g * a   # 局部雅可比 × 上游梯度",
+          "code": "import torch, torch.nn as nn\n\nclass LatentWM(nn.Module):\n    def __init__(self, dim, act_dim):\n        super().__init__()\n        self.net = nn.Sequential(nn.Linear(dim + act_dim, 256), nn.ReLU(), nn.Linear(256, dim))\n\n    def forward(self, z, a):\n        return self.net(torch.cat([z, a], dim=-1))\n\ndef pred_loss(model, z_t, a_nom, z_next):\n    return ((model(z_t, a_nom) - z_next) ** 2).mean()",
           "sources": [
             {
-              "title": "dromara/Omega-AI",
-              "url": "https://github.com/dromara/Omega-AI"
+              "title": "Social-WM: Safety-Aware Latent World Models for Robot Social Navigation",
+              "url": "https://arxiv.org/abs/2609.40177v1"
+            }
+          ]
+        },
+        {
+          "id": "f-realizable-inverse-dynamics",
+          "name": "可实现逆动力学目标（Realizable Inverse Dynamics）",
+          "category": "worldmodel",
+          "latex": "\\hat{a}_t^{\\text{real}}=g_{\\phi}(z_t,z_{t+1}),\\qquad \\mathcal{L}_{\\text{inv}}=\\big\\|\\hat{a}_t^{\\text{real}}-a_t^{\\text{real}}\\big\\|_2^2,\\qquad d_t=\\big\\|a_t^{\\text{nom}}-\\hat{a}_t^{\\text{real}}\\big\\|",
+          "symbols": [
+            [
+              "g_{\\phi}",
+              "逆动力学模型，从隐转移反推动作"
+            ],
+            [
+              "a_t^{\\text{real}}",
+              "真正被执行的动作，即观察到的实际结果"
+            ],
+            [
+              "a_t^{\\text{nom}}",
+              "下达的名义动作"
+            ],
+            [
+              "d_t",
+              "名义与可实现动作之差，用作执行前安全信号"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：普通逆动力学用名义动作当标签，学到的映射无法反映约束导致的折扣。",
+            "第 2 步：把标签换成实际执行的动作，让逆动力学模型只解释真正发生的隐转移。",
+            "第 3 步：用从当前与下一隐状态拼接出的特征回归实际动作，损失取均方误差。",
+            "第 4 步：部署时对候选名义动作计算差异，差异大即判定难以执行，作为安全闸门。"
+          ],
+          "analogy": "点菜时菜单（名义）写着大份，但厨房实际出的是小份；记录每次真实出餐并与点单对比，就知道哪些菜在高峰期会被缩水。",
+          "pitfalls": [
+            "把可实现动作当成精确标签：实际执行往往只间接可观测，标签噪声会影响安全阈值。",
+            "以为差异大就一定是危险：也可能只是底层控制器抖动，需要与碰撞率等指标联合验证。",
+            "忽略差异只在候选想象轨迹上计算，它并不修正世界模型本身的长期误差。"
+          ],
+          "code": "import torch, torch.nn as nn\n\nclass InvDyn(nn.Module):\n    def __init__(self, dim, act_dim):\n        super().__init__()\n        self.net = nn.Sequential(nn.Linear(2 * dim, 256), nn.ReLU(), nn.Linear(256, act_dim))\n\n    def forward(self, z_t, z_next):\n        return self.net(torch.cat([z_t, z_next], dim=-1))\n\ndef inv_loss(model, z_t, z_next, a_real):\n    return ((model(z_t, z_next) - a_real) ** 2).mean()\n\ndef safety_gap(model, z_t, z_next, a_nom):\n    return (a_nom - model(z_t, z_next)).norm(dim=-1)",
+          "sources": [
+            {
+              "title": "Social-WM: Safety-Aware Latent World Models for Robot Social Navigation",
+              "url": "https://arxiv.org/abs/2609.40177v1"
             }
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "Omega-AI 是基于 Java 的深度学习框架，帮助快速构建神经网络做推理与训练。",
-          "它的引擎支持自动微分。",
-          "它的引擎支持多线程。",
-          "它通过 CUDA 与 cuDNN 支持 GPU 加速。",
-          "仓库有 854 stars、63 forks，且有开源实现。"
+          "论文指出社交导航经验里名义动作与实际可实现动作存在系统性差异。",
+          "Social-WM 只从自我中心 RGB 视频序列训练。",
+          "动作条件未来预测的目标是每条命令之后真实观察到的未来。",
+          "论文引入可实现逆动力学目标，把隐转移与实际执行的动作关联，而不是名义动作。",
+          "部署时对候选动作做世界模型想象，并用逆动力学估计可实现性，差异作为执行前安全信号。",
+          "学到的动力学与可实现性模型与目标点无关，支持位置目标与图像目标导航。",
+          "Social-HM3D 上成功率 63.77%，人类碰撞率降到 21.67%，零样本迁移到 Social-MP3D 仍保持较好表现。",
+          "方法不使用显式行人跟踪、特权人体状态与在线强化学习。"
         ],
         "uncertain": [
-          "摘要未给出具体算子、API 与网络结构，公式为通用反向模式链式法则的重建形式，需核对仓库实现。",
-          "多线程的具体策略（算子内并行还是算子间并行）与显存管理方式摘要未说明。",
-          "摘要没有性能基准与算子覆盖范围，无法据此判断生产可用性。"
+          "摘要未说明实际执行动作的观测方式与标签来源，实操细节需回原文核实。",
+          "两个目标函数按摘要描述重建为通用形式，需核对原文的具体损失与加权。",
+          "摘要未给出 Social-MP3D 上的具体数值与消融结果。"
         ]
       },
       "teaching": {
         "progressive": [
           {
             "level": "一句话",
-            "text": "Omega-AI 是用 Java 写的深度学习框架，能训练也能推理，支持 GPU 加速。"
+            "text": "机器人想走的和真正能走的不是一回事，这个差额本身就是安全信号。"
           },
           {
             "level": "入门",
-            "text": "它帮你用 Java 快速搭建神经网络：引擎内置自动微分（训练靠它算梯度），支持多线程，并可用 CUDA 与 cuDNN 做 GPU 加速；仓库还带有 diffusion、llm、yolo 等方向的标签，说明覆盖面不只图像分类。"
+            "text": "社交导航里机器人下的是直走这类名义指令，但人群会迫使它减速或侧移，于是实际执行的动作和名义动作总有差距。Social-WM 从自我中心 RGB 视频学一个隐世界模型，用动作条件未来预测学后果，再用可实现逆动力学把隐转移对齐到真正执行的动作；部署时先想象候选动作的未来，再估可实现性，差额就是安全信号。"
           },
           {
             "level": "进阶",
-            "text": "自研框架的核心工作量在引擎三件事：计算图与算子如何表达前向，反向模式自动微分如何按链式法则回传梯度，以及执行层如何把算子调度到多线程与 GPU。Java 做这些的难点是缺少 PyTorch 那样的生态与算子库，得自己封装 CUDA/cuDNN 调用并处理 JVM 与本地内存之间的数据搬运；好处是能和既有 Java 服务、大数据栈共存，不必为推理再起一个 Python 服务。"
+            "text": "设计上有两个关键取舍：一是预测标签取真实观察到的未来而不是理想结果，这样模型学到的是命令在约束下的后果；二是把逆动力学的回归目标从名义动作换成实际执行动作，使同一个映射既解释隐转移又能当可实现性评分器。因为学的是动力学与可实现性而不是策略，模型保持与目标点无关，位置目标和图像目标导航都能用，也不需要显式行人跟踪或特权人体状态。"
           },
           {
             "level": "专家",
-            "text": "定位上它与 DJL 等 JVM 方案同属 Java 侧深度学习，差别在是否自研引擎：自研能得到更可控的算子与调度，但算子覆盖、数值精度和分布式训练能力通常远不如 PyTorch，因此更适合教学、特定推理场景或嵌入 Java 服务的小模型部署。摘要只说明支持自动微分、多线程与 CUDA/cuDNN，没有给出算子数量、性能基准与显存管理细节，做技术选型必须用仓库文档与实测补齐。"
+            "text": "与把社会规范写成规则或代价的做法相比，Social-WM 把约束编码进预测误差，让安全信号随场景自动出现。结果上 Social-HM3D 成功率 63.77%、碰撞率降到 21.67%，并且不依赖在线强化学习即可零样本迁移到 Social-MP3D，说明从 RGB 视频学到的隐动力学携带了可迁移的社会约束信息。局限是摘要只给两个环境的单点数值，缺少消融与长期闭环误差分析，可实现动作的标签质量也决定安全信号是否可信。"
           }
         ],
         "socratic": [
           {
-            "q": "为什么训练框架必须有自动微分，而不能用数值差分？",
-            "a": "数值差分每求一个参数的梯度都要重跑一次前向，参数量上百万时完全不可行；反向模式一次反向就能得到全部梯度，代价与前向同阶。"
+            "q": "为什么不直接用规则避让行人，而要对齐可实现动作？",
+            "a": "规则需要行人的位置与意图，而论文强调不使用显式行人跟踪与特权人体状态；可实现性差异直接从隐转移里读出，与具体是谁无关。"
           },
           {
-            "q": "在 Java 里自研框架，最难的部分是什么？",
-            "a": "不是网络搭建 API，而是算子覆盖与执行效率：要自己实现或封装算子、管理本地显存，还要让多线程与 GPU 调度不成为瓶颈。"
+            "q": "把预测标签换成真实执行的未来，为什么很重要？",
+            "a": "用理想结果当标签会让模型以为命令总能完全执行，学不到人群约束下的折扣，安全信号就消失了。"
           }
         ],
-        "mechanism": "设计上必须把建图与求导解耦：前向执行时记录每个算子的输入与局部导数，反向时按拓扑逆序把上游梯度乘局部雅可比并累加，这样新增算子只要实现前向与反向两条规则即可。GPU 加速则要求数据以连续缓冲区驻留在设备内存，避免 JVM 堆与显存频繁往返，否则通信开销会吃掉算力收益——这正是 Java 框架要单独封一层 CUDA/cuDNN 的原因。",
-        "boundary": "适合教学、Java 服务内嵌推理与中小规模训练；大规模分布式训练、最新算子与生态工具链方面难以与 PyTorch 竞争。JVM 与本地内存互操作、显存管理与算子覆盖是主要风险点。摘要没有性能与精度数据，不能据此推断生产可用性。",
-        "analogyBoundary": "把它当成 Java 版 PyTorch 会误导：它更像自带引擎的小型工具链，算子与生态规模差一个量级；把 PyTorch 脚本直接搬过来的期望不成立，模型与算子需要按其 API 重写。",
+        "mechanism": "设计动机是让安全信号来自模型自身而不是外部传感器。机器人拿不到特权的人体状态，但拿得到自己的隐状态转移；把逆动力学目标从名义动作改成实际执行动作后，隐转移与实际动作的差就暴露了约束的存在。部署时先在隐空间想象候选动作，再用同一映射估计可实现性，名义与可实现之差就成了无需额外感知的安全闸门。",
+        "boundary": "方法依赖能观察到实际执行动作，而真实系统里它往往是间接甚至带噪的；隐世界模型在长时程 rollout 下的误差也会污染可实现性评分。摘要只在两个仿真社交导航环境上验证，跨到真实人群、异构机器人底盘或需要与行人协商的场景时结论未经验证。",
+        "analogyBoundary": "点菜缩水的类比默认差额是单方面被厨房削减的，而人群里的可实现动作是双向博弈的产物：机器人减速也可能改变行人的让行，差额并不总是机器人的损失。",
         "misconceptions": [
-          "把 Omega-AI 当成 PyTorch 的 Java 绑定，它自带引擎而非简单封装。",
-          "以为有 CUDA 支持就等于大模型训练可用，忽略算子覆盖与显存管理。",
-          "忽略 JVM 堆与显存之间数据搬运带来的开销。"
+          "把名义动作与可实现动作的差异当成纯执行噪声，忽略它携带社会约束信息。",
+          "以为需要显式行人跟踪或特权人体状态才能做安全社交导航。",
+          "以为可实现逆动力学只是普通逆动力学改名，忽略标签从名义换成了实际执行。"
         ],
-        "ownAnalysis": "从求职角度（推断）：这类项目的价值是能讲清自动微分如何实现、算子如何调度到 GPU，比只会调 PyTorch API 更能体现系统能力；但作为生产框架的成熟度必须用仓库示例、测试与 issue 情况判断。可疑处是摘要只列了自动微分、多线程、CUDA/cuDNN 三项能力，没有任何基准数字，也无法确认它与 DJL 等方案的差异，需要回仓库核实。",
+        "ownAnalysis": "把动作能不能被执行提升为一等预测对象，是这篇最可迁移的地方（推断）：它绕开对行人状态建模的依赖，把社会规范压缩进隐空间几何。可疑处（推断）：可实现动作在仿真里可能由底层控制器精确记录，真机上获取成本高，这会是落地的主要障碍；另外碰撞率 21.67% 仍是可用性上的硬伤，摘要也未给出基线碰撞率的对比口径。",
         "officialNotes": [
           {
-            "position": "Omega-AI 是基于 Java 的深度学习框架，引擎支持自动微分、多线程，以及通过 CUDA 与 cuDNN 的 GPU 加速，用于快速搭建网络的推理与训练。",
-            "source": "github（仓库描述）"
+            "position": "Social-WM 从自我中心 RGB 视频训练隐世界模型，用动作条件未来预测与可实现逆动力学建模名义与可实现差异，部署时以该差异作安全信号；Social-HM3D 成功率 63.77%、人类碰撞率 21.67%，并可零样本迁移到 Social-MP3D。",
+            "source": "https://arxiv.org/abs/2609.40177v1"
           }
         ],
-        "interviewAnswer": "Omega-AI 是一个用 Java 写的深度学习框架，自带引擎，支持自动微分、多线程，以及通过 CUDA 和 cuDNN 做 GPU 加速，目标是让人在 JVM 上快速搭建网络做训练和推理。我会从引擎三件事理解它：前向怎么建图、反向怎么按链式法则回传梯度、执行层怎么把算子调度到多线程和 GPU。它的意义是让 Java 服务不必为了推理再起 Python 服务；但客观说算子覆盖和生态规模跟 PyTorch 差得远，适合教学和中小规模场景，选型要看实测。",
+        "interviewAnswer": "社交导航里名义动作和真正能执行的动作有系统差距，比如直走在人群里会被迫减速侧移。Social-WM 从自我中心 RGB 视频学一个隐世界模型：动作条件预测的标签是真实观察到的未来，所以学到的是命令在约束下的后果；逆动力学目标则对齐实际执行的动作而不是名义动作，这样同一个映射既解释隐转移又能给可实现性打分。部署时先想象候选动作的未来，再估可实现性，名义和可实现之差就是执行前的安全信号。它不需要显式行人跟踪和特权人体状态，Social-HM3D 上成功率 63.77%、碰撞率 21.67%，还能零样本迁移到 Social-MP3D。",
         "studyPath": {
           "prerequisites": [
-            "Java 基础与 JNI/本地库调用概念",
-            "神经网络前向与反向传播",
-            "CUDA 与 cuDNN 的基本角色"
+            "latent world model 与 model-based planning",
+            "逆动力学与模仿学习",
+            "社交导航指标：成功率与碰撞率"
           ],
           "nextSteps": [
-            "读仓库示例跑通一个训练任务",
-            "对比 DJL 等 JVM 深度学习方案",
-            "自己实现一个最小计算图与自动微分"
+            "读 Social-HM3D 与 Social-MP3D 的数据集设定",
+            "实现一个玩具版的名义-可实现差异检测",
+            "思考真机上如何获取实际执行动作标签"
+          ]
+        }
+      }
+    },
+    {
+      "id": "09ca9ee164ef6e05",
+      "tldr": "从两小时 Geometry Dash 录像学离散世界模型，用 BC+PPO 在冻结模型内训练出 60Hz 实时控制器。",
+      "keyPoints": [
+        "实时游戏要求采集、预测、动作都在下一帧前完成",
+        "用约两小时录像学紧凑的动作条件世界模型",
+        "BC 初始化后在冻结模型 rollout 内用 PPO 精调",
+        "三个种子在三个官方关卡与一张社区图上都更耐久",
+        "部署端跳过视觉生成，消费级 GPU 上维持 60Hz"
+      ],
+      "why": "世界模型能否闭环实时控制是工程分水岭；串起 BC、PPO、rollout 与延迟预算，适合具身与游戏 AI 岗。",
+      "difficulty": "medium",
+      "tags": [
+        "worldmodel",
+        "ppo",
+        "behavioural-cloning",
+        "real-time",
+        "control"
+      ],
+      "entities": [
+        "DashVMC",
+        "Geometry Dash",
+        "behavioural cloning",
+        "PPO",
+        "action-conditioned world model",
+        "60-Hz"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "60Hz 闭环控制栈",
+        "caption": "先学世界模型，再在冻结模型里做 RL，最后部署时跳过视觉生成抢出实时预算。",
+        "svg": "<svg viewBox='0 0 480 270' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='DashVMC 从录像学世界模型，在冻结模型内用 BC 加 PPO 训练并实时部署'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>屏幕采集</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>下一帧前必须出动作</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>离散世界模型</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>约两小时录像训练</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>行为克隆初始化</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>先模仿人类控制器</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>冻结模型内 PPO</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>不再与真实游戏交互</text><line x1='240' y1='216' x2='240' y2='224' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,232 236,224 244,224' fill='var(--line-1)'/><rect x='56' y='232' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='256' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>部署跳过视觉生成</text><text x='408' y='256' font-size='13' text-anchor='end' fill='currentColor'>消费级 GPU 维持 60Hz</text></svg>",
+        "alt": "竖排流程：屏幕采集、离散世界模型、行为克隆初始化、在冻结模型 rollout 内用 PPO 精调、部署时跳过视觉生成维持 60Hz 采集到动作循环。"
+      },
+      "concepts": [
+        {
+          "name": "World-Model-in-the-Loop RL（在冻结世界模型内做 RL）",
+          "readable": "把学好的世界模型当成封闭训练场：策略在模型想象出的 rollout 里试错、拿奖励、更新参数，全程不碰真实环境，省掉真实交互的采样成本与实时约束。",
+          "analogy": "飞行员在模拟器里刷小时数：模拟器不够真实，但便宜、可重复、随时重置，先把基本操纵练熟再上真机。",
+          "analogyBreaksDown": "模拟器的物理是人工写的，偏差方向已知；世界模型是学出来的，它会在策略刻意寻找的区域出现模型漏洞，策略可能学会利用模型的错误而非真正变强。",
+          "mechanism": "实时游戏不允许策略与环境同步等待，采样成本极高；把训练搬进冻结模型后，rollout 变成纯前向计算，可以并行、可重复。代价是模型误差会累积，所以用行为克隆初始化把策略先放到合理区域，减少在模型漏洞上浪费的优化。",
+          "visual": "画左右两栏：左栏真实环境只有一条采集与动作回路并标注 60Hz 预算，右栏冻结模型内画出多条并行 rollout 分支，标注无真实交互。",
+          "prerequisites": [
+            "PPO 与策略梯度基础",
+            "行为克隆与模仿学习",
+            "latent world model 与 rollout"
+          ],
+          "selfTest": [
+            "为什么要在冻结模型里做 RL 而不是真实游戏？",
+            "行为克隆初始化解决了什么问题？",
+            "模型不够准，为什么训练仍可能有用？"
+          ],
+          "formula": "\\nabla_{\\theta} J \\approx \\mathbb{E}_{\\tau\\sim\\hat{p}_{\\text{wm}}}\\Big[\\sum_t \\nabla_{\\theta}\\log \\pi_{\\theta}(a_t\\mid s_t)\\,\\hat{A}_t\\Big]"
+        },
+        {
+          "name": "Real-Time Latency Budget（实时延迟预算）",
+          "readable": "一帧只有约 16.7 毫秒，采集、编码、预测、决策、输出必须挤在这个预算里。世界模型要实时用，就得砍掉最贵的部分，比如逐帧生成图像。",
+          "analogy": "现场直播的导播间：镜头切换、字幕、音效都要在下一个镜头前完成，做不完就丢帧，所以不能有一步需要几分钟的渲染。",
+          "analogyBreaksDown": "导播可以提前录制素材，而这里的输入是实时画面，无法预生成；预算分配也非线性，某一模块慢一毫秒可能整条流水线超时，类比低估了木桶效应的严格性。",
+          "mechanism": "论文的部署取舍是跳过视觉生成，只在隐空间预测与决策，把最贵的解码从关键路径移除；这样虽然牺牲可视化质量，却保证 60Hz 的采集到动作循环，使世界模型真正进入闭环。",
+          "visual": "画一条 16.7 毫秒的水平时间轴，分成采集、编码、世界模型预测、策略决策、输出几段堆叠条形；对比开启与关闭视觉生成两种配置，后者明显更短。",
+          "prerequisites": [
+            "推理延迟与吞吐的基本概念",
+            "模型推理优化（批处理、精度）",
+            "实时控制的帧预算"
+          ],
+          "selfTest": [
+            "为什么实时游戏不能等策略算完再出下一帧？",
+            "跳过视觉生成省下的是哪部分开销？",
+            "60Hz 对应的每帧预算是多少毫秒？"
+          ],
+          "formula": "T_{\\text{capture to action}}=t_{\\text{capture}}+t_{\\text{encode}}+t_{\\text{WM}}+t_{\\text{policy}} \\le \\frac{1}{60}\\,\\text{s}\\approx 16.7\\,\\text{ms}"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-behavioral-cloning-loss",
+          "name": "行为克隆损失（Behavioural Cloning Loss）",
+          "category": "rl",
+          "latex": "\\mathcal{L}_{\\text{BC}}(\\theta)=-\\mathbb{E}_{(s,a)\\sim\\mathcal{D}}\\big[\\log \\pi_{\\theta}(a\\mid s)\\big]",
+          "symbols": [
+            [
+              "\\mathcal{D}",
+              "约两小时人类游玩录像构成的专家数据集"
+            ],
+            [
+              "s",
+              "游戏画面或其隐表示"
+            ],
+            [
+              "a",
+              "人类在该帧的动作"
+            ],
+            [
+              "\\pi_{\\theta}(a\\mid s)",
+              "策略网络输出的动作概率"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：实时游戏无法承受随机探索的采样成本，先用人类录像给出一个能玩的初始策略。",
+            "第 2 步：把模仿当作最大似然，最小化专家动作的负对数似然。",
+            "第 3 步：训练后策略比随机初始化耐久，但受限于数据覆盖，遇到录像里没见过的局面会失效。",
+            "第 4 步：把它作为 PPO 的起点，让后续优化只需在模型内做局部修正。"
+          ],
+          "analogy": "先看两小时高手录像模仿按键，再自己练习：模仿让你能开局，但录像里没出现过的地形仍要靠练。",
+          "pitfalls": [
+            "以为行为克隆能直接得到最优策略：它只复制专家分布，误差会随回合累积。",
+            "忽略动作分布不匹配：模型 rollout 中策略访问的状态可能不在专家数据里。",
+            "把负对数似然损失写成均方误差时，忘记动作是离散分类还是连续回归。"
+          ],
+          "code": "import torch, torch.nn.functional as F\n\ndef bc_loss(policy, states, expert_actions):\n    logits = policy(states)                     # 每个离散动作的 logit\n    return F.cross_entropy(logits, expert_actions)\n\n# 摘要口径：行为克隆初始化的策略比随机好，但在未见过地形上会失效\nloss = bc_loss(policy, states, expert_actions)\nloss.backward()",
+          "sources": [
+            {
+              "title": "DashVMC: Real-Time Discrete World Model Control in Geometry Dash",
+              "url": "https://arxiv.org/abs/2609.40003v1"
+            }
+          ]
+        },
+        {
+          "id": "f-ppo-clipped-objective",
+          "name": "PPO 裁剪代理目标（PPO Clipped Surrogate Objective）",
+          "category": "rl",
+          "latex": "\\mathcal{L}^{\\text{CLIP}}(\\theta)=\\mathbb{E}_t\\Big[\\min\\big(\\rho_t(\\theta)\\hat{A}_t,\\ \\text{clip}(\\rho_t(\\theta),1-\\epsilon,1+\\epsilon)\\hat{A}_t\\big)\\Big],\\quad \\rho_t(\\theta)=\\frac{\\pi_{\\theta}(a_t\\mid s_t)}{\\pi_{\\theta_{\\text{old}}}(a_t\\mid s_t)}",
+          "symbols": [
+            [
+              "\\rho_t",
+              "新旧策略在同一状态动作上的概率比"
+            ],
+            [
+              "\\hat{A}_t",
+              "优势估计，表示该动作比平均水平好多少"
+            ],
+            [
+              "\\epsilon",
+              "裁剪范围，限制单次更新幅度"
+            ],
+            [
+              "\\mathcal{L}^{\\text{CLIP}}",
+              "被最大化的代理目标"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：策略梯度需要重要性采样来复用旧策略采到的数据，但概率比过大会让更新失控。",
+            "第 2 步：用取最小与裁剪把比值限制在 1 加减 epsilon 之间，得到悲观下界目标。",
+            "第 3 步：好动作被鼓励但增幅有限，坏动作被压制，从而允许在同一批 rollout 上做多轮更新。",
+            "第 4 步：论文在冻结世界模型的 rollout 上最大化该目标，因此无需再与实时游戏交互。"
+          ],
+          "analogy": "教练允许你按旧战术录像复盘多练几遍，但每次调整幅度有限，防止一场录像被过度解读。",
+          "pitfalls": [
+            "把裁剪当成硬约束：它是目标函数里的取最小，不是对策略参数的投影。",
+            "忽略优势估计的质量：PPO 的稳定性高度依赖优势估计与价值函数。",
+            "以为在冻结模型里训练没有风险：模型误差会被策略利用，导致高估。"
+          ],
+          "code": "import torch\n\ndef ppo_clip_loss(new_logp, old_logp, adv, eps=0.2):\n    ratio = torch.exp(new_logp - old_logp)\n    unclipped = ratio * adv\n    clipped = torch.clamp(ratio, 1 - eps, 1 + eps) * adv\n    return -torch.min(unclipped, clipped).mean()\n\n# 在冻结世界模型的 rollout 上最大化该目标，不再访问真实游戏\nloss = ppo_clip_loss(new_logp, old_logp, adv)",
+          "sources": [
+            {
+              "title": "DashVMC: Real-Time Discrete World Model Control in Geometry Dash",
+              "url": "https://arxiv.org/abs/2609.40003v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "DashVMC 从约两小时录制好的 Geometry Dash 游戏录像中学习紧凑的动作条件世界模型。",
+          "实时游戏要求采集、预测与动作都在下一帧之前完成。",
+          "控制器先由行为克隆初始化，再在冻结模型的 rollout 中用 PPO 精调，不再与真实游戏交互。",
+          "三个控制器种子在三个官方关卡与一张留出的社区布局上都比行为克隆初始化存活更久。",
+          "部署时基线跳过视觉生成，在消费级 GPU 上维持 60Hz 的采集到动作循环。",
+          "动作条件续写与 rollout 诊断显示，模型长时程保真度不完美但仍可用于控制。"
+        ],
+        "uncertain": [
+          "摘要未给出各关卡的具体存活时长与三个种子的方差。",
+          "约两小时录像的规模、世界模型参数量与训练算力摘要未给。",
+          "行为克隆与 PPO 目标按标准形式重建，需核对原文的超参与奖励设计。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "两小时录像学出的世界模型，配上 BC 加 PPO，能在真实游戏里 60Hz 活着。"
+          },
+          {
+            "level": "入门",
+            "text": "实时游戏不给策略等待的时间：采集、预测、出动作必须在下一帧前做完。DashVMC 用大约两小时 Geometry Dash 录像训练一个紧凑的动作条件离散世界模型，控制器先用行为克隆从人类录像初始化，再完全在冻结模型的 rollout 里用 PPO 精调，不再碰真实游戏；部署时跳过视觉生成，在消费级 GPU 上维持 60Hz 循环。"
+          },
+          {
+            "level": "进阶",
+            "text": "关键设计是把训练在哪与跑在哪分开：训练放在学出来的世界模型里，rollout 变成纯前向计算，成本低且可重复；部署只跑隐空间预测与策略，砍掉最贵的视觉生成，从而守住每帧约 16.7 毫秒的预算。用行为克隆初始化是为了先落在合理策略区域，减少 PPO 在模型漏洞上浪费样本。三个种子在三个官方关卡和一张留出社区图上都比初始策略存活更久，说明模型尽管保真不完美，动力学仍足以支撑控制。"
+          },
+          {
+            "level": "专家",
+            "text": "这条线代表世界模型当训练环境的工程范式：与把模型当规划器（在线 rollout 选动作）相比，这里模型只用于离线优化策略，部署时甚至不做多步想象，因此实时性压力小得多；与直接在真机做 RL 相比，它绕开采样成本与安全约束，代价是策略上限受模型精度限制，且策略可能利用模型误差。适用范围是离散动作、画面结构稳定、录像能覆盖大部分状态的游戏；需要精细长时程物理或对手博弈的任务收益会明显下降。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "如果世界模型不够准，为什么在它里面训练仍有效？",
+            "a": "控制只需要动力学在对策略重要的区域大致正确；行为克隆初始化把策略限制在合理区域，模型误差没被放大到破坏控制的程度。"
+          },
+          {
+            "q": "部署时为什么要跳过视觉生成？",
+            "a": "每帧预算只有约 16.7 毫秒，解码图像是最贵的一环；控制只需要隐状态，去掉生成才能守住 60Hz。"
+          }
+        ],
+        "mechanism": "实时游戏把采样变成了硬约束：策略必须与画面同步，不能在真实环境里慢慢试错。于是训练被搬进一个冻结的学习模型，rollout 不再受墙钟限制，可重复可并行；部署则只保留控制必需的计算，把视觉生成从关键路径剔除。行为克隆初始化是这套流水线的黏合剂：它让 PPO 从能玩的起点出发，避免把样本浪费在几乎不可能通关的随机策略上。",
+        "boundary": "方法依赖录像覆盖足够多的关卡与状态；世界模型长时程保真不完美，策略在被反复优化的区域可能利用模型误差，出现模型内强、真机弱的落差。摘要未报告真机长时程成绩与模型误差上界，跨游戏或连续动作任务时结论不能直接搬用。",
+        "analogyBoundary": "模拟器类比低估了模型是被学出来的：模拟器的偏差已知且稳定，而学出来的模型会在策略主动探索的区域产生不可预测的漏洞，而且漏洞会随策略更新而移动。",
+        "misconceptions": [
+          "以为在世界模型里训练就等于提升了世界模型本身的精度。",
+          "以为 PPO 精调需要继续与真实游戏交互。",
+          "忽略行为克隆初始化的作用，以为直接从随机策略跑 PPO 就能收敛。"
+        ],
+        "ownAnalysis": "把世界模型定位成离线训练场而不是在线规划器，是这条工作最实用的取舍（推断）：它用模型精度换采样安全和实时性，对游戏、机器人等采样昂贵的场景都可迁移。可疑处（推断）：摘要只报存活更久，没有绝对分数或与人类水平的对比，60Hz 也只是采集到动作循环的延迟而非通关率；另外约两小时数据在同类工作中偏少，长期保真不足很可能是数据规模而非方法的瓶颈。",
+        "officialNotes": [
+          {
+            "position": "DashVMC 从约两小时 Geometry Dash 录像学习紧凑的动作条件世界模型，行为克隆初始化后在冻结模型 rollout 中用 PPO 精调，三个种子在三个官方关卡与一张留出社区图上都存活更久；部署跳过视觉生成，在消费级 GPU 上维持 60Hz 采集到动作循环。",
+            "source": "https://arxiv.org/abs/2609.40003v1"
+          }
+        ],
+        "interviewAnswer": "实时游戏的约束是策略不能在真环境里慢慢采样，因为采集、预测、动作都得在下一帧前完成。DashVMC 的做法是先用大约两小时游戏录像学一个紧凑的动作条件离散世界模型，然后用行为克隆把控制器初始化，再完全在冻结模型的 rollout 里用 PPO 精调，不再碰真实游戏。部署时跳过视觉生成，只在隐空间做预测和决策，守住 60Hz 的采集到动作循环。三个种子在三个官方关卡和一张留出的社区布局上都比初始策略存活更久，说明模型长时程保真虽然不完美，动力学已经足够支撑控制。",
+        "studyPath": {
+          "prerequisites": [
+            "PPO 与策略梯度",
+            "行为克隆与模仿学习",
+            "latent world model 与 rollout 评估"
+          ],
+          "nextSteps": [
+            "复现一个小规模的世界模型 rollout 训练循环",
+            "测量各模块延迟以理解实时预算分配",
+            "研究模型误差如何被策略利用（model exploitation）"
           ]
         }
       }

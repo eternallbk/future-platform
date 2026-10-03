@@ -1,0 +1,53 @@
+{
+  "batchId": "queue-16",
+  "mode": "full",
+  "date": "2026-10-03",
+  "workDir": "scripts/agent-work-2026-10-03",
+  "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
+  "items": [
+    {
+      "id": "f2eac1e4b5ccfa5e",
+      "title": "Video Generation Models: A Survey of Post-Training and Alignment",
+      "category": "posttraining",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2610.00812",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2610.00812",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.00812",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Video generation has rapidly progressed from short, low-quality clips to high-resolution, long-duration sequences with complex spatiotemporal dynamics. Despite strong generative priors learned through large-scale pretraining, pretrained video models often fail to reliably follow human intent, maintain temporal coherence, or satisfy physical and safety constraints. Compared with image and text generation, alignment in video generation presents unique challenges, including error accumulation over time, motion-appearance coupling, multi-objective trade-offs, and limited supervision for temporal properties. These challenges motivate systematic post-training strategies that adapt pretrained models without retraining them from scratch. In this survey, we present the first comprehensive review of post-training and alignment in video generation models. We frame post-training as a unifying framework and distinguish between implicit alignment and explicit alignment based on how alignment signals are enforced. From this perspective, we organize existing approaches into four broad categories: supervised fine-tuning methods, self-training and distillation methods, preference- and reward-based methods, and inference-time methods. This taxonomy provides a coherent view of how alignment signals shape model behavior across both training and deployment. Beyond methodological advances, we review commonly used datasets, benchmarks, and evaluation practices, and discuss open challenges such as scalable reward design, long-horizon temporal consistency, stability-expressiveness trade-offs, and safety-aware generation. This survey aims to provide a structured conceptual foundation and practical guidance for advancing controllable and reliable video generation models.",
+      "authors": [
+        "Chaoyu Li",
+        "Xiaoyi Gu",
+        "Yogesh Kulkarni",
+        "Eun Woo Im",
+        "Mohammadmahdi Honarmand",
+        "Zeyu Wang",
+        "Juntong Song",
+        "Fei Du",
+        "Xilin Jiang",
+        "Kexin Zheng",
+        "Tianzhi Li",
+        "Fei Tao"
+      ],
+      "publishedAt": "2026-09-30T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「后训练」方向；命中关键词 post-training、distillation；社区热度 31",
+      "relevanceScore": 74.8,
+      "qualitySignals": {
+        "upvotes": 31
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 74.8,
+      "planDepthScore": 62.61
+    }
+  ]
+}

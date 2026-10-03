@@ -1,0 +1,138 @@
+{
+  "batchId": "prob-cur-36",
+  "entries": [
+    {
+      "id": "deepseek-moe-bias",
+      "tldr": "无辅助损失≠不均衡：偏置只进 top-K 选择、不进 g_i,t，按上一批负载用 u·sign(均载−载_i) 迭代 b_i，均衡靠无梯度的外部反馈完成。",
+      "restated": "题面只有一句：DeepSeek 笔试第八题，推导「无辅助损失」的负载均衡机制；要点不是取消均衡控制，而是把均衡从主损失里的可学习惩罚项，改成路由器外部的专家偏置反馈。题面未给专家数 N、top-K、更新率 u、模型规模，也没有样例与代码骨架。所以要回答的是：偏置如何进入打分、是否进入加权 g_i,t、b_i 的更新规则以及为什么用 sign 和上一批负载、为什么它不产生干扰梯度、与传统辅助损失和 Expert Choice 路由的取舍。",
+      "approach": [
+        {
+          "step": "基线形式化：辅助损失为什么是两难",
+          "detail": "先把 MoE 层写清楚：h_t = u_t + Σ_i g_i,t·FFN_i(u_t)，其中 g_i,t = s_i,t（当 s_i,t 落在 top-K 集合里）否则为 0，DeepSeek 的 s_i,t = sigmoid(u_t·e_i)。传统做法是在主损失之外加一项 L_Balance = α·Σ_i f_i·P_i：f_i 是被路由到专家 i 的 token 占比（离散硬计数，梯度上按 stop-grad 处理），P_i 是专家 i 的平均门控分，α 同时充当「均衡强度」和「干扰强度」。α 小（1e-4）压不住不平衡，训练早期就可能路由坍缩、部分专家永远训不到；α 大（1e-2）负载确实变平，但这一项的梯度与语言建模目标冲突（论文的对照：1B 模型 α=1e-3 时验证困惑度 9.56、MaxVio_global 0.72；Loss-Free 是 9.50 与 0.04）。根因是 f_i 由离散的 top-K 结果决定，而可微的惩罚项只能通过连续地改动路由分数来间接影响它——均衡与主任务被迫共用同一组分数、同一批梯度。"
+        },
+        {
+          "step": "关键改写：把均衡搬到路由器外部，只改「选谁」不改「怎么加权」",
+          "detail": "给每个专家一个偏置 b_i（初始化为 0），用 s_i,t + b_i 做 top-K 选择，但加权系数仍取原始分数：g_i,t = s_i,t（当 s_i,t + b_i 落在 TopK({s_j,t + b_j}, K) 内），否则为 0。这个不对称是整个机制的支点，它同时给出两个性质：(1) top-K / 阈值比较是离散操作、本身不可微，b_i 不存在回到主损失的可微路径，所以无论 b_i 多大多快地变，都不会给语言建模目标注入任何干扰梯度；(2) b_i 不进入 g_i,t，MoE 层对每个 token 的输出函数没有被改写，专家输出的组合方式与「纯按 s 路由」时一致。工程含义：b_i 存成 buffer 或 no_grad 张量，不交给优化器；它只决定 token 去哪个专家算，不决定算出来的结果怎么合并。"
+        },
+        {
+          "step": "偏置怎么迭代：负载约束的对偶变量 + sign 次梯度",
+          "detail": "把均衡写成带约束的问题：最小化语言建模损失，s.t. 每个专家的负载 load_i ≈ load̄（load̄ = T·K/N）。b_i 就是这个负载约束的 Lagrange 乘子（对偶变量）：主问题更新路由与专家参数，对偶问题按违约量更新 b。取违约量 e_i = c̄_i − c_i（c̄_i = K·T/N 是理想负载，c_i 是上一批实际分到的 token 数），做符号次梯度上升：b_i ← b_i + u·sign(e_i)，u = 0.001。符号检查：过载专家 c_i > c̄_i ⇒ e_i < 0 ⇒ b_i 下降 ⇒ 下次更难被选中；空闲专家反之，于是负载差的符号决定偏置往哪走。为什么用 sign 而不是 e_i 本身：sign 把每步更新量钉死在 ±u，与 batch 大小、负载差的绝对尺度解耦（换全局 batch size 不必重调 u），代价是稳态只能在 ±u 内抖动；论文试过 b_i ← b_i + u·e_i，均衡略好（MaxVio 0.028 vs 0.044）但困惑度变差（9.53 vs 9.50），所以保留 sign 版本。还有一条时序约束必须遵守：只用「上一个 batch」的负载，绝不能用当前 batch 或当前序列的负载——否则某个 token 的路由会取决于同序列后续 token 的统计量，破坏因果约束、泄漏未来 token 信息（这正是 Expert Choice 路由的硬伤）。"
+        },
+        {
+          "step": "收敛性、超参与 DeepSeek-V3 的完整配置",
+          "detail": "b 的更新是一个积分控制器：稳态是负载差消失（e_i 在 0 附近来回翻转），抖动幅度由 u 决定。u=1e-4 太小、早期长时间不平衡；u=1e-2 太大、偏置会过冲（本模拟里 max|b| 从 0.13 涨到 1.05，论文报的是后期震荡、均衡与困惑度都变差），所以 u=0.001 是折中。另一个容易被忽略的事实：b 只有相对大小有意义——给所有 b_i 加同一个常数不改变任何 top-K 结果，所以 b 的均值会自由漂移（本模拟里 2048 步漂到约 0.08），实现上可随时中心化。DeepSeek-V3 的完整方案是：每层 1 个共享专家 + 256 个路由专家、每 token 激活 8 个、偏置更新速度 γ = 0.001，另外保留一个权重极小（1e-4）的序列级辅助损失专门防止单条序列内部的极端倾斜，并用 node-limited routing（每个 token 最多发往 M = 4 个节点）控制专家并行的通信量。"
+        }
+      ],
+      "complexity": {
+        "time": "路由主项不变：打分 O(T·N)、top-K 选择 O(T·N log K)（全排序则 O(T·N log N)）、加权求和 O(T·K)；均衡控制本身只增加每 step 一次 O(N) 的符号更新。",
+        "space": "额外 O(N) 存 b_i（外加 O(N) 的计数缓冲）；训练时还需保存 token→专家 的映射表 O(T·K)，与均衡机制无关。",
+        "why": "打分要对每个 token 与 N 个专家做点积，是路由的绝对主项；b_i 只在 step 末尾被遍历一次，既不产生新的矩阵乘法，也不产生新的激活张量，所以时间与显存开销都可忽略。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''无辅助损失负载均衡（Loss-Free Balancing）的最小可运行模拟。\n\n同一份合成数据（同一 seed、同一批 token 的专家分数）上对比三条路线：\n  raw  : 纯 top-K，不做任何均衡控制；\n  free : Loss-Free；b_i 只参与 top-K 选择，加权仍用原始 s_i,t，\n         b_i <- b_i + u * sign(mean_load - load_i)，负载取自上一个 micro-batch；\n  aux  : 辅助损失路线；alpha 折算成对路由分数的等效推力，同时被主损失以\n         回复力 AUX_PULL 拉回，两者竞争 => 残余不平衡 + 加权分数被推歪。\n两个观测量：\n  maxvio   统计窗口（64 个 micro-batch = 8192 次专家分配）内 (max 负载 - 平均) / 平均；\n  gate_gap 每个 token 实际加权向量与同一被选集合上按原始 s 归一化的 L1 距离均值。\n纯 Python、无第三方依赖，整段跑完约 15 秒。\n'''\nfrom __future__ import annotations\n\nimport math\nimport random\n\nN_EXPERTS = 16\nTOP_K = 2\nBATCH_TOKENS = 64\nBATCHES = 2048\nDIM = 6\nWINDOW = 64            # 64 个 micro-batch * 64 token * top-2 = 8192 次分配算一个窗口\nBIAS_RATE = 0.001      # 论文 Algorithm 1 的更新率 u\nAUX_PULL = 0.01        # 主损失把路由分数拉回自然值的回复力（辅助损失路线的竞争项）\n\n\ndef sigmoid(x):\n    '数值稳定的 sigmoid：DeepSeek 的 MoE 门控用它而不是 softmax。'\n    if x >= 0.0:\n        return 1.0 / (1.0 + math.exp(-x))\n    z = math.exp(x)\n    return z / (1.0 + z)\n\n\ndef build_world(seed=20261003):\n    '固定专家质心与全部 batch 的分数矩阵，三条路线复用，保证可比。'\n    rng = random.Random(seed)\n    centroids = [[rng.gauss(0.0, 1.0) for _ in range(DIM)] for _ in range(N_EXPERTS)]\n    for e in range(3):                 # 让前 3 个专家天生更受欢迎，制造系统性不平衡\n        centroids[e][0] += 1.8\n    batches = []\n    for _ in range(BATCHES):\n        rows = []\n        for _ in range(BATCH_TOKENS):\n            u = [rng.gauss(0.0, 1.0) for _ in range(DIM)]\n            rows.append([sigmoid(sum(a * b for a, b in zip(u, c))) for c in centroids])\n        batches.append(rows)\n    return batches, rng\n\n\ndef route(scores, bias):\n    '按 (s + b) 选 top-K；加权只用原始 s 在被选集合内归一化，b 永远不进 g。'\n    loads = [0] * N_EXPERTS\n    gates = []\n    for row in scores:\n        chosen = sorted(range(N_EXPERTS), key=lambda i: row[i] + bias[i], reverse=True)[:TOP_K]\n        total = sum(row[i] for i in chosen) or 1.0\n        w = [0.0] * N_EXPERTS\n        for i in chosen:\n            w[i] = row[i] / total\n            loads[i] += 1\n        gates.append(w)\n    return loads, gates\n\n\ndef route_aux(scores, shift):\n    '辅助损失路线：被改写过的分数 (s + shift) 同时决定选择与加权。'\n    loads = [0] * N_EXPERTS\n    gates = []\n    for row in scores:\n        adj = [row[i] + shift[i] for i in range(N_EXPERTS)]\n        chosen = sorted(range(N_EXPERTS), key=lambda i: adj[i], reverse=True)[:TOP_K]\n        total = sum(adj[i] for i in chosen) or 1.0\n        w = [0.0] * N_EXPERTS\n        for i in chosen:\n            w[i] = adj[i] / total\n            loads[i] += 1\n        gates.append(w)\n    return loads, gates\n\n\ndef gate_gap(scores, gates):\n    '实际加权向量与纯 s 归一化的每 token L1 距离均值：干扰的可观测代理。'\n    out = 0.0\n    for row, w in zip(scores, gates):\n        chosen = [i for i in range(N_EXPERTS) if w[i] > 0.0]\n        total = sum(row[i] for i in chosen) or 1.0\n        for i in chosen:\n            out += abs(w[i] - row[i] / total)\n    return out / float(len(scores))\n\n\ndef maxvio(loads):\n    '论文的 MaxVio：(max 负载 - 平均负载) / 平均负载。'\n    mean = sum(loads) / float(len(loads))\n    return (max(loads) - mean) / mean if mean else 0.0\n\n\ndef run(strategy, batches, rate=BIAS_RATE, strength=0.0):\n    '返回 (每窗口 maxvio, 每 batch gate_gap, 末端 b, 末端 shift, 全程负载)。'\n    bias = [0.0] * N_EXPERTS\n    shift = [0.0] * N_EXPERTS\n    gaps, wvios, acc, glob = [], [], [0] * N_EXPERTS, [0] * N_EXPERTS\n    for idx, scores in enumerate(batches):\n        if strategy == 'aux':\n            loads, gates = route_aux(scores, shift)\n        elif strategy == 'free':\n            loads, gates = route(scores, bias)\n        else:\n            loads, gates = route(scores, [0.0] * N_EXPERTS)\n        gaps.append(gate_gap(scores, gates))\n        for i in range(N_EXPERTS):\n            acc[i] += loads[i]\n            glob[i] += loads[i]\n        if (idx + 1) % WINDOW == 0:\n            wvios.append(maxvio(acc))\n            acc = [0] * N_EXPERTS\n        if strategy == 'free':\n            target = sum(loads) / float(N_EXPERTS)\n            for i in range(N_EXPERTS):\n                d = target - loads[i]\n                bias[i] += rate * (1.0 if d > 0 else (-1.0 if d < 0 else 0.0))\n        elif strategy == 'aux':\n            f = [N_EXPERTS * loads[i] / float(TOP_K * BATCH_TOKENS) for i in range(N_EXPERTS)]\n            for i in range(N_EXPERTS):\n                shift[i] = (1.0 - AUX_PULL) * shift[i] - strength * (f[i] - 1.0)\n    return wvios, gaps, bias, shift, glob\n\n\ndef tail(values, n):\n    '末尾 n 项的均值。'\n    return sum(values[-n:]) / float(min(n, len(values)))\n\n\ndef iid_reference(rng, windows):\n    '参照线：把同样多的名额完全随机分给 16 个专家，窗口 maxvio 能到多小。'\n    out = []\n    for _ in range(windows):\n        acc = [0] * N_EXPERTS\n        for _ in range(WINDOW * BATCH_TOKENS * TOP_K):\n            acc[rng.randrange(N_EXPERTS)] += 1\n        out.append(maxvio(acc))\n    return out\n\n\ndef pearson(xs, ys):\n    '皮尔逊相关系数。'\n    n = float(len(xs))\n    mx, my = sum(xs) / n, sum(ys) / n\n    cov = sum((x - mx) * (y - my) for x, y in zip(xs, ys))\n    vx = math.sqrt(sum((x - mx) ** 2 for x in xs))\n    vy = math.sqrt(sum((y - my) ** 2 for y in ys))\n    return cov / (vx * vy)\n\n\ndef centered(xs):\n    '去掉规范自由度：给所有 b 加同一个常数不改变任何 top-K 结果。'\n    m = sum(xs) / float(len(xs))\n    return [x - m for x in xs]\n\n\ndef main():\n    batches, rng = build_world()\n    windows = len(batches) // WINDOW\n    ref = iid_reference(rng, windows)\n    raw_w, raw_g, _, _, raw_glob = run('raw', batches)\n    rates = [0.0001, 0.001, 0.01]\n    free = {r: run('free', batches, rate=r) for r in rates}\n    aux_set = [(s, run('aux', batches, strength=s)) for s in (0.002, 0.01, 0.05)]\n    print('窗口 = %d 个 micro-batch（%d 次专家分配），共 %d 个窗口；iid 随机参照 maxvio = %.3f'\n          % (WINDOW, WINDOW * BATCH_TOKENS * TOP_K, windows, tail(ref, windows)))\n    print('策略 | 首窗口 maxvio | 末4窗口 maxvio | gate_gap | 偏移幅度 | 全程 maxvio')\n    rows = [('raw 无控制', raw_w, raw_g, [0.0], raw_glob)]\n    rows += [('free u=%g' % r, free[r][0], free[r][1], free[r][2], free[r][4]) for r in rates]\n    rows += [('aux alpha=%g' % s, res[0], res[1], res[3], res[4]) for s, res in aux_set]\n    for name, wv, gp, amp, glob in rows:\n        print('%s | %.3f | %.3f | %.6f | %.3f | %.4f'\n              % (name, wv[0], tail(wv, 4), tail(gp, len(gp)), max(abs(x) for x in amp), maxvio(glob)))\n    share = [raw_glob[i] / (sum(raw_glob) / float(N_EXPERTS)) for i in range(N_EXPERTS)]\n    b = free[0.001][2]\n    corr = pearson(centered(b), share)\n    print('u=0.001 的 b 中心化后与该专家自然负载占比的相关系数 = %.4f' % corr)\n    free_w, free_gap = free[0.001][0], free[0.001][1]\n    assert tail(raw_w, 4) > 0.8, '无控制时应持续失衡'\n    assert tail(free_w, 4) < 0.12, 'sign 反馈应把窗口负载压到 iid 参照附近'\n    assert tail(free_w, 4) < tail(raw_w, 4) * 0.15\n    assert tail(free_gap, len(free_gap)) <= 1e-12, 'b 不进加权，Loss-Free 的 gate_gap 必须为 0'\n    assert tail(free[0.0001][0][:3], 3) > tail(free[0.001][0][:3], 3), 'u 过小则早期收敛慢'\n    weak, strong = aux_set[0][1], aux_set[2][1]\n    assert tail(weak[0], 4) > tail(free_w, 4), '弱 alpha 均衡不足'\n    assert 0.0 < tail(weak[1], len(weak[1])) < tail(strong[1], len(strong[1])), 'alpha 越大加权分数被推得越歪'\n    assert corr < -0.5, '偏置应与专家的自然负载占比负相关'\n    print('全部断言通过')\n\n\nmain()",
+        "walkthrough": [
+          {
+            "note": "build_world：先把专家质心与全部 batch 的 token 分数矩阵固定下来（其中前 3 个专家被人为加了 1.8 的先验优势，模拟真实训练里「有些专家天生更受欢迎」）。三条路线复用同一份数据，所以表里的差异只可能来自均衡策略本身。"
+          },
+          {
+            "note": "route 是整个题解要落地的那个不对称：chosen 用 row[i] + bias[i] 排序选出 top-K，而加权系数 w[i] = row[i] / total 只由原始分数算。bias 从头到尾没有出现在 w 的计算里——这就是「偏置只改选择、不改加权」在代码层面的形状，也是 gate_gap 恒为 0 的结构性原因。"
+          },
+          {
+            "note": "run 的 free 分支：每个 micro-batch 结束后，用这个 batch 的计数 loads 算出 target = 平均负载，再对每个专家做 bias[i] += u·sign(target − load_i)。因为更新发生在 batch 之后，下一次路由用到的必然是「上一批」的负载，正好对应论文里只用历史负载、不泄漏未来 token 的要求。过载专家的 load_i > target ⇒ 增量为负 ⇒ 偏置下降。"
+          },
+          {
+            "note": "run 的 aux 分支是辅助损失的定性代理：shift 既进选择也进加权（因为它就是被改动过的路由分数），并且每步被 (1 − AUX_PULL) 乘一次——这项代表主损失把路由分数拉回它自己的最优值，也就是干扰梯度真正的代价。于是辅助损失永远处在「推平负载」和「被主损失拉回」的拉锯里：α 小则残余不平衡大，α 大则均衡好但 gate_gap 单调上升（分数被推歪得更多）。"
+          },
+          {
+            "note": "度量：窗口 maxvio 用 64 个 micro-batch（8192 次专家分配）聚合。这一步很关键——单个 micro-batch 只有 128 次分配、平均每专家 8 个 token，纯随机分配的 maxvio 噪声就有约 0.8，会完全淹没信号；聚合成 8192 次之后 iid 随机参照降到 0.081，失衡与均衡才分得开。gate_gap 则是「实际用的加权向量」与「同一被选集合上按原始 s 归一化」的每 token L1 距离均值，用来量化加权分数被推歪了多少。"
+          },
+          {
+            "note": "断言部分把结论钉死：无控制的窗口 maxvio 始终 > 0.8；u=0.001 的 Loss-Free 把它压到 0.065（iid 参照 0.081），且 gate_gap 恒为 0；u=1e-4 前三个窗口明显更慢（0.900 对 0.371），对应「更新率过小早期不平衡」；弱 α 的均衡（0.205）远不如 Loss-Free，而 α 从 0.002 加到 0.05 时均衡变好（0.205→0.016）但 gate_gap 从 0.0133 涨到 0.0214；最后 b 中心化后与该专家「自然负载占比」的相关系数是 −0.82，即越热门的专家被压得越低。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "u 与负载尺度不匹配：u 太大（1e-2）偏置会过冲到远超过实际需要的幅度（本模拟 max|b| 从 0.129 涨到 1.050）并让后期路由反复翻转；u 太小（1e-4）则早期长期不平衡。",
+        "b 的公共分量是规范自由度：给所有 b_i 加同一个常数不改变任何 top-K 结果，更新式的符号之和也不恒为 0，所以 b 的均值会缓慢漂移，实现里应把它当差分量看（可随时中心化或加极小权重衰减）。",
+        "从 checkpoint 恢复训练：b_i 必须与模型一起存取（作为 buffer），否则恢复瞬间热启动会失衡；若换了并行切分方式，b 的分片也要跟着重新映射。",
+        "同一 batch 内 b_i 必须冻结：只能用上一个 batch 的负载更新，否则当前 token 的路由依赖同批后续 token 的统计量，破坏因果并泄漏未来 token 信息。",
+        "推理阶段：b 应冻结为训练结束时的值。若服务端仍在异步更新 b，同一时刻不同请求会互相改变路由，输出不再可复现。",
+        "专家并行（EP）下的负载统计要做全局 all-reduce：只统计本地 rank 的 c_i，得到的是「本地均衡、全局失衡」，跨节点的 hot expert 仍会打爆某张卡。",
+        "极端路由坍缩（几乎所有 token 都偏好同一个专家）：sign 每次只挪 u，若需要的偏置差远超 u×步数，恢复会非常慢，需要配合足够长的训练或临时放大 u。",
+        "N 与设备/节点数不整除时，node-limited routing 的负载统计要在组内归一，避免把「节点限额」与「专家均衡」两个不同的约束混在一个 b 里。"
+      ],
+      "pitfalls": [
+        "把 b_i 加进 g_i,t（例如写成 g = softmax(s + b)）：这样偏置变成可微门控项，等价于往主损失里塞了一个幅度不可控的加性项，「无辅助损失」的核心性质立刻消失。",
+        "误以为「无辅助损失」= 完全不做均衡控制：恰恰相反，控制从损失里被搬到了路由决策里，只是不再经梯度传播。",
+        "用当前序列/当前 batch 的负载更新 b_i：破坏因果约束、泄漏未来 token 信息，这是 Expert Choice 路由被诟病的原因。",
+        "把 b_i 当可训练参数交给优化器（requires_grad=True）：梯度会顺着它回流主损失，又变成干扰梯度；必须是 no_grad 的 buffer。",
+        "用 e_i 的原始幅度更新（b += u·e_i）而不是 sign(e_i)：更新量随负载差缩放，换 batch size / 换 N 都要重调 u；论文实测均衡略好但困惑度更差。",
+        "u 选得过大或过小：1e-2 后期震荡，1e-4 早期长期不平衡，u=0.001 是折中；直接把别的模型规模的 u 抄过来也不稳妥。",
+        "在 EP 下只统计本地 rank 的负载就更新 b_i：全局仍然失衡，热点专家所在设备成为瓶颈。",
+        "漏掉 DeepSeek-V3 里那项权重极小的序列级辅助损失（1e-4）：偏置反馈只能保证 batch 级平均均衡，单条长序列内部仍可能出现极端倾斜，拖慢训练。",
+        "忽略 b 的规范自由度，把 b 的绝对值当有意义的量写进日志或做正则：只有 b 的差分（相对值）影响路由结果。"
+      ],
+      "followUps": [
+        "为什么用 sign(e_i) 而不是 e_i 或归一化的负载比 c_i/c̄_i？三种更新规则的稳态与方差各是什么？",
+        "如果把 b_i 直接加进 g_i,t（g 用 softmax(s+b) 或 sigmoid(s+b) 归一化）会怎样？与辅助损失相比，谁来提供均衡驱动力？",
+        "如何把 b_i 解释成负载约束的 Lagrange 乘子，并证明 sign 更新是它的次梯度上升？收敛到哪个不动点？",
+        "u 与全局 batch size、序列长度、专家数 N 之间应该满足什么关系？换 batch size 要不要重调 u？",
+        "Loss-Free、辅助损失、Expert Choice、Sinkhorn/最优传输路由四者在「均衡性 / 干扰梯度 / 未来 token 泄漏」三个维度上各自的取舍是什么？",
+        "训练时 b 随负载漂移、推理时 b 冻结，这种训练-推理不一致对路由分布有什么影响？如何缓解？",
+        "在专家并行下如何降低负载统计 all-reduce 的开销（异步统计、分组统计、把统计融合进 all-to-all）？",
+        "为什么 DeepSeek 在 MoE 门控上用 sigmoid 而不是 softmax？它与无辅助损失均衡的兼容性差别在哪？"
+      ],
+      "variations": [
+        "DeepSeek-V3 的完整配置：每层 1 个共享专家 + 256 个路由专家、每 token 激活 8 个、γ=0.001、外加权重 1e-4 的序列级辅助损失、node-limited routing（每个 token 最多发往 4 个节点）。",
+        "把加性偏置换成乘性因子（multiplicative bias）或对路由分数做温度缩放，观察均衡速度与稳定性的差异。",
+        "用纯 sign 积分控制器之外的控制器：比例项（b += u·e_i）、比例积分混合，或带遗忘因子的滑动负载估计。",
+        "Expert Choice 路由：由专家挑 token，天然均衡且无干扰梯度，但依赖未来 token 的统计而泄漏信息。",
+        "DeepSeek-V2 的三项辅助损失组合（expert-level / device-level / communication-level），以及它们各自的 α 如何取舍。",
+        "容量因子与 token drop：在容量约束下溢出 token 的处理方式（丢弃、走残差、改由共享专家承接）如何与负载均衡互相影响。",
+        "论文附录里的 softmax 门控基线：同样的偏置反馈在 softmax 门控下是否仍然有效、偏置的尺度如何变。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "偏置只改选择不改加权",
+        "caption": "记住这个不对称：b_i 只加在用来排序的打分上（改「选谁」），加权系数 g_i,t 仍是原始 s_i,t 归一化（不改「怎么合并」）；b_i 由上一批负载按 sign 规则在路由器外部更新，全程没有梯度路径回到主损失。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='无辅助损失负载均衡流程：偏置只参与 top-K 选择，加权仍用原始分数，偏置由上一批负载用 sign 规则更新'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='12' y='18' font-size='14' fill='currentColor'>Loss-Free 均衡：偏置只进选择</text><rect x='10' y='28' width='150' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='46' font-size='13' fill='currentColor'>token u_t</text><rect x='10' y='64' width='150' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='82' font-size='13' fill='currentColor'>s_i,t = sigmoid(u·e_i)</text><rect x='10' y='100' width='150' height='26' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='18' y='118' font-size='13' fill='currentColor'>s_i,t + b_i → TopK</text><rect x='10' y='136' width='150' height='26' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='18' y='154' font-size='13' fill='currentColor'>g_i,t = s_i,t 归一化</text><rect x='10' y='172' width='150' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='190' font-size='13' fill='currentColor'>h_t = u_t + Σ g·FFN</text><line x1='85' y1='54' x2='85' y2='60' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,64 81,58 89,58' fill='var(--line-1)'/><line x1='85' y1='90' x2='85' y2='96' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,100 81,94 89,94' fill='var(--line-1)'/><line x1='85' y1='126' x2='85' y2='132' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,136 81,130 89,130' fill='var(--line-1)'/><line x1='85' y1='162' x2='85' y2='168' stroke='var(--line-1)' stroke-width='1'/><polygon points='85,172 81,166 89,166' fill='var(--line-1)'/><text x='200' y='91' font-size='13' fill='currentColor'>b_i 不进 g_i,t：无干扰梯度</text><rect x='200' y='100' width='268' height='28' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='208' y='119' font-size='13' fill='currentColor'>b_i += u · sign(c̄_i − c_i)</text><rect x='200' y='136' width='268' height='28' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='208' y='155' font-size='13' fill='currentColor'>统计上一 batch 负载 c_i</text><line x1='200' y1='114' x2='172' y2='114' stroke='var(--accent)' stroke-width='1' stroke-dasharray='4 3'/><polygon points='166,114 172,110 172,118' fill='var(--accent)'/><line x1='160' y1='185' x2='196' y2='153' stroke='var(--line-1)' stroke-width='1'/><polygon points='200,150 190,152 194,159' fill='var(--line-1)'/><line x1='334' y1='136' x2='334' y2='132' stroke='var(--line-1)' stroke-width='1'/><polygon points='334,128 330,134 338,134' fill='var(--line-1)'/></svg>",
+        "alt": "五步流程：token u_t → 打分 s_i,t → 打分加偏置 b_i 后做 top-K 选择 → 加权系数仍取原始 s_i,t 归一化 → MoE 层输出；右侧是一条外部反馈回路，统计上一 batch 的专家负载 c_i，按 b_i += u·sign(平均负载 − c_i) 更新偏置，再回到选择步骤，全程不进入加权、也不产生梯度。"
+      },
+      "selfTest": [
+        "b_i 会不会给主损失带来干扰梯度？为什么？（答：不会。b_i 只参与 top-K 这种离散比较，没有可微路径回流；它也不出现在加权系数 g_i,t 里，所以既不改损失、也不改 MoE 层的输出函数。）",
+        "写出 b_i 的更新式与违约量的定义，并说明一个过载专家的偏置应该往哪走。（答：e_i = c̄_i − c_i，c̄_i = K·T/N 是理想负载，c_i 是上一批实际分到的 token 数；b_i ← b_i + u·sign(e_i)，u=0.001。过载时 c_i > c̄_i 使 e_i < 0，b_i 下降，下一批更难被选中。）",
+        "为什么用 sign(e_i) 而不是 e_i？为什么必须用上一批的负载？（答：sign 把每步更新量固定为 ±u，与 batch 大小、负载差的尺度解耦，代价是稳态在 ±u 内抖动；论文实测 e_i 版本均衡略好但困惑度更差。用当前序列的负载会让 token 的路由依赖同序列后续 token，破坏因果并泄漏未来信息，因此只能用历史负载。）",
+        "把 b_i 加进 g_i,t 会怎样？与辅助损失有何异同？（答：那样 b 就变成可微门控项，梯度会经它回流主损失，等于引入一个新的加性惩罚项，「无辅助损失」的核心性质消失；与辅助损失的区别在于它没有 α 这种强度折中，却失去了外部控制的干净性。）",
+        "这套机制的代价是什么？（答：需要跨 step 维护并保存 b_i；EP 下负载统计要 all-reduce；b 的均值会漂移、只有差分有意义；batch 级均衡不保证单条序列内部均衡，所以 DeepSeek-V3 还保留了权重 1e-4 的序列级辅助损失。）"
+      ],
+      "keyPoints": [
+        "偏置只用于 top-K 选择（s_i,t + b_i），加权系数仍是原始 s_i,t 归一化——这个不对称是无辅助损失均衡的全部要害",
+        "b_i 是路由器外部的 buffer、不可微、不进优化器，因此不产生干扰梯度；均衡控制从损失搬到了路由决策",
+        "更新式 b_i ← b_i + u·sign(c̄_i − c_i)，u=0.001：过载压低、空闲抬高，sign 让更新量与负载尺度解耦",
+        "只能用上一批（历史）负载更新，否则破坏因果、泄漏未来 token 信息",
+        "代价与配套：b 需随 checkpoint 存取、EP 下要全局统计、batch 级均衡之外还需极小的序列级辅助损失"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "题面原文明确：「要点不是取消均衡控制，而是把均衡从主损失中的可学习惩罚项，改成路由器外部的专家偏置反馈」——本文件的推导主线与之逐字对应：偏置在路由器外部（buffer、无梯度），均衡控制没有被取消。",
+          "题面只有这一句，origin=curated（人工整理题，来源链接字段为空）、kind=exam、marker=笔试场景、difficulty=hard、topics 为空数组，且 has 里 solution / keyPoints / pitfalls 均为 false、只有 answerOutline 为 true，即题面没有给样例或代码骨架。",
+          "本文件 code.source 已在本机 python 3.12 上实际运行通过（纯标准库、无第三方依赖，约 15 秒），全部断言通过；实测：无控制时窗口 maxvio 首窗 1.014、末 4 窗 1.017、全程约 1.04；u=0.001 的 Loss-Free 把末 4 窗压到 0.065（64 个 micro-batch 聚合的 iid 随机参照为 0.081）；u=1e-4 首窗 0.900 明显慢于 u=0.001 的 0.371。",
+          "实测 Loss-Free 的 gate_gap 恒为 0（<1e-12），因为加权系数只用原始 s 归一化；辅助损失代理路线的 gate_gap 随强度单调上升：α=0.002 为 0.013315（末 4 窗 maxvio 0.205）、α=0.01 为 0.017760（0.062）、α=0.05 为 0.021380（0.016），复现了「α 越大越均衡、但分数被推得越歪」的两难。",
+          "实测 u=0.001 收敛后中心化的 b 与该专家自然负载占比的皮尔逊相关系数为 −0.82：自然被选得多的专家偏置被压到负值，与「过载则降低 b_i」的更新方向一致；偏置幅度 max|b| 在 u=0.001 时约 0.13，在 u=0.01 时过冲到约 1.05。",
+          "推导中的门控形式 s_i,t = sigmoid(u_t·e_i) 与「偏置只用于选择、不加进 g_i,t」这两个细节，与公开的 Loss-Free Balancing 论文（Algorithm 1 与式 (3)）以及 DeepSeek-V3 技术报告的描述一致；本次未在题面中找到这些细节，故同时记入 uncertain。"
+        ],
+        "uncertain": [
+          "题面只有一句话，没有给出专家数 N、top-K、更新率 u、门控函数与模型规模；本文件采用的 sigmoid 门控、top-K 选择、b_i 不进入 g_i,t、u=0.001、以及 DeepSeek-V3 的 256 路由专家 + 1 共享专家 / top-8 / γ=0.001 / 序列级辅助损失权重 1e-4 / node-limited routing 的 M=4 等具体配置，来自公开论文与技术报告的通行描述，而不是题面；若笔试判分依据的是某个特定版本实现，应以题面或面经原文为准。",
+          "论文里的数值（1B 模型 loss-controlled 验证困惑度 9.56、MaxVio_global 0.72，Loss-Free 9.50、0.04；3B 模型 7.97/0.52 对 7.92/0.04；α=0.001 的基线设置）是论文的实测结果，本文件只是引用，未做复现；本文件的模拟是定性的玩具模型，不能用来验证这些数值。",
+          "code.source 里的 aux 路线是辅助损失的定性代理：它把「学习率 × 辅助损失系数 × 梯度回传比例」折算成一个对路由分数的等效推力 strength，并用 AUX_PULL 表示主损失把分数拉回自然值的回复力。这组参数是为了演示「均衡 vs 分数被推歪」的两难而设的，不对应任何真实模型的 α 或学习率，所以表里的 gate_gap / maxvio 数值只能横向比较、不能当作论文数值。",
+          "本模拟未能复现论文「更新率过大会在训练后期恶化负载均衡」的结论：在 8192 次分配的统计窗口上，u=0.01 的末 4 窗 maxvio（0.052）反而略好于 u=0.001（0.065），只是偏置幅度过冲到约 1.05、约 8 倍于 u=0.001。论文报告的是后期震荡加困惑度变差，本玩具模型没有 PPL 这一项，无法验证，故只把「幅度过冲」记为本机实测、把论文结论标注为外部事实。",
+          "论文附录中的 multiplicative bias 变体、softmax 门控下的表现、以及 b_i ← b_i + u·e_i 变体的完整数据表未展开；本文件只提到 sign 版本的取舍结论。",
+          "代码中的专家数 16、top-2、64 token 的 micro-batch、2048 个 batch、合成质心与人为的 +1.8 先验优势，都是自测用的玩具取值（目的是让模拟在十几秒内跑完并呈现出可观测的不平衡），不代表题目的任何约束。",
+          "本题为人工整理题（origin=curated，来源链接字段为空），按规则 sources 留空、全篇不出现任何 URL；题面提到的「DeepSeek 笔试第八题」只说明来源面经的编号，本文件没有引用任何链接。"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+[
+  {
+    "id": "pb-a352cf35797ac6d2",
+    "batchId": "prob-13",
+    "origin": "collected",
+    "output": "out-prob-13.json"
+  },
+  {
+    "id": "pb-b951fea75a25ca89",
+    "batchId": "prob-14",
+    "origin": "collected",
+    "output": "out-prob-14.json"
+  },
+  {
+    "id": "pb-38f2eb1967795e3d",
+    "batchId": "prob-15",
+    "origin": "collected",
+    "output": "out-prob-15.json"
+  },
+  {
+    "id": "bytedance-rag-chunking",
+    "batchId": "prob-cur-23",
+    "origin": "curated",
+    "output": "out-prob-cur-23.json"
+  },
+  {
+    "id": "youzan-hmm-lora-exam",
+    "batchId": "prob-cur-24",
+    "origin": "curated",
+    "output": "out-prob-cur-24.json"
+  },
+  {
+    "id": "doubao-agent-multiagent-design",
+    "batchId": "prob-cur-25",
+    "origin": "curated",
+    "output": "out-prob-cur-25.json"
+  },
+  {
+    "id": "baidu-dpo-curve",
+    "batchId": "prob-cur-26",
+    "origin": "curated",
+    "output": "out-prob-cur-26.json"
+  },
+  {
+    "id": "deepseek-kv-cache-calc",
+    "batchId": "prob-cur-27",
+    "origin": "curated",
+    "output": "out-prob-cur-27.json"
+  },
+  {
+    "id": "jd-agentic-rl-longhorizon",
+    "batchId": "prob-cur-28",
+    "origin": "curated",
+    "output": "out-prob-cur-28.json"
+  },
+  {
+    "id": "sensetime-lamp-puzzle",
+    "batchId": "prob-cur-29",
+    "origin": "curated",
+    "output": "out-prob-cur-29.json"
+  },
+  {
+    "id": "deepseek-mha-full",
+    "batchId": "prob-cur-30",
+    "origin": "curated",
+    "output": "out-prob-cur-30.json"
+  },
+  {
+    "id": "ali-array-sampling",
+    "batchId": "prob-cur-31",
+    "origin": "curated",
+    "output": "out-prob-cur-31.json"
+  },
+  {
+    "id": "aliyun-digital-human-scenario",
+    "batchId": "prob-cur-32",
+    "origin": "curated",
+    "output": "out-prob-cur-32.json"
+  },
+  {
+    "id": "deepseek-visual-primitive",
+    "batchId": "prob-cur-33",
+    "origin": "curated",
+    "output": "out-prob-cur-33.json"
+  },
+  {
+    "id": "deepseek-dpo-derivation",
+    "batchId": "prob-cur-34",
+    "origin": "curated",
+    "output": "out-prob-cur-34.json"
+  },
+  {
+    "id": "meituan-ce-vocab-calc",
+    "batchId": "prob-cur-35",
+    "origin": "curated",
+    "output": "out-prob-cur-35.json"
+  },
+  {
+    "id": "deepseek-moe-bias",
+    "batchId": "prob-cur-36",
+    "origin": "curated",
+    "output": "out-prob-cur-36.json"
+  },
+  {
+    "id": "meituan-reward-shock",
+    "batchId": "prob-cur-37",
+    "origin": "curated",
+    "output": "out-prob-cur-37.json"
+  },
+  {
+    "id": "deepseek-moe-comm",
+    "batchId": "prob-cur-38",
+    "origin": "curated",
+    "output": "out-prob-cur-38.json"
+  },
+  {
+    "id": "aliyun-three-easy-tasks",
+    "batchId": "prob-cur-39",
+    "origin": "curated",
+    "output": "out-prob-cur-39.json"
+  }
+]

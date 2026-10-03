@@ -1,24 +1,22 @@
 {
-  "generatedAt": "2026-10-03T02:50:19+08:00",
-  "corpus": 746,
-  "enriched": 116,
+  "generatedAt": "2026-10-04T00:06:41+08:00",
+  "corpus": 775,
+  "enriched": 196,
   "l0": {
     "duplicateIds": 0,
     "duplicateUrls": 0
   },
   "l1_repeatedEntities": [
     {
-      "token": "一面",
+      "token": "题霸",
       "items": 14,
       "categories": {
-        "coding": 11,
-        "job": 2,
-        "agent": 1
+        "coding": 14
       },
       "sampleTitles": [
-        "携程AI应用开发实习一面（OC）",
-        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
-        "9月21日字节tiktok社交一面"
+        "[编程题] 健康评估_牛客题霸_牛客网",
+        "[编程题] 网购_牛客题霸_牛客网",
+        "[编程题] 争夺前五名_牛客题霸_牛客网"
       ]
     },
     {
@@ -30,19 +28,7 @@
       "sampleTitles": [
         "[编程题] 健康评估_牛客题霸_牛客网",
         "[编程题] 网购_牛客题霸_牛客网",
-        "[编程题] 变种水仙花_牛客题霸_牛客网"
-      ]
-    },
-    {
-      "token": "客网",
-      "items": 14,
-      "categories": {
-        "coding": 14
-      },
-      "sampleTitles": [
-        "[编程题] 健康评估_牛客题霸_牛客网",
-        "[编程题] 网购_牛客题霸_牛客网",
-        "[编程题] 变种水仙花_牛客题霸_牛客网"
+        "[编程题] 争夺前五名_牛客题霸_牛客网"
       ]
     },
     {
@@ -54,11 +40,11 @@
       "sampleTitles": [
         "[编程题] 健康评估_牛客题霸_牛客网",
         "[编程题] 网购_牛客题霸_牛客网",
-        "[编程题] 变种水仙花_牛客题霸_牛客网"
+        "[编程题] 争夺前五名_牛客题霸_牛客网"
       ]
     },
     {
-      "token": "题霸",
+      "token": "客网",
       "items": 14,
       "categories": {
         "coding": 14
@@ -66,20 +52,21 @@
       "sampleTitles": [
         "[编程题] 健康评估_牛客题霸_牛客网",
         "[编程题] 网购_牛客题霸_牛客网",
-        "[编程题] 变种水仙花_牛客题霸_牛客网"
+        "[编程题] 争夺前五名_牛客题霸_牛客网"
       ]
     },
     {
-      "token": "面经",
+      "token": "开发",
       "items": 14,
       "categories": {
-        "coding": 13,
-        "job": 1
+        "coding": 11,
+        "job": 2,
+        "agent": 1
       },
       "sampleTitles": [
+        "携程AI应用开发实习一面（OC）",
         "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
-        "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）",
-        "【面经】字节/AI 应用工程师 一面挂经……"
+        "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）"
       ]
     },
     {
@@ -98,20 +85,6 @@
     },
     {
       "token": "秋招",
-      "items": 12,
-      "categories": {
-        "coding": 8,
-        "job": 3,
-        "agent": 1
-      },
-      "sampleTitles": [
-        "普渡机器人秋招正式启动啦，普渡机器人内推",
-        "27届华为面试凉经+1，今年秋招太难了......",
-        "秋招投了几十家没面试？先别急着怀疑自己"
-      ]
-    },
-    {
-      "token": "开发",
       "items": 11,
       "categories": {
         "coding": 8,
@@ -119,9 +92,22 @@
         "agent": 1
       },
       "sampleTitles": [
-        "携程AI应用开发实习一面（OC）",
-        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
-        "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）"
+        "秋招投了几十家没面试？先别急着怀疑自己",
+        "微店 AI全栈开发 秋招一面",
+        "有没有人发现27国企秋招的有点不对劲？"
+      ]
+    },
+    {
+      "token": "计算",
+      "items": 10,
+      "categories": {
+        "coding": 9,
+        "job": 1
+      },
+      "sampleTitles": [
+        "[编程题] 计算一元二次方程_牛客题霸_牛客网",
+        "[编程题] 计算字符串的编辑距离",
+        "[编程题] 计算单位阶跃函数_牛客题霸_牛客网"
       ]
     },
     {
@@ -133,22 +119,9 @@
         "agent": 2
       },
       "sampleTitles": [
-        "huihut/interview — 📚 C/C++ 技术面试基础知识总结，包括语言、程序库、数据结构、算法、系统、网络、链接装载库等知识及面试经验、招聘、内推",
         "[单选题] 给定三个数据点 (0,1)、(1,2)、(2,5)，通过三点",
-        "[单选题] 以下哪个统计量描述数据的集中趋势或中心位置？"
-      ]
-    },
-    {
-      "token": "怎么",
-      "items": 10,
-      "categories": {
-        "coding": 7,
-        "course": 3
-      },
-      "sampleTitles": [
-        "没有Claude账号怎么用Opus 4.8与Fable 5？API接入教程",
-        "GPT Image 2国内怎么调用？生图API、中文提示词与尺寸设置教程",
-        "面试官：“介绍一下你怎么排查Kafka消息堆积的？”"
+        "[单选题] 以下哪个统计量描述数据的集中趋势或中心位置？",
+        "huihut/interview — 📚 C/C++ 技术面试基础知识总结，包括语言、程序库、数据结构、算法、系统、网络、链接装载库等知识及面试经验、招聘、内推"
       ]
     },
     {
@@ -158,9 +131,9 @@
         "coding": 9
       },
       "sampleTitles": [
-        "[单选题] 公司 A、B 分别供应同款芯片的 70% 和 30%，次品率",
-        "[单选题] 向量 x=(1,0,1)、y=(1,1,0)，余弦相似度定义",
-        "[单选题] 给定三个数据点 (0,1)、(1,2)、(2,5)，通过三点"
+        "[单选题] 在 RAG 语义检索中，查询向量 q=[0.8,1.2,1.",
+        "[单选题] GSPO 使用经过长度归一化的序列级重要性采样比率，一个主要",
+        "[单选题] 公司 A、B 分别供应同款芯片的 70% 和 30%，次品率"
       ]
     },
     {
@@ -170,9 +143,48 @@
         "coding": 9
       },
       "sampleTitles": [
-        "[单选题] 公司 A、B 分别供应同款芯片的 70% 和 30%，次品率",
-        "[单选题] 向量 x=(1,0,1)、y=(1,1,0)，余弦相似度定义",
-        "[单选题] 给定三个数据点 (0,1)、(1,2)、(2,5)，通过三点"
+        "[单选题] 在 RAG 语义检索中，查询向量 q=[0.8,1.2,1.",
+        "[单选题] GSPO 使用经过长度归一化的序列级重要性采样比率，一个主要",
+        "[单选题] 公司 A、B 分别供应同款芯片的 70% 和 30%，次品率"
+      ]
+    },
+    {
+      "token": "问题",
+      "items": 9,
+      "categories": {
+        "coding": 7,
+        "job": 1,
+        "agent": 1
+      },
+      "sampleTitles": [
+        "动态规划解二叉树计数问题：类似力扣96 不同的二叉搜索树",
+        "[编程题] 汉诺塔问题",
+        "C++内存三大问题：内存泄漏丢失指针无法释放、野指针访问已释放内存崩溃、内存越界覆盖数据引发漏洞"
+      ]
+    },
+    {
+      "token": "指针",
+      "items": 9,
+      "categories": {
+        "coding": 9
+      },
+      "sampleTitles": [
+        "C++ Lambda表达式详解：编译器转换原理、捕获列表机制、mutable语义与函数指针的关系",
+        "C++内存三大问题：内存泄漏丢失指针无法释放、野指针访问已释放内存崩溃、内存越界覆盖数据引发漏洞",
+        "C++11移动语义作用与原理：右值引用标识临时对象、移动构造接管指针O(1)转移、std::move类型转换本质"
+      ]
+    },
+    {
+      "token": "对比",
+      "items": 9,
+      "categories": {
+        "coding": 8,
+        "agent": 1
+      },
+      "sampleTitles": [
+        "C++ map与unordered_map对比：红黑树有序O(logN)、哈希表O(1)查找、冲突处理与rehash扩容机制",
+        "内存碎片与栈溢出堆溢出对比：外部碎片内部碎片成因、栈帧增长溢出原理、堆越界写入安全漏洞",
+        "自旋锁与互斥锁对比：忙等待无上下文切换vs系统调用线程睡眠、临界区长短决定选择、单核不能自旋的原因"
       ]
     },
     {
@@ -189,17 +201,69 @@
       ]
     },
     {
-      "token": "问题",
-      "items": 8,
+      "token": "后端",
+      "items": 9,
       "categories": {
-        "coding": 6,
-        "job": 1,
-        "agent": 1
+        "coding": 8,
+        "job": 1
       },
       "sampleTitles": [
-        "C++内存三大问题：内存泄漏丢失指针无法释放、野指针访问已释放内存崩溃、内存越界覆盖数据引发漏洞",
-        "[编程题] 汉诺塔问题",
-        "银行技术面---用“STAR法”搞定项目实习经历类问题【必看】"
+        "极兔后端一面",
+        "csguide-dabai/interview-guide — 总结了后端面试八股文中的重点，希望能帮助各位准备互联网开发岗校招面试的同学。",
+        "字节国际化广告后端实习一二面凉经"
+      ]
+    },
+    {
+      "token": "字节",
+      "items": 8,
+      "categories": {
+        "job": 4,
+        "coding": 4
+      },
+      "sampleTitles": [
+        "字节跳动 多模态算法实习生（Seed）",
+        "9月21日字节tiktok社交一面",
+        "【面经】字节/AI 应用工程师 一面挂经……"
+      ]
+    },
+    {
+      "token": "大模",
+      "items": 7,
+      "categories": {
+        "posttraining": 4,
+        "agent": 2,
+        "coding": 1
+      },
+      "sampleTitles": [
+        "FRS2003/hands-on-llm - 动手学大模型全栈：CS336 中文精讲 · PyTorch 手搓 Transformer · 单卡复现 Pretr",
+        "shibing624/MedicalGPT - MedicalGPT: Training Your Own Medical GPT Model with Cha",
+        "游戏AI-LLM大模型算法研究员"
+      ]
+    },
+    {
+      "token": "搜索",
+      "items": 7,
+      "categories": {
+        "coding": 3,
+        "agent": 2,
+        "posttraining": 1
+      },
+      "sampleTitles": [
+        "动态规划解二叉树计数问题：类似力扣96 不同的二叉搜索树",
+        "微信搜索-电商agent算法专家",
+        "微信搜索-Agent算法专家"
+      ]
+    },
+    {
+      "token": "字符",
+      "items": 7,
+      "categories": {
+        "coding": 7
+      },
+      "sampleTitles": [
+        "字符串学习路线",
+        "[编程题] 计算字符串的编辑距离",
+        "142. 两个字符串的最小 ASCII 删除总和 | 动态规划 | 状态转移 | 编辑距离"
       ]
     },
     {
@@ -212,8 +276,8 @@
       },
       "sampleTitles": [
         "从海拉鲁到现实世界：视频模型如何理解「变化」",
-        "harry0703/MoneyPrinterTurbo - 利用 AI 大模型和自动化工作流，根据主题或关键词一键生成高清短视频。Generate HD sho",
-        "youngyangyang04/leetcode-master — 《代码随想录》LeetCode 刷题攻略：200道经典题目刷题顺序，共60w字的详细图解，视"
+        "youngyangyang04/leetcode-master — 《代码随想录》LeetCode 刷题攻略：200道经典题目刷题顺序，共60w字的详细图解，视",
+        "harry0703/MoneyPrinterTurbo - 利用 AI 大模型和自动化工作流，根据主题或关键词一键生成高清短视频。Generate HD sho"
       ]
     },
     {
@@ -230,54 +294,51 @@
       ]
     },
     {
-      "token": "指针",
+      "token": "怎么",
       "items": 7,
       "categories": {
         "coding": 7
       },
       "sampleTitles": [
-        "C++ Lambda表达式详解：编译器转换原理、捕获列表机制、mutable语义与函数指针的关系",
-        "C++内存三大问题：内存泄漏丢失指针无法释放、野指针访问已释放内存崩溃、内存越界覆盖数据引发漏洞",
-        "C++11移动语义作用与原理：右值引用标识临时对象、移动构造接管指针O(1)转移、std::move类型转换本质"
+        "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
+        "22届过来人说下，应届生第一份工作怎么选？",
+        "面试官：\"介绍一下你怎么排查 CPU 飙高的线上问题的？\""
       ]
     },
     {
-      "token": "对比",
-      "items": 7,
-      "categories": {
-        "coding": 6,
-        "agent": 1
-      },
-      "sampleTitles": [
-        "C++ map与unordered_map对比：红黑树有序O(logN)、哈希表O(1)查找、冲突处理与rehash扩容机制",
-        "内存碎片与栈溢出堆溢出对比：外部碎片内部碎片成因、栈帧增长溢出原理、堆越界写入安全漏洞",
-        "自旋锁与互斥锁对比：忙等待无上下文切换vs系统调用线程睡眠、临界区长短决定选择、单核不能自旋的原因"
-      ]
-    },
-    {
-      "token": "字节",
-      "items": 7,
-      "categories": {
-        "job": 4,
-        "coding": 3
-      },
-      "sampleTitles": [
-        "字节跳动 多模态算法实习生（Seed）",
-        "9月21日字节tiktok社交一面",
-        "【面经】字节/AI 应用工程师 一面挂经……"
-      ]
-    },
-    {
-      "token": "大模",
+      "token": "符串",
       "items": 6,
       "categories": {
-        "posttraining": 4,
-        "agent": 2
+        "coding": 6
       },
       "sampleTitles": [
-        "FRS2003/hands-on-llm - 动手学大模型全栈：CS336 中文精讲 · PyTorch 手搓 Transformer · 单卡复现 Pretr",
-        "shibing624/MedicalGPT - MedicalGPT: Training Your Own Medical GPT Model with Cha",
-        "游戏AI-LLM大模型算法研究员"
+        "字符串学习路线",
+        "[编程题] 计算字符串的编辑距离",
+        "142. 两个字符串的最小 ASCII 删除总和 | 动态规划 | 状态转移 | 编辑距离"
+      ]
+    },
+    {
+      "token": "判断",
+      "items": 6,
+      "categories": {
+        "coding": 6
+      },
+      "sampleTitles": [
+        "[编程题] 判断是元音还是辅音_牛客题霸_牛客网",
+        "[编程题] 三角形判断_牛客题霸_牛客网",
+        "[编程题] 判断是不是字母_牛客题霸_牛客网"
+      ]
+    },
+    {
+      "token": "排序",
+      "items": 6,
+      "categories": {
+        "coding": 6
+      },
+      "sampleTitles": [
+        "[编程题] 合并两个排序的链表",
+        "149. 好数组 | 贪心 | 排序 | 中位数",
+        "勇敢牛牛战斗序列 | 贪心 | 排序 | 双指针"
       ]
     },
     {
@@ -293,15 +354,29 @@
       ]
     },
     {
-      "token": "函数",
+      "token": "最小",
       "items": 6,
       "categories": {
-        "coding": 6
+        "coding": 5,
+        "posttraining": 1
+      },
+      "sampleTitles": [
+        "142. 两个字符串的最小 ASCII 删除总和 | 动态规划 | 状态转移 | 编辑距离",
+        "cookiespiggy/agentic-rl - Agentic RL 中文零基础教程（33 章）：从概念到 GRPO 实战，含 TRL 最小可跑示例；26–",
+        "滑动窗口最大值 | 滑动窗口 | 单调队列 | 最大值最小值"
+      ]
+    },
+    {
+      "token": "编译",
+      "items": 6,
+      "categories": {
+        "coding": 5,
+        "agent": 1
       },
       "sampleTitles": [
         "C++ Lambda表达式详解：编译器转换原理、捕获列表机制、mutable语义与函数指针的关系",
-        "C++ new与malloc对比：运算符vs库函数、分配+构造vs只分配、异常vs返回NULL、调用链路operator new→malloc→mmap",
-        "C++ placement new原理：在已有内存上调构造函数、不分配内存只初始化、必须手动调析构、内存池实现基础"
+        "C++重载与重写对比：同作用域参数不同编译期决定vs继承关系签名相同运行时决定、virtual与override关键字作用",
+        "C++多态实现机制：编译时多态与运行时多态、虚函数表、动态绑定、override与final"
       ]
     },
     {
@@ -330,30 +405,16 @@
       ]
     },
     {
-      "token": "二面",
+      "token": "智能",
       "items": 6,
       "categories": {
         "coding": 5,
         "job": 1
       },
       "sampleTitles": [
-        "快手 Feed 团队二面（25min）",
-        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
-        "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）"
-      ]
-    },
-    {
-      "token": "法专",
-      "items": 6,
-      "categories": {
-        "posttraining": 2,
-        "job": 2,
-        "agent": 1
-      },
-      "sampleTitles": [
-        "微信搜索-电商agent算法专家",
-        "微信搜索-Agent算法专家",
-        "游戏AI-数据挖掘算法专家"
+        "C++ RAII机制详解：资源获取即初始化、栈展开保证、智能指针与异常安全",
+        "C++智能指针线程安全性：shared_ptr控制块原子操作、实例读写并发规则、对象访问同步机制",
+        "C++智能指针实现原理：unique_ptr独占所有权、shared_ptr引用计数控制块、weak_ptr弱引用机制"
       ]
     },
     {
@@ -371,6 +432,33 @@
       ]
     },
     {
+      "token": "法专",
+      "items": 6,
+      "categories": {
+        "posttraining": 2,
+        "job": 2,
+        "agent": 1
+      },
+      "sampleTitles": [
+        "微信搜索-电商agent算法专家",
+        "微信搜索-Agent算法专家",
+        "游戏AI-数据挖掘算法专家"
+      ]
+    },
+    {
+      "token": "二面",
+      "items": 6,
+      "categories": {
+        "coding": 5,
+        "job": 1
+      },
+      "sampleTitles": [
+        "快手 Feed 团队二面（25min）",
+        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+        "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）"
+      ]
+    },
+    {
       "token": "试官",
       "items": 6,
       "categories": {
@@ -384,249 +472,158 @@
       ]
     },
     {
-      "token": "计算",
-      "items": 6,
-      "categories": {
-        "coding": 6
-      },
-      "sampleTitles": [
-        "[编程题] 计算字符串的编辑距离",
-        "[编程题] 计算一元二次方程_牛客题霸_牛客网",
-        "[编程题] 计算单位阶跃函数_牛客题霸_牛客网"
-      ]
-    },
-    {
-      "token": "判断",
-      "items": 6,
-      "categories": {
-        "coding": 6
-      },
-      "sampleTitles": [
-        "[编程题] 判断是元音还是辅音_牛客题霸_牛客网",
-        "[编程题] 三角形判断_牛客题霸_牛客网",
-        "[编程题] 判断是不是字母_牛客题霸_牛客网"
-      ]
-    },
-    {
-      "token": "后端",
+      "token": "面面",
       "items": 6,
       "categories": {
         "coding": 5,
         "job": 1
       },
       "sampleTitles": [
-        "极兔后端一面",
-        "字节国际化广告后端实习一二面凉经",
-        "京东后端实习一二面面经（Offer）"
+        "腾讯IEG后台开发实习一面面经（已过等二面通知中）",
+        "腾讯IEG后台开发日常实习二面/HR面面经（已过等offer中）",
+        "字节跳动 AI数据运营实习生（自动化方向）-AI数据与安全 一面面经"
       ]
     },
     {
-      "token": "一下",
+      "token": "入式",
       "items": 6,
       "categories": {
-        "coding": 5,
-        "job": 1
+        "coding": 6
       },
       "sampleTitles": [
-        "面试官：“介绍一下你怎么排查Kafka消息堆积的？”",
-        "面试官：\"介绍一下你怎么排查 CPU 飙高的线上问题的？\"",
-        "面试官：“讲一下你怎么把接口性能从15.8秒优化到 300毫秒的？”"
+        "嵌入式面试不会这些，那真的很难了",
+        "理想汽车嵌入式面经一面（嵌入式大厂面经22）",
+        "面经60：江波龙 | 嵌入式软件 | 二面"
       ]
     },
     {
-      "token": "基础",
-      "items": 5,
+      "token": "嵌入",
+      "items": 6,
       "categories": {
-        "coding": 3,
-        "job": 1,
-        "posttraining": 1
+        "coding": 6
       },
       "sampleTitles": [
-        "huihut/interview — 📚 C/C++ 技术面试基础知识总结，包括语言、程序库、数据结构、算法、系统、网络、链接装载库等知识及面试经验、招聘、内推",
-        "C++ placement new原理：在已有内存上调构造函数、不分配内存只初始化、必须手动调析构、内存池实现基础",
-        "cookiespiggy/agentic-rl - Agentic RL 中文零基础教程（33 章）：从概念到 GRPO 实战，含 TRL 最小可跑示例；26–"
+        "嵌入式面试不会这些，那真的很难了",
+        "理想汽车嵌入式面经一面（嵌入式大厂面经22）",
+        "面经60：江波龙 | 嵌入式软件 | 二面"
       ]
     },
     {
-      "token": "游戏",
-      "items": 5,
+      "token": "岗面",
+      "items": 6,
       "categories": {
-        "posttraining": 2,
-        "job": 2,
-        "rl": 1
+        "coding": 6
       },
       "sampleTitles": [
-        "游戏AI-LLM大模型算法研究员",
-        "游戏AI-强化学习算法研究员",
-        "游戏AI-数据挖掘算法专家"
-      ]
-    },
-    {
-      "token": "教程",
-      "items": 5,
-      "categories": {
-        "course": 4,
-        "posttraining": 1
-      },
-      "sampleTitles": [
-        "没有Claude账号怎么用Opus 4.8与Fable 5？API接入教程",
-        "byoungd/up - An advanced guide which might benefit you a lot 🎉 . 韩先凯的人生进阶指南 人生进阶",
-        "GPT Image 2国内怎么调用？生图API、中文提示词与尺寸设置教程"
-      ]
-    },
-    {
-      "token": "控算",
-      "items": 5,
-      "categories": {
-        "job": 5
-      },
-      "sampleTitles": [
-        "微信小店-高级风控算法工程师",
-        "微信安全-风控算法工程师",
-        "微信小店-风控算法工程师"
-      ]
-    },
-    {
-      "token": "风控",
-      "items": 5,
-      "categories": {
-        "job": 5
-      },
-      "sampleTitles": [
-        "微信小店-高级风控算法工程师",
-        "微信安全-风控算法工程师",
-        "微信小店-风控算法工程师"
-      ]
-    },
-    {
-      "token": "编译",
-      "items": 5,
-      "categories": {
-        "coding": 4,
-        "agent": 1
-      },
-      "sampleTitles": [
-        "C++ Lambda表达式详解：编译器转换原理、捕获列表机制、mutable语义与函数指针的关系",
-        "C++重载与重写对比：同作用域参数不同编译期决定vs继承关系签名相同运行时决定、virtual与override关键字作用",
-        "C++多态实现机制：编译时多态与运行时多态、虚函数表、动态绑定、override与final"
-      ]
-    },
-    {
-      "token": "选择",
-      "items": 5,
-      "categories": {
-        "coding": 5
-      },
-      "sampleTitles": [
-        "自旋锁与互斥锁对比：忙等待无上下文切换vs系统调用线程睡眠、临界区长短决定选择、单核不能自旋的原因",
-        "C++ push_back与emplace_back的区别：原地构造、完美转发、性能差异与选择策略",
-        "C++单例模式四种实现方式：饿汉式、懒汉式、双检锁与Magic Static的演进与选择"
+        "计算机算法岗面试经验分享",
+        "【干货预警-中行面经汇总】中国银行信息科技岗面经汇总（总行信息科技岗、中行软开）",
+        "小红书面经 小红书后端开发岗面经-04"
       ]
     }
   ],
   "l2_saturation": [
     {
       "category": "job",
-      "items": 36,
+      "items": 34,
       "topToken": "微信 高级",
       "count": 2,
-      "share": 0.0556
+      "share": 0.0588
     },
     {
       "category": "rl",
-      "items": 29,
-      "topToken": "patient centered",
+      "items": 30,
+      "topToken": "dexpolicy scheduled",
       "count": 1,
-      "share": 0.0345
-    },
-    {
-      "category": "coding",
-      "items": 131,
-      "topToken": "编程 判断",
-      "count": 4,
-      "share": 0.0305
+      "share": 0.0333
     },
     {
       "category": "engineering",
-      "items": 38,
+      "items": 39,
       "topToken": "wush kv",
       "count": 1,
-      "share": 0.0263
+      "share": 0.0256
+    },
+    {
+      "category": "coding",
+      "items": 158,
+      "topToken": "编程 判断",
+      "count": 4,
+      "share": 0.0253
     },
     {
       "category": "multimodal",
-      "items": 90,
+      "items": 92,
       "topToken": "nvidia ai",
       "count": 2,
-      "share": 0.0222
+      "share": 0.0217
     },
     {
       "category": "generative",
       "items": 50,
-      "topToken": "enhancing autoregressive",
+      "topToken": "longxiang ai",
       "count": 1,
       "share": 0.02
     },
     {
       "category": "agent",
-      "items": 134,
+      "items": 137,
       "topToken": "gpt 6",
       "count": 2,
-      "share": 0.0149
+      "share": 0.0146
     },
     {
       "category": "worldmodel",
-      "items": 71,
-      "topToken": "modeling vision",
+      "items": 70,
+      "topToken": "planning limits",
       "count": 1,
-      "share": 0.0141
+      "share": 0.0143
     },
     {
       "category": "posttraining",
-      "items": 125,
+      "items": 128,
       "topToken": "lineuprl verifiable",
       "count": 1,
-      "share": 0.008
+      "share": 0.0078
     }
   ],
   "l2_metric": "title-prefix repetition (segmentation-free)",
   "l3_lowInformation": {
-    "shortSummary": 5,
-    "noSummary": 0,
+    "shortSummary": 12,
+    "noSummary": 1,
     "unclassified": 0,
-    "belowGate": 33,
+    "belowGate": 38,
     "unclassifiedShare": 0.0,
     "unclassifiedSample": []
   },
   "l4_homogeneity": [
     {
       "category": "job",
-      "items": 36,
-      "avgSim": 0.1157,
-      "nearPairShare": 0.0413
+      "items": 34,
+      "avgSim": 0.1314,
+      "nearPairShare": 0.0463
     },
     {
       "category": "coding",
-      "items": 131,
-      "avgSim": 0.0179,
-      "nearPairShare": 0.0022
+      "items": 158,
+      "avgSim": 0.0112,
+      "nearPairShare": 0.0032
     },
     {
       "category": "posttraining",
-      "items": 125,
-      "avgSim": 0.0069,
+      "items": 128,
+      "avgSim": 0.0072,
       "nearPairShare": 0.0003
     },
     {
       "category": "agent",
-      "items": 134,
-      "avgSim": 0.0051,
+      "items": 137,
+      "avgSim": 0.006,
       "nearPairShare": 0.0
     },
     {
       "category": "engineering",
-      "items": 38,
-      "avgSim": 0.0187,
+      "items": 39,
+      "avgSim": 0.0178,
       "nearPairShare": 0.0
     },
     {
@@ -637,20 +634,20 @@
     },
     {
       "category": "multimodal",
-      "items": 90,
-      "avgSim": 0.005,
+      "items": 92,
+      "avgSim": 0.0053,
       "nearPairShare": 0.0
     },
     {
       "category": "rl",
-      "items": 29,
-      "avgSim": 0.0172,
+      "items": 30,
+      "avgSim": 0.016,
       "nearPairShare": 0.0
     },
     {
       "category": "worldmodel",
-      "items": 71,
-      "avgSim": 0.0072,
+      "items": 70,
+      "avgSim": 0.0069,
       "nearPairShare": 0.0
     }
   ],
@@ -658,7 +655,7 @@
     {
       "kind": "观察",
       "severity": "low",
-      "text": "'一面' 出现在 14 条里 -> 确认是否同一事物的多个版本"
+      "text": "'题霸' 出现在 14 条里 -> 确认是否同一事物的多个版本"
     },
     {
       "kind": "观察",
@@ -668,22 +665,22 @@
     {
       "kind": "观察",
       "severity": "low",
-      "text": "'客网' 出现在 14 条里 -> 确认是否同一事物的多个版本"
-    },
-    {
-      "kind": "观察",
-      "severity": "low",
       "text": "'客题' 出现在 14 条里 -> 确认是否同一事物的多个版本"
     },
     {
       "kind": "观察",
       "severity": "low",
-      "text": "'题霸' 出现在 14 条里 -> 确认是否同一事物的多个版本"
+      "text": "'客网' 出现在 14 条里 -> 确认是否同一事物的多个版本"
     },
     {
       "kind": "观察",
       "severity": "low",
-      "text": "'面经' 出现在 14 条里 -> 确认是否同一事物的多个版本"
+      "text": "'开发' 出现在 14 条里 -> 确认是否同一事物的多个版本"
+    },
+    {
+      "kind": "观察",
+      "severity": "low",
+      "text": "'微信' 出现在 12 条里 -> 确认是否同一事物的多个版本"
     }
   ]
 }

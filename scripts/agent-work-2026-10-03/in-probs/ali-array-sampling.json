@@ -1,0 +1,24 @@
+{
+  "batchId": "prob-cur-31",
+  "problem": {
+    "id": "ali-array-sampling",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "概率题：按给定概率多次有放回采样，如何做到常数时间",
+    "topics": [
+      "数学与概率"
+    ],
+    "difficulty": "hard",
+    "statement": "阿里机器学习二面编程题（面经原文）：有包含很多样本数据的数组，对这些数进行多次有放回采样，每个数有自己的采样概率（存在另一数组，总概率为 1），问怎么实现这个采样过程。面试官说存在常数时间的做法。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

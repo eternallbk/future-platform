@@ -1,0 +1,142 @@
+{
+ "batchId": "prob-cur-04",
+ "entries": [
+  {
+   "id": "kv-cache-memory",
+   "tldr": "KV Cache 按 B·T·L·H_kv·d_h·2·b 线性膨胀；GQA/MQA 降 H_kv、量化降 b，都能把 T=1e6 的百 GiB 压下来。",
+   "restated": "题意（人工题干已写清，无截断）：给定 L=80 层、H_kv=8 个 KV 头、d_h=128、上下文 T=10^6、FP16（每元素 2 字节）、batch=1。要两个交付：(1) 按标准 MHA 口径算出 KV Cache 的字节数；(2) 说明 GQA / MQA / MLA / 量化各自把公式里的哪一项改成什么。输入就是一串超参，输出是一个字节数与四条公式改写说明，没有样例数据、也没有要返回的数组。",
+   "approach": [
+    {
+     "step": "直观但错的做法",
+     "detail": "凭「模型 7B 参数、FP16 就 14 GB」这类经验，或者按参数量、激活值去估 KV Cache。为什么不够：KV Cache 与权重完全无关，它只随 batch、上下文长度、层数、KV 头数、头维度线性增长；用参数量估会得出一个与 T 无关的常数，而本题里 T=10^6 才是决定性因素。第二个常见错法是只算 K（漏乘 ×2），或把 H_kv 写成 H_q（把 GQA 当 MHA），结果偏 8 倍。"
+    },
+    {
+     "step": "先把张量定形",
+     "detail": "每一步 decode 都要把历史 K/V 留在显存里，形状分别是 [B, H_kv, T, d_h]。四个轴为什么是这些：B 是并发请求数；H_kv 是真正产生 K/V 的头数（GQA/MQA 就是在这里变少）；T 是累积的 token 数（每来一个新 token 就 +1）；d_h 是每个头写进缓存的向量长度。K 和 V 各存一份，所以整套缓存的元素数是 B·T·L·H_kv·d_h·2，其中 L 是因为 80 层各自维护自己的缓存。"
+    },
+    {
+     "step": "再乘字节宽度",
+     "detail": "元素数乘上每元素字节数 b 才是显存：FP16/BF16 时 b=2，INT8/FP8 时 b=1，INT4 时 b=0.5。代入题面数值：1 × 10^6 × 80 × 8 × 128 × 2 × 2 = 3.2768×10^11 字节 ≈ 305.18 GiB（≈ 327.68 GB）。为什么必须区分单位：同一个字节数除以 1024^3 得 305.18 GiB，除以 1000^3 得 327.68 GB，面试里报错单位会被认为没做过真实部署。"
+    },
+    {
+     "step": "最后逐个说明四条优化改了哪一项",
+     "detail": "把公式写成 M = B·T·L·H_kv·d_h·2·b 之后，每条技术都只动一个因子：MQA 令 H_kv=1（相对 MHA 压到 1/H_q）；GQA 令 H_kv=H_q/g，压缩比是 g=H_q/H_kv（本题 64/8=8 组即压 8 倍）；量化改 b（INT8 减半、INT4 再减半，另外要加 scale/zero-point 元数据）；MLA 换掉整个「H_kv·d_h」项 —— 每 token 每层不再缓存完整 K/V，而是缓存一个 d_c 维的共享 latent 加上 d_r 维的解耦 RoPE key。B、T、L 三项基本不动，所以真正的杠杆只有 H_kv、d_h、b 和「换一种缓存内容」。"
+    }
+   ],
+   "complexity": {
+    "time": "O(1) 算术（做完整估算 O(T)）",
+    "space": "O(B·T·L·H_kv·d_h·2·b) 显存",
+    "why": "算这个数只是几次乘法，与 T 无关；真正的代价是缓存本身——T 与 L 线性叠加，所以 T=1e6 时单请求就要 305 GiB 量级，只能靠降 H_kv/降 b/换缓存内容或分页、offload 来摊。"
+   },
+   "code": {
+    "language": "python",
+    "source": "import math\nfrom dataclasses import dataclass\n\n\n@dataclass(frozen=True)\nclass KVShape:\n    \"\"\"一次推理请求里决定 KV Cache 显存的那几个形状量。\n\n    B   : batch size\n    T   : 上下文长度（已缓存 + 本次新增的 token 数）\n    L   : Transformer 层数\n    H_q : query 头数（只用于报告 GQA 压缩比，不进 KV 显存公式）\n    H_kv: KV 头数 —— MHA 时 H_kv=H_q，GQA 时 H_q/H_kv=g，MQA 时 H_kv=1\n    d_h : 每个头的维度\n    \"\"\"\n    B: int\n    T: int\n    L: int\n    H_q: int\n    H_kv: int\n    d_h: int\n\n    def __post_init__(self):\n        values = {\"B\": self.B, \"T\": self.T, \"L\": self.L,\n                  \"H_q\": self.H_q, \"H_kv\": self.H_kv, \"d_h\": self.d_h}\n        for name, v in values.items():\n            if int(v) != v or v < 0:\n                raise ValueError(\"%s 必须是非负整数，收到 %r\" % (name, v))\n        if self.H_kv > self.H_q:\n            # GQA/MQA 的前提是 KV 头不多于 query 头；多于它通常意味着 H_q/H_kv 接反了\n            raise ValueError(\"H_kv(=%d) 不应大于 H_q(=%d)：检查是否把两者接反\"\n                             % (self.H_kv, self.H_q))\n\n\ndef kv_bytes_pure(B, T, L, H_kv, d_h, bytes_per_elem, has_value):\n    \"\"\"纯公式版（无校验、无类型），便于单测和抄公式：\n\n        M = B * T * L * H_kv * d_h * (2 if has_value else 1) * bytes_per_elem\n    \"\"\"\n    return B * T * L * H_kv * d_h * (2 if has_value else 1) * bytes_per_elem\n\n\ndef kv_cache_bytes(shape, bytes_per_elem=2, has_value=True):\n    \"\"\"标准 MHA/GQA/MQA 的 KV Cache 字节数。\n\n    bytes_per_elem=2 → FP16/BF16；1 → INT8/FP8；0.5 → INT4（返回值可能是小数）。\n    has_value=False 只统计 K（某些共享 V 的变体），默认 K 和 V 都缓存。\n    \"\"\"\n    if bytes_per_elem <= 0:\n        raise ValueError(\"bytes_per_elem 必须为正\")\n    B, T, L, H_kv, d_h = shape.B, shape.T, shape.L, shape.H_kv, shape.d_h\n    if min(B, T, L, H_kv, d_h) == 0:          # 边界：任一维为 0，缓存就是 0 字节\n        return 0\n    total = 1\n    for factor in (B, T, L, H_kv, d_h):\n        total *= factor\n        if total > 1 << 62:                   # 边界：先溢出检查再乘，避免悄悄溢出\n            raise OverflowError(\"字节数超过 2^62，请改用浮点估算\")\n    reserved = total << 1                    # << 1 就是公式里那个常被漏掉的 ×2（K 和 V）\n    if not has_value:\n        reserved >>= 1\n    out = reserved * bytes_per_elem\n    if isinstance(out, float) and out.is_integer():\n        out = int(out)\n    return out\n\n\ndef kv_cache_quantized_bytes(shape, n_bits=8, group_size=128, has_value=True):\n    \"\"\"量化后更真实的显存：每 group_size 个元素额外存 1 个 scale + 1 个 zero-point。\n\n    元数据本身是 FP16（2 字节），所以这个函数比「直接把 b 改成 1」更保守。\n    \"\"\"\n    if n_bits <= 0 or group_size <= 0:\n        raise ValueError(\"n_bits 与 group_size 必须为正\")\n    bpe = n_bits / 8.0\n    data = kv_cache_bytes(shape, bpe, has_value)\n    if data == 0:\n        return 0\n    groups = math.ceil(shape.H_kv * shape.d_h / group_size)\n    meta_bits = 2 * 16 * groups\n    return data + meta_bits * shape.B * shape.T * shape.L * (2 if has_value else 1) / 2\n\n\ndef gib(n):\n    \"\"\"字节 → GiB（1024^3），题库口径用的是这个。\"\"\"\n    return n / 1024 ** 3\n\n\ndef gb(n):\n    \"\"\"字节 → GB（1000^3）。同一个数字用 GB 写会更大，这就是 305 GiB / 327.7 GB 的分歧来源。\"\"\"\n    return n / 1000 ** 3\n\n\ndef main():\n    # 题面给的一组：L=80、H_kv=8、d_h=128、T=1e6、FP16、batch=1；H_q 未给，按通用约定取 64\n    mha = KVShape(B=1, T=10 ** 6, L=80, H_q=64, H_kv=64, d_h=128)   # 标准 MHA：H_kv = H_q = 64\n    gqa = KVShape(B=1, T=10 ** 6, L=80, H_q=64, H_kv=8, d_h=128)    # 题面配置 = GQA，8 组，每组管 8 个 q 头\n    mqa = KVShape(B=1, T=10 ** 6, L=80, H_q=64, H_kv=1, d_h=128)    # MQA：所有 q 头共享 1 组 KV\n\n    n = kv_cache_bytes(gqa)\n    # 公式自证：必须逐项等于展开式，漏掉 ×2 或接反 H_q/H_kv 都会在这里炸\n    assert n == kv_bytes_pure(1, 10 ** 6, 80, 8, 128, 2, True) == 327_680_000_000  # = 3.2768e11 bytes\n    assert \"%.2f\" % (n / 1024 ** 3) == \"305.18\"      # keyPoints 报的 305.2 GiB\n    assert kv_cache_bytes(mha) == 8 * n          # H_kv 64 → 8：GQA 压 8 倍\n    assert kv_cache_bytes(mqa) == n // 8         # H_kv 8 → 1：MQA 再压 8 倍（相对 MHA 共 64 倍）\n    assert kv_cache_bytes(gqa, bytes_per_elem=1) == n // 2   # 量化只改末项 b\n\n    print(\"题面配置   H_kv=8  : %d bytes = %.2f GiB\" % (n, gib(n)))\n    print(\"标准 MHA   H_kv=64 : %d bytes = %.2f GiB\" % (kv_cache_bytes(mha), gib(kv_cache_bytes(mha))))\n    print(\"MQA        H_kv=1  : %d bytes = %.2f GiB\" % (kv_cache_bytes(mqa), gib(kv_cache_bytes(mqa))))\n    print(\"同一份显存换单位 : %.2f GiB vs %.2f GB（别混）\" % (gib(n), gb(n)))\n    print(\"INT8 量化 H_kv=8 : %.2f GiB\" % gib(kv_cache_bytes(gqa, bytes_per_elem=1)))\n    print(\"INT4 量化 H_kv=8 : %.2f GiB\" % gib(kv_cache_bytes(gqa, bytes_per_elem=0.5)))\n    print(\"INT8+元数据 H_kv=8 : %.2f GiB\" % gib(kv_cache_quantized_bytes(gqa, n_bits=8, group_size=128)))\n    print(\"MLA 只缓存 latent : %.2f GiB\" % gib(kv_cache_bytes(KVShape(1, 10 ** 6, 80, 64, 1, 512))))\n    print(\"T=0 的退化输入   : %d bytes\" % kv_cache_bytes(KVShape(1, 0, 80, 64, 8, 128)))\n    print(\"B=1 时单 token 单层新增 : %d bytes\" % kv_bytes_pure(1, 1, 1, 8, 128, 2, True))\n\n\nif __name__ == \"__main__\":\n    main()\n",
+    "walkthrough": [
+     {
+      "note": "先看数据结构：KVShape 把 B/T/L/H_q/H_kv/d_h 六个量固定下来，并在构造时校验两件事——六个量都是非负整数（int(v) != v 时连 float 形状都会被拒），以及 H_kv ≤ H_q。后一条是 GQA/MQA 的前提，写成异常是为了在入口就抓住「H_q 和 H_kv 接反」这个本题第一大坑。这样后面每个估算函数都只负责算术，并可以把同一组超参分别喂给 MHA(H_kv=64)/题面配置(8)/MQA(1) 三种形状做倍数对比。"
+     },
+     {
+      "note": "核心公式函数 kv_bytes_pure 故意写成一行乘积，方便和手推结果逐项对照；公开入口 kv_cache_bytes 在它之上加了三件事：(a) bytes_per_elem 必须为正；(b) 任一维为 0（T=0 的空请求、batch=0 的空批）直接返回 0 字节——这是退化输入，不是除零，不能抛异常；(c) 累乘过程中用 1<<62 做溢出闸门，超了抛 OverflowError 而不是悄悄溢出。"
+     },
+     {
+      "note": "公式里那个 ×2 用位移写出来：reserved = total << 1，注释直接点明它对应 K 和 V 两份；has_value=False 时再 >>1 得到只统计 K 的变体。把「×2」变成有名字的一步，是防止面试现场漏乘的最实用手法。"
+     },
+     {
+      "note": "bytes_per_elem 允许是小数（INT4 传 0.5），所以末尾把整数值的 float 折回 int，输出才不会变成 1.6384e+11 这类科学计数法。返回值单位始终是字节，换算成人类可读单位交给 gib/gb 两个函数——把「算」和「换单位」分开，就不会在同一段代码里混用 1024^3 与 1000^3。"
+     },
+     {
+      "note": "kv_cache_quantized_bytes 是量化版的更真实估算：数据部分照旧按 n_bits/8 算，然后按 group_size 每分组补 1 个 scale 和 1 个 zero-point（各 2 字节），再乘上 B·T·L·(2 份)。它解释了 keyPoints 里「元数据也要计入显存」——分组越小元数据越贵，group_size=128 时大约多出几个百分点。"
+     },
+     {
+      "note": "main() 里先做五组断言自证：题面配置的字节数必须同时等于展开式 kv_bytes_pure(1, 10**6, 80, 8, 128, 2, True) 和字面量 327_680_000_000（即 keyPoints 里的 3.2768e11 bytes），并且用它除以 1024^3 格式化后必须正好是 305.18 GiB；H_kv 从 8 提到 64 必须变成 8 倍；降到 1 必须变成 1/8；b 从 2 改 1 必须正好减半。只要公式里漏了 ×2 或把 H_q/H_kv 接反，这几条断言立刻炸——断言比打印更适合当自测，因为它把「倍数关系」和「单位口径」这两个考点都固化成了不变量。"
+     },
+     {
+      "note": "打印段把结果按面试要报的顺序排好：题面配置（H_kv=8）327 680 000 000 B = 305.18 GiB；把 H_kv 换成 64 的标准 MHA 是它的 8 倍（2 441 GiB，说明 MHA 在 T=1e6 下根本不可行）；MQA 是它的 1/8；同一数字换单位 305.18 GiB vs 327.68 GB（同一个 327 680 000 000，两种单位两种读法）；再给 INT8/INT4 和「INT8+元数据」的差别；最后用 KVShape(1, 1e6, 80, 64, 1, 512) 演示 MLA 的 latent（d_c=512）口径，以及 T=0 时返回 0 的边界。整段脚本可直接 python 运行，无第三方依赖。"
+     }
+    ]
+   },
+   "edgeCases": [
+    "T=0（空上下文、prefill 之前的请求）或 B=0（空批）：缓存应为 0 字节，实现直接返回 0，而不是抛除零异常。",
+    "T 很大（10^6 及以上）：3.2768e11 字节已接近 2^38，继续放大到 10^9 量级时要留意 64 位整数与框架的 index 范围，实现在累乘中途做 1<<62 溢出检查。",
+    "GB 与 GiB：305.18 GiB 与 327.68 GB 是同一个字节数，答题时必须说明用的是哪一种，keyPoints 明确指出这个坑。",
+    "FP16 之外的宽度：BF16 同为 2 字节；INT8/FP8 为 1；INT4 为 0.5，返回值可能是小数，量化还要额外加 scale/zero-point 元数据。",
+    "H_q 与 H_kv 的关系：标准 MHA 时两者相等；若误把 H_kv 当 H_q（或反之）会得到 64 倍 / 1/64 的错答，这是本题最容易翻车的地方。",
+    "batch>1 或多序列并发：B 直接线性放大，连续批处理（continuous batching）下不同序列的 T 不同，要按每序列分别累加而不是取 max 乘 B。",
+    "MLA 不属于「改 H_kv」这一类：它缓存的是 d_c 维 latent 加 d_r 维解耦 RoPE key，用同一公式代入会算错，必须换公式。"
+   ],
+   "pitfalls": [
+    "把模型总参数量当成 KV Cache 大小的依据（人工 pitfalls 已列，此处保留）。",
+    "漏掉最后的 ×2：K 和 V 各缓存一份，漏乘直接少一半（人工 pitfalls 已列，此处保留）。",
+    "混淆 GB 与 GiB：3.2768e11 bytes ≈ 305.2 GiB 而不是 327.68 GiB（人工 pitfalls 已列，此处保留）。",
+    "把 H_kv 与 H_q 混用：题面 H_kv=8 是 KV 头数，若按 H_q 算（本题 H_q=64）会放大 8 倍。",
+    "把 L（层数）漏掉，只算了单层缓存；或者把 L 乘进了 H_kv（写成 H_kv×L），量纲看着像但其实偷换了轴的含义。",
+    "把 d_h 与 d_model 混用：d_model = H_q·d_h，代进公式会得到 H_q/d_h 倍的偏差。",
+    "量化只记得改 b，忘了 scale/zero-point 等元数据以及反量化时的临时显存，报出的显存比真实值偏乐观。",
+    "T 的口径不清：prefill 一次性灌 10^6 token 与 decode 逐步累积到 10^6，稳态显存相同，但峰值显存和是否 OOM 的结论不同。",
+    "答「用 GQA 就好了」却说不清压几倍：压缩比是 g=H_q/H_kv（本题 g=8，相对 MHA 压 8 倍），不是 H_kv 这个数字本身，也别说成「压了 H_kv 倍」。"
+   ],
+   "followUps": [
+    "如果 batch 从 1 变成 8、上下文仍是 10^6，显存怎么变？还能单机跑吗，需要多少张 80 GB 的卡？",
+    "改为 INT8 量化后，同样的 KV 配置降多少？KV Cache 的量化误差为什么比权重量化更敏感？",
+    "MLA 具体把公式改成了什么？d_c 与 d_r 的关系、为什么它能同时兼顾显存和效果？",
+    "vLLM 的 PagedAttention 为什么能把 KV Cache 的浪费降到几个百分点？分页粒度与显存碎片的关系是什么？",
+    "如果显存仍然不够，CPU offload 与「重算（recompute）代替缓存」的取舍是什么，代价落在哪一侧（带宽还是算力）？",
+    "T 继续扩到 10^7、10^8，除了显存还有哪些瓶颈（attention 的 O(T^2) 计算、KV 读取带宽、RoPE 外推）？",
+    "写出 decode 一步的显存增量（每 token 每层多少字节），并说明它为什么是常数。"
+   ],
+   "variations": [
+    "只问「decode 一个 token 新增多少 KV Cache 字节」（把 T 换成 1，考公式而不是估算）。",
+    "倒过来给显存预算和 T，求最大 batch 或最大上下文长度（解线性方程）。",
+    "给定 H_q=64、H_kv=8，问 GQA 的分组数 g 与压缩比，并解释为什么 g 太大掉点。",
+    "把题面换成 MHA + batch=32 + T=8192，比较它与「batch=1 + T=262144」的显存是否相同，说明 T 与 B 的对称性。",
+    "要求估算整套推理显存：权重 + KV Cache + 激活 + 通信缓冲，并说明哪一项随 T 增长。",
+    "比较 vLLM（PagedAttention）与 HuggingFace 默认实现的 KV Cache 显存占用差异。",
+    "把 FP16 换成 FP8/INT4，要求给出量化后字节数并说明 scale/zero-point 的额外开销。"
+   ],
+   "diagram": {
+    "kind": "matrix",
+    "title": "KV Cache 的形状与增长",
+    "caption": "先记住「每 token 每层 = H_kv×d_h 的 K 加一份同形的 V」，再沿 B/T/L 三个轴铺开，最后乘字节宽度。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><text x='16' y='22' font-size='14' fill='currentColor'>一个 token 的一层：K 里 H_kv 个头，每个头 d_h 维</text><rect x='16' y='34' width='94' height='58' rx='5' fill='none' stroke='var(--line-1)'/><rect x='122' y='34' width='94' height='58' rx='5' fill='none' stroke='var(--line-1)'/><text x='63' y='50' text-anchor='middle' font-size='13' fill='var(--fg-1)'>h1</text><text x='63' y='70' text-anchor='middle' font-size='13' fill='var(--accent)'>d_h=128</text><text x='63' y='86' text-anchor='middle' font-size='13' fill='var(--fg-1)'>FP16=2B</text><text x='169' y='50' text-anchor='middle' font-size='13' fill='var(--fg-1)'>h2</text><text x='169' y='70' text-anchor='middle' font-size='13' fill='var(--accent)'>d_h=128</text><text x='169' y='86' text-anchor='middle' font-size='13' fill='var(--fg-1)'>FP16=2B</text><rect x='222' y='34' width='64' height='58' rx='5' fill='none' stroke='var(--line-1)'/><text x='254' y='58' text-anchor='middle' font-size='13' fill='var(--fg-1)'>...</text><text x='254' y='82' text-anchor='middle' font-size='13' fill='var(--fg-1)'>h8</text><rect x='294' y='34' width='170' height='58' rx='5' fill='none' stroke='var(--accent)'/><text x='379' y='58' text-anchor='middle' font-size='13' fill='var(--accent)'>V 同形</text><text x='379' y='80' text-anchor='middle' font-size='13' fill='var(--fg-1)'>这就是公式里的 x2</text><path d='M16 112 L464 112' stroke='var(--line-1)' stroke-width='1'/><text x='16' y='134' font-size='14' fill='currentColor'>把这些块沿五个轴铺开：</text><rect x='16' y='144' width='80' height='44' rx='5' fill='none' stroke='currentColor'/><text x='56' y='171' text-anchor='middle' font-size='13' fill='currentColor'>batch 1</text><path d='M98 166 L112 166' stroke='currentColor' stroke-width='2'/><rect x='114' y='144' width='80' height='44' rx='5' fill='none' stroke='currentColor'/><text x='154' y='171' text-anchor='middle' font-size='13' fill='currentColor'>T=1e6</text><path d='M196 166 L210 166' stroke='currentColor' stroke-width='2'/><rect x='212' y='144' width='80' height='44' rx='5' fill='none' stroke='currentColor'/><text x='252' y='171' text-anchor='middle' font-size='13' fill='currentColor'>L=80 层</text><path d='M294 166 L308 166' stroke='currentColor' stroke-width='2'/><rect x='310' y='144' width='80' height='44' rx='5' fill='none' stroke='currentColor'/><text x='350' y='171' text-anchor='middle' font-size='13' fill='currentColor'>H_kv=8</text><path d='M392 166 L406 166' stroke='currentColor' stroke-width='2'/><rect x='408' y='144' width='56' height='44' rx='5' fill='none' stroke='currentColor'/><text x='436' y='171' text-anchor='middle' font-size='13' fill='currentColor'>d_h=128</text><text x='136' y='212' text-anchor='middle' font-size='13' fill='var(--fg-1)'>M = B x T x L x H_kv x d_h x 2 x 2B</text><text x='136' y='230' text-anchor='middle' font-size='13' fill='var(--accent)'>T=1e6 时 = 3.2768e11 B = 305.2 GiB</text><text x='354' y='212' text-anchor='middle' font-size='13' fill='var(--fg-1)'>GQA 除 8、MQA 除 64（相对 MHA）</text><text x='354' y='230' text-anchor='middle' font-size='13' fill='var(--fg-1)'>量化只改末项 2B 变成 1B</text></svg>",
+    "alt": "图分上下两部分：上半画一个 token 在一层里缓存的内容——h1 到 h8 共 8 个 KV 头，每个头 d_h=128 维、FP16 占 2 字节，另有一份同形状的 V，这就是公式里的 ×2；下半把这份小块沿 batch=1、T=1e6、L=80 层三个轴铺开，下面写出 M = B×T×L×H_kv×d_h×2×2B，T=1e6、H_kv=8 时等于 327 680 000 000 字节 ≈ 305.2 GiB，右侧注明 GQA 相对 H_kv=64 的 MHA 把这一项除以 8，MQA 把它除以 64，量化只把末项的 2B 变成 1B。"
+   },
+   "selfTest": [
+    "把题面的 H_kv=8、L=80、d_h=128、T=10^6、FP16、batch=1 代进公式，写出每一步乘积与最终字节数，并说出它等于多少 GiB、多少 GB。",
+    "若把同一组超参按标准 MHA 读（H_q=H_kv=64），字节数会变成题面结果的几倍？为什么练习里要把 H_kv 与 H_q 分开写？",
+    "公式里哪一项是 GQA 能改的、哪一项是量化能改的？MLA 又为什么不在这两项里（它换掉了缓存的「内容」而不是「宽度」）？"
+   ],
+   "keyPoints": [
+    "标准公式 M = B·T·L·H_kv·d_h·2·b（最后的 2 对应 K 和 V）",
+    "代入得 80×10^6×8×128×2×2 ≈ 3.2768×10^11 bytes ≈ 305.2 GiB",
+    "GQA/MQA 降低 H_kv；量化降低 b；MLA 把每 token 每层缓存换成维度 d_c 的共享 latent 加 d_r 的解耦 RoPE key",
+    "要区分 GB 与 GiB，且 scale/zero-point 等元数据也要计入显存",
+    "公式可写成「每 token 每层 = H_kv·d_h·2·b 字节」，再乘 B·T·L，便于现场快速口算与追问对话"
+   ],
+   "sources": [
+    {
+     "title": "人工题库 research/jobs_kb.json（kv-cache-memory）",
+     "url": ""
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "人工题干给出：L=80、H_kv=8、d_h=128、T=10^6、FP16、batch=1，并要求计算标准 MHA 的 KV Cache 字节数。",
+     "人工 keyPoints 给出公式 M = B·T·L·H_kv·d_h·2·b，且最后的 2 对应 K 和 V。",
+     "人工 keyPoints 给出的代入结果是 80×10^6×8×128×2×2 ≈ 3.2768×10^11 bytes ≈ 305.2 GiB。",
+     "人工 keyPoints 说明 GQA/MQA 降 H_kv、量化降 b、MLA 改为 d_c 维共享 latent 加 d_r 维解耦 RoPE key。",
+     "人工 keyPoints 要求区分 GB 与 GiB，并把 scale/zero-point 等元数据计入显存。",
+     "本文件 keyPoints / pitfalls 逐条保留了人工内容并在其后补充，未改写或反驳人工观点。",
+     "代码可直接运行且无第三方依赖（只用 math/dataclasses）：kv_cache_bytes(KVShape(1, 10**6, 80, 8, 128)) 等于 327 680 000 000 字节 = 305.18 GiB（= 327.68 GB），且 H_kv 从 8 提到 64 恰好变成 8 倍、降到 1 恰好变成 1/8（main 中用 assert 固化，已本地运行通过）。"
+    ],
+    "uncertain": [
+     "人工题干没有给 H_q（query 头数），本文在代码与说明里按通用约定取 H_q=64，并明确区分 H_kv=8 是 KV 头数；若把题面的 H_kv=8 直接当成 H_q=H_kv 的纯 MHA 估算，字节数会变成 3.2768e11 / 8 ≈ 4.096e10 bytes ≈ 38.15 GiB，两种读法相差 8 倍。",
+     "题干说的「标准 MHA」与「H_kv=8」严格讲互相冲突：标准 MHA 应有 H_kv=H_q，而 H_kv=8 更像 GQA 的配置（H_q=64、8 组）。本文按人工 keyPoints 的代入式执行（H_kv 取 8、结果 3.2768e11 bytes ≈ 305.18 GiB），并把这一口径差异写进 selfCheck，不改写人工结论。",
+     "人工 pitfalls 里出现的「327.68e9 bytes」与 keyPoints 的 3.2768×10^11 bytes 相差 1000 倍，且 327.68 恰好等于 327 680 000 000 字节按十进制 GB 读出的数值。本文正文一律采用 keyPoints/referenceSolution 的口径（327 680 000 000 bytes ≈ 305.18 GiB ≈ 327.68 GB），在示例里同时列出两种单位读数，未擅自改动人工文本。",
+     "MLA 的 d_c（latent 维度）与 d_r（解耦 RoPE key 维度）题面未给具体数值，代码示例里的 512 与 16（d_r=d_h/8）只是量级演示，不是人工题干给出的配置。",
+     "量化元数据（scale/zero-point）的分组大小、是否 FP16 存储等取决于具体框架实现，代码里的 group_size=128、每分组 2+2 字节是通用近似，不是题面断言。",
+     "题干未说明是否要求给出「单卡 80 GB 需要几张卡」之类的部署结论，本文只给字节数与单位换算，未擅自替面试官下结论。"
+    ]
+   }
+  }
+ ]
+}

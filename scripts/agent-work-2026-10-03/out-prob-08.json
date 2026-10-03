@@ -1,0 +1,131 @@
+{
+  "batchId": "prob-08",
+  "entries": [
+    {
+      "id": "pb-a974726e38630532",
+      "itemId": "a974726e38630532",
+      "tldr": "三边判断三角形：排序后只需一条 s0+s1>s2，再用 set 大小分流等边/等腰/普通。",
+      "restated": "输入：一行三个整数，表示三条边。输出：一行字符串 —— 等边 Equilateral triangle! / 等腰 Isosceles triangle! / 普通 Ordinary triangle! / 不能构成非退化三角形 Not a triangle!。非退化三角形定义为三边均大于 0 且任意两边之和大于第三边。样例：2 3 2→Isosceles、3 3 3→Equilateral、4 3 2→Ordinary、3 2 1→Not a triangle。注意题面里四个输出字符串被截断丢失，只能从样例反推；边的取值范围题面未给。",
+      "approach": [
+        {
+          "step": "暴力",
+          "detail": "直译定义：先分别检查 a+b>c、a+c>b、b+c>a 三条不等式，再两两比较边长得出类型。正确但写起来是三组条件、九个分支，面试现场极易漏写一条不等式或漏一个等号组合；而且判断「哪条边最长」还要额外写 max 或多次比较，逻辑冗余、错一处就整题错。"
+        },
+        {
+          "step": "观察",
+          "detail": "把三边排序成 s0<=s1<=s2 后，三条不等式中只有 s0+s1>s2 是「不平凡」的：另外两条 s0+s2>s1 与 s1+s2>s0，因为右边分别是较小的边，左边含最大的边 s2 和一条正数边，会自动成立（前提是 s0>0）。所以「是否构成非退化三角形」被压缩成一次比较，同时也顺带确定了最长边，不需要再写 max。"
+        },
+        {
+          "step": "最优",
+          "detail": "排序 + 一次不等式 + 一次去重计数：先判 s0<=0（边必须为正，否则零边/负边直接不合法）和 s0+s1<=s2（含退化情形 s0+s1==s2），任一命中就输出 Not a triangle!；否则用 len({s0,s1,s2}) 分流 —— 1 个不同值即三边相等（等边），2 个即恰有两边相等（等腰），3 个即三边互异（普通）。用集合大小代替两两比较，是因为「不同边长的个数」与「相等关系的个数」一一对应，不会漏掉等边同时也是等腰这类嵌套判断。"
+        },
+        {
+          "step": "为什么这样就够",
+          "detail": "分类的完备性：三边在「相等关系」上只有三种可能（三边全等、恰两边相等、三边互异），len(set) 恰好把三种情形打成 1/2/3，穷尽且互斥。正确性：排序后仅有 s0+s1>s2 需要验证已被上面的单调性论证覆盖，而 s0<=0 的检查挡住了「0 0 0」这种 s0+s1>s2 不成立之外的隐性非法输入。代价是常数级（3 个元素排序 + 一次比较），已经是最优解，不存在更快的渐近改进。"
+        }
+      ],
+      "complexity": {
+        "time": "O(1)",
+        "space": "O(1)",
+        "why": "只有 3 个整数：一次三元素排序、一次不等式、一次集合去重，都是常数代价，与输入规模无关。"
+      },
+      "code": {
+        "language": "python",
+        "source": "import sys\n\n\ndef classify_triangle(a: int, b: int, c: int) -> str:\n    \"\"\"返回三角形的类型；不能构成非退化三角形时返回 'Not a triangle!'。\"\"\"\n    sides = sorted((a, b, c))\n    # 非退化三角形：三边均 > 0，且任意两边之和 > 第三边。\n    # 排好序后，只需检查一条不等式：sides[0] + sides[1] > sides[2]。\n    # 理由：sides[0] + sides[2] > sides[1] 等价于 sides[0] + sides[2] > sides[2]\n    # 一定成立（因为 sides[2] > sides[1] 且 sides[0] > 0），另一条同理。\n    if sides[0] <= 0 or sides[0] + sides[1] <= sides[2]:\n        return \"Not a triangle!\"\n    # 分类一步到位：不同边长的个数就是相等关系的个数。\n    kinds = len({sides[0], sides[1], sides[2]})\n    if kinds == 1:\n        return \"Equilateral triangle!\"\n    if kinds == 2:\n        return \"Isosceles triangle!\"\n    return \"Ordinary triangle!\"\n\n\ndef main() -> None:\n    data = sys.stdin.read().split()\n    if len(data) < 3:\n        return\n    out = []\n    # 按每 3 个一组处理：单组数据是它的退化成 1 组的形式。\n    for i in range(0, len(data) - 2, 3):\n        try:\n            sides = [int(data[i]), int(data[i + 1]), int(data[i + 2])]\n        except ValueError:\n            # 极端异常输入（非整数 token）直接跳过，保证主流程不抛异常。\n            continue\n        out.append(classify_triangle(sides[0], sides[1], sides[2]))\n    sys.stdout.write(\"\\n\".join(out) + \"\\n\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
+        "walkthrough": [
+          {
+            "note": "classify_triangle(a, b, c)：把三边排序成 sides[0]<=sides[1]<=sides[2]，这是后面所有简化的前提 —— 排序把「谁是最大边」和「三角形不等式」两个问题同时解决。"
+          },
+          {
+            "note": "非法判定一行两条件：sides[0] <= 0 挡住零边与负边（题面要求三边均大于 0）；sides[0] + sides[1] <= sides[2] 一次覆盖「两边之和小于第三边」和「恰好等于（退化）」两种不合法情形。用 <= 而不是 <，是本题最关键的符号。"
+          },
+          {
+            "note": "分类用 len({...}) 而不是 if a==b and b==c / elif a==b or ...：集合大小天然表达了「不同边长的个数」，无嵌套顺序，也就不存在把等边判成等腰的错误。"
+          },
+          {
+            "note": "main 用 sys.stdin.read().split() 读入全部 token，再以步长 3 分组：题面明确说过「每个测试文件固定为单组测试数据」，但这个写法对单组与多组都成立，不依赖解析行数。"
+          },
+          {
+            "note": "int() 外面包 try/except ValueError：万一输入里混入非整数 token 就跳过该组，主流程不抛异常；空输入或 token 不足 3 个直接 return，不产出任何输出。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "三边相等（3 3 3）：len(set)=1 → Equilateral triangle!（切不可因为「等边也是等腰」而输出等腰）。",
+        "恰有两边相等（2 3 2）：排序后 2 2 3，set 大小 2 → Isosceles triangle!，样例 1 就是它。",
+        "退化三角形（3 2 1 或 1 1 2）：s0+s1 == s2，必须输出 Not a triangle!，样例 4 验证了 3 2 1。",
+        "零边或负边（0 0 0 / -1 2 2）：由 sides[0] <= 0 拦住，输出 Not a triangle!；题面「三边均大于 0」明确排除。",
+        "输入 token 少于 3 个或为空：直接返回、不输出任何行，避免 IndexError。",
+        "存在多条重复值但排序后仍非法（1 1 3）：先判合法性再判类型，输出 Not a triangle!，不会误报等腰。",
+        "极大整数：Python 的 int 是任意精度，不存在 32 位溢出问题；换成 C++ 需要 long long 才能覆盖未知范围。"
+      ],
+      "pitfalls": [
+        "三角形不等式只写一条且写错方向：必须是「两边之和 > 第三边」，写成 >= 会把 3 2 1 判成 Ordinary triangle!（样例 4 专抓这个）。",
+        "只检查了一条不等式就下结论，或者检查了 a+b>c 却没处理「最长边不是 c」的输入 —— 排序后只查 s0+s1>s2 才是安全的。",
+        "忘了先判正数：0 0 0 会让 s0+s1>s2 不成立而侥幸正确，但 0 2 2 之类若排序后误判会出错，显式挡住更稳。",
+        "分类顺序写反：先判等腰再判等边，3 3 3 会输出 Isosceles triangle!；正确做法是等边优先，或用 len(set) 一次性分流。",
+        "输出字符串的标点漏掉：四个答案都带感叹号 !，且必须是题目给的英文原文，写「等边三角形」或漏 ! 都是 0 分。",
+        "固定按一行三个数读取（input().split() 只读一行）：遇到多组数据或多行输入就漏读；用 sys.stdin.read().split() 更稳。"
+      ],
+      "followUps": [
+        "如果输入是三边长度而不是整数坐标还能这样判吗 —— 浮点数下 s0+s1>s2 会遇到精度问题，需改成 s0+s1-s2 > eps 或改用整数化/有理数表示。",
+        "改成「给定三条边长，求三角形面积」怎么接：合法后用海伦公式（面积 = sqrt(p(p-a)(p-b)(p-c))，p 为半周长），同样先排序再判合法性。",
+        "改成「给定 n 条边，能组成多少个不同三角形」：排序后对每条最长边 s_k 用双指针统计 s_i+s_j>s_k 的二元组数，整体 O(n²)。",
+        "改成「给三个点坐标判断类型」：先算三边长（可能含无理数，需比较平方距离），退化判定变成共线（叉积为 0），比整数边版本更难。",
+        "如果输入的边范围大到 1e18：C++ 里 a+b 会溢出，需要 long long 或改写成 a > c - b（减法不溢出）；Python 无此问题，这是可以主动说的加分点。"
+      ],
+      "variations": [
+        "LeetCode 976  Largest Perimeter Triangle：排序后从最大的三元组往回找第一个满足 s0+s1>s2 的三条边，是可构成三角形这一判定的直接推广。",
+        "LeetCode 611  Valid Triangle Number：排序 + 双指针统计能组成三角形的三元组个数。",
+        "LeetCode 812  Largest Triangle Area：坐标版三角形，用叉积求面积取最大。",
+        "牛客/洛谷「三角形类型」同源题：多数只改输出文案（如输出 equilateral/isosceles/scalene），判定逻辑完全相同。",
+        "由三角形退化成一般多边形：判定条件不再是单条不等式，而要多边形内角和/最大边小于其余边之和，属于同类几何合法性判定的推广。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "排序后三步判定",
+        "caption": "排序把三角形不等式压成一次比较，集合大小把三种类型一次分流。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' font-size='13'><text x='16' y='22' font-size='15' fill='var(--fg-1)'>排序 + 一次不等式 + 集合大小</text><line x1='16' y1='32' x2='464' y2='32' stroke='var(--line-1)' stroke-width='1'/><rect x='16' y='44' width='150' height='30' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='190' y='44' width='150' height='30' fill='none' stroke='var(--accent)' stroke-width='2'/><rect x='364' y='44' width='100' height='30' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='24' y='64' font-size='13' fill='currentColor'>① 排序 s0&lt;=s1&lt;=s2</text><text x='199' y='64' font-size='13' fill='var(--accent)'>② s0+s1 &gt; s2 ?</text><text x='372' y='64' font-size='13' fill='currentColor'>③ len(set)=?</text><path d='M166 59 L184 59' fill='none' stroke='var(--line-1)' stroke-width='2'/><path d='M180 54 L190 59 L180 64 Z' fill='currentColor'/><path d='M340 59 L358 59' fill='none' stroke='var(--line-1)' stroke-width='2'/><path d='M354 54 L364 59 L354 64 Z' fill='currentColor'/><path d='M265 74 L265 88 L120 88 L120 118' fill='none' stroke='var(--line-1)' stroke-width='2'/><path d='M115 110 L120 120 L125 110 Z' fill='currentColor'/><text x='132' y='108' font-size='13' fill='currentColor'>不成立：s0+s1 &lt;= s2</text><path d='M414 74 L414 108' fill='none' stroke='var(--line-1)' stroke-width='2'/><path d='M409 100 L414 110 L419 100 Z' fill='currentColor'/><text x='16' y='150' font-size='13' fill='var(--accent)'>Not a triangle!</text><path d='M300 194 L220 232 L380 232 Z' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='132' y='118' font-size='13' fill='currentColor'>1 个：Equilateral triangle!</text><text x='132' y='146' font-size='13' fill='currentColor'>2 个：Isosceles triangle!</text><text x='132' y='174' font-size='13' fill='currentColor'>3 个：Ordinary triangle!</text></svg>",
+        "alt": "流程图：取三边排序后，先判 s0+s1>s2 是否成立，不成立输出 Not a triangle!，成立再用不同边长个数 1/2/3 分别输出 Equilateral、Isosceles、Ordinary triangle!。"
+      },
+      "selfTest": [
+        "为什么排序之后三角形不等式只需检查 s0+s1>s2 一条？请用单调性把另外两条不等式推出来。",
+        "样例 4 输入 3 2 1 为什么输出 Not a triangle!？如果不等式写成 >=，这一组会输出什么？",
+        "把分类写成「先判等腰再判等边」会在哪一组样例上出错？换成 len(set) 之后为什么不可能出错？"
+      ],
+      "keyPoints": [
+        "先排序，三角形不等式从三条压到一条：s0+s1>s2。",
+        "用 <= 而非 <：退化三角形（两边之和等于第三边）必须判为不合法。",
+        "合法性先判、类型后判，顺序颠倒会误报类型。",
+        "分类用 len(set) 分流（1/2/3），比两两比较更短也更不易漏。",
+        "输出必须逐字匹配题目给的英文串并带感叹号；读入用 split() 全量 token 更稳。"
+      ],
+      "sources": [
+        {
+          "title": "三角形判断_牛客题霸_牛客网",
+          "url": "https://nowcoder.com/practice/689ec1e742394e09b1059556fc167b65"
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "题面标题为「三角形判断」，来源为牛客题库（牛客题霸），难度标记 hard，主题标签为「字符串」。",
+          "题面定义：非退化三角形 = 三条边长均大于 0 且任意两边之和均大于第三边。",
+          "题面要求：能构成则判断类型（等边 / 等腰 / 普通），不能构成则输出无法构成对应的字符串。",
+          "题面样例 1：输入 2 3 2，输出 Isosceles triangle!；样例 2：输入 3 3 3，输出 Equilateral triangle!；样例 3：输入 4 3 2，输出 Ordinary triangle!；样例 4：输入 3 2 1，输出 Not a triangle!。",
+          "备注说明 2025-11-28 优化了题面文本与格式，并「每个测试文件固定为单组测试数据」，且新增了两组样例。",
+          "题面正文里四个输出字符串本体被截断（只剩「则输出 ；」），上表中的四个英文串是从四个样例的输出逐字抄来的。",
+          "分类逻辑可由样例 1~4 完整反推并用代码复现：本实现按上述样例逐组核对，四组输出与题面完全一致。"
+        ],
+        "uncertain": [
+          "题面截断：四个输出字符串在正文里全部丢失（「如果三角形是等边三角形，则输出 ；」后面为空），本文用的英文串来自样例输出区；若正文里另有大小写或标点要求，无法从现有题面确认。",
+          "输入边的取值范围题面完全没给（原文写作「在一行上输入三个整数 ，表示三角形的三条边」，范围描述处为空），所以是否存在 32 位溢出风险只能按未知处理；本实现在 Python 下无溢出问题。",
+          "「三边均大于 0」是题面对非退化三角形的定义，但输入是否可能给出 0 或负数并未明说；代码按定义拒绝非正边（属按题面定义推断），若测试数据只含正数则无影响。",
+          "题面提到「每个测试文件固定为单组测试数据」，因此输出应为一行；本文代码兼容多组（每 3 个 token 一组）以增强鲁棒性，但这属于额外设计，不是题面要求。",
+          "样例输入的具体排布（是否每行一组、样例之间是否共享同一个输入流）从被截断的题面无法确认；本文中每组样例都当作独立输入来解释。",
+          "题面要求「输入三个整数」，但未说明是否会用大整数或超出常规读取宽度的数值；实现依赖 Python 任意精度整数。",
+          "note 里「新增两组数据」只说明数据量增加，未给出新增样例内容，因此无法验证边界数据（如 1 1 2 这类退化情形）是否在测试集中。"
+        ]
+      }
+    }
+  ]
+}

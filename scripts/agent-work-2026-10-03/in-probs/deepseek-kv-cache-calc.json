@@ -1,0 +1,22 @@
+{
+  "batchId": "prob-cur-27",
+  "problem": {
+    "id": "deepseek-kv-cache-calc",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "KV 缓存压缩原理与内存占用计算",
+    "topics": [],
+    "difficulty": "hard",
+    "statement": "DeepSeek 笔试第六题：写出 KV Cache 的标准显存公式，说明 MLA/GQA/量化如何改变公式，并给出一组具体配置的量级估算。注意题目强调具体版本号与参数规模应以公开模型配置和可复现实验为准。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

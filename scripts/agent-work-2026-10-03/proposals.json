@@ -6,121 +6,111 @@
       "id": "openreview",
       "nameZh": "OpenReview",
       "status": "blocked",
-      "streak": 2,
-      "lastError": null,
+      "streak": 7,
       "evidence": "api2 与 api1 的 /notes 都返回 200 text/html 'Verifying your browser | OpenReview'（更早轮次是 403 ChallengeRequiredError）；只有真实浏览器能过。",
       "suggestedAction": "保持禁用。论文来源已由 arXiv + Semantic Scholar 覆盖，不建议为它引入浏览器自动化。",
-      "escalate": false
+      "escalate": true
     },
     {
       "id": "machineheart",
       "nameZh": "机器之心",
       "status": "blocked",
-      "streak": 2,
-      "lastError": null,
+      "streak": 7,
       "evidence": "/rss 与 /feed 都返回 200 text/html（机器之心·数据服务落地页）而不是 RSS，/rss/articles 为 404，唯一可达的 RSSHub 镜像 /jiqizhixin/daily 也是 404。",
       "suggestedAction": "确认永久改用 leiphone（雷锋网 AI feed）作为替代源，把 machineheart 标记为 retired。",
-      "escalate": false
+      "escalate": true
     },
     {
       "id": "jobs_alibaba",
       "nameZh": "阿里招聘",
       "status": "blocked",
-      "streak": 2,
-      "lastError": null,
+      "streak": 7,
       "evidence": "真实接口是 POST talent.alibaba.com/position/search：GET 返回 405，无 CSRF 的 POST 返回 403；带上页面 XSRF-TOKEN 后返回 200 但 totalCount 恒为 0。",
       "suggestedAction": "改为人工导入。这类岗位信息用「复制 JD → inbox 导入」比反复对抗 baxia 风控更稳。",
-      "escalate": false
+      "escalate": true
     },
     {
       "id": "jobs_bytedance",
       "nameZh": "字节招聘",
       "status": "blocked",
-      "streak": 2,
-      "lastError": null,
+      "streak": 7,
       "evidence": "边缘/WAF 拦截脚本客户端：GET /api/v1/search/job/posts 返回 200 的『字节跳动猎头平台』HTML，带文档 JSON body 的 POST 返回 405（0 字节），尾斜杠 POST 返回 307。",
       "suggestedAction": "改为人工导入；jobs.json 里已有 bytedance-seed 的公司级条目，逐岗 JD 建议人工补充。",
-      "escalate": false
+      "escalate": true
     },
     {
       "id": "jobs_minimax",
       "nameZh": "MiniMax",
       "status": "blocked",
-      "streak": 2,
-      "lastError": null,
+      "streak": 7,
       "evidence": "minimaxi.com/careers 内嵌飞书 ATSX 门户（vrfi1sk8a0.jobs.feishu.cn）：索引页不含岗位数据，其 API 与字节同为 405，且 robots.txt 明确 disallow /api/。",
       "suggestedAction": "保持禁用（robots.txt 层面就不允许），改为人工导入。",
-      "escalate": false
+      "escalate": true
     },
     {
       "id": "jobs_moonshot",
       "nameZh": "月之暗面",
       "status": "blocked",
-      "streak": 2,
-      "lastError": null,
+      "streak": 7,
       "evidence": "www.moonshot.cn/careers（200，95KB）零岗位关键词，现委托给 careers.kimi.com；后者是 11.6KB 的 JS 壳，/jobs 与 /positions 均 404，chunk 里也没有岗位 API。",
       "suggestedAction": "保持禁用，改为人工导入。",
-      "escalate": false
+      "escalate": true
     },
     {
       "id": "jobs_shailab",
       "nameZh": "上海 AI Lab",
       "status": "blocked",
-      "streak": 2,
-      "lastError": null,
+      "streak": 7,
       "evidence": "/joinus、/joinus/social、/joinus/campus 返回同一个 70KB 营销页，没有任何岗位行；岗位由 JS 拉取且页面未引用任何 ATS/API 端点。",
       "suggestedAction": "保持禁用，改为人工导入。",
-      "escalate": false
+      "escalate": true
     },
     {
       "id": "jobs_zhipu",
       "nameZh": "智谱招聘",
       "status": "blocked",
-      "streak": 2,
-      "lastError": null,
+      "streak": 7,
       "evidence": "zhipuai.cn/joinus（200，783KB）只服务端渲染出岗位『类别』标签（算法/校招），没有逐岗数据，也没有 ATS 主机，15 个 Next.js chunk 均未引用岗位 API。",
       "suggestedAction": "保持禁用，改为人工导入。",
-      "escalate": false
+      "escalate": true
     },
     {
       "id": "reddit",
       "nameZh": "Reddit",
       "status": "blocked",
-      "streak": 2,
-      "lastError": null,
+      "streak": 7,
       "evidence": "robots.txt 为『User-agent: * / Disallow: /』；即使 <sub>/top/.rss 返回 200 也不抓取，lobste.rs 同样是全站 Disallow。",
       "suggestedAction": "保持永久禁用（robots.txt 合规问题，不是技术问题）。",
-      "escalate": false
+      "escalate": true
     },
     {
       "id": "rsshub",
       "nameZh": "RSSHub",
       "status": "blocked",
-      "streak": 2,
-      "lastError": null,
+      "streak": 7,
       "evidence": "公共实例全部失效：rsshub.app 403 Cloudflare 挑战、rsshub.rssforever.com 503、rsshub.ktachibana.party 404/503、rsshub.pseudoyu.com TLS 错误；唯一可达镜像只服务 /zhihu/hotlist 与 /solidot。",
       "suggestedAction": "保持禁用；zhihu 已由固定通道覆盖，无需 RSSHub。",
-      "escalate": false
+      "escalate": true
     }
   ],
   "taxonomyProposals": [
     {
       "action": "reweight",
+      "category": "paper",
+      "reason": "本轮 92 条深读队列里按证据剔除 25 条，其中 paper 类 9 条被证伪为量子光学、统计物理、量子化学、脑机接口、医学影像等跨学科内容。paper 目前更像「来源维度」而不是「主题维度」，正在占用每轮 10 条配额。",
+      "proposedKeywords": ["quantum", "diffusion MRI", "tractography", "psychiatry", "biomarker", "education"]
+    },
+    {
+      "action": "reweight",
       "category": "multimodal",
-      "reason": "本轮 94 条深读队列里有 8 条被归入 multimodal 的条目实际属于法学、教育学、康复医学、无线感知与生物特征识别（逐条证据见 skips.json）。裸词 multimodal 的召回太泛，正在占用 10 条/轮的配额。",
+      "reason": "multimodal 本轮 10 条配额里 5 条被证伪为法学、教育学、康复医学、无线感知与生物特征识别。裸词 multimodal 召回太泛，建议用具体子任务词替换并加学科负向词。",
       "proposedKeywords": ["vision-language", "image-text retrieval", "video understanding", "omni-modal", "audio-visual"]
     },
     {
       "action": "reweight",
       "category": "foundation",
-      "reason": "foundation 本轮只有 4 个候选，其中 2 条（阿尔茨海默影像可解释性、大数据与精神病学）是医学综述。候选池既小又不纯，说明该类关键词需要更贴近「基座模型/训练稳定性」而不是宽泛的『AI/大数据』。",
+      "reason": "foundation 本轮只有 2 个候选且都是医学/流行病学综述，配额（8）远未填满。候选池既小又不纯，说明该类关键词需要更贴近「基座模型/训练稳定性」而不是宽泛的『AI/大数据』。",
       "proposedKeywords": ["scaling law", "training stability", "generalization", "representation learning", "pretraining objective"]
-    },
-    {
-      "action": "reweight",
-      "category": "paper",
-      "reason": "paper 类同样被跨学科命中污染（量子光学、统计物理、量子化学、脑机接口各 1 条，共 4 条被剔除）。建议把 paper 从『来源维度』改成只在其它分类都不命中时兜底，并加负向关键词。",
-      "proposedKeywords": ["quantum", "diffusion MRI", "tractography", "psychiatry", "biomarker"]
     }
   ],
   "keywordProposals": [
@@ -128,30 +118,37 @@
       "category": "multimodal",
       "add": ["vision-language model", "omni-modal", "audio-visual reasoning"],
       "remove": ["multimodal"],
-      "reason": "本轮 8 条 multimodal 命中被证据证伪为跨学科内容，裸词 multimodal 是主因；改成具体子任务词可以在不牺牲召回的前提下减少误命中。"
+      "reason": "本轮 5 条 multimodal 命中被证据证伪为跨学科内容，裸词 multimodal 是主因；改成具体子任务词可以在不牺牲召回的前提下减少误命中。"
+    },
+    {
+      "category": "foundation",
+      "add": ["scaling law", "training stability", "pretraining objective"],
+      "remove": ["big data", "AI"],
+      "reason": "foundation 本轮 2 个候选全是医学/精神病学综述，『big data / AI』这类裸词只带来噪声，无法命中基座模型方法。"
     },
     {
       "category": "posttraining",
       "add": ["RLVR", "on-policy distillation", "preference distillation", "verifier reward"],
       "remove": [],
-      "reason": "本轮 posttraining 队列里真正有方法含量的是 RLVR/on-policy 蒸馏/偏好蒸馏/过程奖励这几支（如 X-Tree、On-Policy or Off-Policy、Smaller Models Better Rejects、FRS2003/hands-on-llm），把它们显式写进关键词能提高配额命中率。"
+      "reason": "本轮 posttraining 队列里真正有方法含量的是 RLVR / on-policy 蒸馏 / 偏好蒸馏 / 过程奖励这几支，把它们显式写进关键词能提高配额命中率。"
     },
     {
       "category": "worldmodel",
       "add": ["VLA", "world model rollout", "embodied navigation", "object permanence"],
       "remove": [],
-      "reason": "本轮 worldmodel 队列里 6 条高相关条目（FutureWorlds、EWAM、iSEE、NavHarness、RLE-Bench、Low-Rank Structure of VLA RL）都靠这些词命中，建议固化。"
+      "reason": "本轮 worldmodel 队列里多条高相关条目（VLA、rollout、具身导航、物体恒存）都靠这些词命中，建议固化。"
     }
   ],
   "newChannelProposals": [],
   "noiseReport": {
-    "overBroadKeywords": ["multimodal", "foundation", "big data", "AI", "paper"],
+    "overBroadKeywords": ["multimodal", "paper", "foundation", "big data", "AI"],
     "underCoveredCategories": ["unclassified", "exam"]
   },
   "humanReviewQueue": [
     "登录类渠道（小红书 / BOSS直聘 / 拉勾 / 实习僧）本轮依然是 0 条自动产出，需要你按 README 第五节导出后放进 web/data/inbox/。",
     "inbox 里那条「字节跳动 多模态算法实习生（Seed）」的 URL 是占位符 https://jobs.bytedance.com/xxx，无法核实也无法入库（本轮按 placeholder 规则剔除）；请提供真实 JD 链接后我再补进 jobs.json。",
-    "10 个渠道本轮仍为 blocked（jobs_alibaba / jobs_bytedance / jobs_minimax / jobs_moonshot / jobs_shailab / jobs_zhipu / machineheart / openreview / reddit / rsshub，均已连续 2 轮），其中 6 个招聘渠道建议确认改为人工导入，machineheart 建议确认永久 retired。",
-    "本轮按证据从深读清单剔除 28 条（off-domain 21 / noise 3 / job 2 / placeholder 1 / truncated 1），逐条理由在 scripts/agent-work-2026-10-03/skips.json；请复核这套剔除规则，尤其是否给 Semantic Scholar 通道加学科白名单。"
+    "10 个渠道本轮仍为 blocked（jobs_alibaba / jobs_bytedance / jobs_minimax / jobs_moonshot / jobs_shailab / jobs_zhipu / machineheart / openreview / reddit / rsshub，均已连续 7 轮，escalate=true），其中 6 个招聘渠道建议确认改为人工导入，machineheart 建议确认永久 retired。",
+    "本轮按证据从深读清单剔除 25 条（off-domain 19 / job 2 / noise 2 / placeholder 1 / truncated 1），另有 1 条 skip 记录的 id 已不在语料中（df9779ef2a1128bd），逐条理由在 scripts/agent-work-2026-10-03/skips.json；请复核这套剔除规则，尤其是否给 Semantic Scholar 通道加学科白名单。",
+    "paper 与 multimodal 的裸关键词误召回跨学科内容的比例仍然最高（9/10 与 5/10），建议确认上面的关键词替换提案是否生效。"
   ]
 }

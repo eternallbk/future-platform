@@ -2,1006 +2,1224 @@
   "batchId": "queue-06",
   "entries": [
     {
-      "id": "a2675c908b72c1ca",
-      "tldr": "关键词式工具调用评测会误判：600M 与 1B 在宽松指标上几乎打平，廉价严格诊断能把它们完全分开。",
+      "id": "2464bfdb1f99b200",
+      "tldr": "用147小时带反应标注的数据训练流匹配听者头模型，并给出反应导向评测协议",
       "keyPoints": [
-        "宽松工具调用指标上 600M 得 0.660、1B 得 0.650，几乎打平",
-        "逐字复现训练样例：600M 有 6/6 生成合法调用，1B 各检查点均 0/6",
-        "首 token 探针把 1B 失败定位为缺失触发先验（约 1e-4~1e-5）",
-        "该先验被网页为主的多阶段课程训练抹掉",
-        "定向 SFT 后 269 行语料合法率 0.100→0.959；238 条未见提示 0.536 超 600M 的 0.428"
+        "汇总约147小时说话人-听者配对视频（RealTalk、Seamless）",
+        "含64,557条事件级反应标注，覆盖点头、摇头、微笑、大笑、皱眉、惊讶六类",
+        "GLARE用流匹配Transformer做音频驱动基线，韵律条件取自Qwen2-Audio",
+        "提出时序反应损失，逐帧显式监督反应是否发生",
+        "提出R-F1、R-tIoU、R-ATD、R-FID四项反应导向评测指标"
       ],
-      "why": "对做后训练与小模型落地的求职者：先证明模型真的会调用工具再谈指标，否则 SFT 与评测结论都站不住。",
+      "why": "生成式与多模态岗位常问「如何让虚拟人不只会说还会听」，本条给出数据、建模、评测三件套的完整范式。",
       "difficulty": "medium",
       "tags": [
-        "tool-use",
-        "sft",
-        "evaluation",
-        "small-models",
-        "diagnostics",
-        "post-training"
+        "listening-head",
+        "flow-matching",
+        "dyadic-conversation",
+        "dataset",
+        "evaluation"
       ],
       "entities": [
-        "661.6M Spanish security LM",
-        "1,109M curriculum LM",
-        "first-token probe",
-        "tool-SFT",
-        "B4"
+        "GLARE",
+        "RealTalk",
+        "Seamless Interaction",
+        "Qwen2-Audio",
+        "R-F1",
+        "R-tIoU",
+        "R-ATD",
+        "R-FID"
       ],
       "diagram": {
         "kind": "flow",
-        "title": "廉价诊断阶梯",
-        "caption": "先用分钟级严格诊断确认工具调用是真的，再相信宽松指标给的分数。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='廉价工具调用诊断阶梯四层流程'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>宽松指标</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>B4 0.660 对 0.650 打平</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>逐字复现</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>600M 6/6，1B 0/6</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>首 token 探针</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>触发先验 1e-4~1e-5 被抹掉</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>定向 SFT 修复</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>269 行合规率 0.100 到 0.959</text>\n</svg>",
-        "alt": "四层流程：宽松指标打平，逐字复现分开两模型，首 token 探针定位缺失先验，定向 SFT 修复到 0.959。"
+        "title": "GLARE 听者反应生成流程",
+        "caption": "听者头生成被拆成数据、标注、建模、评测四层，每层各解决一个子问题",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='GLARE 的四层流程：数据、标注、建模、评测'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>数据</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>147h 配对视频</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>标注</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>64557 条事件</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>建模</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>流匹配 + 韵律</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>评测</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>R-F1 / R-tIoU</text></svg>",
+        "alt": "GLARE 的四层竖排流程：数据、标注、建模、评测，每层配一句细节"
       },
       "concepts": [
         {
-          "name": "Tool-Use Claim Gate（工具调用声明准入门槛）",
-          "readable": "在相信某个小模型会调用工具之前，先设一道低成本门槛：用严格诊断把假阳性筛掉，再接受宽松基准给出的分数。",
-          "analogy": "像用酒精测试仪复核一句我没喝酒：先看能不能走直线（宽松指标人人过关），再吹一口气看数值。",
-          "analogyBreaksDown": "酒精测试有一次性物理真值；工具调用是多步序列，模型可能触发对但参数错，或参数对却在不该调时调，单一门槛覆盖不到这些失败模式。",
-          "mechanism": "把评测拆成阶梯：先看宽松指标是否区分得开模型，再用训练样例逐字复现要求真实调用，最后用首 token 对数概率区分缺的是触发先验还是格式能力。",
-          "visual": "横轴为诊断成本（分钟级 CPU 到 GPU 小时），纵轴为判别力；宽松指标是一条几乎水平的线，逐字复现与首 token 探针把两条模型曲线明显拉开。",
+          "name": "Listening Head Generation",
+          "readable": "和说话人头生成相对的任务：输入说话人的音视频，输出听者一方的头部动作与表情，重点是反应得对时机、对类型，而不只是画面清晰。",
+          "analogy": "像捧哏演员：逗哏负责说，捧哏决定什么时候点头、什么时候笑、笑多大。捧哏演得好不好，看的不是脸，而是接得准不准。",
+          "analogyBreaksDown": "捧哏是有意图的主动交流，会反过来影响逗哏的节奏；这里的听者只是条件生成模型，不会改变说话人，也没有『为什么此刻该笑』的语义动机。",
+          "mechanism": "把听者行为离散成六类可标注事件，再用事件级监督驱动生成模型，使稀疏的反应时刻能被显式学习，而不是被像素重建损失淹没。",
+          "visual": "横轴是时间（秒），上半部分是说话人音频能量曲线，下半部分是六行事件条带，每行一类反应；预测用实心条、真值用描边条，条的重叠程度直接对应 R-tIoU。",
           "prerequisites": [
-            "语言模型解码与对数概率基础",
-            "SFT 与特殊 token 概念",
-            "会读基准指标"
+            "扩散模型与流匹配的基本原理",
+            "Transformer 与条件生成",
+            "音视频特征提取常识"
           ],
           "selfTest": [
-            "宽松指标打平为什么不能直接推出能力相当？",
-            "三步阶梯各能排除哪一类假阳性？",
-            "为什么修复后仍要报告误触发率？"
+            "听者头生成与说话人头生成的目标差异是什么？",
+            "为什么整段视频级标签不足以监督听者反应？",
+            "六类反应标注为什么可能互相重叠而不是互斥？"
           ],
-          "formula": "p_\\theta(t_{\\mathrm{trig}}\\mid x)=\\mathrm{softmax}(W h_1)[t_{\\mathrm{trig}}]"
+          "formula": "\\mathcal{L}_{\\mathrm{FM}}=\\mathbb{E}_{t,x_0,x_1}\\left\\|v_\\theta(x_t,t,c)-(x_1-x_0)\\right\\|_2^2"
         },
         {
-          "name": "First-Token Probe（首 token 先验探针）",
-          "readable": "只看模型解码第一步时给出触发 token 的概率，用来判断它到底有没有该调工具这个先验，而不是会不会写格式。",
-          "analogy": "像看一个人接电话前手有没有往口袋伸：看第一步的动作，而不是等他聊完再回头评价。",
-          "analogyBreaksDown": "伸手只是必要条件，工具调用还要求后续参数合法且结果可用；首步概率高但整个调用仍可能失败。",
-          "mechanism": "在提示末尾取第一个位置的 logits 做 softmax，读取触发 token 的概率；这个量与训练课程是否保留触发先验直接相关，成本远低于完整评测。",
-          "visual": "一条横向的概率轴，词表里触发 token 用一个标记点表示；正常模型该点靠右（约 1e-2 量级），被抹掉先验的 1B 该点压到最左端（1e-4~1e-5）。",
+          "name": "Prosody Conditioning via Audio LLM",
+          "readable": "不只用文字内容当条件，还把说话人的语调、节奏、重音等韵律信息抽成向量喂给生成模型，让听者的反应跟着语气走。",
+          "analogy": "像听电话时只凭语气就知道对方在开玩笑还是在生气：内容一样，语调不同，你的反应也完全不同。",
+          "analogyBreaksDown": "人能从语气里读出意图和社会关系，音频大模型的韵律嵌入只是声学统计的压缩，未必包含『该不该笑』这种社交判断。",
+          "mechanism": "用 Qwen2-Audio 之类的音频大模型把说话人语音编码成韵律条件向量，再与噪声时间步一起注入流匹配骨干，避免只依赖文本语义导致反应千篇一律。",
+          "visual": "左侧画一条音频波形，中间画一个音频编码器方块，右侧画条件向量箭头汇入去噪网络的输入端，用不同颜色区分内容条件与韵律条件。",
           "prerequisites": [
-            "softmax 与 logits 含义",
-            "自回归解码逐步生成",
-            "特殊 token 与工具调用格式"
+            "自监督语音表征（如 Whisper、音频 LLM）",
+            "条件注入方式：拼接、cross-attention、AdaLN"
           ],
           "selfTest": [
-            "为什么取第一个解码位置而不是整句似然？",
-            "首步概率低可能由哪些原因造成？",
-            "修复后这个概率不变说明什么？"
+            "只用文本或语义条件会丢失哪一类信息？",
+            "韵律条件注入在哪个位置对生成影响最大？",
+            "音频编码器的表示空间与视频生成骨干如何对齐？"
           ],
-          "formula": "p_\\theta(t_{\\mathrm{trig}}\\mid x)=\\mathrm{softmax}(W h_1)[t_{\\mathrm{trig}}]"
+          "formula": "c=\\mathrm{Enc}_{\\mathrm{audio}}(a),\\qquad x_{t}=(1-t)x_{0}+t\\,x_{1}"
+        },
+        {
+          "name": "Reaction-Oriented Evaluation",
+          "readable": "一套不看画面好不好看、而看反应对不对的指标：反应有没有发生、发生的时间对不对、早了还是晚了、反应区域的画质如何。",
+          "analogy": "像评价一个接球手：不是看他动作优不优雅，而是看他有没有接到、接的时机差几毫秒、以及有没有把球稳稳抱住。",
+          "analogyBreaksDown": "接球有明确的成功与否，听者反应是否『恰当』是主观的，四个指标只能代理，不能替代人评社交恰当性。",
+          "mechanism": "把评测拆成发生、时间对齐、非对称时间偏差、区域画质四个正交维度，避免用视频生成指标衡量行为恰当性，使『该反应时没反应』这种错误能被扣分。",
+          "visual": "画一个二维表：行是四个指标（R-F1、R-tIoU、R-ATD、R-FID），列是模型；每个格子用深浅表示相对基线的高低，时间类指标用箭头标出早或晚的偏差方向。",
+          "prerequisites": [
+            "精确率、召回率与 F1",
+            "IoU 与时间区间对齐",
+            "FID 类分布距离指标"
+          ],
+          "selfTest": [
+            "为什么 FVD/FID 高不代表听者反应自然？",
+            "R-ATD 为什么要做成非对称的？",
+            "R-FID 只算反应区域会带来什么偏差？"
+          ],
+          "formula": "F_{1}^{\\mathrm{react}}=\\frac{2PR}{P+R},\\qquad \\mathrm{tIoU}=\\frac{|\\hat{T}\\cap T|}{|\\hat{T}\\cup T|}"
         }
       ],
       "formulas": [
         {
-          "id": "f-first-token-trigger-prior",
-          "name": "首 token 触发先验探针（First-Token Trigger Prior Probe）",
-          "category": "posttraining",
-          "latex": "p_\\theta(t_{\\mathrm{trig}}\\mid x)=\\Big[\\mathrm{softmax}\\big(W h_1(x)\\big)\\Big]_{t_{\\mathrm{trig}}}",
+          "id": "f-listening-head-flow-matching",
+          "name": "听者头流匹配目标（Conditional Flow Matching Loss）",
+          "category": "generative",
+          "latex": "\\mathcal{L}_{\\mathrm{FM}}=\\mathbb{E}_{t\\sim U[0,1],\\,x_0\\sim p_0,\\,x_1\\sim p_{\\mathrm{data}}}\\Big\\|v_\\theta\\big(x_t,t,c\\big)-\\big(x_1-x_0\\big)\\Big\\|_2^2,\\quad x_t=(1-t)x_0+t\\,x_1",
           "symbols": [
-            [
-              "x",
-              "输入提示与工具调用上下文"
-            ],
-            [
-              "h_1(x)",
-              "解码第一步的隐状态"
-            ],
-            [
-              "W",
-              "隐状态到词表的输出投影"
-            ],
-            [
-              "t_trig",
-              "触发工具调用的起始 token"
-            ],
-            [
-              "p_theta",
-              "模型在首步就吐出触发 token 的概率"
-            ]
+            ["x_0", "源样本，通常取标准高斯噪声，表示起始的无结构状态"],
+            ["x_1", "目标样本，此处是目标听者头部的潜表示或帧序列"],
+            ["t", "连续时间步，均匀采样于 0 到 1 之间"],
+            ["x_t", "时间 t 处的插值点，噪声与目标的线性组合"],
+            ["v_θ", "待学速度场网络，同时接收 x_t、t 与条件 c"],
+            ["c", "条件，包含说话人音频特征与 Qwen2-Audio 提取的韵律向量"],
+            ["L_FM", "流匹配回归损失，只监督速度场与目标位移的差"]
           ],
           "derivation": [
-            "第 1 步：动机。若模型从未学会该调工具了，它在第一步就不会把触发 token 的概率抬起来，而宽松的字符串匹配指标看不出这一点。",
-            "第 2 步：在提示末尾做一次前向，取第一个解码位置的 logits，经 softmax 得到整张词表上的分布。",
-            "第 3 步：读出触发 token 的概率。摘要报告 1B 的该概率约为 1e-4~1e-5，说明缺的是触发先验，而不是格式写不出来。",
-            "第 4 步：修复后再测该概率。摘要的嵌入漂移检查显示触发 token 的 tied embedding 未变、bf16 表 97.7% 位级相同，说明增益来自周边网络而非词向量。"
+            "第 1 步：扩散类生成需要把噪声搬回数据分布，与其学多步加噪逆过程，不如直接学一个把噪声运到数据的连续速度场。",
+            "第 2 步：构造一条从 x_0 到 x_1 的直线路径 x_t=(1-t)x_0+t x_1，沿这条路径的真实速度恒为 x_1-x_0，与 t 无关。",
+            "第 3 步：让网络 v_θ(x_t,t,c) 去回归这个常数速度，损失退化为最简单的均方误差，训练目标清晰且稳定。",
+            "第 4 步：采样时从 x_0 出发沿学到的速度场积分若干步即可得到 x_1；少步数下直线路径比弯曲扩散路径更容易走准。"
           ],
-          "analogy": "像观察一个人接电话前有没有伸手去口袋：只看第一步的动作，不必等整通电话打完。",
+          "analogy": "像在两点之间铺一条笔直传送带：不管货箱在路上哪个位置，传送带的速度和方向都一样，所以只要教会机器手『按这个恒定速度推』就行，不必为每一段路单独设计动作。",
           "pitfalls": [
-            "把首步概率低当成分词或词表问题，实际是训练课程把先验洗掉了",
-            "用整句似然代替首步概率，格式与长度因素会把信号稀释",
-            "假定触发 token 只有一个字符串，工具名或特殊标记可能是多个候选"
+            "把流匹配与 DDPM 的噪声预测目标混为一谈：前者回归位移速度，后者回归被加进去的噪声，符号与时间约定不同。",
+            "条件 c 注入位置错误或只注入语义文本，会导致反应模式塌缩成平均表情。",
+            "时间步采样分布（均匀还是 logit-normal）会显著影响少步质量，面试时容易被追问。"
           ],
-          "code": "import torch, torch.nn.functional as F\nlogits = model(input_ids).logits[0, -1]      # 第一个解码位置\np = F.softmax(logits.float(), dim=-1)\nprint('trigger prior =', float(p[trigger_token_id]))",
+          "code": "import torch\nimport torch.nn.functional as F\n\ndef flow_matching_loss(velocity_net, x1, cond, t=None):\n    b = x1.shape[0]\n    if t is None:\n        t = torch.rand(b, device=x1.device)\n    x0 = torch.randn_like(x1)\n    shape = (b,) + (1,) * (x1.dim() - 1)\n    tt = t.view(shape)\n    x_t = (1.0 - tt) * x0 + tt * x1      # 直线插值路径\n    target = x1 - x0                      # 恒定速度\n    pred = velocity_net(x_t, t, cond)     # 条件速度场\n    return F.mse_loss(pred, target)",
           "sources": [
             {
-              "title": "Keyword Harnesses Fail Open: A Cheap Diagnostic Ladder for Tool-Use Claims in Small Language Models",
-              "url": "https://arxiv.org/abs/2610.02142v1"
+              "title": "GLARE: Generating Listening Heads with Appropriate Reactions",
+              "url": "https://arxiv.org/abs/2609.40317v1"
+            }
+          ]
+        },
+        {
+          "id": "f-reaction-f1-tiou",
+          "name": "反应发生与时间对齐指标（Reaction F1 and Temporal IoU）",
+          "category": "generative",
+          "latex": "F_{1}^{\\mathrm{react}}=\\frac{2\\,P\\,R}{P+R},\\quad P=\\frac{TP}{TP+FP},\\quad R=\\frac{TP}{TP+FN};\\qquad \\mathrm{tIoU}=\\frac{|\\hat{T}\\cap T|}{|\\hat{T}\\cup T|}",
+          "symbols": [
+            ["TP", "模型判定发生反应且真值也标注发生的帧或事件数"],
+            ["FP", "模型判定发生反应但真值未发生的帧数"],
+            ["FN", "真值发生反应但模型未判定的帧数"],
+            ["P, R", "精确率与召回率，分别衡量误报与漏报"],
+            ["F1_react", "反应发生的综合指标，对漏报与误报同等惩罚"],
+            ["T̂, T", "预测的反应时间区间集合与真值区间集合"],
+            ["tIoU", "时间区间交并比，衡量反应时刻对齐程度"]
+          ],
+          "derivation": [
+            "第 1 步：反应首先要『发生了』，所以把每个反应类别看成逐帧二分类，统计 TP、FP、FN。",
+            "第 2 步：精确率衡量乱反应的代价，召回率衡量漏反应的代价，两者单独看都会被极端策略刷高。",
+            "第 3 步：取调和平均得到 F1，使『全程不反应』与『全程都在反应』两种平凡解都拿不到高分。",
+            "第 4 步：F1 不管时刻早晚，于是再算预测区间与真值区间的交并比 tIoU，把时间对齐单独度量。",
+            "第 5 步：若要区分『早反应』与『晚反应』的代价不对称，还需引入带方向的非对称时间偏差指标 R-ATD。"
+          ],
+          "analogy": "像考察门铃响时你是否及时开门：F1 看你到底有没有开门、有没有去开别人家的门；tIoU 看你开门的时间段和访客停留的时间段重合多少；至于你是提前守着还是慢了半拍，还得另用一个带方向的指标。",
+          "pitfalls": [
+            "把逐帧二分类的 F1 当成事件级 F1：同一段连续反应会被拆成很多帧，数值不可直接比较。",
+            "忽略类别极不平衡：六类反应中大笑、惊讶极少，宏平均与微平均结论可能相反。",
+            "以为 tIoU 高就等于反应恰当，它只衡量时间重叠，不衡量反应类型是否正确。"
+          ],
+          "code": "def reaction_f1_and_tiou(pred_frames, gold_frames):\n    pairs = list(zip(pred_frames, gold_frames))\n    tp = sum(1 for p, g in pairs if p and g)\n    fp = sum(1 for p, g in pairs if p and not g)\n    fn = sum(1 for p, g in pairs if not p and g)\n    precision = tp / max(tp + fp, 1)\n    recall = tp / max(tp + fn, 1)\n    f1 = 2 * precision * recall / max(precision + recall, 1e-8)\n    inter = sum(1 for p, g in pairs if p and g)\n    union = sum(1 for p, g in pairs if p or g)\n    tiou = inter / max(union, 1)\n    return {'R-F1': f1, 'R-tIoU': tiou}",
+          "sources": [
+            {
+              "title": "GLARE: Generating Listening Heads with Appropriate Reactions",
+              "url": "https://arxiv.org/abs/2609.40317v1"
             }
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "一对共享解码器、分词器与特殊 token 的西班牙语安全模型：661.6M（约 65% 代码与技术文本，无专门 SFT）与 1,109M（网页为主的多阶段课程，6B token 工具 SFT）",
-          "宽松工具调用指标 B4：600M 得 0.660，1B 得 0.650",
-          "逐字复现训练样例：600M 在 6/6 例子上生成带泛化参数的合法调用，1B 在所有检查点上 0/6",
-          "首 token 探针把 1B 的失败定位为缺失先验，概率约 1e-4~1e-5，该先验被网页为主的训练阶段抹掉",
-          "定向 SFT 配置为多样语料、5 倍更高学习率、2,202 步、约 3.3 GPU 小时，token 量比失败阶段少三个数量级",
-          "269 行语料合法生成率 0.100 提升到 0.959（600M 为 0.926）；238 条未见提示上 0.536 对 0.428，p = 0.004",
-          "嵌入漂移检查：触发 token 的 tied embedding 未移动，bf16 词表 97.7% 位级相同",
-          "两模型都过度触发：负向提示下不发起调用直接回答的比例为 600M 0.09、修复后 1B 0.17"
+          "论文从 RealTalk 与 Seamless Interaction 整理了约 147 小时说话人-听者配对视频。",
+          "数据集含 64,557 条事件级反应标注，分为点头、摇头、微笑、大笑、皱眉、惊讶六类。",
+          "GLARE 是基于流匹配 Transformer 的音频驱动基线，韵律条件来自 Qwen2-Audio。",
+          "论文提出时序反应损失，显式监督逐帧反应。",
+          "评测协议包含 R-F1、R-tIoU、R-ATD、R-FID 四项，实验在视觉保真与反应指标上均优于已有听者头方法。"
         ],
         "uncertain": [
-          "摘要中『prob. 1e-4--1e-5 on )』处被截断，该概率所对应的具体 token 或位置需核对原文",
-          "诊断阶梯的正式步骤命名与判据阈值未在摘要给出，本文按宽松指标、逐字复现、首 token 探针、定向 SFT 四步复述",
-          "公式为按摘要语义重建的通用形式，需核对原文",
-          "codeAvailable 标记为 true，但本条目 sources 中没有代码链接，实现是否公开待核实",
-          "多样化语料带来过度触发抑制的收益，摘要自承因种子敏感仍属假设"
+          "两个公式为按摘要重建的通用形式，需核对原文的具体写法与符号约定。",
+          "R-ATD 的『非对称』具体如何定义（早或晚的惩罚函数形式）摘要未给出。",
+          "摘要未报告标注者间一致性、推理延迟与实时性。",
+          "六类反应之间是否允许同帧共存，摘要未说明。"
         ]
       },
       "teaching": {
         "progressive": [
           {
             "level": "一句话",
-            "text": "宽松指标说两个模型一样行，严格检查发现其中一个根本不会调工具。"
+            "text": "让虚拟听者在对的时间做出对的表情和动作，而不是只会盯着对方。"
           },
           {
             "level": "入门",
-            "text": "作者对比一对共享解码器、分词器和特殊 token 的西班牙语安全模型：600M 与 1B。在宽松的工具调用指标上二者几乎打平（0.660 对 0.650）。但把训练样例逐字重放，600M 有 6/6 生成合法调用，1B 在所有检查点上是 0/6，说明宽松指标给出了假阳性。"
+            "text": "听者头部生成要同时决定三件事：何时反应、怎么反应、用哪类反应。GLARE 用约 147 小时配对视频和六类事件级标注训练音频驱动的流匹配模型，再配一套反应层面的指标，避免只看画面像不像。"
           },
           {
             "level": "进阶",
-            "text": "诊断阶梯分三步：先看宽松指标能否区分模型，再用训练样例逐字复现要求真实调用，最后用首 token 概率探针定位失败环节。探针显示 1B 缺的是触发先验（约 1e-4~1e-5），该先验被网页为主的多阶段课程训练抹掉。定向 SFT 用 2,202 步、约 3.3 GPU 小时、比失败阶段少三个数量级的 token 完成修复，269 行语料合法生成率从 0.100 升到 0.959。"
+            "text": "关键设计有三处：数据上用事件级标注替代整段视频标签，让『何时反应』可监督；模型上把韵律条件从 Qwen2-Audio 抽出再喂给流匹配 Transformer；训练上加逐帧时序反应损失，把反应发生时刻显式拉进损失。代价是标注成本与指标复杂度上升，但反应正确性第一次可被量化。"
           },
           {
             "level": "专家",
-            "text": "关键在于把会不会调工具拆成触发先验、格式生成、参数泛化三个可分别观测的能力。1B 的问题不是格式：修复时嵌入漂移检查显示触发 token 的 tied embedding 有 97.7% 位级不变，说明变化发生在周边网络而非词向量。修复后 238 条未见提示 0.536 超过 600M 的 0.428（p=0.004），但两者仍过度触发，负向提示下不调用直接回答的比例只有 0.09 与 0.17，说明安装格式与抑制误触发是两个问题；摘要也承认语料多样性带来的抑制收益因种子敏感仍是假设。"
+            "text": "与说话人头相比，听者头条件更弱、目标更模糊：说话内容由音频决定，听者反应还依赖社交语境且天然多峰。GLARE 的取舍是拆成三个可测子问题——事件级数据、显式时序监督、反应导向指标。边界是它仍属音频驱动、单轮对话设定，未建模多轮意图；R-FID 这类区域指标也不能替代人评社交恰当性。"
           }
         ],
         "socratic": [
           {
-            "q": "如果不做逐字复现这一步会怎样？",
-            "a": "只看宽松指标会得出两个模型能力相当的结论，而 1B 实际上从未产出合法调用，后续 SFT 与评测都会建立在假阳性上。"
+            "q": "不做逐帧时序反应损失会怎样？",
+            "a": "模型仍能学到平均意义上的点头微笑，但反应时刻会漂移，R-tIoU 与 R-F1 掉得最快，结果画面好看却『反应错拍』。"
           },
           {
-            "q": "把首 token 探针换成整句似然行不行？",
-            "a": "整句似然把格式、参数和长度混在一起，看不出缺的是该不该调这一先验，也就无法解释为什么补一小批数据能修好。"
+            "q": "为什么不能沿用视频生成的 FVD/FID 评测？",
+            "a": "它们只看视觉真实感，对『该反应时没反应』不敏感；视觉上完美但全程面无表情的听者也能拿到高分。"
+          },
+          {
+            "q": "为什么不端到端预测视频，而要显式建模反应事件？",
+            "a": "显式事件让监督信号落在『何时、哪类』上，可解释也可评测；端到端像素回归会把稀疏反应淹没在重建损失里。"
           }
         ],
-        "mechanism": "设计动机是让诊断成本与判别力匹配：宽松字符串匹配几乎免费但判别力差，完整人工评测准确却昂贵。首 token 概率既便宜又直接对应触发先验，而触发先验恰好会被网页为主的多阶段课程稀释，因此探针能把失败归因到训练课程而不是评测噪声。",
-        "boundary": "该阶梯针对小模型、格式可枚举的工具调用声明；面对开放式 agent 任务（长程规划、多工具组合）时逐字复现并不适用。摘要也只在一个架构对的西班牙语安全模型上演示，能否外推到更大模型或英文场景未经验证。",
-        "analogyBoundary": "酒精测试仪的类比假定存在一次性真值判定；工具调用是多步序列，模型可能触发正确但参数错，也可能参数对却在不该调时调，单次门槛覆盖不到这些失败模式。",
+        "mechanism": "必须这样设计的原因是监督信号的位置。听者反应是稀疏事件，若只在像素或潜空间做重建损失，梯度会被大量静态帧稀释，模型倾向输出『平均脸』。GLARE 把监督搬到事件层：先用事件标注给出类别与时刻，再用时序反应损失逐帧对齐，最后用 R-F1 与 R-tIoU 检验反应是否落在正确帧段。韵律条件补足『用什么语气反应』，使反应该跟着语调而非只跟内容。",
+        "boundary": "失效场景：多人、多轮、跨文化语境下的听者行为；片段过短或标注稀疏的数据；音频质量差导致韵律条件噪声大。若目标是社交恰当性或舒适度，R-F1 与 R-FID 只能作代理。摘要未给推理延迟与实时性数据，实时数字人场景需另行核实。",
+        "analogyBoundary": "把听者反应类比成相声捧哏是贴切的，但类比在此失效：捧哏是有意图的主动交流，会改变对话走向；这里的听者只是条件生成，不反作用于说话人，也学不到『为什么此刻该笑』的语义动机。",
         "misconceptions": [
-          "宽松指标高就说明会调工具：本案例中 1B 得 0.650 却 0/6 真调用。",
-          "修复靠改词表或重训 embedding：触发 token 嵌入 97.7% 位级不变，变化在周边网络。",
-          "合规率上去就等于工具调用可靠：两个模型都严重过度触发。"
+          "认为听者头只是说话人头的镜像任务，把说话人模型换个输入就能用。",
+          "用 FID/FVD 提升就宣称听者更自然——视觉指标与反应恰当性并不同向。",
+          "把六类反应当作互斥分类，忽略同一帧可以同时点头与微笑。"
         ],
-        "ownAnalysis": "（推断）这条工作的方法论价值大于模型本身：它把关键词评测 fail open 具体化为一个可复现的假阳性案例，并给出触发先验缺失这一可检验的因果解释。可疑处在于修复配方包含多个同时变化的因素（语料多样性、5 倍学习率、2,202 步），摘要自承多样性带来的抑制收益因种子敏感仍属假设，因此哪一步真正起作用尚未分离。此外修复后仍过度触发，说明评测应同时报告漏触发与误触发两侧。",
+        "ownAnalysis": "（推断）这条工作的价值不只在模型，而在把『反应』变成可监督对象，这与后训练里用过程奖励替代结果奖励是同一思路：把稀疏、延迟的评价拆成密集、可定位的信号。可疑之处是事件级标注的一致性——微笑与大笑这类边界主观性强，六万多条标注若来自众包，噪声可能正好落在 R-F1 的敏感区间。（待核实）摘要未报告标注者间一致性。",
         "officialNotes": [
           {
-            "position": "这套诊断阶梯只需分钟级 CPU 时间，应作为小模型工具调用声明的准入门槛",
-            "source": "arXiv 2610.02142v1 摘要"
+            "position": "论文称反应感知的数据、建模与评测对自然听者行为至关重要，并在视觉保真与反应层面指标上均优于已有听者头方法。",
+            "source": "arxiv 摘要 2609.40317v1"
+          },
+          {
+            "position": "论文指出既有 dyadic 数据集缺少细粒度听者反应标注，且沿用的评测指标衡量的是视觉真实感而非反应是否恰当。",
+            "source": "arxiv 摘要 2609.40317v1"
           }
         ],
-        "interviewAnswer": "我关注小模型工具调用评测的可信度。这篇给了一个假阳性案例：600M 和 1B 在宽松指标上 0.660 对 0.650，但逐字复现训练样例时 600M 有 6/6 合法调用、1B 是 0/6。首 token 探针显示 1B 缺触发先验，被网页为主的课程训练抹掉了；定向 SFT 用少三个数量级的 token、约 3.3 GPU 小时修到 0.959，未见提示 0.536 反超 600M。所以我在报告工具调用能力前会先跑严格诊断。",
+        "interviewAnswer": "我会这样答：听者头生成的核心难点不是画得像，而是三件事——何时反应、怎么反应、用哪类反应。GLARE 配套解决了这三件事：数据上从 RealTalk 和 Seamless 整理约 147 小时配对视频，标注 64,557 条事件级反应，分六类；模型上以流匹配 Transformer 为骨干，用 Qwen2-Audio 提韵律条件，并加逐帧时序反应损失；评测上提出 R-F1、R-tIoU、R-ATD、R-FID 四个反应导向指标，避免只看视觉真实感。实验在视觉与反应指标上都有提升。",
         "studyPath": {
           "prerequisites": [
-            "SFT 与特殊 token",
-            "语言模型解码与对数概率",
-            "基准指标解读"
+            "扩散模型与流匹配的基础推导",
+            "Transformer 与条件注入方式",
+            "音视频特征与说话头生成常识",
+            "F1、IoU 等评测指标"
           ],
           "nextSteps": [
-            "复现首 token 探针脚本",
-            "研究触发 token 与工具调用格式设计",
-            "调研误触发与过度调用评测"
+            "手写并跑通流匹配的速度回归损失",
+            "读说话头与音频驱动人脸生成的代表工作做对比",
+            "自己实现一个事件级时序标注与 R-F1、R-tIoU 评测脚本"
           ]
         }
       }
     },
     {
-      "id": "ffccce0f53a7f7d2",
-      "tldr": "CARM 用 token 对数概率比的绝对值均值做序列级掩码，阻止正负漂移互相抵消，数学与代码基准各涨约 3 分。",
+      "id": "ce8adac751035736",
+      "tldr": "把当代RAG研究整理成效率、防御、交互、推理四轴分类法，并梳理评测与架构变体",
       "keyPoints": [
-        "实践中 rollout 与训练引擎不同，采样回答会 off-policy，需要序列级掩码",
-        "常见规则用长度归一化的概率比几何平均，带符号对数比会跨位置抵消",
-        "CARM 先对每个 token 的对数比取绝对值再平均，暴露双向漂移",
-        "证明被接受的回答满足越界比例与平均越界距离的联合上界",
-        "AIME 系 mean@16 最多提升 3.13 点，四个代码基准 pass@1 平均提升 2.88 点"
+        "提出效率、鲁棒与安全、交互、复杂推理四轴RAG分类法",
+        "形式化RAG关键组件，覆盖稠密与稀疏检索及融合策略",
+        "梳理嵌入优化与基于强化学习的检索策略",
+        "总结评测实践、领域应用与Naive、Advanced、Modular三类架构",
+        "指出检索质量、可靠性、领域适配、可扩展性与可解释性挑战"
       ],
-      "why": "做 RLHF 或 RLVR 后训练的求职者需知道：掩码规则直接决定哪些轨迹进梯度，CARM 给出可证明的漂移控制。",
-      "difficulty": "hard",
+      "why": "求职RAG与Agent岗常被追问系统全貌，四轴分类法可直接当设计checklist与答题骨架。",
+      "difficulty": "medium",
       "tags": [
-        "rl",
-        "post-training",
-        "off-policy",
-        "masking",
-        "reasoning"
+        "rag",
+        "retrieval",
+        "survey",
+        "llm",
+        "taxonomy"
       ],
       "entities": [
-        "CARM",
-        "geometric-mean masking",
-        "AIME 2024/2025/2026",
-        "BeyondAIME"
+        "RAG",
+        "Naive RAG",
+        "Advanced RAG",
+        "Modular RAG",
+        "dense retrieval",
+        "sparse retrieval",
+        "reinforcement learning based retrieval policies"
       ],
       "diagram": {
-        "kind": "flow",
-        "title": "CARM 掩码判据",
-        "caption": "关键是先取绝对值再平均，否则正负漂移会互相抵消、把最危险的样本判成最合规。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='CARM 序列级掩码四层流程'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>rollout 采样</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>与训练引擎版本不同</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>逐 token 概率比</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>带符号对数比可正可负</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>掩码判据</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>几何平均抵消，CARM 取绝对值</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>序列级接受</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>越界比例与距离有联合界</text>\n</svg>",
-        "alt": "四层流程：rollout 采样偏离训练引擎，逐 token 概率比有正负，掩码判据从几何平均改为绝对值均值，最终接受集合带联合界。"
+        "kind": "matrix",
+        "title": "RAG 四轴分类法",
+        "caption": "主干流程之外的四类失败模式，各自对应一批近年的RAG工作",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='RAG 四轴分类：效率、防御、交互、推理'><text x='240' y='20' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>RAG 四轴分类</text><line x1='240' y1='32' x2='240' y2='224' stroke='var(--line-1)' stroke-width='1.4'/><line x1='36' y1='128' x2='444' y2='128' stroke='var(--line-1)' stroke-width='1.4'/><rect x='40' y='36' width='190' height='84' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='62' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>效率</text><text x='56' y='86' font-size='13' text-anchor='start' fill='currentColor'>稠密与稀疏检索</text><text x='56' y='107' font-size='13' text-anchor='start' fill='currentColor'>融合与嵌入优化</text><rect x='250' y='36' width='190' height='84' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='266' y='62' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>防御</text><text x='266' y='86' font-size='13' text-anchor='start' fill='currentColor'>鲁棒与安全</text><text x='266' y='107' font-size='13' text-anchor='start' fill='currentColor'>投毒与注入</text><rect x='40' y='136' width='190' height='84' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='56' y='162' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>交互</text><text x='56' y='186' font-size='13' text-anchor='start' fill='currentColor'>用户驱动工作流</text><text x='56' y='207' font-size='13' text-anchor='start' fill='currentColor'>多轮检索</text><rect x='250' y='136' width='190' height='84' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='266' y='162' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>推理</text><text x='266' y='186' font-size='13' text-anchor='start' fill='currentColor'>多步与复杂推理</text><text x='266' y='207' font-size='13' text-anchor='start' fill='currentColor'>RL 检索策略</text></svg>",
+        "alt": "一个二乘二矩阵，把 RAG 工作分成效率、防御、交互、推理四轴"
       },
       "concepts": [
         {
-          "name": "Off-Policy Drift Cancellation（off-policy 漂移抵消）",
-          "readable": "采样引擎与训练引擎不同，采样出的回答已经偏离当前策略；若把每个 token 的对数概率比带符号求平均，一升一降会互相抵消，漂移被藏起来。",
-          "analogy": "像查账只看净流水：一边进 100 一边出 100，净额是 0，但钱其实已经动过了。",
-          "analogyBreaksDown": "收支可以精确相消，概率漂移不是金额：少量大幅越界的 token 与大量轻微越界在绝对值均值下不可区分，判据本身仍是有损的。",
-          "mechanism": "把长度归一化的判据从带符号对数比均值换成绝对值均值，让任何方向的偏离都累加；再配一个可证明的联合界，把越界比例与越界距离同时控制住。",
-          "visual": "一根从 -1 到 +1 的数轴，两个 token 的对数比一个落在 +0.8、一个落在 -0.8；带符号平均把它们拉到 0 附近（绿区），绝对值平均把条形长度相加推到红区。",
+          "name": "Four-Axis RAG Taxonomy",
+          "readable": "把近年RAG工作按要解决的问题分成四类：检索太慢太贵、外部文本不可信、用户要来回追问、答案需要多步推理才能凑齐。",
+          "analogy": "像给一家餐厅挑毛病：出菜慢属于效率，食材可能被掉包属于安全，客人要加菜换菜属于交互，一道菜要多个灶台配合属于推理。四类问题各有各的解法。",
+          "analogyBreaksDown": "餐厅的四类问题基本互不相干，而RAG里它们强耦合：多跳推理会同时放大延迟与安全风险，按轴分工会掩盖真实的资源竞争。",
+          "mechanism": "用四个正交视角组织文献，使每个新方法都能挂到具体失败模式上，避免把所有改进笼统称为『更好的RAG』。",
+          "visual": "画一个二乘二象限：横轴从『单步』到『多步』，纵轴从『系统内部』到『系统外部』；效率与安全靠内部，交互与推理靠外部，每个象限里点几种代表方法。",
           "prerequisites": [
-            "重要性采样与概率比",
-            "PPO 或 GRPO 类 RL 微调流程",
-            "off-policy 校正的基本直觉"
+            "倒排索引与 BM25",
+            "向量检索与近似最近邻",
+            "大模型上下文与提示工程"
           ],
           "selfTest": [
-            "带符号对数比在什么情况下会互相抵消？",
-            "为什么抵消会让掩码放行最差的样本？",
-            "取绝对值失去了什么信息？"
-          ],
-          "formula": "M(\\tau)=\\mathbb{1}\\!\\left[\\frac{1}{T}\\sum_{t=1}^{T}\\left|\\log\\frac{\\pi_\\theta(y_t\\mid y_{<t})}{\\pi_\\mu(y_t\\mid y_{<t})}\\right|\\le\\delta\\right]"
-        },
-        {
-          "name": "Sequence-Level Masking（序列级掩码）",
-          "readable": "对整条回答做一次 0/1 决定，判断它是否参与这次优化，而不是逐个 token 缩放或裁剪梯度。",
-          "analogy": "像老师批改小组作业：要么整组计入成绩，要么整组不计，而不是给每个组员打不同的折扣。",
-          "analogyBreaksDown": "小组作业里成员贡献本可分别评价；序列级掩码恰恰放弃了这种精细度，一条回答里少数关键 token 的问题会否决整条样本。",
-          "mechanism": "序列级判据把优化目标限制在一个可证明的接受集合内，避免逐 token 权重带来的方差；代价是丢弃整条样本、降低有效 batch。",
-          "visual": "一叠候选回答卡片，每张上有一根掩码状态条；通过阈值的整张卡片变实色进入梯度，未通过的整张变虚色丢弃。",
-          "prerequisites": [
-            "策略梯度损失构成",
-            "ratio 与 clip 的作用",
-            "批大小对训练稳定性的影响"
-          ],
-          "selfTest": [
-            "序列级掩码与 token 级裁剪的区别是什么？",
-            "丢弃样本过多会带来什么后果？",
-            "为什么它需要配合可证明的接受条件？"
+            "四轴分别对应主干RAG的哪类失败模式？",
+            "为什么多跳推理常常同时牵动效率与安全？",
+            "Modular RAG 与四轴是什么关系？"
           ],
           "formula": ""
+        },
+        {
+          "name": "Naive, Advanced and Modular RAG",
+          "readable": "三种架构分层：Naive是检索加拼上下文的基础流程；Advanced在检索前后加改写、重排、压缩等增强；Modular把检索、记忆、路由、工具拆成可替换模块。",
+          "analogy": "像做菜：Naive是照着菜谱买菜下锅；Advanced是提前备菜、控制火候；Modular是把厨房拆成若干工位，每道菜自己组装配方。",
+          "analogyBreaksDown": "厨房工位之间接口清楚，而Modular RAG的模块边界模糊：重排模块既能算在检索里也能算在生成前的上下文处理里，分工常是叙述性的。",
+          "mechanism": "用架构层级描述工程复杂度：越往上可插拔性越好，但调试与归因越难，因为失败可能来自任一模块。",
+          "visual": "画三条横向流水线：Naive只有检索与生成两格；Advanced在两侧各加改写与重排；Modular画成可插拔方块并用虚线表示路由，模块用不同颜色区分。",
+          "prerequisites": [
+            "检索与生成流水线的基本搭建",
+            "重排模型与查询改写"
+          ],
+          "selfTest": [
+            "Advanced RAG 相比 Naive 主要加了哪些环节？",
+            "Modular RAG 带来的主要调试代价是什么？",
+            "什么场景下 Naive RAG 反而是正确选择？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "RL-Based Retrieval Policy",
+          "readable": "把『要不要检索、检索什么、检索几次』当作可学习的决策，用强化学习按最终答案质量来优化检索策略，而不是写死top-k。",
+          "analogy": "像查资料写报告：新手固定翻五页，老手会先判断这个问题要不要查、查完发现不够就换关键词再查一轮。后者是在学一个策略。",
+          "analogyBreaksDown": "人能凭经验便宜地判断，而RL需要大量采样与奖励信号；若奖励只来自最终答案，检索决策的信用分配会非常稀疏。",
+          "mechanism": "将检索动作纳入策略空间，用答案正确性或下游奖励驱动更新，使检索次数与查询改写随问题难度自适应。",
+          "visual": "画一个回合序列：问题到决策节点（检索或不检索），若检索则选文档，再生成，奖励从末尾用虚线箭头回流；决策节点用菱形。",
+          "prerequisites": [
+            "策略梯度与优势估计",
+            "检索评估指标（召回、MRR）"
+          ],
+          "selfTest": [
+            "RL检索策略的奖励从哪里来，稀疏性如何缓解？",
+            "与固定top-k相比，策略化检索的额外代价是什么？",
+            "训练出的策略如何避免退化成永不检索？"
+          ],
+          "formula": "J(\\theta)=\\mathbb{E}_{\\tau\\sim\\pi_\\theta}\\Big[\\sum_t \\nabla_\\theta\\log\\pi_\\theta(a_t\\mid s_t)\\,\\hat{A}_t\\Big]"
         }
       ],
       "formulas": [
         {
-          "id": "f-carm-abs-logratio-mask",
-          "name": "CARM 绝对值对数比序列掩码（Cancellation-Aware Response Mask）",
+          "id": "f-rag-dense-sparse-fusion",
+          "name": "稠密与稀疏检索分数融合（Dense-Sparse Score Fusion）",
+          "category": "foundation",
+          "latex": "s(q,d)=\\alpha\\,\\tilde{s}_{\\mathrm{dense}}(q,d)+(1-\\alpha)\\,\\tilde{s}_{\\mathrm{sparse}}(q,d),\\qquad \\tilde{s}=\\frac{s-\\min s}{\\max s-\\min s}",
+          "symbols": [
+            ["q", "用户查询或改写后的查询"],
+            ["d", "候选文档或文本块"],
+            ["s_dense", "稠密检索分数，通常为查询与文档向量的余弦相似度"],
+            ["s_sparse", "稀疏检索分数，如 BM25 的词面匹配分"],
+            ["s̃", "归一化后的分数，使两种量纲可比"],
+            ["α", "融合权重，控制语义匹配与词面匹配的相对贡献"],
+            ["s(q,d)", "最终用于排序的融合分数"]
+          ],
+          "derivation": [
+            "第 1 步：稀疏检索靠词频与逆文档频率，专有名词、编号、缩写命中极准，但查询换个说法就漏召回。",
+            "第 2 步：稠密检索把查询与文档编码到同一向量空间，同义改写也能召回，但会引入语义近而主题偏的噪声。",
+            "第 3 步：两者量纲不同（BM25 无上界、余弦在负一到一之间），必须先各自归一化再相加，否则权重形同虚设。",
+            "第 4 步：用权重 α 做线性插值并按融合分数排序取 top-k，α 通常在验证集上网格搜索，是RAG里性价比最高的一步改动。"
+          ],
+          "analogy": "像找走失的猫：一边问邻居『有没有看到一只橘色的猫』（词面匹配，准但依赖别人记不记得），一边在小区里贴启发式传单（语义匹配，覆盖面广但可能招来别人家的橘猫）。两路信息加权合并，比只信一边靠谱。",
+          "pitfalls": [
+            "忘记归一化就做加权求和：BM25 分数尺度远大于余弦相似度，等价于只用稀疏检索。",
+            "把 α 当超参拍脑袋定；它和语料领域强相关，必须按验证集调。",
+            "以为融合后可以不做重排：融合只改善召回，精排仍需 cross-encoder 或重排模型。"
+          ],
+          "code": "import numpy as np\n\ndef hybrid_scores(q_dense, doc_dense, sparse_scores, alpha=0.5, top_k=10):\n    # 稠密侧：查询与文档向量均已 L2 归一化，点积即余弦\n    dense = doc_dense @ q_dense\n    s = np.asarray(sparse_scores, dtype=np.float64)\n    sparse = (s - s.min()) / (s.max() - s.min() + 1e-8)\n    scores = alpha * dense + (1.0 - alpha) * sparse\n    order = np.argsort(-scores)[:top_k]\n    return order, scores[order]",
+          "sources": [
+            {
+              "title": "Mapping the RAG Landscape: A Four Axis Taxonomy of Efficiency, Defense, Interactivity, and Reasoning",
+              "url": "https://arxiv.org/abs/2610.01936v1"
+            }
+          ]
+        },
+        {
+          "id": "f-rl-retrieval-policy",
+          "name": "检索策略的策略梯度目标（Policy Gradient for Retrieval Decisions）",
           "category": "rl",
-          "latex": "M(\\tau)=\\mathbb{1}\\!\\left[\\frac{1}{T}\\sum_{t=1}^{T}\\left|\\log\\frac{\\pi_\\theta(y_t\\mid y_{<t})}{\\pi_\\mu(y_t\\mid y_{<t})}\\right|\\le\\delta\\right]",
+          "latex": "\\nabla_\\theta J(\\theta)=\\mathbb{E}_{\\tau\\sim\\pi_\\theta}\\Big[\\sum_{t=0}^{T}\\nabla_\\theta\\log\\pi_\\theta(a_t\\mid s_t)\\,\\hat{A}_t\\Big],\\qquad a_t\\in\\{\\text{检索动作},\\ \\text{停止检索}\\}",
           "symbols": [
-            [
-              "\\tau",
-              "一条采样回答（序列）"
-            ],
-            [
-              "y_t",
-              "第 t 个采样 token"
-            ],
-            [
-              "\\pi_\\theta",
-              "当前训练策略"
-            ],
-            [
-              "\\pi_\\mu",
-              "产生该回答的 rollout 策略"
-            ],
-            [
-              "T",
-              "回答长度，用于长度归一化"
-            ],
-            [
-              "\\delta",
-              "可接受的平均越界幅度阈值"
-            ],
-            [
-              "M(\\tau)",
-              "序列级掩码，1 表示该回答参与优化"
-            ]
+            ["θ", "检索策略网络的参数"],
+            ["π_θ(a_t|s_t)", "在状态 s_t 下选择检索动作 a_t 的概率"],
+            ["a_t", "第 t 步的检索动作，如选某个查询改写、选某篇文档，或决定停止检索"],
+            ["s_t", "当前状态，包含原问题、已检索到的文档与已生成的中间文本"],
+            ["τ", "一条完整轨迹，从提问到给出答案"],
+            ["Â_t", "优势估计，衡量该动作相对平均水平好多少"],
+            ["J(θ)", "期望回报目标，常取答案正确性或下游任务奖励"]
           ],
           "derivation": [
-            "第 1 步：动机。rollout 引擎与训练引擎不一致会让回答 off-policy，需要决定整条回答是否进入优化。",
-            "第 2 步：常见规则取长度归一化的概率比几何平均，等价于对 log 比求带符号均值；正负项会互相抵消，掩盖双向漂移。",
-            "第 3 步：CARM 改为先取每个 token 对数比的绝对值再平均，使任何方向的偏离都单调累加，抵消不再可能。",
-            "第 4 步：给出联合界，被接受回答中落在预设区间外的样本 token 比例与它们的平均对数距离同时被约束，严格度因此可控。"
+            "第 1 步：把检索从固定流程改成决策序列，状态是问题加已检索内容，动作是要不要检索、检索什么。",
+            "第 2 步：目标是最大化期望回报，直接对期望求导会遇到分布随参数变化的问题。",
+            "第 3 步：用对数导数技巧把梯度写成对采样轨迹的期望，梯度里只出现 log 策略的导数与回报项。",
+            "第 4 步：用优势函数替换原始回报并做基线减方差，得到可直接用采样估计的策略梯度。",
+            "第 5 步：若奖励只在最终答案给出，可对整条轨迹分配同一回报，或引入过程奖励缓解稀疏信用分配。"
           ],
-          "analogy": "像盘点库存时不看净增减，而把每一次进出货的绝对值都记一笔，避免大进大出被净额掩盖。",
+          "analogy": "像教一个助理查资料：不规定他必须查几页，而是让他自己决定查不查、查哪几篇，最后按报告质量给分。做得比平均好就加强那几步决策，做得差就削弱，久而久之他学会按问题难度调整检索力度。",
           "pitfalls": [
-            "把 CARM 当成重要性采样权重：它是 0/1 序列掩码，不缩放梯度",
-            "以为取绝对值等于放宽阈值：恰恰相反，抵消不再帮忙，掩码更难通过",
-            "忽略丢弃率：更严格的判据会减少有效样本，需与 batch 大小一起权衡"
+            "把检索动作空间设为连续向量而忘了它是离散选择，导致策略梯度实现错误。",
+            "奖励只来自最终答案且无基线，方差过大导致策略在两个极端间震荡。",
+            "忽略检索成本项，策略会退化成永远多检索几次刷召回。"
           ],
-          "code": "import torch\nlogp_new = policy.logprobs(tokens)      # 训练引擎\nlogp_old = rollout.logprobs(tokens)     # rollout 引擎\nlr = (logp_new - logp_old).abs()        # 关键：先取绝对值\nmask = (lr.mean() <= delta).float()     # 序列级硬掩码\nloss = -(mask * advantage).mean()",
+          "code": "import torch\nimport torch.nn.functional as F\n\ndef retrieval_pg_loss(logits, actions, advantages):\n    # logits: [B, N]，每个候选文档或检索动作的分数\n    logp = F.log_softmax(logits, dim=-1)\n    chosen = logp.gather(1, actions.unsqueeze(1)).squeeze(1)\n    adv = advantages.detach()\n    adv = (adv - adv.mean()) / (adv.std() + 1e-8)   # 基线减方差\n    return -(chosen * adv).mean()",
           "sources": [
             {
-              "title": "CARM: Cancellation-Aware Response Masking for LLM Reinforcement Learning",
-              "url": "https://arxiv.org/abs/2610.02039v1"
+              "title": "Mapping the RAG Landscape: A Four Axis Taxonomy of Efficiency, Defense, Interactivity, and Reasoning",
+              "url": "https://arxiv.org/abs/2610.01936v1"
             }
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "RL 已广泛用于 LLM 后训练，在数学推理与代码生成上有明显收益",
-          "实际系统中策略更新以及 rollout 与训练引擎的差异会让采样回答 off-policy",
-          "序列级掩码通过决定整条回答是否参与优化来处理这种不匹配",
-          "常见掩码规则使用采样 token 概率比的长度归一化几何平均，其带符号对数比会跨位置抵消，掩盖双向策略漂移",
-          "CARM 在平均之前对每个 token 的对数比取绝对值，防止相反的概率变化相消",
-          "作者证明被接受的回答满足越界样本 token 比例与其边界外平均对数距离的联合界",
-          "在 AIME 2024/2025/2026 与 BeyondAIME 上，mean@16 相对几何平均掩码最多提升 3.13 个百分点",
-          "四个代码基准上的平均 pass@1 相对最强被测基线提升 2.88 个百分点"
+          "综述把当代RAG发展组织为四轴：提升检索效率、强化鲁棒与安全、支持用户驱动的交互工作流、支持多步或复杂推理。",
+          "综述形式化了RAG框架的关键组件，并覆盖稠密与稀疏检索、融合策略、嵌入优化与基于强化学习的检索策略。",
+          "综述总结了评测实践、领域应用与 Naive、Advanced、Modular 三类架构变体。",
+          "综述将检索质量、可靠性、领域适配、可扩展性与可解释性列为持续挑战。"
         ],
         "uncertain": [
-          "掩码阈值 delta 的具体取值与选取规则摘要未给出，公式中记为通用阈值",
-          "几何平均掩码基线的长度归一化实现细节未给出",
-          "联合界的具体数学形式为按摘要语义重建，需核对原文定理表述",
-          "mean@16 的采样条数与评测配置未给出",
-          "3.13 与 2.88 分属『最多』与『平均』表述，逐基准数值未列出"
+          "两个公式为按摘要重建的通用形式（融合权重与策略梯度写法），需核对原文的具体表达。",
+          "摘要未给出各轴的方法数量、基准名称与量化对比，覆盖面无法判断。",
+          "四轴之间是否被作者声明为正交，摘要未明确说明。"
         ]
       },
       "teaching": {
         "progressive": [
           {
             "level": "一句话",
-            "text": "序列级掩码不该让正负概率漂移互相抵消，CARM 先取绝对值再平均。"
+            "text": "把最新RAG研究按四个方向排成一张地图，方便选型和答题。"
           },
           {
             "level": "入门",
-            "text": "RL 后训练里采样引擎与训练引擎往往不是同一版本，采样出的回答会 off-policy。常见做法是按整条回答算一个长度归一化的概率比几何平均，超过阈值就丢掉。但每个 token 的对数比有正有负，平均起来会互相抵消，漂移被藏了起来。"
+            "text": "RAG就是让大模型先查资料再回答，缓解知识过时和幻觉。这篇综述不再只讲『检索加生成』的主干流程，而是把近年工作分成四轴：检索效率、鲁棒与安全、用户交互、复杂推理，并把评测、领域应用和三类架构变体一起梳理。"
           },
           {
             "level": "进阶",
-            "text": "CARM 对每个 token 的对数概率比先取绝对值再求平均，这样任何方向的漂移都会累加。作者证明被接受的回答满足一个联合界：越出预设区间的 token 比例与越界后的平均对数距离都被控制住。在 AIME 2024/2025/2026 与 BeyondAIME 上，mean@16 相比几何平均掩码最多提升 3.13 个百分点，四个代码基准平均 pass@1 比最强基线高 2.88 点。"
+            "text": "四轴覆盖主干之外的工程痛点：效率轴关心稠密与稀疏检索、融合策略、嵌入压缩；安全轴关心检索库投毒、越权与上下文注入；交互轴关心用户反馈驱动的多轮检索；推理轴关心多跳检索与强化学习检索策略。综述还形式化关键组件并总结评测实践，便于把研究工作映射到部署决策。"
           },
           {
             "level": "专家",
-            "text": "差异的根源是几何平均作用在带符号对数比上：一个 token 概率升、另一个降，平均后仍可能接近 0，掩码会放行一条已经严重 off-policy 的轨迹。取绝对值把判据从带符号平均漂移换成漂移幅度，代价是丢失方向信息且更严格。收益不只在数学域，四个代码基准平均 pass@1 高 2.88 点；但摘要未给阈值选择规则（待核实），实际部署要自己校准严格度与有效样本量的取舍，还需关注丢弃率对 batch 的影响。"
+            "text": "与其他RAG综述相比，它的定位是『挑战与能力扩展』而非主干复述：把稠密与稀疏检索、融合、嵌入优化、RL检索策略放进同一坐标系，并强调评测与可解释性是部署瓶颈。适用边界是它给的是分类与议程而非新方法或统一基准；四轴存在交叉，如多跳推理常同时需要效率与安全，读具体方法仍需回原文核对。"
           }
         ],
         "socratic": [
           {
-            "q": "如果不取绝对值会怎样？",
-            "a": "正负对数比在求和时抵消，一条大幅双向漂移的回答看起来仍然接近 on-policy，会被掩码错误放行。"
+            "q": "为什么还要第四轴『复杂推理』，前三轴不够吗？",
+            "a": "前三轴多为单跳优化；多跳问题里检索本身要决策『下一步查什么』，属于策略问题，所以基于强化学习的检索策略被单独列出。"
           },
           {
-            "q": "直接把阈值调小为什么不够？",
-            "a": "抵消现象与阈值无关，缩小阈值只会同时砍掉大量合规样本，判据本身仍然看不见双向漂移。"
+            "q": "稀疏检索已经够用，为什么还要稠密与融合？",
+            "a": "稀疏靠词面匹配，术语改写就漏召回；稠密靠语义但易引入近义噪声。融合让两者互补，是工程上最稳的默认做法。"
+          },
+          {
+            "q": "为什么安全轴在RAG里比在纯大模型里更棘手？",
+            "a": "RAG把外部不可信文本直接送进上下文，检索库成了新的攻击面，投毒与提示注入都能经检索通道被放大。"
           }
         ],
-        "mechanism": "设计动机是掩码判据必须对两个方向都偏敏感。带符号对数比在抵消后趋近 0，恰好把最危险的样本判成最合规；取绝对值把判据换成漂移幅度之和，并让接受集合带一个可证明的联合界，使严格度可以被推理而不只是被调参。",
-        "boundary": "CARM 是序列级硬掩码，回答越长逐 token 累加越大因而越保守，可能丢弃样本、降低有效 batch；摘要未报告阈值与丢弃率的敏感性（待核实）。若 rollout 与训练策略几乎一致，收益会退化到与几何平均掩码相当。",
-        "analogyBoundary": "记账类比里收支确实不该相互抵消，但概率漂移不是金额：少量大幅越界的 token 与大量轻微越界在绝对值均值下不可区分，判据仍是有损的。",
+        "mechanism": "必须外挂检索，是因为大模型的参数知识静态且会幻觉；一旦外挂，系统瓶颈就从『模型会不会』变成『检索准不准、来源可不可信、是否需要再查一次』。四轴分类法本质上是把主干流程之外的失败模式显式化：效率轴解决延迟与成本，安全轴解决外部文本不可信，交互轴解决一次检索不够，推理轴解决检索需要多步决策。好处是让每个新方法都能对应到具体失败模式，而不是笼统说更好的RAG。",
+        "boundary": "这是综述而非方法论文：没有统一实验表，四轴边界互相重叠，不能当互斥目录用。若场景是固定小语料、单跳问答，完整四轴属过度设计；若需要强可解释或合规审计，摘要只把可解释性列为待解挑战，未给具体方案。具体方法的性能对比需回原文核实。",
+        "analogyBoundary": "把RAG类比成开卷考试很直观，但类比在此失效：开卷考试的书是可信的，而RAG的检索库可能被投毒、可能混入对抗文本；考生翻书不会改变书的内容，检索却会改变后续所有推理的上下文，这类安全风险是对比里没有的。",
         "misconceptions": [
-          "CARM 是重要性采样权重：它是 0/1 序列级掩码，不缩放梯度。",
-          "取绝对值等于放宽阈值：恰恰相反，抵消不再帮忙，掩码更难通过。",
-          "提升来自代码域的特殊处理：方法对数学与代码使用同一判据。"
+          "以为RAG只是向量库加相似度top-k，忽略稀疏检索与融合策略。",
+          "把四轴当成互斥分类，认为一个系统只能归属其中一轴。",
+          "以为挂上检索就不会幻觉；检索错或上下文冲突时幻觉反而更难被发现。"
         ],
-        "ownAnalysis": "（推断）CARM 与逐 token 裁剪的思路互补：后者限制单 token 梯度幅度，前者决定整条序列是否入梯度。可疑处是绝对值均值对少数极端 token 很敏感，可能被长尾 token 主导，而摘要未给对数比分布诊断；理论上给了联合界，但界与实测收益之间的紧致程度未知。",
+        "ownAnalysis": "（推断）四轴里最有招聘价值的是推理轴，因为它把RAG从『检索组件』变成『策略问题』，与RL后训练技能栈直接接轨；效率轴则几乎等价于推理工程岗位的日常。可疑之处是综述分类往往滞后于实践：真实系统里四轴权重由业务决定，面试若只背分类法而不举部署取舍例子，很容易被追问倒。另外摘要未给出各轴方法数量与所用基准名称，覆盖面无法判断。",
         "officialNotes": [
           {
-            "position": "CARM 是理论上可证且有效的响应级 off-policy 控制方法，在数学推理与代码生成上均带来提升",
-            "source": "arXiv 2610.02039v1 摘要"
+            "position": "综述将当代RAG发展组织为效率、鲁棒与安全、交互、复杂推理四轴，并总结评测实践、领域应用与 Naive、Advanced、Modular 三类架构。",
+            "source": "arxiv 摘要 2610.01936v1"
+          },
+          {
+            "position": "综述将检索质量、可靠性、领域适配、可扩展性与可解释性列为持续挑战，并指出目标是构建更可靠、可适配、透明的RAG系统。",
+            "source": "arxiv 摘要 2610.01936v1"
           }
         ],
-        "interviewAnswer": "RL 后训练里 rollout 和训练引擎不一致会产生 off-policy 样本。常见掩码用长度归一化的概率比几何平均，但带符号对数比会跨位置抵消，双向漂移被藏住。CARM 先对每个 token 的对数比取绝对值再平均，并证明被接受的回答满足越界比例与平均越界距离的联合界。AIME 2024/2025/2026 加 BeyondAIME 上 mean@16 最多提升 3.13 点，四个代码基准 pass@1 平均提升 2.88 点。",
+        "interviewAnswer": "我会说：RAG主干就是检索加生成，但工程难点在主干之外。这篇综述把它分成四轴——效率、鲁棒与安全、交互、复杂推理。效率轴上要比较稠密与稀疏检索、融合策略和嵌入优化；安全轴要防检索库投毒和上下文提示注入；交互轴处理用户追问带来的多次检索；推理轴处理多跳问题，把『下一步查什么』当策略学，所以会出现基于强化学习的检索策略。它还总结了三类架构——Naive、Advanced、Modular，并指出评测、可靠性、领域适配、可扩展性与可解释性仍是待解问题。",
         "studyPath": {
           "prerequisites": [
-            "重要性采样与 ratio",
-            "PPO/GRPO 类 RL 微调流程",
-            "off-policy 校正基础"
+            "BM25 与倒排索引",
+            "向量检索与近似最近邻",
+            "大模型上下文与提示工程",
+            "策略梯度基础（读推理轴时）"
           ],
           "nextSteps": [
-            "推导联合界",
-            "对比 clip 与掩码的取舍",
-            "在自有 pipeline 上做丢弃率消融"
+            "搭一个稠密加稀疏融合检索的评测脚本，手调 α",
+            "读 Modular RAG 的模块划分并做一次消融",
+            "尝试用策略梯度训练一个最小检索决策器"
           ]
         }
       }
     },
     {
-      "id": "6a22b0c8beb59101",
-      "tldr": "学一个动作条件化的网络世界模型当评估器，让编码 agent 迭代设计算法：141 个设置中 138 个不逊于最强基线。",
+      "id": "03b7d33155ec3826",
+      "tldr": "HeteroFold：跨模型族免prefill迁移KV缓存，32K下比原生prefill快10.7倍",
       "keyPoints": [
-        "复杂系统里动作效果滞后，候选算法须靠结果打分，模拟成本成瓶颈",
-        "提出动作条件化网络世界模型，学网络受干预后随时间的扩散动力学",
-        "世界模型作为快速评估器，嵌进编码 agent 的算法设计闭环",
-        "闭环反馈含完整 rollout、动作级 credit 与替代干预的反事实探针",
-        "141 个设置中 138 个追平或超过最强基线，rollout 最多快 14.5 倍"
+        "异构多智能体系统用文本通信时，接收方要重复prefill共享上下文",
+        "复用发送方KV缓存可省掉这段，但跨模型族需处理分词、深度与表示差异",
+        "HeteroFold免prefill跨族迁移，发送方与接收方均保持冻结",
+        "做法分三步：对齐模型结构、把缓存映射进接收方空间、校准以保持行为",
+        "32K上下文下跨族迁移比原生prefill快10.7倍，比免prefill基线快1.18到1.47倍"
       ],
-      "why": "世界模型求职向：把扩散式环境模型当廉价的打分函数，是 agent 驱动算法与策略搜索的常见范式，值得会读会写。",
+      "why": "异构多智能体与推理服务都在为KV复用买单，这条把跨族缓存的可行性、指标与代价讲清楚。",
       "difficulty": "hard",
       "tags": [
-        "world-model",
-        "diffusion",
-        "complex-systems",
-        "algorithm-design",
-        "agent"
+        "kv-cache",
+        "multi-agent",
+        "inference",
+        "cross-model",
+        "efficiency"
       ],
       "entities": [
-        "Network World Model",
-        "Monte Carlo simulation",
-        "coding agent",
-        "diffusion models"
+        "HeteroFold",
+        "Llama-3.1-8B",
+        "Ministral-3-14B",
+        "Dense Latent",
+        "KV Ridge",
+        "Native Prefill"
       ],
       "diagram": {
-        "kind": "architecture",
-        "title": "网络世界模型闭环",
-        "caption": "把学出来的扩散动力学当快速评估器，算法设计才能在每个时间预算里试更多候选。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='网络世界模型算法设计闭环四层结构'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>候选算法</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>编码 agent 生成可执行算法</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>动作序列</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>选点播种、免疫等干预</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>网络世界模型</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>动作条件扩散预测后续结果</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>打分与改进</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>rollout 加 credit 加反事实</text>\n</svg>",
-        "alt": "四层闭环：编码 agent 产出候选算法，动作序列作用于网络，动作条件扩散世界模型预测结果，再用 rollout、动作级 credit 与反事实探针改进算法。"
+        "kind": "flow",
+        "title": "HeteroFold 迁移四步",
+        "caption": "发送方缓存要跨模型族复用，必须依次过结构对齐、空间映射与行为校准三道关",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='HeteroFold 的四步流程：发送方、结构对齐、缓存映射、校准解码'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>发送方</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>冻结，产出 KV</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>结构对齐</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>深度与头数</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>缓存映射</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>投到接收方空间</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>校准解码</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>无需 prefill</text></svg>",
+        "alt": "HeteroFold 的四步竖排流程：发送方产出缓存、结构对齐、缓存映射、校准后直接解码"
       },
       "concepts": [
         {
-          "name": "Action-Conditioned Network World Model（动作条件网络世界模型）",
-          "readable": "一个学过网络扩散动力学的模型：给定当前网络状态和一组干预动作，直接预测之后会演化成什么样，不必真的跑模拟。",
-          "analogy": "像天气预报表：不真的等一天，输入气压与风向就能推出明天下不下雨。",
-          "analogyBreaksDown": "天气预报由物理方程驱动，这里的表是从数据里学出来的；遇到训练分布外的拓扑或干预，它会给出一份自信但错误的预报。",
-          "mechanism": "把动作作为条件输入去噪网络，而不是对每个候选重新模拟；条件是动作序列而非噪声，因此同一模型可以服务不同候选算法，成为通用评估器。",
-          "visual": "左侧网络图（节点与边），中间一个条件箭头标注动作，右侧输出演化后的网络状态热力图；同一模型框内画多条并列的输出路径表示不同动作。",
+          "name": "Prefill-Free KV Cache Transfer",
+          "readable": "发送方模型已经读过共享上下文并把注意力所需的信息压进KV缓存；接收方不再重读一遍，而是直接使用这份缓存来继续解码。",
+          "analogy": "像会议接力：前一位同事已经听完整场会议并做好笔记，接手的同事直接看笔记接着讲，不用把整场会议录音重放一遍。",
+          "analogyBreaksDown": "笔记是自然语言、谁都能读懂；KV缓存是与具体模型权重绑定的中间量，换个模型族就等于换了一种内部语言，必须先翻译。",
+          "mechanism": "省掉接收方的prefill这一步，直接复用发送方已算好的 K 与 V，把长上下文里最贵的一段计算从 N 次降到 1 次。",
+          "visual": "画两条时间线对比：上面是文本通信，接收方有一条很长的prefill色块；下面是缓存迁移，接收方只有一条很短的解码色块，中间用箭头标出从发送方搬过来的KV方块。",
           "prerequisites": [
-            "扩散模型的去噪训练目标",
-            "图上的传播或扩散过程",
-            "条件生成的基本概念"
+            "自注意力与 KV 缓存机制",
+            "prefill 与 decode 两阶段的算力差异"
           ],
           "selfTest": [
-            "为什么动作要作为条件而不是重新模拟？",
-            "世界模型的偏差会怎样影响最终算法？",
-            "这种模型在什么分布外会失效？"
+            "为什么prefill是长上下文里最贵的一段？",
+            "复用KV缓存省掉的是计算还是显存？",
+            "接收方没有prefill，它的query从哪来？"
           ],
-          "formula": "\\mathcal{L}(\\theta)=\\mathbb{E}_{t,G_0,\\varepsilon,\\mathbf{a}}\\big\\|\\varepsilon-\\varepsilon_\\theta(G_t,t,\\mathbf{a})\\big\\|_2^2"
+          "formula": "o_t=\\mathrm{softmax}\\!\\left(\\frac{q_t\\tilde{K}_r^{\\top}}{\\sqrt{d_h}}\\right)\\tilde{V}_r"
         },
         {
-          "name": "Algorithm Design Loop（算法设计闭环）",
-          "readable": "让编码 agent 不断写出可执行算法、用评估器给结果打分，再按反馈改写算法的迭代流程；每一轮都要能把结果归因到具体动作。",
-          "analogy": "像教练带队员改动作：每次训练完看录像，指出哪一步没做好，下一轮只改那一步。",
-          "analogyBreaksDown": "教练看的是真实录像，这里的录像来自世界模型的预测，闭环可能被模型自身的系统偏差带偏。",
-          "mechanism": "闭环提供三种粒度的反馈：完整 rollout 给终局结果，动作级 credit 指出哪一步动作有效，反事实探针比较替代干预的后果；三者共同把稀疏的终局奖励变密。",
-          "visual": "一个环形箭头，环上是写算法、选动作、模型评估、三种反馈四个节点；反馈箭头粗细不同，表示信号密度不同。",
+          "name": "Cross-Family Structure Alignment",
+          "readable": "两个不同家族的模型层数、注意力头数、隐藏维度和分词方式都不一样，迁移前必须先决定哪一层对哪一层、哪个token对哪个token。",
+          "analogy": "像把英制图纸交给公制工厂：先统一单位、对齐孔位编号，再谈加工，否则零件装不上。",
+          "analogyBreaksDown": "图纸对齐是确定性的工程换算，模型对齐涉及语义：分词边界不同会导致同一个词被切成不同片段，映射再精确也补不回语义错位。",
+          "mechanism": "通过层间配对与token对应关系把两个模型放到可比的结构上，使后续的线性映射有明确的输入输出维度，避免形状不匹配或语义错配。",
+          "visual": "画两列方块分别代表发送方与接收方的层，用连线表示配对关系；分词差异用两行色块错位展示，错位处标注风险。",
           "prerequisites": [
-            "强化学习中的信用分配",
-            "编码 agent 与可执行程序搜索",
-            "反事实推理的基本含义"
+            "Transformer 层级结构",
+            "分词器与词表差异"
           ],
           "selfTest": [
-            "只有终局分数时 agent 会缺什么？",
-            "反事实探针给出的是哪一类信息？",
-            "闭环被模型偏差带偏会有什么表现？"
+            "层数不同的两个模型如何建立层间对应？",
+            "分词边界错位会带来什么后果？",
+            "为什么不能只做维度投影而跳过结构对齐？"
           ],
           "formula": ""
+        },
+        {
+          "name": "Cache Calibration",
+          "readable": "把发送方缓存映射到接收方空间后，输出分布仍可能偏移；校准是一个额外步骤，用来把接收方的行为拉回它原本的样子。",
+          "analogy": "像把外地食材空运过来，虽然种类对得上，但水土不同；先按本地口味调味，做出来的菜才不会走样。",
+          "analogyBreaksDown": "调味只影响主观口味，校准若过度对齐接收方原有输出，可能把发送方带来的新信息一起抹平，退化成不使用缓存。",
+          "mechanism": "以冻结的接收方在参考条件下的输出为锚，微调映射或加修正项，使注入缓存后的注意力输出接近无缓存时的分布，保证质量不崩。",
+          "visual": "画两个分布曲线：一条是接收方无缓存时的输出分布，一条是注入未校准缓存后的偏移分布；校准后用箭头把第二条拉回与第一条重合，旁边标注KL距离。",
+          "prerequisites": [
+            "分布对齐与 KL 散度",
+            "注意力输出空间的含义"
+          ],
+          "selfTest": [
+            "校准的目标是拟合发送方还是拟合接收方？",
+            "过度校准会带来什么退化？",
+            "校准参数与发送方权重是否一起训练？"
+          ],
+          "formula": "\\tilde{K}_r=A_kK_s+b_k,\\qquad \\tilde{V}_r=A_vV_s+b_v"
         }
       ],
       "formulas": [
         {
-          "id": "f-action-conditioned-network-diffusion",
-          "name": "动作条件网络扩散目标（Action-Conditioned Network Diffusion Objective）",
-          "category": "worldmodel",
-          "latex": "\\mathcal{L}(\\theta)=\\mathbb{E}_{t,\\,G_0,\\,\\varepsilon,\\,\\mathbf{a}}\\Big[\\big\\|\\varepsilon-\\varepsilon_\\theta(G_t,\\,t,\\,\\mathbf{a})\\big\\|_2^2\\Big],\\quad G_t=\\sqrt{\\bar\\alpha_t}\\,G_0+\\sqrt{1-\\bar\\alpha_t}\\,\\varepsilon",
+          "id": "f-heterofold-kv-map",
+          "name": "跨族缓存映射与校准（Cross-Family KV Mapping and Calibration）",
+          "category": "engineering",
+          "latex": "\\tilde{K}_r=A_kK_s+b_k,\\quad \\tilde{V}_r=A_vV_s+b_v;\\qquad \\mathcal{L}_{\\mathrm{cal}}=\\big\\|f_r(q,\\tilde{K}_r,\\tilde{V}_r)-f_r(q,K_r,V_r)\\big\\|_2^2",
           "symbols": [
-            [
-              "G_0",
-              "初始网络状态（节点与连边特征）"
-            ],
-            [
-              "G_t",
-              "加噪到第 t 步的网络状态"
-            ],
-            [
-              "\\mathbf{a}",
-              "作用在网络上的干预动作序列"
-            ],
-            [
-              "\\varepsilon_\\theta",
-              "以动作与时间为条件的去噪网络"
-            ],
-            [
-              "\\bar\\alpha_t",
-              "噪声日程的累计系数"
-            ],
-            [
-              "t",
-              "扩散时间步"
-            ]
+            ["K_s, V_s", "发送方算出的键与值缓存，形状为 [层, 头, 序列, 维度]"],
+            ["K_r, V_r", "接收方在无迁移假设下应有的键值表示，作为校准参考"],
+            ["A_k, b_k", "键缓存的对齐矩阵与偏置，把发送方维度投到接收方空间"],
+            ["A_v, b_v", "值缓存的对齐矩阵与偏置"],
+            ["K̃_r, Ṽ_r", "映射后的缓存，可直接喂给接收方注意力"],
+            ["q", "接收方当前的查询向量"],
+            ["f_r", "接收方的注意力读出函数，权重全程冻结"],
+            ["L_cal", "校准损失，衡量注入映射缓存与注入参考缓存时的输出差异"]
           ],
           "derivation": [
-            "第 1 步：动机。要快速评估候选算法，需要一个能预测干预后网络演化的代理模型，而不是每次都跑蒙特卡洛模拟。",
-            "第 2 步：把网络状态按标准扩散前向过程加噪得到 G_t，保持动作作为额外条件输入，使模型知道施加了什么干预。",
-            "第 3 步：训练去噪网络预测所加噪声，损失是条件扩散的均方误差；动作仅出现在条件位，不参与加噪。",
-            "第 4 步：推理时以动作条件化地从噪声逐步去噪，得到该动作之后的结果预测，并把它作为候选算法的分数来源。"
+            "第 1 步：发送方与接收方隐藏维度和头数通常不同，缓存无法直接相加进注意力，必须先做形状对齐。",
+            "第 2 步：假设两个空间的对应关系近似线性，用矩阵 A 与偏置 b 把发送方缓存搬到接收方空间，参数远少于全模型微调。",
+            "第 3 步：仅靠线性映射无法保证语义一致，于是把接收方自己在参考条件下的注意力输出当作锚点。",
+            "第 4 步：以输出差异为损失训练映射参数，而发送方与接收方权重冻结，保证迁移只是通信优化、不改变任何模型能力。"
           ],
-          "analogy": "像给沙盘装上干预开关：同一套沙盘，拨到不同开关位置就能看到不同战况，不必真的重新搭一次战场。",
+          "analogy": "像两个国家之间的电压转换：插头形状不同要先转接头（形状对齐），电压不同还要变压（线性映射），最后通电测试电器是否正常工作（校准），而电器本身不改。",
           "pitfalls": [
-            "把动作当成加噪信号：动作只在条件位，噪声过程与动作无关",
-            "忽略分布外风险：训练分布之外的拓扑或扩散模型预测不可信",
-            "忘记计入世界模型的训练与推理成本，只引用加速比"
+            "把映射矩阵当成随便初始化的投影层；若不校准，接收方输出会明显漂移。",
+            "以为映射参数越多越好：参数量过大等于偷偷微调接收方，破坏了双方冻结的公平对比。",
+            "忽略分词差异：token 数量对不上时，序列维度根本没有一一对应关系，映射无从谈起。"
           ],
-          "code": "import torch, torch.nn.functional as F\neps = torch.randn_like(G0)\nt = torch.randint(0, T, (B,))\nab = alphabar[t].sqrt()\nGt = ab * G0 + (1 - ab).sqrt() * eps\npred = eps_net(Gt, t, action)          # action 作条件\nloss = F.mse_loss(pred, eps)",
+          "code": "import torch\n\nclass KVProjector(torch.nn.Module):\n    '''学习把发送方 KV 映射到接收方空间，双方骨干均冻结。'''\n    def __init__(self, d_src, d_dst):\n        super().__init__()\n        self.k_proj = torch.nn.Linear(d_src, d_dst)\n        self.v_proj = torch.nn.Linear(d_src, d_dst)\n\n    def forward(self, k_src, v_src):\n        return self.k_proj(k_src), self.v_proj(v_src)\n\ndef calibration_loss(receiver, q, k_src, v_src, k_ref, v_ref, projector):\n    k_hat, v_hat = projector(k_src, v_src)\n    out_hat = receiver.attend(q, k_hat, v_hat)\n    with torch.no_grad():\n        out_ref = receiver.attend(q, k_ref, v_ref)\n    return torch.nn.functional.mse_loss(out_hat, out_ref)",
           "sources": [
             {
-              "title": "Network World Models as Environments for Algorithm Design on Complex Systems",
-              "url": "https://arxiv.org/abs/2610.01048v1"
+              "title": "Prefill-Free Cross-Family KV Cache Transfer for Heterogeneous Multi-Agent LLMs",
+              "url": "https://arxiv.org/abs/2609.32259"
+            }
+          ]
+        },
+        {
+          "id": "f-cross-family-kv-attention",
+          "name": "映射缓存上的注意力读出（Attention Readout over Transferred Cache）",
+          "category": "foundation",
+          "latex": "o_t=\\mathrm{softmax}\\!\\left(\\frac{q_t\\,\\tilde{K}_r^{\\top}}{\\sqrt{d_h}}\\right)\\tilde{V}_r,\\qquad \\tilde{K}_r,\\tilde{V}_r=\\Pi(K_s,V_s)",
+          "symbols": [
+            ["q_t", "接收方在当前解码步的查询向量，来自接收方自己的前向计算"],
+            ["K̃_r, Ṽ_r", "经映射与校准后、位于接收方表示空间的键值缓存"],
+            ["Π", "缓存迁移算子，包含结构对齐与线性映射"],
+            ["d_h", "单个注意力头的维度，用于缩放点积"],
+            ["o_t", "当前步的注意力输出，直接进入接收方的后续层"],
+            ["softmax", "对序列维度归一化，决定每个历史位置被读取的权重"]
+          ],
+          "derivation": [
+            "第 1 步：标准自注意力在解码时需要当前步的 q 与全部历史的 K、V，其中 K、V 正是最贵的前缀部分。",
+            "第 2 步：若历史上下文与发送方共享，那么 K、V 不需要接收方重算，只需把发送方已算好的缓存搬过来。",
+            "第 3 步：由于两个模型族的表示空间不同，先经迁移算子 Π 映射与校准，得到接收方空间中的 K̃ 与 Ṽ。",
+            "第 4 步：接收方用自己当步的 q 对映射后的缓存做一次注意力读出，注意力的形状与原生完全一致，因此可直接接回原模型。",
+            "第 5 步：整个过程中接收方跳过 prefill，只付出映射与校准的开销，这就是免 prefill 的加速来源。"
+          ],
+          "analogy": "像用别人的资料库写报告：你不需要重读全部原始档案，只要拿自己的问题（query）去检索对方整理好的索引（映射后的键），匹配到内容后取回正文（值）即可，索引是你自己那套分类法翻译过的。",
+          "pitfalls": [
+            "以为缓存可以和 query 一样随时重算：缓存的全部价值就在于它可被复用，重算即退化。",
+            "忽略缩放因子 1/sqrt(d_h)：映射后维度改变时必须按新头维度缩放，否则注意力分布会过于尖锐。",
+            "把映射缓存的注意力输出当成完全等价于原生 prefill；两者只在接收方输出分布被校准后近似一致。"
+          ],
+          "code": "import math\nimport torch\n\ndef attend_transferred(q, k_hat, v_hat, n_heads=8):\n    # q: [B, Tq, D]; k_hat/v_hat: [B, Tk, D] 已从发送方缓存映射而来\n    B, Tq, D = q.shape\n    dh = D // n_heads\n    q = q.view(B, Tq, n_heads, dh).transpose(1, 2)\n    k = k_hat.view(B, -1, n_heads, dh).transpose(1, 2)\n    v = v_hat.view(B, -1, n_heads, dh).transpose(1, 2)\n    att = (q @ k.transpose(-2, -1)) / math.sqrt(dh)\n    out = (att.softmax(dim=-1) @ v).transpose(1, 2)\n    return out.reshape(B, Tq, D)",
+          "sources": [
+            {
+              "title": "Prefill-Free Cross-Family KV Cache Transfer for Heterogeneous Multi-Agent LLMs",
+              "url": "https://arxiv.org/abs/2609.32259"
             }
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "世界模型模拟环境并预测其随动作的变化，已被用于机器人等真实应用",
-          "复杂系统的动作效果不是即时的：为传播活动选种子节点、为流行病免疫节点，单步本身改变很小，重要的是随后若干步展开的结果",
-          "设计选择动作以最大化任务期望表现的算法本质上是迭代的，每个候选都必须用其产生的结果来打分",
-          "获取该结果一直依赖模拟，当候选要在大量采样轨迹上评估时成本成为瓶颈",
-          "作者提出动作条件化的网络世界模型，学习网络在干预下随时间的扩散动力学，施加动作并预测随后的结果",
-          "该模型作为快速评估器用于算法设计闭环，编码 agent 借助完整 rollout、动作级 credit 与替代干预的反事实探针设计并改进可执行算法",
-          "在八个网络任务与五个扩散模型上，设计出的算法在 141 个设置中的 138 个追平或超过最强已报告基线",
-          "rollout 相比蒙特卡洛模拟最多快 14.5 倍；代码将在接收后放出"
+          "HeteroFold 是免 prefill 的跨模型族 KV 缓存迁移方法，发送方与接收方都保持冻结。",
+          "方法包含对齐模型结构、把发送方缓存映射到接收方空间、以及校准以保持接收方行为。",
+          "在六个迁移方向、四个长上下文基准上取得最佳缓存迁移性能，并在多数短上下文设置中领先。",
+          "在多智能体基准上匹配文本通信的效果。",
+          "32K 上下文下 Llama-3.1-8B 到 Ministral-3-14B 的迁移比 Native Prefill 快 10.7 倍，比 Dense Latent 与 KV Ridge 快 1.18 到 1.47 倍。"
         ],
         "uncertain": [
-          "五个扩散模型具体是哪些、八个网络任务具体是什么，摘要未列出",
-          "14.5 倍加速的测量口径（单步还是整条 rollout、是否包含世界模型推理开销）未给出",
-          "编码 agent 使用的基座模型与提示策略未给出",
-          "公式为按摘要重建的通用动作条件去噪目标，需核对原文",
-          "摘要称代码将在接收后放出，当前没有可访问的代码链接"
+          "两个公式为按摘要重建的通用形式（线性映射加 MSE 校准），原文的映射与校准细节需核实。",
+          "摘要未给出映射与校准的训练开销、显存峰值与额外参数量。",
+          "『对齐模型结构』的具体做法（层配对策略、分词对齐方式）摘要未展开。",
+          "四个长上下文基准的名称与多智能体基准的具体指标摘要未列出。"
         ]
       },
       "teaching": {
         "progressive": [
           {
             "level": "一句话",
-            "text": "先学一个便宜的网络世界模型，再让 agent 用它反复试算法。"
+            "text": "让另一个模型直接复用前一个模型算好的记忆，不用重读一遍上下文。"
           },
           {
             "level": "入门",
-            "text": "在传播、免疫这类复杂系统里，选哪些节点动手，效果要很多步之后才显现，所以设计算法必须不断用结果给候选打分。传统做法靠蒙特卡洛模拟，候选多、轨迹多时成本爆炸。作者学了一个动作条件化的网络世界模型，输入动作就能预测之后的演化结果，把它当作快速评估器。"
+            "text": "多智能体系统里常用不同家族的模型分工。以前靠文本通信，接收方必须把自己没算过的共享上下文重新 prefill 一遍，白白浪费算力。HeteroFold 让发送方把 KV 缓存直接迁给接收方，双方冻结不训练，只学一个映射和校准，从而省掉接收方的 prefill。"
           },
           {
             "level": "进阶",
-            "text": "世界模型学的是网络在干预下的扩散动力学：给定当前网络状态和一组动作，预测后续结果。它嵌进一个算法设计闭环，编码 agent 生成并改写可执行算法，用完整 rollout、动作级 credit 和反事实探针三种反馈迭代。八个网络任务、五个扩散模型、141 个设置里 138 个追平或超过最强已报告基线，rollout 比蒙特卡洛模拟快最多 14.5 倍。"
+            "text": "跨族迁移有三个坎：分词不同导致 token 对不上，深度与头数不同导致缓存形状不合，KV 表示空间不同导致直接复用会破坏接收方行为。HeteroFold 依次做结构对齐、把发送方缓存映射进接收方空间、再校准以保住接收方原有输出。这样接收方只需用自己当前的 query 读这份缓存，省掉整段 prefill。"
           },
           {
             "level": "专家",
-            "text": "关键设计是把结果与动作解耦成可条件化的预测：动作作为条件输入而不是触发重新模拟，因此同一模型能服务不同候选算法。代价是世界模型误差会进入设计闭环，偏差可能让 agent 选中在真实环境中不划算的算法，而摘要未报告模型误差与最终算法质量的相关性（待核实）。与机器人世界模型相比，这里建模的是网络拓扑上的扩散过程而非像素画面，动作空间是节点集合而非连续控制；跨拓扑与跨扩散模型的泛化边界摘要也未说明。"
+            "text": "与 Dense Latent、KV Ridge 这类免 prefill 基线相比，差别在于显式处理结构差异并加入校准，因此在六个迁移方向、四个长上下文基准上普遍最优。边界是它面向注意力接口相近的稠密模型族；若接收方架构差异过大（线性注意力、MLA）、分词错位导致语义漂移，或需要接收方改写缓存语义，映射保真度会下降。摘要未报告映射训练开销。"
           }
         ],
         "socratic": [
           {
-            "q": "为什么不能直接用蒙特卡洛模拟打分？",
-            "a": "每个候选算法都要在大量采样轨迹上求期望，模拟成本随候选数与轨迹数增长，成为设计闭环的瓶颈。"
+            "q": "接收方不做 prefill，凭什么还能保住质量？",
+            "a": "共享上下文的信息已经以 KV 形式存在于发送方；只要映射到接收方表示空间并校准，接收方就能在自己的注意力里读到等价上下文。"
           },
           {
-            "q": "为什么不让 agent 直接写算法、只给最终分数？",
-            "a": "只有标量终局奖励时 agent 无法判断哪一步动作起了作用；动作级 credit 与替代干预的反事实探针提供了更密的信号。"
+            "q": "为什么不干脆让双方统一用同族模型？",
+            "a": "多智能体常按角色选模型，成本、能力与上下文窗口的最优组合往往跨族；统一模型会牺牲分工带来的收益。"
+          },
+          {
+            "q": "为什么缓存不能直接复制过去？",
+            "a": "不同族的投影矩阵、头数与表示空间不同，直接复制的 K、V 对接收方近似噪声，注意力输出会崩掉。"
           }
         ],
-        "mechanism": "算法设计本质是对动作选择策略做迭代搜索，每一步都要评估结果。把评估器换成学过动力学的代理模型，才能在同样的时间预算里尝试更多候选；动作条件化保证评估器服务任意候选算法，不必为每个候选重训一次环境模型。",
-        "boundary": "世界模型只在训练分布内的网络与扩散过程上可信；跨拓扑、跨扩散模型或分布外干预时预测偏差会误导搜索，摘要未给这类失效实验（待核实）。另外 14.5 倍是相对蒙特卡洛模拟的 rollout 加速，不含训练世界模型本身的成本。",
-        "analogyBoundary": "沙盘推演类比忽略了沙盘本身是学出来的：若沙盘系统性低估某类动作，agent 会自信地选错方案，而真实沙盘不会偏。",
+        "mechanism": "必须这样设计，是因为冗余 prefill 在多智能体里被重复支付：同一段共享上下文可能被 N 个接收方各算一遍，而 prefill 是长上下文里最贵的一段。把发送方 KV 复用过来能省掉它，但跨族直接复用不成立，所以设计被迫分成三步：先对齐可比结构（层、头、token 对应），再学映射把缓存搬进接收方空间，最后校准把搬运后的行为拉回接收方原本的输出分布。冻结双方则保证这纯粹是通信优化，不改变任一模型的能力。",
+        "boundary": "适用前提是发送方与接收方都是标准注意力的稠密模型，且共享上下文可对齐。失效情形：架构差异大（线性注意力、MLA、不同位置编码基频）、分词边界错位导致语境漂移、接收方需基于缓存继续做需要训练适配的任务。摘要未给出映射训练成本与显存峰值，长上下文部署前需核实。",
+        "analogyBoundary": "把缓存迁移类比成交接班很贴切：前人读完材料留下便签，后人直接看便签。但类比在此失效：便签是给同一个人写的缩写，换成另一个模型族时，缩写习惯与编号规则都不同，必须先翻译再校验，而翻译本身会丢信息——这正是映射与校准要解决、也是误差的来源。",
         "misconceptions": [
-          "世界模型替代了算法：它只是评估器，被优化的是 agent 设计的算法。",
-          "14.5 倍就是端到端加速：世界模型的训练成本未计入。",
-          "扩散模型在这里是生成器：它是环境动力学，动作是条件而不是噪声。"
+          "以为 KV 缓存可以跨模型直接拷贝，忽略投影矩阵与分词差异。",
+          "把免 prefill 等同于无损；接收方行为漂移需要校准来兜底。",
+          "只看加速倍数，忽略映射与校准带来的额外开销和显存占用。"
         ],
-        "ownAnalysis": "（推断）这条工作把世界模型到算法设计闭环的思路从机器人域迁到网络科学域，动作空间变成离散节点集合，比连续控制更适合反事实探针。可疑处在于 138/141 的漂亮数字缺少模型误差与算法质量的相关分析，闭环稳定性（世界模型被搜索过程利用）也未讨论；编码 agent 的具体模型与提示策略摘要没有给出。",
+        "ownAnalysis": "（推断）这条把『上下文即状态』推到极致：既然 KV 是上下文的压缩，就可以像参数一样被投影与对齐，这与模型合并、任务向量算术属于同一族思想。可疑点是校准目标——若只对齐接收方原有输出分布，可能把发送方带来的新信息一起抹平，退化成不使用缓存。摘要说在多数长短上下文基准上最优，但没有给出缓存保真度的直接度量，值得核实。",
         "officialNotes": [
           {
-            "position": "动作条件网络世界模型可作算法设计闭环中的快速评估器，代码将在接收后放出",
-            "source": "arXiv 2610.01048v1 摘要"
+            "position": "HeteroFold 保持发送方与接收方冻结，通过结构对齐、缓存映射与校准实现免 prefill 的跨族 KV 迁移。",
+            "source": "arxiv 摘要 2609.32259"
+          },
+          {
+            "position": "在 32K 上下文长度下，Llama-3.1-8B 到 Ministral-3-14B 的迁移比 Native Prefill 快 10.7 倍，也比 Dense Latent 与 KV Ridge 快 1.18 到 1.47 倍。",
+            "source": "arxiv 摘要 2609.32259"
           }
         ],
-        "interviewAnswer": "复杂系统里的干预效果是延迟的，设计算法只能靠反复评估结果，而蒙特卡洛模拟太贵。这篇学了一个动作条件化的网络世界模型，预测网络在干预下随时间的扩散动力学，把它当快速评估器放进算法设计闭环，配合完整 rollout、动作级 credit 和反事实探针让编码 agent 迭代。八个任务、五个扩散模型、141 个设置中 138 个追平或超过最强基线，rollout 最多快 14.5 倍。",
+        "interviewAnswer": "我这样答：多智能体里用异构模型时，共享上下文会被每个接收方重新 prefill，这是纯浪费。HeteroFold 让发送方的 KV 缓存直接给接收方复用，双方都冻结，只在中间学一个映射和校准：先对齐两个模型的结构，再把发送方缓存投影到接收方空间，最后校准以保持接收方行为不变。它在六个迁移方向、四个长上下文基准上表现最好，32K 时 Llama-3.1-8B 到 Ministral-3-14B 比原生 prefill 快 10.7 倍，也比 Dense Latent 和 KV Ridge 快 1.18 到 1.47 倍。",
         "studyPath": {
           "prerequisites": [
-            "扩散模型去噪目标",
-            "复杂网络上的扩散模型",
-            "强化学习中的信用分配"
+            "自注意力与 KV 缓存机制",
+            "prefill 与 decode 的解耦与算力分析",
+            "线性投影与最小二乘",
+            "多智能体通信范式"
           ],
           "nextSteps": [
-            "复现动作条件扩散预测",
-            "分析世界模型误差如何影响搜索",
-            "把闭环迁移到其他环境模型"
+            "手写一个 KV 缓存的形状与显存计算脚本",
+            "实现一个跨维度线性映射加 MSE 校准的最小实验",
+            "对比文本通信与缓存复用在延迟和显存上的差异"
           ]
         }
       }
     },
     {
-      "id": "eebff77cf06b8b95",
-      "tldr": "iSEE 用三个自监督组件让 slot 在遮挡中保住身份与位置：重现后 86% 归位，定位距 SoTA 4.1 mAP。",
+      "id": "c11ece1b5ce8f921",
+      "tldr": "把世界模型从只看未来改为反推过去，用回顾归因分布做自一致性奖励提升智能体鲁棒性",
       "keyPoints": [
-        "物体永久性（遮挡中保住身份与位置）是跟踪、预测与规划的基础",
-        "有标签跟踪器靠框与可见性标签；slot attention 无标签但遮挡即丢槽",
-        "组件一：slot 注意力与自身历史比较，暴露物体何时被隐藏",
-        "组件二：外观与位置分成两条流，外观留住用于重识别，位置继续演化",
-        "组件三：walker 只靠物体重现的位置学习隐藏期间的位置"
+        "现有世界模型主要做前瞻模拟，只预测下一步会发生什么",
+        "前向范式难以验证动作是否与观测到的状态转移因果一致",
+        "提出回顾式世界建模，估计反推归因分布P(â_t|s_t,s_{t+1})",
+        "据此提出自一致性奖励SCR，度量策略动作与回顾解释的概率一致性",
+        "SCR接入强化学习提供转移级密集反馈，实验显示鲁棒性与泛化更好"
       ],
-      "why": "想进世界模型或视频表征方向的：无标签永久性是能规划的前置能力，且位置流可直接充当世界模型的动作接口。",
-      "difficulty": "medium",
-      "tags": [
-        "object-permanence",
-        "self-supervised",
-        "slot-attention",
-        "video-representation",
-        "world-model"
-      ],
-      "entities": [
-        "iSEE",
-        "SlotContrast",
-        "RAM",
-        "LA-CATER",
-        "slot attention"
-      ],
-      "diagram": {
-        "kind": "architecture",
-        "title": "iSEE 三组件结构",
-        "caption": "无标签的永久性来自三件事：发现被遮挡、把身份与位置拆开、只用重现作监督。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='iSEE 物体永久性框架四层结构'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>视频帧分槽</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>slot attention 绑定物体</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>物体证据建模</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>注意力对比自身历史判遮挡</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>外观位置分离</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>外观留身份，位置继续演化</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>重现监督</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>walker 仅在重现处受监督</text>\n</svg>",
-        "alt": "四层结构：视频帧经 slot attention 分槽，证据建模判断遮挡，外观与位置分成两流，walker 仅在物体重现的位置接受监督。"
-      },
-      "concepts": [
-        {
-          "name": "Object Permanence（物体永久性）",
-          "readable": "物体被挡住看不见时，仍然记得它是谁、大概在哪里，等它再次出现时能认出来并接上原来的轨迹。",
-          "analogy": "像玩捉迷藏：同伴躲到树后你仍知道他在树后，等他探出头你一眼认出是他。",
-          "analogyBreaksDown": "捉迷藏里藏的人一定还在且会再出现；模型面对的目标可能真的离场，或被别的槽吞并，重现假设本身可能不成立。",
-          "mechanism": "把永久性拆成三件事：检测何时被遮挡、在遮挡期间保持位置连续、用外观保证重现时能匹配回同一个槽；三者用不同的自监督信号分别训练。",
-          "visual": "横轴为时间帧，纵轴为物体位置；一条实线表示可见段的轨迹，中间遮挡段画虚线延续，重现帧处画一个连接点把虚线接回实线。",
-          "prerequisites": [
-            "目标跟踪基本概念",
-            "遮挡与重识别问题",
-            "自监督表征学习"
-          ],
-          "selfTest": [
-            "永久性包含哪三个子问题？",
-            "为什么不能用可见性标签替代？",
-            "物体不再出现时方法会怎样？"
-          ],
-          "formula": ""
-        },
-        {
-          "name": "Slot Attention（槽注意力）",
-          "readable": "把一帧视频的视觉特征竞争性地分配给若干个槽向量，每个槽倾向于绑定一个物体，并在帧间跟随它。",
-          "analogy": "像一群记者争抢采访名额：每个名额（槽）最终只能绑定一个对象，下一场活动还尽量跟同一个人。",
-          "analogyBreaksDown": "记者有外部身份记录，槽没有任何身份标签；一旦目标被遮挡，槽的注意力被背景或其他物体抢走，绑定关系就断了。",
-          "mechanism": "用迭代的注意力竞争让槽互相排斥、分摊输入；这种软分配在无标签下能自动出现物体分组，但对输入缺失（遮挡）没有记忆机制。",
-          "visual": "一帧图像上方画横向的注意力热力图，每个槽一条，亮区不重叠；遮挡帧处对应槽的亮区消失。",
-          "prerequisites": [
-            "注意力机制",
-            "无监督物体发现",
-            "视频表征学习"
-          ],
-          "selfTest": [
-            "槽之间为什么需要竞争？",
-            "slot attention 为什么在遮挡下失效？",
-            "要补上永久性最少需要加什么？"
-          ],
-          "formula": ""
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-reappearance-walker-loss",
-          "name": "重现驱动的位置监督损失（Reappearance-Only Walker Loss）",
-          "category": "worldmodel",
-          "latex": "\\mathcal{L}_{\\text{walker}}=\\frac{1}{|\\mathcal{R}|}\\sum_{t\\in\\mathcal{R}}\\big\\|\\hat{p}(t)-p^{\\text{obs}}(t)\\big\\|_1,\\quad \\mathcal{R}=\\{\\text{物体重现的帧}\\}",
-          "symbols": [
-            [
-              "\\mathcal{R}",
-              "物体重新出现的帧集合，是唯一有监督的位置"
-            ],
-            [
-              "\\hat{p}(t)",
-              "walker 预测的隐藏位置"
-            ],
-            [
-              "p^{\\text{obs}}(t)",
-              "重现时观测到的物体位置"
-            ],
-            [
-              "t",
-              "帧索引"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：动机。无标签条件下唯一免费的真值是物体重新出现时的位置，其余时刻的位置都看不到。",
-            "第 2 步：先用物体证据建模判断该槽对应物体从哪一帧开始被遮挡，把可见帧与隐藏帧分开。",
-            "第 3 步：walker 在遮挡期间持续输出位置预测，但只在重现帧与观测位置比较，形成上面的重塑损失。",
-            "第 4 步：反向传播把位置连续性要求传回隐藏段，使位置流在没有逐帧标签时也能保持物理连续。"
-          ],
-          "analogy": "像寻宝游戏里只能在地图上标出宝藏重新露出的那一个点，靠它反推中间被遮住的那段路线必须连续。",
-          "pitfalls": [
-            "在可见帧也加位置损失：那等于引入标签，失去自监督意义",
-            "把消失当成遮挡：物体不再重现时该损失没有信号，会误判为仍在隐藏",
-            "混淆两条流：外观流用于重识别，位置流才是被这条损失训练的对象"
-          ],
-          "code": "import torch\npred = walker(hidden_positions)        # 遮挡期间的位置预测\nreappear = mask_reappearance(frames)   # 只在重现帧为 True\nloss = (pred[reappear] - obs_pos[reappear]).abs().mean()\nloss.backward()",
-          "sources": [
-            {
-              "title": "iSEE: Object Permanence Through Self-Supervision",
-              "url": "https://arxiv.org/abs/2610.01201v1"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "物体永久性指在物体被遮挡时保持其身份与位置，是能跟踪、预测与规划的视频表征的核心",
-          "达到永久性的跟踪器依赖框、跟踪身份与可见性标签",
-          "自监督的物体中心方法通过 slot attention 在无标签下发现物体，把视频表示为绑定物体并跨帧跟随的槽",
-          "这些槽在遮挡下会丢失，使永久性无法实现",
-          "推理永久性很难，因为需要检测物体何时被遮挡、在重现时重新识别、并仅以重现为学习线索保持隐藏位置的连续",
-          "iSEE 的三个组件是物体证据建模（slot 注意力与其自身过去比较，揭示物体何时被隐藏）、外观-位置分离（两条槽流，外观保持用于重识别而位置继续变化）、重现中的永久性（walker 跟随隐藏位置，只在物体重现处训练）",
-          "在 LA-CATER static 上，iSEE 在 86% 的遮挡后把重现物体送回它自己的槽，SlotContrast 为 32%",
-          "遮挡期间的定位与有标签 SoTA RAM 相差 4.1 mAP；两条流支持下游规划，位置流可作为世界模型的动作"
-        ],
-        "uncertain": [
-          "86% 与 32% 的具体评测口径（遮挡事件定义、归位判定规则）未在摘要给出",
-          "4.1 mAP 的指标定义与 RAM 的对比配置未给出",
-          "walker 的具体形式与损失形式未给出，公式为按摘要语义重建，需核对原文",
-          "摘要提到一个项目页链接，但该链接不在本条目 sources 列表中，故未引用为公式来源（待核实）",
-          "codeAvailable 标记为 true，但本条目 sources 中没有代码链接"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "让模型自己发现东西被挡住但还在，不需要任何标注。"
-          },
-          {
-            "level": "入门",
-            "text": "物体永久性指物体被遮挡时仍能记住它是谁、在哪里，这是跟踪、预测和规划的基础。有标签的跟踪器靠框和可见性标注来学；自监督的 slot attention 不用标签，能把视频分成若干槽并让槽跟随物体，但遮挡一来槽就丢，永久性无从谈起。"
-          },
-          {
-            "level": "进阶",
-            "text": "iSEE 用三个组件补上永久性：一是物体证据建模，把槽当前的注意力与它自己的过去比较，判断物体何时被藏住；二是外观-位置分离，两条槽流让外观被保留用于重识别，位置在被遮挡期间继续演化；三是只以重现为学习线索，一个 walker 跟着隐藏物体的位置，训练信号只来自物体重新出现的位置。LA-CATER static 上 86% 的遮挡后能回到自己的槽，SlotContrast 只有 32%。"
-          },
-          {
-            "level": "专家",
-            "text": "难点在于没有任何标签时，被遮挡、离开画面、被误分到别的槽三种情况必须区分开，而唯一可靠的监督是重现时刻。把外观从位置中拆出来是关键取舍：外观要跨帧保持才能重识别，位置要持续变化才符合物理运动，共用一个槽会让两种梯度互相拉扯。摘要报告遮挡中定位与有标签 SoTA RAM 相差 4.1 mAP，位置流还能充当世界模型的动作，说明该表征可直接对接下游规划，而不只是可视化好看。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "为什么不直接用有标签跟踪器？",
-            "a": "框、身份与可见性标签获取成本高且域受限；目标是完全无标签地获得永久性表征，便于扩展到没有标注的视频。"
-          },
-          {
-            "q": "为什么必须把外观和位置分成两条流？",
-            "a": "共用一个槽时，遮挡期间外观要稳定、位置要变化，两种梯度会冲突；分开后外观流负责重识别，位置流负责连续运动。"
-          }
-        ],
-        "mechanism": "自监督下唯一免费的真值是物体在哪里重新出现。要利用它必须先在遮挡发生时刻就识别出来（证据建模），再让位置在遮挡期间保持连续（位置流），并把外观稳住以便重现时匹配回同一个槽（外观流），三者缺一不可。",
-        "boundary": "监督信号只在重现处；若物体被遮挡后不再出现（离场或长时消失），walker 学不到该情形，可能把消失误判为隐藏。摘要只在 LA-CATER static 上报告结果，动态场景与多物体严重遮挡下的表现未给出（待核实）。",
-        "analogyBoundary": "捉迷藏的类比假定藏的人一定还在并且会再出现；模型面对的目标可能真的离场或被别的槽吞并，重现假设本身可能不成立。",
-        "misconceptions": [
-          "slot attention 本身就保证永久性：槽在遮挡下会丢失，这正是本文要修的问题。",
-          "用重现监督等于开了标签：只用重现时的位置作监督，不是逐帧标注。",
-          "位置流只是可视化技巧：它被当作世界模型的动作来使用。"
-        ],
-        "ownAnalysis": "（推断）把永久性拆成何时遮挡、外观是谁、位置在哪三个可分别自监督的子问题，是本文最可迁移的设计，也解释了为什么只加一个模块不够。可疑处是 86% 归位率定义在特定数据集与遮挡事件上，摘要未给基线口径细节；与 RAM 的 4.1 mAP 差距意味着无标签可替代有标签这一结论还需要更多数据集支撑。",
-        "officialNotes": [
-          {
-            "position": "iSEE 无需任何标签即同时满足遮挡检测、重现重识别与位置连续三项要求，位置流可作为世界模型的动作",
-            "source": "arXiv 2610.01201v1 摘要"
-          }
-        ],
-        "interviewAnswer": "物体永久性是无标签视频表征的硬骨头，slot attention 一遇遮挡就丢槽。iSEE 用三个组件解决：把槽的注意力与自己的历史比较来判断物体是否被藏住；把外观和位置拆成两条流，外观用于重识别、位置在遮挡期间继续演化；再用一个 walker 跟着隐藏位置，只用物体重现的位置做监督。LA-CATER static 上 86% 的遮挡能回到自己的槽，SlotContrast 只有 32%，遮挡中定位与有标签 SoTA 差 4.1 mAP。",
-        "studyPath": {
-          "prerequisites": [
-            "slot attention",
-            "自监督视频表征",
-            "遮挡与重识别基本概念"
-          ],
-          "nextSteps": [
-            "实现证据建模中的历史比较",
-            "把位置流接入世界模型做规划",
-            "评测长时消失与多物体遮挡"
-          ]
-        }
-      }
-    },
-    {
-      "id": "99373303e219b8c5",
-      "tldr": "FutureWorlds 用多样束搜索造候选未来与候选专属记忆，MemSPO 优化；LPIPS 最多降 20.84%。",
-      "keyPoints": [
-        "机器人世界模型预测动作条件下的未来，但备选预测难变学习信号",
-        "候选太相似缺可比性，分叉轨迹又要各自维持历史",
-        "用多样束搜索构造兼顾置信度与多样性的候选未来",
-        "候选专属有界记忆让生成与策略打分共用同一段历史",
-        "MemSPO 把视频轨迹奖励转成组内相对优势；三数据集 LPIPS 降 9.12%~20.84%"
-      ],
-      "why": "多模态与世界模型求职向：把文本 RLVR 的组内相对优势迁到视频世界模型，是当下热门交叉点，值得会讲会做。",
+      "why": "世界模型加RL是后训练热点，反推归因这个视角能答出「奖励从哪来、为什么稠密」。",
       "difficulty": "hard",
       "tags": [
         "world-model",
         "reinforcement-learning",
-        "video-prediction",
-        "robotics",
-        "policy-optimization"
+        "vlm-agent",
+        "intrinsic-reward",
+        "planning"
       ],
       "entities": [
-        "FutureWorlds",
-        "MemSPO",
-        "RT-1",
-        "BridgeV2",
-        "RoboCasa",
-        "diverse beam search"
+        "Retrospective World Modeling",
+        "Self-Consistency Reward",
+        "SCR",
+        "VLM agent",
+        "prospective simulation"
       ],
       "diagram": {
-        "kind": "architecture",
-        "title": "FutureWorlds 学习闭环",
-        "caption": "候选未来必须既多样又各带历史，组内相对优势才有意义。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='FutureWorlds 世界模型四层结构'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>动作条件输入</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>当前场景加动作</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>多样束搜索</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>置信度与多样性折中的候选</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>候选专属有界记忆</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>各自维护历史，生成打分同源</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>MemSPO 更新</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>轨迹奖励转组内相对优势</text>\n</svg>",
-        "alt": "四层结构：动作条件输入经多样束搜索得到多条候选未来，每条候选维护专属有界记忆，MemSPO 把轨迹奖励转成组内相对优势更新世界模型。"
+        "kind": "flow",
+        "title": "回顾式世界建模闭环",
+        "caption": "从观测到的状态转移反推动作，再用一致性把策略动作与回顾解释绑在一起",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='回顾式世界建模的四步闭环：观测转移、回顾归因、一致性比对、SCR 奖励'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>观测转移</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>s_t 到 s_t+1</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>回顾归因</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>反推动作分布</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>一致性比对</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>策略动作对解释</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>SCR 奖励</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>接进 RL 更新</text></svg>",
+        "alt": "回顾式世界建模的四步竖排流程：观测转移、回顾归因、一致性比对、SCR 奖励回流到 RL"
       },
       "concepts": [
         {
-          "name": "Group-Relative Advantage（组内相对优势）",
-          "readable": "同一初始条件下生成多条候选未来，各自拿一个奖励，然后看某条比这组的平均好多少、标准差多少倍，而不是看它的绝对分数。",
-          "analogy": "像选秀比赛：同一题目下多位选手各演一遍，评委比较组内相对表现，比只给一个人打绝对分更能看出好坏。",
-          "analogyBreaksDown": "选秀里评委看到的是同一场表演；这里每条候选未来各自延续不同历史，评委看到的上下文其实不同，绝对可比性有限。",
-          "mechanism": "减去组内均值、除以组内标准差，把奖励的绝对尺度消掉，只保留相对排序信息，省去训练一个价值网络来估计基线。",
-          "visual": "同一初始帧下并排五条候选轨迹，每条末端画一个奖励条形；均值画一条水平虚线，高于虚线越多、条形越亮的候选得到越大的正优势。",
+          "name": "Retrospective Attribution Distribution",
+          "readable": "给定前后两个状态，反推最可能是哪个动作造成了这次转移的概率分布，也就是把世界模型的方向从预测未来倒转成解释过去。",
+          "analogy": "像看到桌上杯子倒了（状态变化），反推是谁碰的：可能是手肘、可能是猫、可能是风。给出每种原因的概率，就是归因分布。",
+          "analogyBreaksDown": "现实里原因常常唯一且可追问，而动作空间可能是连续高维，多个动作会产生几乎相同的转移，归因分布在数学上不可辨识。",
+          "mechanism": "把动作当作潜变量，用状态转移做条件来建模后验分布，为策略动作提供一个独立于前向预测的因果审计信号。",
+          "visual": "画两个状态节点 s_t 与 s_{t+1}，中间用多条粗细不同的箭头连回一组候选动作，箭头粗细表示归因概率大小；正确动作的箭头上打勾。",
           "prerequisites": [
-            "策略梯度与基线的作用",
-            "GRPO 类组内采样思路",
-            "自回归视频生成基础"
+            "条件概率与贝叶斯后验",
+            "逆动力学模型",
+            "马尔可夫决策过程记号"
           ],
           "selfTest": [
-            "为什么减去组内均值可以省掉价值网络？",
-            "候选全都一样好时优势会怎样？",
-            "上下文不同为什么削弱可比性？"
+            "回顾归因与逆动力学模型的区别在哪里？",
+            "为什么归因分布可能不可辨识？",
+            "它为什么能作为前向预测之外的额外约束？"
           ],
-          "formula": "A_i=\\frac{R_i-\\operatorname{mean}(\\{R_j\\}_{j=1}^{G})}{\\operatorname{std}(\\{R_j\\}_{j=1}^{G})+\\epsilon}"
+          "formula": "P_{\\phi}(\\hat{a}_t\\mid s_t,s_{t+1})=\\mathrm{softmax}\\,g_{\\phi}(s_t,s_{t+1})"
         },
         {
-          "name": "Bounded Candidate-Specific Memory（候选专属有界记忆）",
-          "readable": "为每条候选未来单独保存一份固定容量的场景状态记忆，让生成这条未来时的条件和之后给它打分时的条件完全一致。",
-          "analogy": "像给每位选手配一个固定大小的储物柜，只放他这一路演出的道具，避免几个人共用一个柜子拿错东西。",
-          "analogyBreaksDown": "储物柜只涉及取用正确性；有界记忆还会压缩与遗忘，长期历史可能被截断，摘要未说明容量不足时的影响。",
-          "mechanism": "候选一旦分叉就拥有不同历史，共用一份状态会让生成分布与打分分布错配、优势估计失真；有界控制显存，同时保证同源。",
-          "visual": "多条候选轨迹各自连到一个固定宽度的小方块（记忆），方块上有一条容量刻度线表示上限，轨迹之间不共享方块。",
+          "name": "Self-Consistency Reward",
+          "readable": "一个内在奖励：如果策略选的动作，正好也是回顾归因模型认为最可能造成这次转移的动作，那么这一步就给高分。",
+          "analogy": "像侦探与嫌疑人互相印证：嫌疑人说他做了某件事，现场证据也指向这件事，两人说法一致，可信度就高。",
+          "analogyBreaksDown": "侦探与嫌疑人若串供，双方说法一致却不代表事实；策略与归因模型也可能共同漂移，互相确认却偏离真实因果。",
+          "mechanism": "用归因模型对策略动作的赋值作为奖励，把每一步的状态转移变成有信号的监督点，提供比回合末任务奖励更密集的反馈。",
+          "visual": "画一条回合时间线，横轴是步数：任务奖励只在末端有一个高柱，SCR 在每一步都有小柱；用两种颜色区分稀疏与密集信号。",
           "prerequisites": [
-            "自回归生成中的 KV 或状态缓存",
-            "上下文长度与显存权衡",
-            "策略优化中的条件一致性"
+            "强化学习中的奖励塑形",
+            "策略梯度与优势函数"
           ],
           "selfTest": [
-            "为什么候选之间不能共享历史？",
-            "记忆有界会带来什么风险？",
-            "生成与打分同源为什么重要？"
+            "SCR 是外在奖励还是内在奖励？",
+            "SCR 与任务奖励如何组合才不会喧宾夺主？",
+            "为什么说 SCR 缓解了信用分配问题？"
+          ],
+          "formula": "r^{\\mathrm{SCR}}_t=\\log P_{\\phi}(\\hat{a}_t=a_t\\mid s_t,s_{t+1})"
+        },
+        {
+          "name": "Prospective vs Retrospective World Modeling",
+          "readable": "前瞻式世界模型问『做了这个动作会怎样』；回顾式问『发生了这个变化，是什么动作造成的』。前者生成候选，后者审计候选。",
+          "analogy": "下棋时前瞻是推算这步棋之后的局面，回顾是复盘时从局面反推对手刚才走了哪一步。两者都重要，但用途不同。",
+          "analogyBreaksDown": "棋类复盘时局面与走法一一对应，而真实环境有噪声与隐藏状态，复盘未必唯一，可能同时有多个合理解释。",
+          "mechanism": "两种方向互补：前瞻负责在决策前估计后果，回顾负责在决策后检验因果一致性，把可验证性引入世界模型。",
+          "visual": "画左右对称的两张图：左边箭头从动作指向下一状态（前瞻），右边箭头从状态转移指回动作（回顾），中间用一个双向圆环表示两者结合进策略学习。",
+          "prerequisites": [
+            "基于模型与无模型强化学习",
+            "世界模型在规划中的角色"
+          ],
+          "selfTest": [
+            "前瞻式世界模型的结构性盲点是什么？",
+            "两种方向能否互相替代？",
+            "回顾式建模在什么环境里最有用？"
           ],
           "formula": ""
         }
       ],
       "formulas": [
         {
-          "id": "f-memspo-group-relative-advantage",
-          "name": "MemSPO 组内相对优势（Memory-Conditioned Search-Guided Group-Relative Advantage）",
+          "id": "f-retrospective-attribution",
+          "name": "回顾归因分布（Retrospective Attribution Distribution）",
           "category": "worldmodel",
-          "latex": "A_i=\\frac{R_i-\\operatorname{mean}\\big(\\{R_j\\}_{j=1}^{G}\\big)}{\\operatorname{std}\\big(\\{R_j\\}_{j=1}^{G}\\big)+\\epsilon}",
+          "latex": "P_{\\phi}(\\hat{a}_t\\mid s_t,s_{t+1})=\\frac{\\exp\\big(g_{\\phi}(s_t,s_{t+1})[\\hat{a}_t]\\big)}{\\sum_{a'}\\exp\\big(g_{\\phi}(s_t,s_{t+1})[a']\\big)}",
           "symbols": [
-            [
-              "R_i",
-              "第 i 条候选未来的视频轨迹奖励"
-            ],
-            [
-              "G",
-              "同一初始条件下候选未来条数"
-            ],
-            [
-              "A_i",
-              "第 i 条候选的组内相对优势"
-            ],
-            [
-              "\\epsilon",
-              "数值稳定项"
-            ]
+            ["s_t", "第 t 步观测到的状态"],
+            ["s_{t+1}", "第 t 步之后实际观测到的状态"],
+            ["â_t", "被反推的候选动作，带上标表示这是回顾推断而非真实选择"],
+            ["g_φ", "参数为 φ 的归因打分网络，输入状态对、输出每个候选动作的分数"],
+            ["P_φ", "归一化后的归因概率分布，表示每个动作造成该转移的可能性"],
+            ["φ", "归因模型参数，与策略参数 θ 分开"]
           ],
           "derivation": [
-            "第 1 步：动机。世界模型需要从相对质量中学习，而单条轨迹的绝对奖励尺度差异大，直接当权重不稳定。",
-            "第 2 步：用多样束搜索在同一初始条件下采样 G 条候选未来，使它们既可比又不至于几乎相同。",
-            "第 3 步：每条候选在自己那份有界记忆下生成，保证计算奖励与打分时看到的条件一致。",
-            "第 4 步：对组内奖励做均值方差归一化得到优势，用它作为策略优化信号更新世界模型，代替额外的价值网络。"
+            "第 1 步：前向世界模型建模 P(s_{t+1}|s_t,a_t)，只回答某个动作会造成什么。",
+            "第 2 步：要审计策略动作是否与观测转移因果一致，需要的是反方向的量，即给定转移后动作的后验。",
+            "第 3 步：把动作当作潜变量，用打分网络 g_φ 输出每个候选动作的未归一化分数，再经 softmax 得到后验。",
+            "第 4 步：训练时用被观测到的真实动作作为监督标签，等价于做逆动力学的最大似然估计。",
+            "第 5 步：训练完成后，这个分布可对任意策略动作给出解释得通的概率，从而充当奖励来源。"
           ],
-          "analogy": "像班级里按名次进步给反馈：不看绝对分数，只看你比同班平均高多少、稳定程度如何。",
+          "analogy": "像看监控回放推断肇事者：画面显示花瓶碎了（状态转移），系统列出在场每个人的嫌疑度打分，分数越高越可能是他碰的。打分网络就是这套嫌疑度模型。",
           "pitfalls": [
-            "把 MemSPO 说成新的策略梯度算法：它沿用组内相对优势，重点是候选构造与记忆配套",
-            "忽略候选同质性：候选几乎一样时标准差趋零，优势变成噪声",
-            "忘记记忆有界的影响：长期历史被压缩后，条件一致性只在预算内成立"
+            "把归因分布当成前向模型的反函数：它建模的是后验，不是确定性映射，多对多时不唯一。",
+            "用策略采样出的动作当监督标签：策略本身有偏，会污染归因模型。",
+            "忽略动作空间大小带来的 softmax 代价：连续或超大动作空间需要额外近似。"
           ],
-          "code": "import torch\nR = rewards_of_candidates            # 形状 [G]\nadv = (R - R.mean()) / (R.std() + 1e-6)\nlogp = policy.logprob(candidates)     # 各候选在其记忆下的对数概率\nloss = -(adv.detach() * logp).mean()\nloss.backward()",
+          "code": "import torch\nimport torch.nn.functional as F\n\nclass RetroAttributor(torch.nn.Module):\n    '''从 (s_t, s_{t+1}) 反推最可能造成该转移的动作分布。'''\n    def __init__(self, state_dim, n_actions):\n        super().__init__()\n        self.net = torch.nn.Sequential(\n            torch.nn.Linear(2 * state_dim, 256), torch.nn.ReLU(),\n            torch.nn.Linear(256, n_actions))\n\n    def forward(self, s_t, s_next):\n        logits = self.net(torch.cat([s_t, s_next], dim=-1))\n        return F.log_softmax(logits, dim=-1)\n\n# 训练：最大化真实动作 a_t 在归因分布下的对数似然\n# loss = F.nll_loss(attributor(s_t, s_next), a_t)",
           "sources": [
             {
-              "title": "FutureWorlds: Learning Robotic World Models from Alternative Futures",
-              "url": "https://arxiv.org/abs/2610.01019v1"
+              "title": "Beyond Prediction: Steering VLM Agents with Retrospective World Modeling",
+              "url": "https://arxiv.org/abs/2609.39101v1"
+            }
+          ]
+        },
+        {
+          "id": "f-self-consistency-reward",
+          "name": "自一致性奖励（Self-Consistency Reward）",
+          "category": "rl",
+          "latex": "r^{\\mathrm{SCR}}_t=\\log P_{\\phi}\\big(\\hat{a}_t=a_t\\mid s_t,s_{t+1}\\big),\\qquad R_t=r^{\\mathrm{task}}_t+\\lambda\\,r^{\\mathrm{SCR}}_t",
+          "symbols": [
+            ["a_t", "策略在第 t 步实际选择的动作"],
+            ["â_t", "回顾归因模型反推出的动作变量"],
+            ["P_φ", "归因模型给出的后验概率，φ 为其参数"],
+            ["r_t^SCR", "第 t 步的自一致性奖励，取实际动作在归因分布下的对数概率"],
+            ["r_t^task", "环境给出的任务奖励，通常稀疏且只在部分步出现"],
+            ["λ", "内在奖励的权重系数"],
+            ["R_t", "用于策略更新的合成奖励"]
+          ],
+          "derivation": [
+            "第 1 步：任务奖励稀疏，回合末才给信号，长时程下每步动作的贡献难以归因。",
+            "第 2 步：回顾归因模型对每一步转移都能给出哪个动作解释得通的概率，天然是逐步信号。",
+            "第 3 步：取策略实际动作在该分布下的对数概率作为一致性度量：解释得越通顺，奖励越高。",
+            "第 4 步：把它按权重 λ 与任务奖励相加，得到既追求任务成功、又要求因果自洽的合成奖励。",
+            "第 5 步：用该奖励做策略梯度更新，等价于在每一步施加动作必须能解释观测转移的软约束。"
+          ],
+          "analogy": "像老师批改解题过程：只看最终答案（任务奖励）只能判断对错，看不清哪一步错；要求每一步都能用已知条件解释（SCR），就能在过程中及时给分或扣分。",
+          "pitfalls": [
+            "把 SCR 当成替代任务奖励：它只是内在塑形项，权重过大反而偏离任务目标。",
+            "忽略奖励黑客风险：策略可能学会迎合归因模型，两者一起漂移而非逼近真实因果。",
+            "忘记对 log 概率做尺度控制：不同动作空间下 SCR 的量级差异很大，需要归一化。"
+          ],
+          "code": "import torch\nimport torch.nn.functional as F\n\ndef scr_reward(policy_logits, attr_logits, actions, lam=0.1, task_reward=None):\n    # 策略在 s_t 选 a_t 的对数概率\n    logp_policy = F.log_softmax(policy_logits, -1).gather(\n        1, actions.unsqueeze(1)).squeeze(1)\n    # 回顾归因模型认为 a_t 造成该转移的对数概率\n    logp_attr = F.log_softmax(attr_logits, -1).gather(\n        1, actions.unsqueeze(1)).squeeze(1)\n    scr = logp_attr.detach()          # 一致性信号不反传到归因模型\n    if task_reward is None:\n        return lam * scr, logp_policy\n    return task_reward + lam * scr, logp_policy",
+          "sources": [
+            {
+              "title": "Beyond Prediction: Steering VLM Agents with Retrospective World Modeling",
+              "url": "https://arxiv.org/abs/2609.39101v1"
             }
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "机器人世界模型预测动作条件下的未来场景，是理解动作结果的基础",
-          "把替代预测变成有用的学习信号很难：相似候选限制有信息的质量比较，而发散轨迹要求持续维护各自的历史",
-          "FutureWorlds 统一了候选构造、历史维护与从相对质量学习三件事",
-          "它建立在多模态离散自回归模型之上，强化学习时用多样束搜索构造兼顾置信度与多样性的候选未来",
-          "候选专属的有界记忆保存场景状态，确保生成与策略打分使用匹配的历史",
-          "作者提出 MemSPO，把视频轨迹奖励转换为组内相对优势来优化世界模型",
-          "在 RT-1、BridgeV2、RoboCasa 上，32 帧预测的 LPIPS 相对各数据集最强基线分别降低 14.78%、20.84%、9.12%",
-          "在固定评测配置下，仅 200 次 MemSPO 更新就进一步改善生成质量并支持超出训练视野的继续预测",
-          "记忆消融、解码敏感性分析与光流评测显示收益不止于视觉质量，还包括更准的运动预测与更一致的物体状态"
+          "论文指出既有方法主要依赖前瞻模拟来预测候选动作的后果，前向范式对动作是否与观测转移因果一致缺乏约束。",
+          "论文提出回顾式世界建模，估计 P(â_t|s_t,s_{t+1}) 的反推归因分布。",
+          "论文提出自一致性奖励 SCR，度量策略动作与回顾解释之间的概率一致性。",
+          "SCR 接入强化学习后提供转移级的密集反馈，引导行为既任务有效又符合物理。",
+          "在多种智能体任务上，方法相比只有前瞻的世界模型基线提升了策略鲁棒性与泛化。"
         ],
         "uncertain": [
-          "MemSPO 的组内相对优势是否含标准差归一化与 KL 项，摘要只说转换为组内相对优势，公式为通用重建，需核对原文",
-          "多样束搜索的超参与候选组大小未给出",
-          "200 次更新所对应的学习率与 batch 配置未给出",
-          "三个 LPIPS 降幅分别相对各数据集最强基线，跨数据集不可直接比较",
-          "摘要提到 GitHub 项目页与代码，但该链接不在本条目 sources 列表中，输出未引用"
+          "两个公式是按摘要重建的通用形式，SCR 的精确定义（是否为对数概率、是否有 KL 或比值形式）需核对原文。",
+          "摘要未给出归因模型的独立准确率，无法判断一致性奖励是否只是自我确认。",
+          "λ 权重、训练是否与策略联合、以及具体智能体任务与基准名称摘要未列出。",
+          "物理一致性的度量方式摘要未给出。"
         ]
       },
       "teaching": {
         "progressive": [
           {
             "level": "一句话",
-            "text": "从多条候选未来里学哪个更好，而不是只学像不像。"
+            "text": "不只让智能体猜下一步，还让它回头推断刚才是什么动作造成了这个变化。"
           },
           {
             "level": "入门",
-            "text": "机器人世界模型要预测动作之后的画面。但如果只让模型拟合单一未来，就学不到候选之间的好坏差别：候选太像就没有可比性，差异太大又各自需要记住自己的历史。FutureWorlds 先把候选未来构造出来并各自维护历史，再用相对质量作为学习信号。"
+            "text": "世界模型通常做前瞻模拟：给定当前状态，预测某个动作会发生什么。本文提出回顾式世界建模：给定状态转移（s_t 到 s_t+1），反推最可能造成这次变化的动作分布。把策略实际动作与这个反推解释的一致性变成奖励，就叫自一致性奖励。"
           },
           {
             "level": "进阶",
-            "text": "框架统一了三件事：候选构造、历史维护、从相对质量学习。它建在多模态离散自回归模型上，强化学习时用多样束搜索生成既可信又多样的候选未来；候选专属的有界记忆保存各自的场景状态，保证生成和策略打分看到同一段历史；MemSPO 把视频轨迹奖励转成组内相对优势来优化世界模型。RT-1 上 32 帧预测的 LPIPS 相对最强基线降 14.78%，BridgeV2 与 RoboCasa 分别降 20.84% 与 9.12%。"
+            "text": "前瞻范式只约束会发生什么，对动作在因果上是否解释得通没有约束，容易产生看着合理但物理不一致的行为。回顾归因给出转移级的反向解释，SCR 度量策略动作与解释的概率一致性，作为内在奖励接进强化学习，从而提供比任务成败更密集的反馈。"
           },
           {
             "level": "专家",
-            "text": "核心取舍是可比性与多样性的张力：候选分布太窄，组内相对优势几乎全是噪声；候选发散，每条轨迹的历史又必须独立保存，显存与一致性成本上升。有界记忆把历史压进固定预算，使生成与打分同源，避免策略优化时看到与生成时不一致的条件。摘要显示在固定评测配置下 200 次 MemSPO 更新就能同时改善生成质量并支持超出训练视野的预测，光流评测也说明运动预测与物体状态一致性有改善，而不只是 LPIPS 变好。"
+            "text": "与纯前瞻世界模型相比，回顾式建模补的是因果可验证性：前瞻生成候选，回顾审计候选是否与观测转移一致。SCR 是内在稠密奖励，与稀疏任务奖励互补，能缓解长时程的信用分配问题。边界在于状态与动作可观测、反推分布可学习；若环境随机性强或动作与转移多对多，一致性奖励会变成噪声。摘要未给 SCR 的具体形式与权重。"
           }
         ],
         "socratic": [
           {
-            "q": "为什么不能只用一个候选加回归损失？",
-            "a": "回归损失只告诉模型该像哪个未来，无法表达这条未来比那条更好；组内相对优势需要在同一条件下有多个候选才算得出来。"
+            "q": "只有前瞻预测为什么不够？",
+            "a": "前瞻只保证看起来会发生，不检验动作与观测转移的因果关系，策略可能学到视觉上合理但物理上说不通的动作序列。"
           },
           {
-            "q": "为什么要给每个候选单独的记忆？",
-            "a": "候选一旦分叉，它们的历史就不同；共用一份历史会让生成时的条件与打分时的条件不一致，优势估计随之失真。"
+            "q": "SCR 需要额外模型吗？",
+            "a": "需要一个能从状态对反推动作分布的回顾归因模型；摘要说它以内在学习方式提供转移级反馈。"
+          },
+          {
+            "q": "为什么不直接用任务成功奖励？",
+            "a": "任务奖励稀疏且常在回合末给，长时程里信用难分配；SCR 是逐步的转移级信号，能让策略更早拿到反馈。"
           }
         ],
-        "mechanism": "从相对质量学习要求同一初始条件下存在多条可比候选，且每条候选的打分基于它自己的历史。因此必须在采样阶段就引入多样性（多样束搜索），在结构上为每条候选分配有界记忆，再把奖励变成组内相对优势，才能把哪条未来更好变成稳定梯度。",
-        "boundary": "收益依赖候选组内确实存在质量差异；若多样束搜索给出的候选几乎同质，组内相对优势退化为噪声。摘要提到 200 次更新即有效，但更长训练是否会因记忆有界而丢失长期历史未给出（待核实）。评测集中在 RT-1、BridgeV2、RoboCasa 三个机器人数据集，跨具身泛化未知。",
-        "analogyBoundary": "选秀比赛的类比里评委看到同一场表演，这里每条候选未来各自延续不同历史，评委看到的上下文不同，绝对可比性其实有限。",
+        "mechanism": "必须引入反推，是因为前向预测在结构上无法证伪：给定状态和动作预测下一状态，只要预测误差小就得分，但同一个转移可能由多个动作造成，模型学不到哪个动作才是原因。把方向反过来，先观测转移再问哪个动作最可能造成它，就得到对策略动作的独立审计信号；再用概率一致性把审计结果变成奖励，等价于给每一步加约束，使行为既要有效又要与转移因果自洽。",
+        "boundary": "失效条件：环境转移高随机（同一动作导致多种状态），反推分布本身不可辨识；部分可观测设定下 s_t 不足以判断归因；多动作并发导致归因歧义。若任务奖励已经稠密，SCR 的边际收益下降。摘要未给出 SCR 与任务奖励的权重，也未说明归因模型是否与策略联合训练，实际使用需核实。",
+        "analogyBoundary": "把回顾归因类比成刑侦很直观：不只问他接下来会做什么，而是看到现场变化后反推是谁干的。但类比在此失效：刑侦里嫌疑人是离散且有限的，而动作空间可能连续高维，反推分布缺少天然先验约束，多对多的动作与转移映射会让凶手不唯一。",
         "misconceptions": [
-          "MemSPO 是全新的 RL 算法：它把轨迹奖励转成组内相对优势，重点是候选构造与记忆的配合。",
-          "候选越多越好：候选发散会抬高历史维护与一致性成本。",
-          "LPIPS 下降就等于物理更准：需要光流评测才能支持运动预测更准的说法。"
+          "把回顾归因当成逆动力学模型的简单复述，忽略它被用作奖励信号。",
+          "认为 SCR 可以取代任务奖励；它是内在稠密信号，与任务奖励互补。",
+          "以为把前瞻世界模型的预测器换强，就能顺带获得因果一致性。"
         ],
-        "ownAnalysis": "（推断）FutureWorlds 把文本 RLVR 里流行的组内相对优势搬到视频世界模型，并补上候选各自的历史这一视频特有的缺口，思路与 GRPO 一脉相承。可疑处是 14.78%、20.84%、9.12% 的降幅都相对各自数据集的最强基线，跨数据集不能直接比较；多样束搜索的超参与有界记忆容量对结果的敏感性摘要也没有展开。",
+        "ownAnalysis": "（推断）这条与强化学习里的逆动力学、后见经验回放以及过程奖励模型属于同一族思路：把评价从结果挪到过程，用反推制造密集信号。可疑点是奖励黑客——如果 SCR 只度量策略动作与归因模型的一致性，策略可能学会与归因模型共同漂移，两者互相确认却偏离真实因果。摘要说实验在多种智能体任务上提升鲁棒性与泛化，但未报告归因模型的独立准确率，这一点需要核实。",
         "officialNotes": [
           {
-            "position": "多样束搜索、候选专属有界记忆与 MemSPO 三者结合可同时改善生成质量并支持超出训练视野的预测",
-            "source": "arXiv 2610.01019v1 摘要"
+            "position": "论文挑战世界模型只做前瞻预测的观点，提出回顾式世界建模，估计 P(â_t|s_t,s_{t+1}) 的反推归因分布。",
+            "source": "arxiv 摘要 2609.39101v1"
+          },
+          {
+            "position": "论文提出自一致性奖励 SCR，度量策略动作与回顾解释的概率一致性，并接入强化学习提供转移级反馈。",
+            "source": "arxiv 摘要 2609.39101v1"
           }
         ],
-        "interviewAnswer": "训练视频世界模型通常只有拟合损失，学不到候选未来的相对好坏。FutureWorlds 先用多样束搜索构造既可信又多样的候选未来，再为每条候选维护有界记忆，保证生成和策略打分看到一致的历史，最后用 MemSPO 把轨迹奖励转成组内相对优势。RT-1、BridgeV2、RoboCasa 上 32 帧 LPIPS 分别降 14.78%、20.84%、9.12%，200 次更新就能改善生成并外推到更远的视野。",
+        "interviewAnswer": "我的理解是：世界模型现在基本都做前瞻，给定状态和动作预测下一步，但这样无法判断动作与观测转移是否因果一致，容易产生看着合理其实物理上说不通的行为。这篇的转折是反过来问：看到从 s_t 到 s_t+1 的转移，最可能是哪个动作造成的，也就是估计 P(â_t|s_t,s_{t+1})。有了这个反推分布，就能度量策略选的动作与回顾解释是否一致，把它做成内在奖励 SCR，接进强化学习后提供转移级的密集反馈，实验显示比只用前瞻的世界模型基线更稳、泛化更好。",
         "studyPath": {
           "prerequisites": [
-            "自回归视频或多模态生成",
-            "GRPO 类组内相对优势",
-            "束搜索与多样性采样"
+            "马尔可夫决策过程与策略梯度",
+            "基于模型强化学习与世界模型基础",
+            "条件概率与变分推断入门"
           ],
           "nextSteps": [
-            "复现多样束搜索的候选构造",
-            "研究有界记忆的容量取舍",
-            "把 MemSPO 用到其他生成式世界模型"
+            "实现一个逆动力学模型并测其动作辨识准确率",
+            "读过程奖励模型与后见经验回放类工作做对照",
+            "在小环境里对比前瞻加 SCR 与仅前瞻的鲁棒性"
+          ]
+        }
+      }
+    },
+    {
+      "id": "46e46e5e396eb9ef",
+      "tldr": "用MoE路由决定离散共享隐变量，把掩码扩散的反向过程写成混合分布以提升少步生成",
+      "keyPoints": [
+        "掩码扩散每步解掩多个token，但反向过程按位置因子化，少步质量受限",
+        "已有引入连续高斯隐变量的做法易发生后验坍缩，隐变量被忽略",
+        "E-MoE把反向过程建成因子化分布在离散共享隐变量上的混合",
+        "混合权重来自MoE骨干的专家路由决策，且不增加激活参数量",
+        "在合成多峰基准、二值化MNIST与LM1B上改善少步生成"
+      ],
+      "why": "扩散语言模型加MoE是生成式前沿，本条给出「不增激活参数就建模位置相关性」的思路。",
+      "difficulty": "hard",
+      "tags": [
+        "diffusion",
+        "mixture-of-experts",
+        "masked-diffusion",
+        "language-model",
+        "few-step"
+      ],
+      "entities": [
+        "E-MoE",
+        "Masked Diffusion Models",
+        "Mixture-of-Experts",
+        "binarized MNIST",
+        "LM1B"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "E-MoE 反向过程结构",
+        "caption": "专家路由给出离散隐变量，反向分布由各专家的因子化分布按路由权重混合而成",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='E-MoE 的四层结构：输入、MoE 骨干、混合反向分布、少步采样'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>输入</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>已解掩序列</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>MoE 骨干</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>路由出隐变量 z</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>混合反向</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>按路由加权求和</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>少步采样</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>每步解掩多 token</text></svg>",
+        "alt": "E-MoE 的四层竖排结构：输入、MoE 骨干路由、混合反向分布、少步采样"
+      },
+      "concepts": [
+        {
+          "name": "Masked Diffusion Reverse Process",
+          "readable": "掩码扩散从全被掩的序列出发，每一步把若干位置重新解出来，逐步还原文本；反向过程就是给定当前带掩序列、预测被掩位置真实token的分布。",
+          "analogy": "像玩填空游戏：先给一张到处是空格的稿子，每轮填一批空，直到全部填满。每轮填得准不准，取决于你是逐格独立填，还是通盘考虑句子是否连贯。",
+          "analogyBreaksDown": "填空游戏里上下文一直可见，而掩码扩散的中间状态是模型自己生成的，早期填错会污染后续所有轮次，存在误差累积。",
+          "mechanism": "把生成建模为逐步解掩的离散扩散过程，允许并行解多个位置，因此在少步数下比逐token自回归解码更快。",
+          "visual": "画一个方格矩阵，行是去噪步、列是序列位置；被掩位置用灰色方块、已解位置用实色方块，从左下到右上逐步变实，每步解掩的格子用方框圈出。",
+          "prerequisites": [
+            "离散扩散与掩码语言模型",
+            "变分下界与去噪目标"
+          ],
+          "selfTest": [
+            "掩码扩散为什么能在一步内解多个token？",
+            "位置因子化假设具体限制了哪种能力？",
+            "少步采样时误差如何累积？"
+          ],
+          "formula": "\\mathcal{L}=\\mathbb{E}_{t,x_0}\\sum_{i\\in\\mathcal{M}_t}-\\log p_\\theta\\big(x_0^{i}\\mid x_t\\big)"
+        },
+        {
+          "name": "Discrete Shared Latent via Expert Routing",
+          "readable": "用一个离散隐变量表示这一步该由哪些专家负责，它的取值直接由MoE的路由决策给出，而不是像VAE那样另学一个连续隐变量。",
+          "analogy": "像医院分诊：病人进门先由分诊台决定看哪几个科室（离散决策），各科室再各自给方案，最后综合成一个结论。",
+          "analogyBreaksDown": "分诊台会读病历并追问，MoE路由只看当前表示的一层输出；分诊结果影响后续所有环节，而这里隐变量只影响当步输出分布的混合。",
+          "mechanism": "把路由决策当作隐变量，使它天然被负载均衡与语言建模损失约束住，避免连续隐变量常见的后验坍缩，同时不增加激活参数。",
+          "visual": "画一个输入表示连到若干专家方块，专家上方画一个路由条，条上各段长度表示权重；路由条的取值作为隐变量再指向输出分布的混合权重。",
+          "prerequisites": [
+            "MoE 路由与负载均衡损失",
+            "变分自编码器与后验坍缩"
+          ],
+          "selfTest": [
+            "为什么路由决策可以直接当隐变量用？",
+            "离散隐变量相比连续隐变量避免了什么问题？",
+            "为什么激活参数量没有增加？"
+          ],
+          "formula": "p_\\theta(x_{t-1}\\mid x_t)=\\sum_{z\\in\\mathcal{Z}}p_\\theta(z\\mid x_t)\\,p_\\theta(x_{t-1}\\mid x_t,z)"
+        },
+        {
+          "name": "Posterior Collapse",
+          "readable": "训练带隐变量的生成模型时，如果解码器不看隐变量也能把损失降下去，隐变量就会被静默忽略，等于白加了一个模块。",
+          "analogy": "像项目里挂了个顾问，但团队发现不问他也能交差，久而久之就没人找他，顾问名存实亡。",
+          "analogyBreaksDown": "项目里顾问失效是组织问题、可以问责；后验坍缩是优化目标的最优解，KL项与重建项的拉锯会主动把隐变量推向先验。",
+          "mechanism": "KL正则项与重建损失竞争，当解码器表达能力足够强时就绕过隐变量，因此需要额外约束或更强监督来保证隐变量被使用。",
+          "visual": "画两条曲线随训练步变化：重建损失持续下降，而隐变量与输入之间的互信息迅速逼近零；用阴影标出坍缩发生的区间。",
+          "prerequisites": [
+            "ELBO 与 KL 正则",
+            "互信息与信息瓶颈"
+          ],
+          "selfTest": [
+            "后验坍缩的数学成因是什么？",
+            "有哪些常见缓解手段？",
+            "如何诊断隐变量是否真的被使用？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-discrete-mixture-reverse",
+          "name": "离散隐变量混合反向过程（Discrete-Latent Mixture Reverse Process）",
+          "category": "generative",
+          "latex": "p_\\theta(x_{t-1}\\mid x_t)=\\sum_{z\\in\\mathcal{Z}}p_\\theta(z\\mid x_t)\\,p_\\theta(x_{t-1}\\mid x_t,z),\\qquad p_\\theta(z\\mid x_t)=\\mathrm{softmax}\\,h_\\theta(x_t)",
+          "symbols": [
+            ["x_t", "第 t 步的带掩序列，尚未解掩的位置为掩码符号"],
+            ["x_{t-1}", "解掩一步后的序列，比 x_t 少若干掩码位置"],
+            ["z", "离散共享隐变量，取值来自专家集合"],
+            ["Z", "隐变量取值集合，大小等于专家数或其组合"],
+            ["p_θ(z|x_t)", "路由分布，由 MoE 骨干的 gate 输出经 softmax 得到"],
+            ["p_θ(x_{t-1}|x_t,z)", "给定隐变量 z 时各专家给出的因子化反向分布"],
+            ["θ", "模型参数，包含骨干与各专家"]
+          ],
+          "derivation": [
+            "第 1 步：掩码扩散的反向过程若按位置因子化，则无法表达同一批被解位置之间的相关性，少步采样时尤其吃亏。",
+            "第 2 步：引入隐变量 z 表示这一步该用哪种位置相关结构，条件在 z 上再做因子化，相关性由 z 承载。",
+            "第 3 步：对 z 取边缘得到混合分布，混合权重 p_θ(z|x_t) 就是专家路由的概率输出。",
+            "第 4 步：每个专家提供一个因子化分布，混合后不再是单一因子化分布，位置相关性得以表达。",
+            "第 5 步：由于混合只在输出分布层面进行、专家与基线共享同一骨干，激活参数量与因子化基线相同。"
+          ],
+          "analogy": "像多人合写一份填空稿：先由主编决定这一轮让哪几位作者写（路由），每位作者各自填一批空，最后按下笔比重叠成一份稿子。由于综合了不同作者的视角，空格之间的一致性比一个人硬填要强。",
+          "pitfalls": [
+            "把混合理解成多专家集成而忽略隐变量的概率语义：这里 z 是随机变量，需要在训练中求边缘而非取 argmax。",
+            "实现时直接对专家输出取算术平均而不是按路由权重加权求和，等价于用了均匀隐变量先验。",
+            "忽略混合分布的数值稳定性：应在 log 空间做 logsumexp，否则概率下溢为零。"
+          ],
+          "code": "import torch\nimport torch.nn.functional as F\n\ndef mixture_reverse(moe_logits, expert_logprobs):\n    # moe_logits:     [B, Z]     路由分数\n    # expert_logprobs:[B, Z, V]  各专家给出的对数概率\n    w = F.softmax(moe_logits, dim=-1).unsqueeze(-1)   # [B, Z, 1]\n    mix = (w * expert_logprobs.exp()).sum(dim=1)      # [B, V]\n    return mix.clamp_min(1e-12).log()                  # 稳定回对数域\n\ndef nll(mix_logprob, targets):\n    # targets: [B] 被解掩位置的真值 token\n    return F.nll_loss(mix_logprob, targets)",
+          "sources": [
+            {
+              "title": "E-MoE: Enhanced Mixture-of-Experts for Non-Factorized Diffusion Language Models",
+              "url": "https://arxiv.org/abs/2609.37533"
+            }
+          ]
+        },
+        {
+          "id": "f-masked-diffusion-elbo",
+          "name": "掩码扩散去噪目标（Masked Diffusion Denoising Objective）",
+          "category": "generative",
+          "latex": "\\mathcal{L}_{\\mathrm{MDM}}=\\mathbb{E}_{t\\sim U[0,1],\\,x_0\\sim p_{\\mathrm{data}}}\\left[\\frac{1}{t}\\sum_{i\\in\\mathcal{M}_t}-\\log p_\\theta\\big(x_0^{i}\\mid x_t\\big)\\right]",
+          "symbols": [
+            ["x_0", "干净的训练序列，即要建模的文本"],
+            ["t", "连续时间步，控制掩码比例，t=0 表示无掩码、t=1 表示全掩"],
+            ["M_t", "在时间 t 被掩码的位置集合"],
+            ["x_t", "按时间 t 的掩码比例对 x_0 加掩后得到的序列"],
+            ["x_0^i", "第 i 个位置的真实 token"],
+            ["p_θ", "模型对被掩位置输出的预测分布"],
+            ["1/t", "时间重加权系数，补偿不同掩码比例下的损失量级"]
+          ],
+          "derivation": [
+            "第 1 步：掩码扩散的前向过程是随机把位置替换成掩码符号，掩码比例随连续时间 t 从 0 增到 1。",
+            "第 2 步：反向过程要在已知部分位置的前提下预测被掩位置，写出变分下界并对位置求和。",
+            "第 3 步：下界中的每一项都退化为对被掩位置真值 token 的交叉熵，于是一步到位的简单目标即可训练。",
+            "第 4 步：不同 t 下被掩位置数量差异悬殊，若不重加权，大掩码比例的项会主导梯度。",
+            "第 5 步：乘以 1/t 的权重后各时间步贡献量级接近，训练更稳定，这也是少步采样质量的关键前提之一。"
+          ],
+          "analogy": "像按难度分级的听写：遮掉一两个字很容易，遮掉整句很难。如果不按遮挡比例调整每题分值，考试总分会被最难题主导；乘以 1/t 就是把分值按难度归一化。",
+          "pitfalls": [
+            "把掩码扩散目标当成普通掩码语言模型的损失：时间 t 是连续变量，训练时要对其采样并做重加权。",
+            "忘记只在被掩位置计算损失：对未掩位置也算交叉熵等于让模型抄答案。",
+            "混淆 t 的方向约定：有的实现用 t=0 表示全掩，读代码时必须先确认，否则重加权方向写反。"
+          ],
+          "code": "import torch\nimport torch.nn.functional as F\n\ndef masked_diffusion_loss(logits, x0, mask_positions, t):\n    # logits: [B, L, V] 全位置预测; mask_positions: [B, L] bool\n    logp = F.log_softmax(logits, dim=-1)\n    targets = x0.masked_fill(~mask_positions, -100)\n    per_token = F.nll_loss(\n        logp.reshape(-1, logp.size(-1)),\n        targets.reshape(-1), ignore_index=-100, reduction='none')\n    per_token = per_token.view(x0.shape)\n    n_masked = mask_positions.sum(dim=1).clamp_min(1)\n    per_seq = (per_token * mask_positions).sum(dim=1) / n_masked\n    weight = 1.0 / t.clamp_min(1e-3)        # 时间重加权\n    return (weight * per_seq).mean()",
+          "sources": [
+            {
+              "title": "E-MoE: Enhanced Mixture-of-Experts for Non-Factorized Diffusion Language Models",
+              "url": "https://arxiv.org/abs/2609.37533"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "掩码扩散模型通过每步解掩多个token生成序列，但其反向过程通常按位置因子化。",
+          "位置因子化限制了少步采样时的样本质量，而少步正是扩散相对自回归的速度优势所在。",
+          "已有工作引入连续高斯隐变量（以变分自编码器训练）来建模位置相关性，但容易出现后验坍缩。",
+          "E-MoE 把反向过程建模为因子化分布在离散共享隐变量上的混合，隐变量来自 MoE 骨干的专家路由决策。",
+          "E-MoE 不增加激活参数，并在合成多模态基准、二值化 MNIST 与 LM1B 上改善少步生成。"
+        ],
+        "uncertain": [
+          "两个公式为按摘要重建的通用形式（混合反向与掩码扩散目标），需核对原文的精确写法与重加权方式。",
+          "摘要未给出隐变量利用率或后验坍缩的诊断指标，避免坍缩缺乏直接证据。",
+          "专家数量、路由实现细节与少步的具体步数摘要未列出。",
+          "LM1B 属于较小规模基准，规模化到更大语料的收益待核实。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "让多个专家各自解掩一部分，再按路由把它们的答案混合起来生成。"
+          },
+          {
+            "level": "入门",
+            "text": "掩码扩散模型每步把若干被掩的token一次解出来，但它的反向过程按位置独立因子化，少步采样时质量会掉。E-MoE把反向过程写成若干因子化分布的混合，混合权重来自MoE的路由决策，用一个离散共享隐变量表示这一步由哪些专家负责。"
+          },
+          {
+            "level": "进阶",
+            "text": "先前用连续高斯隐变量建模位置相关性的做法容易后验坍缩，隐变量被忽略。E-MoE改用离散隐变量：它由MoE骨干的专家路由给出，天然被路由与语言建模损失约束住，不易坍缩；同时因为只改变输出分布的合成方式，激活参数量与因子化基线相同。"
+          },
+          {
+            "level": "专家",
+            "text": "与连续VAE式隐变量相比，路由给出的离散隐变量有三点好处：不易后验坍缩、可解释（隐变量即专家组合）、不增加激活参数。代价是混合分布要按专家对数概率做加权logsumexp，数值稳定性与专家利用率需要照顾；且它解决的是少步采样的位置相关性问题，不是让所有扩散步都变便宜。摘要给的验证是合成多峰基准、二值化MNIST与LM1B。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么反向过程按位置因子化会限制少步质量？",
+            "a": "因子化假设各位置独立，一步解多个token时无法表达位置间相关性，少步采样容易产生互相矛盾的token组合。"
+          },
+          {
+            "q": "连续隐变量为什么会后验坍缩？",
+            "a": "如果解码器不看隐变量也能把损失降下去，KL项会把后验推向先验，隐变量被静默忽略，这是VAE类结构的经典失败模式。"
+          },
+          {
+            "q": "为什么不直接增加专家来提升容量？",
+            "a": "那会增加激活参数与算力；E-MoE的卖点是在激活参数不变的前提下引入位置相关性。"
+          }
+        ],
+        "mechanism": "必须引入某种隐变量，是因为掩码扩散在少步时一步要解多个位置，因子化反向过程表达不了位置之间的依赖。引入连续隐变量又容易被后验坍缩吃掉。E-MoE的关键设计是让隐变量由MoE路由给出：路由本身受负载均衡与语言建模损失约束，不会退化成无用常数；而反向过程写成对隐变量的混合，等价于用不同专家组合解释同一步的不同位置相关性，同时不额外增加激活参数。",
+        "boundary": "适用范围是离散token的掩码扩散；对连续数据扩散或必须严格因子化的高效采样不直接适用。失效情形：专家路由塌缩到单一专家时混合退化；混合分布数值处理不当会引入梯度噪声；步数足够多时因子化基线的劣势消失，收益变小。摘要未给出与自回归基线在等算力下的对比。",
+        "analogyBoundary": "把离散隐变量类比成医院分诊很形象，但类比在此失效：分诊台会读病历并影响后续所有环节，而这里的路由只看当前层表示，混合发生在输出分布层面、不构成多轮协商，所以它模拟的是谁更该说话，不是真正的会诊过程。",
+        "misconceptions": [
+          "以为MoE在这里是用来加参数提容量的；实际它只是提供离散隐变量，激活参数不变。",
+          "把E-MoE与投机解码、蒸馏类加速混为一谈，它改善的是少步生成质量。",
+          "认为连续隐变量一定更强；该文指出这类做法易后验坍缩。"
+        ],
+        "ownAnalysis": "（推断）把隐变量绑定到路由决策是个很省的设计：MoE本来就有一套离散的、被负载均衡约束住的决策，直接拿来当隐变量，既避免坍缩又几乎不增参数。可疑点是可辨识性——如果路由主要由token局部特征决定，混合分布提供的位置相关性可能有限；另外后验坍缩是被避免而非被度量，摘要未给出隐变量利用率的诊断指标，LM1B规模也偏小。",
+        "officialNotes": [
+          {
+            "position": "E-MoE 将反向过程建模为因子化分布在由 MoE 专家路由给出的离散共享隐变量上的混合，且不增加激活参数。",
+            "source": "hf_papers / arxiv 摘要 2609.37533"
+          },
+          {
+            "position": "在合成多模态基准、二值化 MNIST 与 LM1B 上，E-MoE 相比因子化基线改善少步生成。",
+            "source": "hf_papers / arxiv 摘要 2609.37533"
+          }
+        ],
+        "interviewAnswer": "我会这样讲：掩码扩散每步解掩多个token，但反向过程按位置因子化，少步采样时表达不了位置相关性。之前有人引入连续高斯隐变量做VAE，但容易后验坍缩。E-MoE换个思路：把反向过程写成一组因子化分布的混合，混合权重来自MoE骨干的专家路由，这个路由决策就是一个离散共享隐变量。好处是路由被训练目标约束住不易坍缩，而且因为只是改输出分布的合成方式，激活参数量和因子化基线一样。实验在合成多峰基准、二值化MNIST和LM1B上改善了少步生成。",
+        "studyPath": {
+          "prerequisites": [
+            "扩散模型与去噪目标",
+            "掩码语言模型与离散扩散",
+            "MoE 路由与负载均衡",
+            "变分下界与后验坍缩"
+          ],
+          "nextSteps": [
+            "实现一个最小掩码扩散训练循环并画出少步采样质量曲线",
+            "复现混合专家输出分布的 logsumexp 实现",
+            "读连续隐变量扩散语言模型的工作做对照实验"
           ]
         }
       }

@@ -6,194 +6,167 @@
   "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
   "items": [
     {
-      "id": "ca54e0e87014d24a",
-      "title": "NavHarness: Towards Lifelong Embodied Navigation",
+      "id": "beb8222de71bd303",
+      "title": "DravenALG/awesome-vla-wam - A Curated List of Vision-Language-Action (VLA) and World Action Models (WAM) Research and Beyond",
       "category": "worldmodel",
-      "channel": "hf_papers",
-      "url": "https://huggingface.co/papers/2609.34276",
+      "channel": "github",
+      "url": "https://github.com/DravenALG/awesome-vla-wam",
       "sources": [
         {
-          "url": "https://huggingface.co/papers/2609.34276",
-          "name": "hf_papers"
-        },
-        {
-          "url": "https://arxiv.org/abs/2609.34276",
-          "name": "canonical"
+          "url": "https://github.com/DravenALG/awesome-vla-wam",
+          "name": "github"
         }
       ],
       "tags": [],
-      "summary": "Frontier models can now perform well on individual embodied navigation tasks through multi-round multimodal reasoning with simple tools. Across successive tasks, however, an agent must also rely on an evolving map and earlier search records, both of which may be incomplete or conflict with new observations. We present NavHarness, a training-free embodied harness towards lifelong navigation that makes memory processing part of the navigation loop. During navigation, its multi-round agentic session draws on maps, task records, and house knowledge, checking them against observations and recording corrections to guide its actions. NavHarness preserves this experience across fresh conversations for new tasks or recovery attempts, while outcome verification and run-end summaries support its later reuse. On GOAT-Bench, NavHarness improves s-SR over context-only independent sessions by 18.6 points with Astra and 22.6 with Opus 5. Using SLAM-estimated poses, NavHarness with GPT-6 Astra achieves state-of-the-art task success of 83.7 s-SR with 36.9 e-SR on GOAT-Bench and 85.9 s-SR on IR2R-CE. To understand these gains, we examine how experience is carried between sessions and find that structured recovery handovers outperform length-matched summaries. In extended deployments across houses, consolidation improves navigation beyond retaining maps and task records, with case studies showing how agents use earlier experience to interpret new goals, investigate unresolved questions, and resume failed searches. We suggest that progress towards lifelong navigation depends on how successive reasoning sessions build on prior experience, alongside improvements in single-task capability.",
+      "summary": "A Curated List of Vision-Language-Action (VLA) and World Action Models (WAM) Research and Beyond",
       "authors": [
-        "Xunyi Zhao",
-        "Jian Zhou",
-        "Sihao Lin",
-        "Gengze Zhou",
-        "Zerui Li",
-        "Xinyu Yan",
-        "Jiajun Liu",
-        "Anton van den Hengel",
-        "Qi Wu"
+        "DravenALG"
       ],
-      "publishedAt": "2026-09-28T08:00:00+08:00",
-      "knowledgeType": "method",
-      "why": "归属「世界模型」方向；命中关键词 embodied",
-      "relevanceScore": 64.6,
+      "publishedAt": "2026-09-25T21:18:43+08:00",
+      "knowledgeType": "project",
+      "why": "归属「世界模型」方向；命中关键词 vla、vision-language-action；GitHub 1038 stars；疑似附带开源实现；领域核心工作",
+      "relevanceScore": 72.9,
       "qualitySignals": {
-        "upvotes": 0
+        "stars": 1038,
+        "forks": 42,
+        "codeAvailable": true
       },
-      "peerReviewed": false,
-      "codeAvailable": false,
-      "planRelevanceScore": 64.6,
-      "planDepthScore": 58.71
-    },
-    {
-      "id": "ae5f1b9da8e383f0",
-      "title": "LongTake: Learning to Sustain Dynamics in Long-Horizon Video Generation",
-      "category": "generative",
-      "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2609.38562v1",
-      "sources": [
-        {
-          "url": "https://arxiv.org/abs/2609.38562v1",
-          "name": "arxiv"
-        }
-      ],
-      "tags": [
-        "cs.CV"
-      ],
-      "summary": "World models, game simulators, and long-take video creation require coherent scene evolution and sustained dynamics over extended durations. Autoregressive (AR) video diffusion provides a natural framework for long-horizon generation, yet extended rollouts often become near-static or lose visual quality. We hypothesize that these failures reflect the limited guidance provided by short-video supervision on how ongoing scene dynamics develops over longer durations. This motivates us to introduce LongTake, a two-stage training pipeline built around Long-Horizon Teacher Forcing (TF) on curated real long videos. Long-Horizon TF trains the AR model to predict later frames conditioned on long ground-truth video prefixes, extending direct supervision beyond the short training horizon. This supervision is designed to help the model sustain dynamics and preserve visual quality during long-horizon generation. Our central finding is that this training stage strengthens direct initialization for distribution matching distillation (DMD) under student self-rollout, without the intermediate few-step distillation stage used in standard pipelines. Under the same five-second DMD training setup, our initialization yields substantially higher dynamic degree than short horizon TF initialization on 30-second rollouts at comparable aesthetic quality, and surpasses the evaluated baselines in both measures. Hybrid DMD further reuses this teacher to extend supervision to later frames of the self-rollout while retaining bidirectional joint supervision over the initial window. On long-horizon self-rollouts, LongTake lies on the Pareto front of dynamic degree and aesthetic quality, and Hybrid DMD attains the highest dynamic degree among evaluated methods at both 30s and 60s.",
-      "authors": [
-        "Byoungwoo Park",
-        "Jaemoo Choi",
-        "Juho Lee",
-        "Yongxin Chen"
-      ],
-      "publishedAt": "2026-09-29T09:23:10+08:00",
-      "knowledgeType": "method",
-      "why": "归属「生成式模型」方向；命中关键词 diffusion、video generation",
-      "relevanceScore": 74.1,
-      "qualitySignals": {},
-      "peerReviewed": false,
-      "codeAvailable": false,
-      "planRelevanceScore": 74.1,
-      "planDepthScore": 58.6
-    },
-    {
-      "id": "bc031c1e6dc62d26",
-      "title": "Validity-Preserving Hierarchical RL for Joint Routing and Switch Placement in EDA",
-      "category": "rl",
-      "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2609.39749v1",
-      "sources": [
-        {
-          "url": "https://arxiv.org/abs/2609.39749v1",
-          "name": "arxiv"
-        }
-      ],
-      "tags": [
-        "cs.LG"
-      ],
-      "summary": "Routing and switch placement are fundamental combinatorial optimization problems in chip design, requiring the joint optimization of routing topology and physical placement under strict structural, geometric and logical constraints. Existing approaches typically rely on carefully engineered heuristics that incorporate strong problem-specific biases to navigate the enormous space of possible designs. In this work, we introduce a hierarchical reinforcement learning framework for joint routing and switch placement at the level of logical communication routes. Starting from a minimal routing graph, our method progressively constructs increasingly expressive solutions through three coupled operations: switch expansion, switch placement, and route refinement. These operations preserve routing validity by construction, restricting exploration to feasible configurations where every communicating initiator-target pair has one assigned loop-free route. We explore the induced solution space using Gumbel Monte Carlo Tree Search, showing that neural-guided search substantially improves solution quality over non-learning optimization methods. Furthermore, pretraining across floorplans provides a strong initialization for fine-tuning on unseen instances.",
-      "authors": [
-        "Dorian Gailhard",
-        "Ugo Lecerf",
-        "Enzo Tartaglione",
-        "Donatello Conte",
-        "Jhony H. Giraldo"
-      ],
-      "publishedAt": "2026-09-30T01:49:10+08:00",
-      "knowledgeType": "method",
-      "why": "归属「强化学习」方向；命中关键词 reinforcement learning、exploration",
-      "relevanceScore": 70.4,
-      "qualitySignals": {},
-      "peerReviewed": false,
-      "codeAvailable": false,
-      "planRelevanceScore": 70.4,
-      "planDepthScore": 58.49
-    },
-    {
-      "id": "7397e6533ba9328b",
-      "title": "HumanoidToolBench: Benchmarking Humanoid Tool Use from Selection to Mobile Execution",
-      "category": "agent",
-      "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2610.02089v1",
-      "sources": [
-        {
-          "url": "https://arxiv.org/abs/2610.02089v1",
-          "name": "arxiv"
-        }
-      ],
-      "tags": [
-        "cs.RO",
-        "cs.AI"
-      ],
-      "summary": "As robotic hardware and learning methods advance, humanoids need tools to perform tasks beyond their inherent physical limits. Successful tool use requires selecting a suitable tool and coordinating manipulation and, when needed, locomotion to complete the task. Existing benchmarks do not jointly evaluate these capabilities on a humanoid. We introduce HumanoidToolBench, an 18-task benchmark spanning three scenarios, three execution levels, and two tool-set modes, together with ToolBook, a dataset of 3.1k demonstrations collected in simulation and on a real Unitree G1. Evaluation of seven policies in simulation and three on the real robot reveals substantial gaps between selecting a suitable tool and completing the task. Focused GR00T N1.7 probes show reduced selection accuracy on unseen tools and continued task execution under unrelated instructions. Code and data are available at https://snu-pi.github.io/HumanoidToolBench/.",
-      "authors": [
-        "Kyochul Jang",
-        "Seohyeon Park",
-        "Ohchul Kwon",
-        "Sangjun Park",
-        "Junhyeok Choi",
-        "Seungyeop Yi",
-        "Chaeyun Kim",
-        "Sangkyu Lee",
-        "Idan Szpektor",
-        "Avi Caciularu",
-        "Jongmin Park",
-        "Youngjae Yu"
-      ],
-      "publishedAt": "2026-10-02T01:21:54+08:00",
-      "knowledgeType": "method",
-      "why": "归属「Agent 理论与实践」方向；命中关键词 tool use；疑似附带开源实现",
-      "relevanceScore": 72.4,
-      "qualitySignals": {},
       "peerReviewed": false,
       "codeAvailable": true,
-      "planRelevanceScore": 72.4,
-      "planDepthScore": 57.53
+      "planRelevanceScore": 72.9,
+      "planDepthScore": 61.78
     },
     {
-      "id": "7c2cfefa9fa6ab63",
-      "title": "VTR-Bench: A Systematic Benchmark for Evaluating Visual Text Rendering in Video Generation",
+      "id": "40a89bb34e62abfb",
+      "title": "Reverse quantum state diffusion from differential geometry",
       "category": "generative",
-      "channel": "hf_papers",
-      "url": "https://huggingface.co/papers/2610.01499",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.39861v1",
       "sources": [
         {
-          "url": "https://huggingface.co/papers/2610.01499",
+          "url": "https://arxiv.org/abs/2609.39861v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "quant-ph"
+      ],
+      "summary": "Quantum state diffusion unravels a Lindblad master equation into stochastic trajectories of pure states. The ensemble of trajectories is described by a probability density on the manifold of pure states, which contains much more information than the density matrix, its first moment. We derive the time reversal of this diffusion. Writing the reversal of a general diffusion on a manifold in Stratonovich form, and passing through the manifold of pure states, we obtain a backward stochastic differential equation for the state vector, valid for any Hilbert space dimension and any Lindbladian. The backward stochastic equation provides a physical, nonlinear unravelling of the inverse Lindbladian that holds only for the ensemble from which it was constructed. Following score-based generative models, we then use the backward equation to generate a new ensemble close to the original. For the depolarizing channel the unravelling is a Brownian motion on complex projective space, so the uniform distribution of pure states is its stationary law in any dimension. Starting the backward equation from that prior, we bound the error of the resulting distribution compared to the original one in different settings: exact and learned scores, continuous and discrete time.",
+      "authors": [
+        "Dinh-Long Vu",
+        "Patrick Rebentrost"
+      ],
+      "publishedAt": "2026-09-30T02:43:51+08:00",
+      "knowledgeType": "method",
+      "why": "归属「生成式模型」方向；命中关键词 diffusion；领域核心工作",
+      "relevanceScore": 66.0,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 66.0,
+      "planDepthScore": 59.69
+    },
+    {
+      "id": "eb7fa08cb81b897b",
+      "title": "When Users Change Their Minds: Measuring and Repairing Intent Drift in LLM Agents",
+      "category": "paper",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.32520",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.32520",
           "name": "hf_papers"
         },
         {
-          "url": "https://arxiv.org/abs/2610.01499",
+          "url": "https://arxiv.org/abs/2609.32520",
           "name": "canonical"
         }
       ],
       "tags": [],
-      "summary": "Recent video generation models can produce highly realistic videos from natural language instructions, with visual quality approaching cinematic standards. Existing evaluation benchmarks, however, predominantly assess visual quality, aesthetic appeal and physical plausibility, while paying limited attention to text, an essential medium for conveying information in everyday scenes. A generated video may appear visually compelling and feature lifelike subjects, yet still render the text within the scene incorrectly. To address this overlooked dimension, we introduce VTR-Bench, a systematic benchmark for evaluating the Visual Text Rendering capabilities of video generation models. VTR-Bench situates text within concrete application scenarios, such as advertisements and scientific videos, with 300 carefully constructed prompts spanning five scenario categories. We develop an automated evaluation pipeline with human alignments that separately assesses text fidelity through carrier-specific transcription and scene and motion requirements through a prompt-specific chain of query. Beyond evaluation, we introduce a Keyframe-Guided Agentic Framework in which a Director agent coordinates image and video generation with visual evaluation, guiding iterative refinement and candidate selection through visual feedback. Experiments on 11 state-of-the-art models reveal widespread difficulties in accurately rendering scene text, with the best-performing model recording an overall word error rate (WER) of 0.250. We further analyze text rendering failures to characterize the challenges faced by current video generation models. These findings highlight visual text rendering as a key challenge for video generation and demonstrate a practical path toward improvement. Code is available at https",
+      "summary": "LLM agents often operate over multi-turn interactions in which user intent changes before execution. We study intent drift: the failure mode in which superseded parts of the user's intent continue to influence the final answer or tool action. We introduce IntentFlux, an executable benchmark that converts verifiable tasks into dialogues with controlled intent changes while preserving their original graders. In a 627-case calibration, mean task score falls from 0.476 to 0.384 as dialogues contain more superseded and withdrawn information. Across eight models, the rate of fully correct solutions is significantly lower when the same final task must be recovered from an evolving dialogue rather than given directly in a single turn. We further introduce StateForge, which explicitly maintains the active requirements before generation. On General-Test, it improves mean task score from 0.367 to 0.467. Providing the ground-truth final state improves performance further but still does not recover single-turn performance, indicating that state-estimation errors explain only part of the gap. These results establish intent drift as a measurable multi-turn failure mode and explicit state maintenance as a partial mitigation.",
       "authors": [
-        "Yu Huang",
-        "Jungang Li",
-        "Zhiyuan Wang",
-        "Yonghua Hei",
-        "Song Dai",
-        "Jiayu Yang",
-        "Deyuan Liu",
-        "Xiang Zheng",
-        "Xiaoshuang Shi",
-        "Hao Cheng",
-        "Kaidi Xu"
+        "Yanjie Zhang",
+        "Bowen Cao",
+        "Zixin Chen",
+        "Yushi Sun"
       ],
-      "publishedAt": "2026-10-01T08:00:00+08:00",
+      "publishedAt": "2026-09-26T08:00:00+08:00",
       "knowledgeType": "method",
-      "why": "归属「生成式模型」方向；命中关键词 video generation；社区热度 1",
-      "relevanceScore": 70.6,
+      "why": "归属「论文与前沿」方向；命中关键词 benchmark；社区热度 4",
+      "relevanceScore": 61.5,
       "qualitySignals": {
-        "upvotes": 1
+        "upvotes": 4
       },
       "peerReviewed": false,
       "codeAvailable": false,
-      "planRelevanceScore": 70.6,
-      "planDepthScore": 57.34
+      "planRelevanceScore": 61.5,
+      "planDepthScore": 56.37
+    },
+    {
+      "id": "a1020975a27a34ad",
+      "title": "Reinforcement Learning-Guided Graph Transformations for SpTRSV Optimization",
+      "category": "rl",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.40159v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2609.40159v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.DC",
+        "cs.LG"
+      ],
+      "summary": "Sparse triangular solve (SpTRSV) is a fundamental kernel in numerous scientific and engineering applications. However, the data dependencies inherent in sparse triangular matrices significantly limit the available parallelism and make efficient workload distribution challenging. Recent graph transformation techniques address these limitations by modifying the dependency graph of the input matrix to improve parallel execution. Existing graph transformation strategies, however, rely on manually designed heuristics, making their development and adaptation to different optimization objectives challenging. This work proposes a reinforcement learning-guided graph transformation framework for SpTRSV, in which graph transformation is formulated as a sequential decision-making problem and an RL agent learns matrix-dependent transformation policies. Experimental results on real-world sparse matrices demonstrate level reductions of up to 94% and reductions of up to 80% in the coefficient of variation of level costs, while modifying only 1.50% of the rows in the highest case. On average, the RL- guided graph transformation achieves a 23% reduction in the number of levels and a 29% reduction in the coefficient of variation of level costs while rewriting only 0.82% of the matrix rows. Although the heuristic strategies generally achieve more aggressive level reduction(between 31% and 46%), the RL-based approach achieves the largest average reduction in the coefficient of variation of level costs, demonstrating its ability to balance competing graph transformation objectives. The results further show that the learned policies can be transferred to previously unseen matrices through curriculum learning and fine-tuning, while zero-shot experiments provide insights into the limitations of",
+      "authors": [
+        "Buse Yılmaz"
+      ],
+      "publishedAt": "2026-09-30T04:56:09+08:00",
+      "knowledgeType": "method",
+      "why": "归属「强化学习」方向；命中关键词 reinforcement learning",
+      "relevanceScore": 62.1,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 62.1,
+      "planDepthScore": 55.44
+    },
+    {
+      "id": "c44346574fe421aa",
+      "title": "Quantum Enhanced Deep Reinforcement Learning for Distribution Network Reconfiguration",
+      "category": "rl",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.40327v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2609.40327v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "quant-ph"
+      ],
+      "summary": "Modern smart grids generate increasingly rich operational data and deploy greater numbers of remotely controlled switching assets than ever before, creating new opportunities for data-driven distribution network reconfiguration (DNR). DNR optimizes grid topology to improve efficiency, reduce power losses, and maintain operational constraints, but finding optimal switch configurations remains a computationally demanding combinatorial problem. In this paper, we propose a deep reinforcement learning (DRL) framework for static DNR to systematically investigate how the Q-network architecture affects both solution quality and learning performance. We evaluate multiple architectures within a controlled DRL framework, varying only the Q-network to isolate the contribution of each architectural choice. Our results show that quantum-enhanced Q-networks can achieve higher rewards with fewer parameters than their classical counterpart, suggesting that such architectures are a promising direction for combinatorial power systems optimization.",
+      "authors": [
+        "Daniel Germain",
+        "Mason Blanchard",
+        "Audrey Versteegen",
+        "Nora Bauer",
+        "Jonathan Mei",
+        "Claudio Girotto",
+        "Paul Smith",
+        "Martin Roetteler"
+      ],
+      "publishedAt": "2026-09-30T05:55:53+08:00",
+      "knowledgeType": "method",
+      "why": "归属「强化学习」方向；命中关键词 reinforcement learning",
+      "relevanceScore": 62.1,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 62.1,
+      "planDepthScore": 55.44
     }
   ]
 }

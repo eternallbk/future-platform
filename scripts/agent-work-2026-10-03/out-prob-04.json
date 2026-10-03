@@ -1,0 +1,127 @@
+{
+ "batchId": "prob-04",
+ "entries": [
+  {
+   "id": "pb-ca33c1c95f651461",
+   "itemId": "ca33c1c95f651461",
+   "tldr": "汉诺塔：递归拆成「n-1 去中转柱 → 最大盘到目标 → n-1 归位」，恰好 2^n-1 步且最优。",
+   "restated": "输入：int n，表示起始时 left 柱上从底到顶为从大到小的 n 个圆盘，另有 mid、right 两柱。输出：按最优顺序返回全部移动描述的 string 数组，每条形如 \"move from left to mid\"，要求一次只动一个盘、大盘不得压在小盘上。样例：n=2 → 三步 left→mid、left→right、mid→right，与 2^n-1=3 一致。注意：题面里「数据范围」「要求：时间复杂度/空间复杂度」与第二个示例均被截断，未给出 n 的上界与 n=0 的约定。",
+   "approach": [
+    {
+     "step": "暴力",
+     "detail": "把 3^n 个状态看成隐式图，用 DFS/BFS 枚举所有合法的「单盘移动」序列，搜到第一个把全部盘搬到 right 的路径即停。它不够：分支因子约 3、只排除回撤与压小盘，BFS 要摊开近似 2^n 个状态节点，每步还要复制整根柱子做去重键，总代价 O(2^n·n) 且常数巨大；更糟的是 n 稍大（如 30）时状态表根本存不下，而答案本身只有 2^n-1 条。"
+    },
+    {
+     "step": "观察",
+     "detail": "最大盘 n 一生只能移动一次，且必须从 left 直接到 right（另两柱都没有能托住它的空位），所以它一动就意味着「上面 n-1 个盘已整体离开 left」且「right 已空」。由此任何合法方案都被切成三段：n-1 个盘 left→mid、最大盘 left→right、n-1 个盘 mid→right。"
+    },
+    {
+     "step": "最优",
+     "detail": "三段里第一、三段又各自是规模 n-1 的同型子问题，于是直接递归：transfer(disks, src, aux, dst) 先 transfer(disks-1, src, dst, aux)、追加一条 move src→dst、再 transfer(disks-1, aux, src, dst)。为什么这样够：递归给出的段长恰好等于重取 T(n)=2T(n-1)+1、T(1)=1 的解 2^n-1，而上面的结构分析说明任何方案都至少这么长，下界与构造重合，故必然最优；追加顺序与递归调用序一致，因此不需要排序或回溯，一遍生成即可。"
+    }
+   ],
+   "complexity": {
+    "time": "O(2^n)",
+    "space": "O(n) 辅助 + O(2^n) 输出",
+    "why": "共 2^n-1 次移动必须逐条输出，输出量本身是 2^n，无法低于它；栈深 n+1 只是常数级开销。"
+   },
+   "code": {
+    "language": "python",
+    "source": "import sys\n\n\ndef hanoi(n):\n    \"\"\"返回汉诺塔最优移动轨迹：n 个盘从 left 经 mid 全部移到 right。\n\n    返回 list[str]，元素形如 \"move from left to mid\"；n 为 0 时返回空列表。\n    \"\"\"\n    if n < 0:\n        raise ValueError(\"n 必须是非负整数\")\n    moves = []\n    if n == 0:                      # 边界：无盘可动，轨迹为空\n        return moves\n    if n > sys.getrecursionlimit() - 50:   # 递归深度 = n+1，先抬高上限\n        sys.setrecursionlimit(n + 100)\n\n    def transfer(disks, src, aux, dst):\n        # 不变式：把 src 顶上 disks 个盘整体搬到 dst，aux 作中转\n        if disks == 0:              # 递归基：只剩 0 个盘，无需移动\n            return\n        transfer(disks - 1, src, dst, aux)      # ① n-1 个盘搬去中转柱\n        moves.append(\"move from %s to %s\" % (src, dst))   # ② 最大盘直达目标\n        transfer(disks - 1, aux, src, dst)      # ③ n-1 个盘从中转柱归位\n\n    transfer(n, \"left\", \"mid\", \"right\")\n    return moves\n\n\nif __name__ == \"__main__\":\n    assert hanoi(0) == []\n    assert hanoi(1) == [\"move from left to right\"]\n    assert hanoi(2) == [\"move from left to mid\",\n                        \"move from left to right\",\n                        \"move from mid to right\"]\n    assert all(len(hanoi(k)) == 2 ** k - 1 for k in range(9))\n    print(hanoi(3))\n",
+    "walkthrough": [
+     {
+      "note": "入口 hanoi(n)：先挡掉 n<0 的非法输入，n==0 直接返回空列表；因为递归深度是 n+1，n 很大时按需抬高 sys.setrecursionlimit，避免 RecursionError。"
+     },
+     {
+      "note": "moves 用闭包捕获，递归函数只管「先生成前一段、再追加最大盘那一步、再生成后一段」，不返回子列表、也不做列表拼接，既省内存又天然保证顺序。"
+     },
+     {
+      "note": "transfer(disks, src, aux, dst) 的三行就是全部算法：第一行把 disks-1 个盘借 dst 当临时柱搬到 aux 上，第二行把此刻 src 顶上（即最大的那个）盘直接放到 dst，第三行把 disks-1 个盘从 aux 借 src 搬到 dst。三个柱名每层都在换角色，这就是「中转柱」的由来。"
+     },
+     {
+      "note": "disks==0 时立即 return，这是唯一递归基；它保证 n=0 与递归到底的两次调用都安全返回，不会再产生任何移动记录。"
+     },
+     {
+      "note": "字符串格式固定为 \"move from %s to %s\"，柱名只能是 left/mid/right，空格与大小写与样例逐字符一致，评测机是字符串严格比对。"
+     },
+     {
+      "note": "__main__ 里的断言就是自测：n=0/1/2 的完整轨迹、以及 k=0..8 时步数等于 2^k-1；把 n=3 打印出来可与手推的 7 步对照。"
+     }
+    ]
+   },
+   "edgeCases": [
+    "n = 0：题面未约定，实现返回空数组，不产生任何移动。",
+    "n = 1：只有一步 \"move from left to right\"。",
+    "n 较大（如 30）：步数 2^30-1 条，内存与输出量爆炸，需先与面试官确认上界。",
+    "输出量极端时递归深度等于 n+1，Python 默认递归上限 1000，n≥999 会先被 RecursionError 拦住。",
+    "同尺寸/同格式字符串比较：多一个空格、用 Left 大写都会判错。"
+   ],
+   "pitfalls": [
+    "把三段拼反：写成「先搬最大盘，再搬 n-1」会立刻违反「大盘不压小盘」。",
+    "只把「最大盘那一步」写进递归，忘了前后两次 n-1 子调用，结果少了 2^n-2 步。",
+    "子调用里柱名顺序写错（写成 transfer(disks-1, src, aux, dst)），会把盘搬回原柱，步数不变但状态非法。",
+    "用 result += 子函数返回值 反复拼接长列表，产生 O(4^n) 级别的拷贝开销。",
+    "忘记 n==0 的递归基，导致无限递归或返回 None，后续无法拼接。",
+    "以为可以「少走几步」：汉诺塔最优步数固定为 2^n-1，任何启发式都不可能更短。"
+   ],
+   "followUps": [
+    "不用递归怎么写？用显式栈保存 (disks, src, aux, dst) 三元组模拟调用帧，空间仍是 O(n)。",
+    "能否 O(1) 空间、流式产出？可以，用「按 disks 奇偶决定第一次搬向哪根柱」的迭代规律逐条打印，无需保存全部轨迹。",
+    "如果只要第 k 步怎么走？n 个盘的中间步是最大盘移动；按 k 与 2^(n-1) 的大小关系递归定位，O(n) 求出该步。",
+    "如果允许 4 根柱子（Frame–Stewart），最优步数怎么算？贪心不再最优，需按「先搬 k 个到备用柱」的最优 k 递推。",
+    "若要求把轨迹按移动的盘编号分组输出，如何在不额外遍历的前提下完成？"
+   ],
+   "variations": [
+    "只返回最少移动次数（2^n-1），不返回轨迹。",
+    "校验一段给定的移动序列是否合法且最优。",
+    "给定任意合法局面，输出把它还原到 right 的最短轨迹。",
+    "四柱汉诺塔（Reve's puzzle）的最少步数与轨迹。",
+    "把柱名映射成数字 0/1/2，输出 \"2-0\" 这类不同格式的移动描述。"
+   ],
+   "diagram": {
+    "kind": "flow",
+    "title": "汉诺塔递归三步分解",
+    "caption": "记住这三步：n-1 个盘先借道搬走、最大盘一步到位、n-1 个盘再搬回目标，顺序不可交换。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='70' y='92' width='8' height='96' fill='var(--line-1)'/><rect x='236' y='92' width='8' height='96' fill='var(--line-1)'/><rect x='402' y='92' width='8' height='96' fill='var(--line-1)'/><rect x='42' y='188' width='126' height='6' fill='var(--line-1)'/><rect x='208' y='188' width='126' height='6' fill='var(--line-1)'/><rect x='374' y='188' width='126' height='6' fill='var(--line-1)'/><rect x='76' y='168' width='36' height='20' rx='4' fill='var(--accent)'/><rect x='64' y='144' width='60' height='20' rx='4' fill='var(--accent)'/><path d='M148 156 L228 156' stroke='currentColor' stroke-width='2' marker-end='none' stroke-dasharray='5 4'/><text x='188' y='148' text-anchor='middle' font-size='14' fill='currentColor'>1</text><rect x='412' y='168' width='76' height='20' rx='4' fill='var(--fg-1)'/><path d='M330 178 L404 178' stroke='currentColor' stroke-width='2'/><text x='367' y='170' text-anchor='middle' font-size='14' fill='currentColor'>2</text><path d='M242 100 L404 100' stroke='currentColor' stroke-width='2' stroke-dasharray='5 4'/><text x='323' y='92' text-anchor='middle' font-size='14' fill='currentColor'>3</text><text x='105' y='222' text-anchor='middle' font-size='14' fill='currentColor'>src=A aux=C dst=B</text><text x='271' y='222' text-anchor='middle' font-size='14' fill='currentColor'>aux（中转）</text><text x='437' y='222' text-anchor='middle' font-size='14' fill='currentColor'>dst=C</text><text x='240' y='42' text-anchor='middle' font-size='15' fill='currentColor'>三步恒定：n-1 先走 → 最大盘一步 → n-1 再走</text><text x='240' y='64' text-anchor='middle' font-size='14' fill='var(--fg-1)'>T(n)=2T(n-1)+1 → 恰好 2^n-1 步，顺序由递归调用序决定</text></svg>",
+    "alt": "图：三根柱子，left 上的 n-1 个盘（虚线箭头 1）先搬到 mid 中转，最大盘（实线箭头 2）从 left 直接移到 right，最后 n-1 个盘（虚线箭头 3）从 mid 搬到 right；下方标注 T(n)=2T(n-1)+1 恰好 2^n-1 步。"
+   },
+   "selfTest": [
+    "n=3 的轨迹共几步？第 4 步一定是什么？",
+    "为什么最大盘只能移动一次，且必须直接 left→right？",
+    "把 transfer 的第一次调用写成 transfer(disks-1, src, aux, dst) 会得到什么错误结果？"
+   ],
+   "keyPoints": [
+    "任何最优解都被最大盘的一次移动切成「n-1 搬走 / 最大盘 / n-1 归位」三段。",
+    "T(n)=2T(n-1)+1 且 T(1)=1 → 恰好 2^n-1 步，构造达到下界即最优。",
+    "递归参数 (disks, src, aux, dst) 每层轮换角色，用闭包原地 append 保证顺序正确。",
+    "字符串格式与柱名取值必须与样例逐字符一致，评测是严格比对。",
+    "输出规模天生 2^n，复杂度不可能低于指数，面试时要主动说明这一点。"
+   ],
+   "sources": [
+    {
+     "title": "牛客题霸：汉诺塔问题（题目出处）",
+     "url": "https://nowcoder.com/practice/7d6cab7d435048c4b05251bf44e9f185"
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "题面明确：n 个盘初始全在 left、按从大到小自底向上叠放，目标是全部移到 right。",
+     "题面明确：一次只能移动一个圆盘，且大盘不能放在小盘之上。",
+     "题面明确：返回的每个元素格式为 \"move from [left|mid|right] to [left|mid|right]\"。",
+     "题面示例 n=2 的输出为三步：left→mid、left→right、mid→right，与 2^2-1=3 一致。",
+     "题面明确要求「最优移动轨迹」。",
+     "题面标注难度 hard、主题含字符串/数组与矩阵/Java（来自 plan 的 difficulty 与 topics 字段）。",
+     "代码实现已本地跑过：n=0..10 步数均为 2^n-1，且逐步模拟验证过每步合法、终局全部在 right。"
+    ],
+    "uncertain": [
+     "题面「数据范围：」后的内容被截断，n 的上界未知；复杂度结论（指数级输出）依赖 n 不大到内存放不下。",
+     "题面「要求：时间复杂度 ，空间复杂度 」两处数值被截断，无法核对官方期望的复杂度口径。",
+     "题面第二个示例（示例2）被「加载中...」截断，缺少 n=0 或多组输入的官方样例，本解按「n 为圆盘数」的自然读法处理 n=0。",
+     "截断处残留的 Java 代码模板表明官方签名是 ArrayList getSolution(int n)；本题解按要求用 Python 给出等价函数 hanoi(n)，未逐字复刻 Java 类型。",
+     "无法访问源页面核实是否还有额外约束（例如是否要求原地输出、是否有多组 n），链接仅作为出处引用。",
+     "「最优」的最优性是按经典汉诺塔证明的，题面本身未给出证明或复杂度上界证据。"
+    ]
+   }
+  }
+ ]
+}

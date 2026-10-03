@@ -1,0 +1,161 @@
+{
+  "batchId": "prob-cur-10",
+  "entries": [
+    {
+      "id": "clip-contrastive-loss",
+      "itemId": "clip-contrastive-loss",
+      "tldr": "L2 归一化后乘 logit_scale 得 [B,B] 打分，行/列各一次 cross_entropy 取平均。",
+      "restated": "输入 image_emb/text_emb 均为 [B,d]（第 i 张图配第 i 段文本为正样本）、标量 logit_scale = exp(log(1/τ))（τ=0.07 时约 14.29）、可选 labels；输出标量损失。要求：先 L2 归一化，算 [B,B] 相似度矩阵，行/列各一次交叉熵取平均；负样本只有 batch 内其它样本（B-1 个）。人工题面未给具体 B、d 与样例。",
+      "approach": [
+        {
+          "step": "易错写法 A：只算一个方向（图找文）",
+          "detail": "最省事的写法是 logits 算完只调一次 F.cross_entropy(logits, arange(B)) 就返回。问题在于它把图像当成唯一的查询方：文本编码器的锚点视角从未被约束，文本侧只在「被当作候选」时收到负梯度，两个模态拿到的训练信号不对称，文本塔容易退化（嵌入塌缩到少数方向）。对比学习要的是「互为检索目标」，所以两个方向都得算。反过来说，光算一个方向并不会报错、loss 也会正常下降，因此这是最隐蔽的错法之一。"
+        },
+        {
+          "step": "易错写法 B：不归一化，或把 logit_scale 写死成普通浮点数",
+          "detail": "点积的上界由模长决定，模型于是可以靠整体放大/缩小嵌入模长来压低 loss，而不是把相似度结构学对：这是一个「作弊解」，loss 掉了但检索能力没变好。L2 归一化把每个样本压到单位球面，点积才严格等于 cos ∈ [-1,1]，logit 的尺度只由温度掌控（本文实测：同一批嵌入不归一化时 loss 从 5.91 涨到 81.71）。另一半错误是温度：把 1/τ 写成 Python float 常量、或者只存 τ 忘了取 exp，都让温度无法随训练自适应；CLIP 用 log 参数化（w 可学，scale = exp(w)）保证 scale 恒正、梯度尺度稳定，训练中通常看到 scale 从 14.29 一路升到 100 附近，即「温度变低、分布变尖」。"
+        },
+        {
+          "step": "正确写法的关键设计一：一次 matmul 得到 [B,B] 打分矩阵，对角线是唯一正样本",
+          "detail": "归一化后 logits = logit_scale · (I @ Tᵀ)，形状 [B,d] @ [d,B] → [B,B]。第 i 行是「以图 i 为查询、B 段文本为候选」的打分，对角线 logits[i][i] 是唯一正样本，其余 B-1 个全是 batch 内负样本；转置视角下第 j 列同理。一次矩阵乘同时覆盖两个方向的所有分数，这是对比学习高效的根本原因：负样本是免费的——它们就是同 batch 的其它样本，不需要额外采样、不需要额外前向。"
+        },
+        {
+          "step": "正确写法的关键设计二：两个方向的 cross_entropy 取平均，标签是 arange 的自监督对角线",
+          "detail": "loss_i = cross_entropy(logits, arange(B)) 按行 softmax（图→文），loss_t = cross_entropy(logits.t(), arange(B)) 按列 softmax（文→图），返回 (loss_i + loss_t)/2。labels = arange(B) 是自监督的：正样本对的信息藏在 batch 的组织方式里（第 i 图配第 i 文），不需要任何人工标注。两个方向一般不相等（本文实测 B=4、d=8、seed=0 时 loss_i=5.9383、loss_t=4.3317，因为 logits 不是对称矩阵，只有 I==T 时才相等），所以必须都算——这也正呼应人工 keyPoints 的「两个方向各做一次 cross_entropy 再取平均」。"
+        },
+        {
+          "step": "正确写法的关键设计三：负样本数 = B-1，这是「CLIP 需要大 batch」的直接来源；温度决定 softmax 的尖锐程度",
+          "detail": "batch 内每个锚点只有 B-1 个负样本，B 越小负样本越少、任务越容易，对比信号越弱；B=1 时没有任何负样本，两个方向的 cross_entropy 都恒等于 0（本文代码里对这条退化有断言），训练等于空转。所以 CLIP 用 32768 这种超大 batch，多卡时还要 all_gather 把各卡嵌入拼起来、把负样本扩到全局 batch（否则负样本数被卡数除）。温度 logit_scale = 1/τ 决定 softmax 的尖锐程度：scale 小 → 分布接近均匀，每个负样本都分到梯度、信号「糊」；scale 大 → 只有最难的负样本主导梯度、对齐更紧但更易受噪声对影响。把它做成可学习参数，等于让模型自己在「探索更多负样本」和「聚焦难负样本」之间取舍。工程细节：① 用 nn.Parameter(torch.tensor(log(1.0/0.07))) 存 log 空间、用时 exp()，并 clamp(max=100) 防 fp16 溢出（这正是人工 pitfalls 里「写成普通浮点数 / 忘记取 exp」的正解）；② 归一化时 clamp_min(eps) 防全零行产生 nan；③ 完全没学到时 loss ≈ ln B，可以拿它当「随机基线」做 sanity check。"
+        }
+      ],
+      "complexity": {
+        "time": "O(B·d·B + B²) = O(B²d)：一次 [B,d]×[d,B] 矩阵乘，加两次 [B,B] 的 softmax；反向同阶，与训练集规模无关",
+        "space": "O(B²) 存 logits/softmax 中间量（B=32768、fp16 时约 2.1GB），外加激活 O(Bd)",
+        "why": "代价只来自 batch 内两两相似度：负样本免费来自同 batch，所以复杂度与数据量 N 无关，只随 B² 增长；显存瓶颈是那张 [B,B] 相似度矩阵，而不是嵌入本身，这也是大 batch 对比学习必须用梯度缓存/分布式 all_gather 的原因。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''手写 CLIP 对称对比损失（InfoNCE）—— 可直接运行。\n\n形状与约定（B = batch 内图文对数，d = 共享嵌入维度）：\n    image_emb : [B, d]   第 i 行是第 i 张图的嵌入\n    text_emb  : [B, d]   第 i 行是第 i 段文本的嵌入，且与第 i 张图配对（正样本）\n    logits    : [B, B]   logits[i][j] = logit_scale * cos(img_i, txt_j)\n    loss      : 标量；完全没学到（均匀猜测）时约等于 ln B，完美对齐时趋近 0\n依赖：torch（torch / torch.nn / torch.nn.functional），CPU float32 即可运行。\n'''\nimport math\n\nimport torch\nimport torch.nn.functional as F\n\n\ndef l2_normalize(x, dim=-1, eps=1e-6):\n    '''把 embedding 压到单位球面：点积从此等价于余弦相似度，值域 [-1, 1]。\n    eps 用 clamp_min 实现 —— 某一行若整体为 0（padding、或特征塌缩），\n    直接除会得到 nan 并顺着梯度污染整个 batch。'''\n    if x.dim() != 2:\n        raise ValueError('embedding 必须是 [B, d]，实际 %r' % (tuple(x.shape),))\n    if x.size(0) == 0:\n        raise ValueError('batch 为空：没有正样本对可算')\n    return x / x.norm(p=2, dim=dim, keepdim=True).clamp_min(eps)\n\n\ndef clip_loss(image_emb, text_emb, logit_scale, labels=None):\n    '''CLIP 对称 InfoNCE。两个入参需已 L2 归一化（调用 l2_normalize）。\n    logit_scale = exp(logit_scale_param) 即 1/tau；labels=None 时用对角线做自监督标签，\n    传 [B, B] 概率矩阵则退化成软标签版本（官方实现里的 soft target）。'''\n    if image_emb.shape != text_emb.shape:\n        raise ValueError('两个模态形状必须一致：%r vs %r'\n                         % (tuple(image_emb.shape), tuple(text_emb.shape)))\n    logits = logit_scale * (image_emb @ text_emb.t())      # [B,d] @ [d,B] -> [B,B]\n    if labels is None:\n        labels = torch.arange(logits.size(0), device=logits.device)\n    elif labels.dim() == 2:\n        if tuple(labels.shape) != tuple(logits.shape):\n            raise ValueError('软标签必须与 logits 同形 [B, B]')\n        labels = labels / labels.sum(dim=1, keepdim=True).clamp_min(1e-12)\n    loss_i = F.cross_entropy(logits, labels)               # 行 softmax：图 -> 文\n    loss_t = F.cross_entropy(logits.t(), labels)           # 列 softmax：文 -> 图\n    return (loss_i + loss_t) / 2\n\n\nclass ClipLoss(torch.nn.Module):\n    '''带可学习温度的完整写法：w = log(1/tau) 是 Parameter，用时取 exp 再 clamp。'''\n\n    def __init__(self, init_tau=0.07, max_logit_scale=100.0):\n        super().__init__()\n        if init_tau <= 0:\n            raise ValueError('温度必须为正，实际 %r' % (init_tau,))\n        self.logit_scale_param = torch.nn.Parameter(\n            torch.tensor(math.log(1.0 / init_tau), dtype=torch.float32))\n        self.max_logit_scale = float(max_logit_scale)\n\n    def forward(self, image_emb, text_emb, labels=None):\n        scale = self.logit_scale_param.exp().clamp(max=self.max_logit_scale)\n        return clip_loss(l2_normalize(image_emb), l2_normalize(text_emb), scale, labels)\n\n\ndef _self_test():\n    '''可验证性质：归一化、形状、方向对称、温度单调、B=1 退化、忘归一化的代价、梯度。'''\n    torch.manual_seed(0)\n    B, d = 4, 8\n    img = l2_normalize(torch.randn(B, d))\n    txt = l2_normalize(torch.randn(B, d))\n    assert torch.allclose(img.norm(dim=-1), torch.ones(B), atol=1e-5)\n\n    crit = ClipLoss(init_tau=0.07)\n    loss = crit(img, txt)\n    assert loss.dim() == 0 and torch.isfinite(loss)\n    assert 0.0 < loss.item() < 30.0\n\n    aligned = crit(img, img)                 # 完美配对：对角线 logit = 1/tau\n    assert aligned.item() < loss.item(), '对齐样本的损失必须更小'\n\n    eye = torch.eye(B)\n    same = clip_loss(img, txt, crit.logit_scale_param.exp(), eye)\n    assert torch.allclose(same, loss.detach(), atol=1e-5), 'eye 软标签应与 arange 等价'\n\n    sharp = clip_loss(img, img, torch.tensor(100.0))\n    blunt = clip_loss(img, img, torch.tensor(1.0))\n    assert sharp.item() <= blunt.item(), 'scale 越大 softmax 越尖，对齐损失应更小'\n\n    single = clip_loss(img[:1], txt[:1], torch.tensor(1.0 / 0.07))\n    assert abs(single.item()) < 1e-6         # 负样本数为 0：两向 CE 都只有 1 个候选\n\n    raw = torch.randn(B, d) * 5.0            # 忘归一化：模长直接放大 logit\n    big = clip_loss(raw, txt, torch.tensor(1.0 / 0.07))\n    small = clip_loss(l2_normalize(raw), txt, torch.tensor(1.0 / 0.07))\n    assert not torch.allclose(big, small, atol=1e-3)\n\n    loss.backward()\n    assert crit.logit_scale_param.grad is not None\n    assert torch.isfinite(crit.logit_scale_param.grad).all()\n    print('all self-tests passed; loss=%.4f aligned=%.4f lnB=%.4f'\n          % (loss.item(), aligned.item(), math.log(B)))\n\n\nif __name__ == '__main__':\n    _self_test()\n",
+        "walkthrough": [
+          {
+            "note": "形状约定先立住，因为本题一半的错误都出在这里：两个模态都是 [B,d]，且第 i 行与第 i 行配对。因此 logits = image_emb @ text_emb.t() 是 [B,d]@[d,B] → [B,B]，第 i 行是「图 i vs B 段文本」、第 j 列是「B 张图 vs 文本 j」。归一化之后每个元素就是 cos ∈ [-1,1]，乘上 logit_scale 之后落在 [-scale, scale]。"
+          },
+          {
+            "note": "l2_normalize 单独抽成函数而不是塞进 clip_loss 一行里，是为了让「归一化是算法的一部分」这件事在代码里显式可见（人工 pitfalls 第一条就是忘记归一化）。实现上两个边界：非 2 维输入直接报错（3 维张量对 dim=-1 归一化后再 matmul 会静默算错形状）；norm 之后 clamp_min(eps) 再相除，避免某一行整体为 0 时 0/0 = nan 顺着反传污染整个 batch。数值上归一化把点积从「受模长影响」变成「只受方向影响」，本文实测未归一化的同一批嵌入 loss 是 5.91 → 81.71。"
+          },
+          {
+            "note": "clip_loss 是人工 referenceSolution 的算法本身，只是补了三处边界：形状一致性检查、labels=None 时在 logits.device 上建 arange（CPU label 配 CUDA logits 会直接报 RuntimeError）、以及 labels 为 [B,B] 时的软标签分支（cross_entropy 原生支持概率目标，这里只做一次行归一化抵消浮点误差）。注意 logits = logit_scale * (image_emb @ text_emb.t()) 里我显式加了括号：算子上 * 与 @ 同优先级、左结合，虽然标量相乘顺序不影响结果，但把「先算相似度矩阵再统一缩放」写清楚能避免读代码的人误以为缩放作用在某个单模态上。"
+          },
+          {
+            "note": "两个方向的交叉熵是本题的核心：loss_i 按行 softmax（图→文，正类在列下标 i），loss_t = cross_entropy(logits.t(), labels) 按列 softmax（文→图，正类在行下标 i）。labels 用 arange(B) 而不是 one-hot 矩阵，是因为 cross_entropy 收「类索引」时会自己走 log_softmax + NLL，数值上是 logsumexp 稳定形式，等价但更省显存。两者取平均而不是相加，是为了让 loss 的量级与单向版本可比、与 batch 大小无关（每项都是 ln B 附近的量级）。"
+          },
+          {
+            "note": "ClipLoss 把人工 keyPoints 第 3 条落地：真正的可学习参数是 log 空间的 w（初始 log(1/0.07) = 2.6593），使用时才 exp 成 scale（14.2857）。这样参数无界但 scale 恒正，梯度尺度也稳定；clamp(max=100) 是 fp16 安全阀——cos 接近 1 时 scale=100 的 logit 已到 100，再大在 fp16 里 sum/exp 容易溢出。forward 里把归一化也包进来，于是外部只需要喂原始嵌入，调用者不会再漏掉归一化这一步。"
+          },
+          {
+            "note": "_self_test 把六条可验证性质钉成断言，答辩时可以当场跑：① 归一化后每行范数为 1；② 损失是有限标量且在合理范围；③ 完美对齐（img 对自己）的 loss 必须小于随机配对（0.0152 vs 5.1350，因为对角线 cos=1 恒为最大，这是数学保证而非巧合）；④ 用 torch.eye(B) 当软标签与 arange 硬标签数值一致（证明软标签分支没写错）；⑤ scale 从 1 增到 100，对齐样本的损失单调不增（softmax 变尖）；⑥ 反向后 logit_scale_param.grad 存在且有限。另外两条是边界：B=1 时 loss 恒为 0；未归一化的嵌入会给出显著不同的 loss。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "B = 1（没有负样本）：两个方向的 cross_entropy 都恒等于 0，损失是常数、梯度为零——单卡小 batch 训练等于空转，必须靠梯度累积 / 跨卡 all_gather 把候选集做大。代码里有专门断言。",
+        "B = 0（空 batch）：norm 得到 (0,d)、cross_entropy 会报错或返回 nan；l2_normalize 显式 raise ValueError，把错误定位在归一化这一步而不是 softmax。",
+        "某一行 embedding 全 0（padding、或特征塌缩）：0/0 = nan；clamp_min(eps) 使该行归一化后仍是 0 向量、loss 保持有限，但要意识到这是一个「对所有候选都等价」的无信息样本。",
+        "两个模态的 d 不同（例如图 [B,512]、文 [B,768]）：matmul 直接形状报错；clip_loss 在算之前先比对 shape，给出可读的报错信息。",
+        "labels 传 [B,B] 软标签（官方实现的 soft target，如 0.9 在对角 + 0.1/B 摊到其余）：cross_entropy 原生支持概率目标；代码对行做一次归一化，防止手写的软标签行和不为 1 时被静默放大。",
+        "batch 内出现完全重复的图文对：另一个副本会成为「假负样本」，把 loss 顶高并给出错误梯度；需要 in-batch 去重，或把重复样本的标签也置为它的副本位置（多正样本）。",
+        "fp16/bf16 下的数值范围：scale 很大且 cos 接近 1 时 logits 可能溢出 fp16 的 65504 上限；这就是 CLIP 在混合精度里对 logit_scale 做 clamp 的原因（代码里 clamp(max=100)）。",
+        "分布式训练：每张卡各自算 [B,B] 只有本地负样本，负样本数被卡数除；要 all_gather 拼接全局嵌入（并 mask 掉自己那份）才能得到等效的大 batch。",
+        "设备不一致：labels = torch.arange(B) 必须建在 logits.device 上；CPU 标签配 CUDA logits 会直接 RuntimeError，这是最容易在多卡代码里踩到的一处。",
+        "图像与文本两个编码器的输出维度要先各自过一个线性投影到共享 d，否则连 [B,d] 都对不上——这是 CLIP 结构里的必要前提，题面默认已经做完。"
+      ],
+      "pitfalls": [
+        "忘记归一化导致点积受模长影响（人工 pitfalls 原文）：模型可以靠整体放大/缩小嵌入模长压低 loss，loss 好看但检索没变好；本文实测同一批嵌入归一化前后 loss 是 5.91 vs 81.71。",
+        "只算一个方向（无对称）（人工 pitfalls 原文）：图→文 与 文→图 必须各算一次再平均；只算一个方向不会报错、loss 也会降，所以特别隐蔽。两个方向的 loss 一般并不相等（实测 5.9383 vs 4.3317）。",
+        "把 logit_scale 写成普通浮点数而不是可学习参数（或忘记取 exp）（人工 pitfalls 原文）：正解是 nn.Parameter 存 log(1/τ)、用时 exp() 并 clamp；直接拿 τ 当 scale 相当于把温度取了倒数，softmax 会尖到几乎没有梯度。",
+        "标签建错设备或建错方向：labels 忘了 .to(logits.device)；或者 loss_t 忘了对 logits 取转置（写成 cross_entropy(logits, labels) 两次），后者不报错但对称性丢失。",
+        "把 logit_scale 应用在单个模态上（如 scale * image_emb @ text_emb.t() 里错误地只缩放了一边并再次缩放整体）：标量缩放与矩阵乘可交换，结果不变，但若写成对 image_emb 归一化后再乘 scale 再归一化，就会把尺度吃掉。",
+        "用 logsumexp 手写 softmax 时忘记减 max（数值稳定技巧）：logits 可达 ±100，exp 直接溢出；用 F.cross_entropy（内部 log_softmax 走 logsumexp 稳定路径）就不会有这个问题。",
+        "把两个方向的 loss 相加而不是取平均：量级翻倍、等效学习率变了，跨实现对比实验时会误判；人工 keyPoints 明确要求取平均。",
+        "对归一化后的嵌入再做一次 L2 归一化（重复归一化）：数学上幂等，不会出错，但如果在归一化与 loss 之间又加了一层可学习缩放，就会把 logit_scale 的作用重复计入。",
+        "把温度参数交给优化器时用了过大的 weight decay：logit_scale 会被持续拉小、温度升高、分布变平，表现为 loss 降不下去；CLIP 实现里通常对 log 参数不加 weight decay。",
+        "分布式下忘记把负样本扩到全局 batch，或 all_gather 后忘了 mask 掉自身与本卡重复项，导致负样本里混入「自己」这个平凡正样本、loss 虚低。",
+        "B 太小（如 8/16）时直接调大 logit_scale：尖化 softmax 只能放大已有负样本的权重，无法凭空造出负样本，小 batch 下更有效的做法是梯度累积/MoCo 队列/all_gather。",
+        "对 3 维及以上的嵌入（如 [B,L,d] 的 token 级特征）直接套这个实现：dim=-1 归一化不会报错，但 matmul 会得到 [B,L,L] 之类的结果，语义完全错位；本实现用 x.dim() != 2 直接拦下。"
+      ],
+      "followUps": [
+        "为什么完全没学到时 loss 约等于 ln B？——B 个候选上均匀分布时交叉熵 = ln B，所以训练曲线可以拿 ln B 当随机基线；loss 明显低于 ln B 才说明模型抓到了配对结构。",
+        "logit_scale 为什么要存 log 空间、还要 clamp？——存 log 保证 scale = exp(w) 恒正且参数无界（梯度尺度稳定）；clamp 是混合精度安全阀，防止 exp 后的 logit 在 fp16 里溢出。",
+        "batch 想从 4k 加到 32k，单卡放不下怎么办？——梯度缓存（GradCache）先算各卡嵌入与梯度再重组、或 all_gather 嵌入把负样本扩到全局 batch；前者省显存，后者省算力但通信量大。",
+        "为什么 CLIP 里两个塔的输出要先线性投影到同一维度？——两个编码器输出维度不同，需要投影到共享嵌入空间并统一到单位球面，点积才有意义；投影矩阵本身也是学出来的。",
+        "要把负样本扩到整个数据集，会引入什么？——MoCo 用动量编码器 + 队列缓存历史嵌入，能显著扩大负样本数；代价是嵌入「过期」，动量系数要调，且队列里的嵌入与当前编码器不同源。",
+        "如果换成 SigLIP 的 pairwise sigmoid 损失会怎样？——不需要行内 softmax 归一化、每对独立二分类，小 batch 下更稳、也更容易做分布式；代价是失去 softmax 的全局竞争，需要额外的可学习 bias 项。",
+        "loss 与检索指标 Recall@K 是什么关系？——对比 loss 只是代理目标，K 路的正类排位才是终局指标；实践上 loss 下降而 R@1 不涨，通常意味着温度过尖、负样本质量差或数据里有假负样本。",
+        "有监督标签（同一 batch 里多张图属于同一类）怎么办？——把 arange 硬标签换成多正样本掩码（SupCon 的形式），对 mask 做归一化后取 log，否则多个正样本会被当成互斥类。",
+        "温度与 label smoothing 有什么关系？——提高 label smoothing 相当于削弱对单一正样本的过度自信，与降低 logit_scale 有相似的正则化效果，但作用位置在目标分布而不是 logits。"
+      ],
+      "variations": [
+        "手写 MoCo 版 InfoNCE：动量编码器 + 负样本队列，把负样本数从 B-1 扩到队列长度。",
+        "手写 SimCLR 的 NT-Xent 损失：同模态两路增强、两路互相做正样本，结构与 CLIP 双向 CE 完全同源。",
+        "手写 SigLIP 的 pairwise sigmoid 损失并与本题的 softmax 版本对比（可学习 bias、分布式实现差异）。",
+        "有监督对比损失 SupCon：把 arange 的对角线标签换成同类掩码，处理一个锚点多个正样本。",
+        "手写分布式 all_gather 版对比损失：拼接各卡嵌入、剔除重复项并用 mask 修正标签。",
+        "给 CLIP 加难负样本挖掘（VSE++ / CLIP 的 hard negative 采样）：在 [B,B] 里按相似度挑最难负样本加权。",
+        "把温度做成全局可学习 + 每层可学习（如 BLIP 的多温度策略），讨论温度参数化的稳定性。",
+        "扩展到视频-文本或 3D-文本对比：一个视频对多段描述，把硬标签换成多正样本软标签。",
+        "从零手推该损失的梯度：∂L/∂logits = (softmax(logits) - onehot)/B 形式，解释为什么正样本被拉近、负样本被推远。"
+      ],
+      "diagram": {
+        "kind": "matrix",
+        "title": "CLIP 对称 InfoNCE 的张量流",
+        "caption": "先归一化再乘出 [B,B] 打分矩阵：对角线（正）被拉高、其余 B²-B 个负样本被压低；行 softmax 与列 softmax 各出一个 CE 再平均，logit_scale 只决定这个 softmax 有多尖。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' font-size='13'><text x='14' y='19' font-size='15' fill='currentColor'>CLIP 对称 InfoNCE：形状与两个方向</text><line x1='14' y1='28' x2='466' y2='28' stroke='var(--line-1)' stroke-width='1'/><rect x='14' y='38' width='74' height='26' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='22' y='56' fill='currentColor'>I [B,d]</text><text x='94' y='56' fill='var(--fg-1)'>@</text><rect x='106' y='38' width='80' height='26' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='112' y='56' fill='currentColor'>T^T [d,B]</text><text x='192' y='56' fill='var(--fg-1)'>=</text><rect x='206' y='38' width='98' height='26' rx='4' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='214' y='56' fill='currentColor'>logits [B,B]</text><text x='312' y='50' fill='var(--fg-1)'>scale = exp(w) = 1/τ</text><text x='312' y='66' fill='var(--fg-1)'>点积即 cos ∈ [-1,1]</text><text x='56' y='96' fill='var(--fg-1)'>T 列（文本）</text><text x='14' y='122' fill='var(--fg-1)'>I 行</text><text x='14' y='138' fill='var(--fg-1)'>(图像)</text><rect x='56' y='102' width='24' height='24' fill='none' stroke='var(--accent)' stroke-width='2'/><rect x='80' y='102' width='24' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='104' y='102' width='24' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='56' y='126' width='24' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='80' y='126' width='24' height='24' fill='none' stroke='var(--accent)' stroke-width='2'/><rect x='104' y='126' width='24' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='56' y='150' width='24' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='80' y='150' width='24' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='104' y='150' width='24' height='24' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='64' y='119' fill='currentColor'>正</text><text x='88' y='119' fill='var(--fg-1)'>负</text><text x='112' y='119' fill='var(--fg-1)'>负</text><text x='64' y='143' fill='var(--fg-1)'>负</text><text x='88' y='143' fill='currentColor'>正</text><text x='112' y='143' fill='var(--fg-1)'>负</text><text x='64' y='167' fill='var(--fg-1)'>负</text><text x='88' y='167' fill='var(--fg-1)'>负</text><text x='112' y='167' fill='currentColor'>正</text><line x1='134' y1='114' x2='164' y2='114' stroke='currentColor' stroke-width='1'/><path d='M164 110 L172 114 L164 118 Z' fill='currentColor'/><text x='178' y='118' fill='var(--fg-1)'>行 softmax：图→文 CE</text><line x1='68' y1='178' x2='68' y2='188' stroke='currentColor' stroke-width='1'/><path d='M64 188 L68 196 L72 188 Z' fill='currentColor'/><text x='80' y='195' fill='var(--fg-1)'>列 softmax：文→图 CE</text><text x='178' y='142' fill='var(--fg-1)'>logit_scale 越大</text><text x='178' y='160' fill='var(--fg-1)'>softmax 越尖，难负样本主导</text><text x='178' y='178' fill='var(--fg-1)'>w = log(1/τ) 是参数</text><text x='14' y='216' fill='currentColor'>loss = (loss_i + loss_t) / 2，随机猜测时 ≈ ln B</text><text x='14' y='234' fill='var(--fg-1)'>锚点负样本只有 B-1 个，故 CLIP 依赖大 batch</text></svg>",
+        "alt": "矩阵图：图像嵌入 I [B,d] 与文本嵌入转置 T^T [d,B] 相乘得到 [B,B] 的相似度矩阵 logits，输入先做 L2 归一化使点积等于余弦相似度，整体乘上 logit_scale = exp(w) = 1/τ。3×3 示意矩阵的对角线单元标为「正」（每行唯一的正确文本），其余单元标为「负」（batch 内负样本）。矩阵每一行做 softmax 得到图到文的交叉熵，每一列做 softmax 得到文到图的交叉熵，两者相加除以 2 得到最终损失；scale 越大 softmax 越尖、难负样本越主导梯度。随机猜测时损失约等于 ln B，每个锚点只有 B-1 个负样本，所以 CLIP 需要大 batch。"
+      },
+      "selfTest": [
+        "B = 4、d = 8 时，img 与 txt 都是 [4,8]，写出 logits 的形状与其中第 2 行第 3 列元素的含义；loss_i 与 loss_t 分别沿哪个轴做 softmax？它们一定相等吗，为什么？",
+        "把 logit_scale 从 14.29 改成 1.0，训练会出什么问题？改成 1000 呢？（提示：想 softmax 的尖锐程度与极端情况下的梯度）",
+        "为什么 B = 1 时损失恒等于 0？如果只能用 batch=8 的单卡训练，有哪些办法把有效负样本数做大？",
+        "有人交上来的实现里 loss 一直稳定在 ln B 附近且几乎不降，最可能的三处代码错误是什么？（提示：归一化、方向、labels）"
+      ],
+      "keyPoints": [
+        "先对两个模态的 embedding 做 L2 归一化，logits = logit_scale * I @ T^T（人工原文）",
+        "两个方向各做一次 cross_entropy（图找文、文找图）再取平均（人工原文）",
+        "logit_scale 可学习（初始 1/0.07 的对数），它决定 softmax 的尖锐程度（人工原文）",
+        "batch 内负样本数 = B-1，batch 越大对比信号越强（这也是 CLIP 需要大 batch 的原因）（人工原文）",
+        "对角线标签用 torch.arange(B) 自监督生成，无需人工标注；完全没学到时 loss ≈ ln B，可当随机基线。",
+        "实现在 log 空间存参数（w = log(1/τ)，用时 exp 并 clamp），保证 scale 恒正、fp16 不溢出；单卡放不下就用 all_gather 或梯度缓存把负样本扩到全局 batch。"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（clip-contrastive-loss）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题面原文：实现 CLIP 的图像-文本对称对比损失，并说明温度系数（logit scale）的作用与负样本数量的影响。",
+          "人工 keyPoints 原文：先对两个模态的 embedding 做 L2 归一化，logits = logit_scale * I @ T^T；两个方向各做一次 cross_entropy 再取平均；logit_scale 可学习（初始 1/0.07 的对数）；batch 内负样本数 = B-1，batch 越大对比信号越强。",
+          "人工 pitfalls 原文：忘记归一化导致点积受模长影响；只算一个方向（无对称）；把 logit_scale 写成普通浮点数而不是可学习参数（或忘记取 exp）。",
+          "人工 referenceSolution 的算法：logits = logit_scale * image_emb @ text_emb.t()，labels 默认 torch.arange(B)（并按 logits 设备创建），loss = (cross_entropy(logits) + cross_entropy(logits.t())) / 2；本文的 clip_loss 与之一致，只额外补了形状检查、labels 设备显式指定与软标签分支（默认路径数值不变）。",
+          "数学事实：归一化后 image_emb @ text_emb.t() 的第 (i,j) 个元素就是 cos(img_i, txt_j) ∈ [-1,1]，乘上正的 logit_scale 后值域是 [-scale, scale]。",
+          "数学事实：在 B 个候选上做均匀猜测时交叉熵等于 ln B，因此 loss = ln B 是「完全没学到」的基线；B=1 时只有一个候选、交叉熵恒为 0。",
+          "数学事实：logits 一般不是对称矩阵（img_i·txt_j ≠ img_j·txt_i），所以 loss_i 与 loss_t 一般不相等；只有 image_emb 与 text_emb 相同（或两模态完全共享参数）时才相等。",
+          "本文实测（CPU float32、torch 2.12.1、seed=0、B=4、d=8）：init logit_scale = 1/0.07 = 14.2857，log 空间初值 2.6593；随机配对的 loss = 5.1350（loss_i = 5.9383，loss_t = 4.3317）；完美对齐 img vs img 的 loss = 0.0152；B=1 时 loss = 0；未归一化嵌入的 loss 为 81.7141，同一批嵌入归一化后为 5.9051。",
+          "可验证性质（本文 self_test 断言并通过）：归一化后每行范数为 1；torch.eye(B) 软标签与 arange 硬标签给出相同损失（atol 1e-5）；scale 从 1 增到 100 时对齐样本的 loss 单调不增；反向后 logit_scale_param.grad 存在且有限。",
+          "依赖与运行：代码只用到 torch / torch.nn / torch.nn.functional / math，CPU float32 即可完整跑通 self_test（已在 torch 2.12.1+cpu 上实跑通过，输出 'all self-tests passed'）。"
+        ],
+        "uncertain": [
+          "人工题面与人工 referenceSolution 均未给出具体输入形状、batch 大小与维度 d；本文按通用约定取 image_emb/text_emb: [B,d]，与人工注释「image_emb/text_emb: [B, d]」一致，具体 B、d 只在我自己的自测里取 4、8。",
+          "人工题面未给样例数值与期望输出，因此本文所有具体数字都来自我自己在 CPU 上的实测（已在 claims 里标注随机种子与配置），不代表评测用例。",
+          "「logit_scale 初始 1/0.07 的对数」这一句在人工 keyPoints 里指的是参数初值 log(1/0.07)=2.6593；CLIP 原论文另有一个 logit_scale 的上限超参（常写 100），人工题面未提及，本文按工程惯例加了 clamp(max=100) 并明确标注这是我的补充而非人工要求。",
+          "两个编码器如何投影到共享维度 d（[B,512]/[B,768] → [B,d]）属于 CLIP 结构的一部分，人工题面只说「图像-文本对比损失」，本文把它写成前提而不展开实现。",
+          "多卡 all_gather、梯度缓存、fp16 数值范围这些工程细节来自通用 CLIP 训练实践，人工题面与 referenceSolution 均未涉及，本文放在 followUps/edgeCases 里作为追问方向，不声称是题目要求。",
+          "本文的软标签分支（labels 为 [B,B] 概率矩阵）是官方 CLIP 实现里的 soft target 用法，人工 referenceSolution 只处理一维 labels；我保留了默认路径与人工实现逐位一致，但这一段代码属于我补的扩展，评测若只看一维 labels 不会覆盖它。",
+          "「loss = (loss_i + loss_t)/2 使损失量级与 batch 无关」是就量级而言的近似说法：两项各自都在 ln B 附近波动，严格上界/下界依赖相似度分布，本文没有给出闭式界。",
+          "本文自测里「对齐样本 loss 0.0152 < 随机配对 loss 5.1350」是给定随机种子下的实测值；数学上 img vs img 时对角线 cos≡1 ≥ 其它 cos，故该不等式对任意随机嵌入都成立，但具体数值随 d、B、种子变化。"
+        ]
+      }
+    }
+  ]
+}

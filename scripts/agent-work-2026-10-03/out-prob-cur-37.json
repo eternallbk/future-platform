@@ -1,0 +1,153 @@
+{
+  "batchId": "prob-cur-37",
+  "entries": [
+    {
+      "id": "meituan-reward-shock",
+      "tldr": "GRPO 初期 Reward 震荡多因组内奖励几乎全同：1/std 把噪声级差异放大成满量程优势。修法：过滤零方差组、去 std、截断优势。",
+      "restated": "题面是美团大模型算法二面的一串追问：奖励函数如何设置、为什么这样设；有没有想过为什么一开始 Reward 大幅震荡；GRPO 是否一定有效，还有什么解决方法。题干没有给任务域、模型规模、组大小 G、学习率、KL 系数与任何曲线数据，也没有样例输入输出，按笔试场景题处理，应答机制解释 + 可落地的修法。",
+      "approach": [
+        {
+          "step": "朴素做法：照搬 GRPO 的组内归一化优势",
+          "detail": "同一个 prompt 采样 G 个回答，各算一个标量奖励 r_i，组内均值当基线：A_i = (r_i - mean(r)) / (std(r) + eps)，整组共享同一个均值和标准差。它不需要 critic 和价值网络，基线顺手消掉了 prompt 难度差，除以 std 让不同题目的梯度尺度可比。代价有两个：一是每个 prompt 要采样 G 个回答（常用 8~64），rollout 成本是 PPO 的 G 倍；二是整个信号完全寄生于「组内有差异」这一前提，一旦组内奖励没有区分度，这套公式要么给不出梯度、要么给出假的梯度。"
+        },
+        {
+          "step": "第一层原因：冷启动时组内奖励同质化，大量 rollout 白采样",
+          "detail": "base model 在难题上的正确率常常只有几个百分点，格式奖励又是非 0 即满的二值信号，于是同一个 prompt 的 G 个回答经常拿到一模一样的奖励：分子 (r_i - mean) 恒为 0，优势全 0，这一组没有任何梯度。本机按 p=0.05、G=8 实测，整组奖励完全相同的比例是 0.663（p=0.01 时 0.922，p=0.2 时 0.168，p=0.5 时 0.008），与解析式 p^G+(1-p)^G 一致。训练看起来在跑，其实一多半算力花在零梯度组上；真正决定这次更新的，只剩下少数「恰好有差异」的组，而这些组的差异往往来自运气。"
+        },
+        {
+          "step": "第二层原因：1/std 是尺度不变的放大器，把噪声级差异放大到满量程",
+          "detail": "流行的解释是「std=0 导致优势除零爆炸」，实测并非如此：整组完全相同时分子也恒为 0，A 恒等于 0，不会爆炸。真正的问题是尺度不变性——只要有一个样本与组内均值差 δ，A 的幅度就约等于 sqrt(G-1)，与 δ 有多小完全无关。本机实测：奖励取 0/1、G=8 时 max|A|=2.645≈sqrt(7)，G=64 时 7.931≈sqrt(63)；把某一条奖励只抬高 1e-9（浮点噪声量级），同样得到 max|A|=2.646。也就是说奖励函数在冷启动阶段的微小抖动（RM 浮点噪声、格式分的临界翻转、长度罚的舍入）会被放缩成满量程优势，而这些抖动方向随机，更新方向因此被噪声主导——这才是「一开始 Reward 大幅震荡」的核心机制。"
+        },
+        {
+          "step": "第三层原因：单步更新大而随机，且 LR / KL 没做约束",
+          "detail": "优势幅度大只是放大器，还需要增益才能真正跑飞。冷启动时 Adam 的二阶矩尚未预热、通常也没做 LR warmup，早期有效步长最大；KL 惩罚系数 β 又常从 0 或很小起步，策略可以离参考模型很远，被放大的噪声优势就能把参数推出一大步。本机用单参数 Bernoulli 玩具量化（policy 只有答对概率 q，reward=1{答对}，单步估计量 g=mean_i A_i(a_i-q)）：q=0.05、G=8、2 万次采样下 grpo 的 std/|E| 为 1.43，噪声比信号还大；跨 30 个随机种子跑同一配置，naive GRPO 单步 q 的最大跳变 0.355、第 6 步跨 seed 标准差 0.321、均值 0.726。这就是震荡的定量来源。"
+        },
+        {
+          "step": "GRPO 是否一定有效：不，它有四个结构性失效面",
+          "detail": "① 组内无差异（全对或全错）时优势恒 0，这一路彻底白采样，冷启动与「已经学会」两个阶段都常见；② 只有可验证的任务（数学、代码、结构化抽取）才能用规则奖励，开放域任务要上奖励模型，而 RM 的噪声会被 1/std 放大、RM 本身又会被攻击；③ 熵塌缩：训练久了组内采样高度同质，pass@1 上升但 pass@k 下降，探索能力被磨掉；④ 长度与格式偏置：整条序列共享一个优势却按 token 求损失，长回答天然拿到更大的总梯度，会把模型推向变长或刷格式分。所以 GRPO 是「在能自动判分、组内有区分度、采样量够大」时才有效的一套配方，不是万能算法。"
+        },
+        {
+          "step": "修复：优势侧、优化侧、数据侧三管齐下，必要时换算法",
+          "detail": "优势侧：① 丢弃零方差组并监控其占比（动态采样，把算力还给有梯度的组）；② 去掉 1/std，只用 r-mean（Dr. GRPO 的做法），或改成 batch 级标准化、常数缩放；③ 对优势做对称截断（如 ±3）并配合全局梯度裁剪。优化侧：LR warmup + 更小的峰值 LR、KL 系数由大到小（先锚住再放松）、解耦上下裁剪阈值以防止熵塌缩。数据与奖励侧：按难度做课程与分组、给格式奖励加衰减、加长度罚、把奖励量化以压掉浮点抖动、保留 held-out 任务防奖励攻击。样本侧：增大 G，或把多个 prompt 的优势合批统计以降低估计方差。本机同一冷启动配置下，仅把 1/std 去掉就把单步最大跳变从 0.355 降到 0.185、第 6 步跨 seed 标准差从 0.321 降到 0.090；再加上过滤、截断、LR warmup 与梯度裁剪才真正压住。若仍不稳，换算法：RLOO / REINFORCE++（批级基线）、GSPO（序列级重要性比）、PPO（带 critic），或退回拒绝采样微调与 DPO。"
+        }
+      ],
+      "complexity": {
+        "time": "O(B·G) 次奖励计算与组内统计（B 个 prompt、每组 G 个回答）；真正的成本是 B·G 次 LLM 前向/反向，采样量是 PPO 的 G 倍",
+        "space": "O(B·G) 存奖励、优势与 logprob；免 critic 省掉一份 value 网络及其优化器状态，但每个 prompt 要多存 G 条轨迹",
+        "why": "组内 mean/std 各扫一遍是 O(G)、整批 O(B·G)，优势公式本身可忽略；瓶颈在采样 G 个回答的前向与 KV 缓存，以及为凑出「有差异」的组而浪费的零方差组。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''GRPO 初期 Reward 大幅震荡：可复现的数值实验（只用标准库）。\n\n三个机制：\n  1) 组内奖励全相同 -> 优势恒为 0，这一组 rollout 白采样（冷启动最常见）；\n  2) 只要有一个样本偏离组内均值 delta，居中再除以 std 后 |A| 就约等于\n     sqrt(G-1)，与 delta 多小无关 —— 1/std 把噪声级差异放大到满量程；\n  3) 更新方向因此由「偶然蒙对」的样本决定，单步更新大而随机 -> reward 震荡。\n跑法：python grpo_reward_shock.py\n'''\nimport math\nimport random\n\nEPS = 1e-4\n\n\ndef group_advantages(rewards, mode='grpo', eps=EPS, clip=None):\n    # 把一个 prompt 的 G 个奖励变成 G 个优势。\n    # mode='grpo'   : A = (r - mean) / (std + eps)，标准 GRPO 写法\n    # mode='drgrpo' : A = r - mean，去掉 1/std，避免把噪声放大成满量程\n    # clip 不为 None 时做对称截断，压住离群样本\n    if not rewards:\n        raise ValueError('rewards 不能为空')\n    n = len(rewards)\n    mean = sum(rewards) / n\n    std = math.sqrt(sum((r - mean) ** 2 for r in rewards) / n)\n    if mode == 'grpo':\n        adv = [(r - mean) / (std + eps) for r in rewards]\n    elif mode == 'drgrpo':\n        adv = [r - mean for r in rewards]\n    else:\n        raise ValueError('未知 mode: %s' % mode)\n    if clip is not None:\n        adv = [max(-clip, min(clip, a)) for a in adv]\n    return adv\n\n\ndef max_advantage_binary(G):\n    # 奖励只取 0/1、组大小 G 时 |A| 的最大值（枚举成功个数）。\n    # 理论值 sqrt(G-1)，eps 让实测值比它略小一点点。\n    best = 0.0\n    for g in range(G + 1):\n        adv = group_advantages([1.0] * g + [0.0] * (G - g))\n        best = max(best, max(abs(a) for a in adv))\n    return best\n\n\ndef zero_variance_rate(p, G, trials=20000, seed=0):\n    # 成功率 p、组大小 G 时，整组奖励完全相同的比例（这类组梯度为 0）。\n    rng = random.Random(seed)\n    hit = 0\n    for _ in range(trials):\n        s = sum(1 for _ in range(G) if rng.random() < p)\n        if s == 0 or s == G:\n            hit += 1\n    return hit / trials\n\n\ndef step_noise(q, G, mode='grpo', trials=20000, seed=1):\n    # 单步策略梯度估计量 g = mean_i A_i * (a_i - q) 的 E[g] 与 std[g]。\n    # 策略是单参数 Bernoulli：q 为答对概率，reward = 1{答对}；\n    # d/dtheta log pi(a) = a - q，所以 g 就是这一步更新的方向。\n    rng = random.Random(seed)\n    tot = tot2 = 0.0\n    for _ in range(trials):\n        a = [1 if rng.random() < q else 0 for _ in range(G)]\n        adv = group_advantages([float(x) for x in a], mode=mode)\n        g = sum(x * (y - q) for x, y in zip(adv, a)) / G\n        tot += g\n        tot2 += g * g\n    mean = tot / trials\n    return mean, math.sqrt(max(tot2 / trials - mean * mean, 0.0))\n\n\ndef cold_start_curve(seed, q0=0.05, G=8, lr=3.0, steps=12, mode='grpo', clip=None):\n    # 冷启动走一遍：返回每步的 q（约等于记录到的 reward）与零方差步占比。\n    rng = random.Random(seed)\n    theta = math.log(q0 / (1 - q0))\n    curve, wasted = [q0], 0\n    for _ in range(steps):\n        q = 1 / (1 + math.exp(-theta))\n        a = [1 if rng.random() < q else 0 for _ in range(G)]\n        adv = group_advantages([float(x) for x in a], mode=mode, clip=clip)\n        if max(adv) == 0.0 and min(adv) == 0.0:      # 零方差组：梯度为 0\n            wasted += 1\n            curve.append(q)\n            continue\n        g = sum(x * (y - q) for x, y in zip(adv, a)) / G\n        theta += lr * g\n        curve.append(1 / (1 + math.exp(-theta)))\n    return curve, wasted / steps\n\n\ndef shock_level(seeds=30, **kw):\n    # 跨 seed 复现同一配置：返回单步最大跳变与第 6 步的跨 seed 标准差。\n    curves = [cold_start_curve(s, **kw)[0] for s in range(seeds)]\n    jump = max(max(abs(c[t + 1] - c[t]) for t in range(len(c) - 1)) for c in curves)\n    q6 = [c[6] for c in curves]\n    mean = sum(q6) / len(q6)\n    sd = math.sqrt(sum((x - mean) ** 2 for x in q6) / len(q6))\n    return jump, sd, mean\n\n\ndef main():\n    print('G    max|A|(grpo)  sqrt(G-1)')\n    for G in (4, 8, 16, 64):\n        m = max_advantage_binary(G)\n        print('%-4d %-13.3f %.3f' % (G, m, math.sqrt(G - 1)))\n        assert abs(m - math.sqrt(G - 1)) < 0.02, '0/1 奖励下 max|A| 应约等于 sqrt(G-1)'\n\n    flat = group_advantages([0.7] * 8)\n    assert all(a == 0.0 for a in flat), '全相同的组优势必须为 0'\n    tiny = group_advantages([1.0] + [1e-9] * 7)       # 组内差异只有 1e-9\n    assert abs(max(tiny) - math.sqrt(7)) < 1e-3, '噪声级差异也被放大到满量程'\n    clipped = group_advantages([1.0] + [0.0] * 63, clip=3.0)\n    assert max(abs(a) for a in clipped) <= 3.0, '截断必须生效'\n\n    for p in (0.01, 0.05, 0.2, 0.5):\n        print('p=%.2f G=8: 零方差组占比=%.3f' % (p, zero_variance_rate(p, 8)))\n\n    for mode in ('grpo', 'drgrpo'):\n        mean, sd = step_noise(0.05, 8, mode=mode)\n        print('q=0.05 G=8 %-7s E[g]=%+.5f std[g]=%.5f  std/|E|=%.2f'\n              % (mode, mean, sd, sd / abs(mean)))\n\n    print('冷启动 q0=0.05 G=8 lr=3（30 个 seed）:')\n    for tag, kw in (('naive grpo', {}), ('drgrpo', {'mode': 'drgrpo'})):\n        jump, sd, mean = shock_level(**kw)\n        print('  %-11s 单步最大跳变=%.3f 第6步跨seed std=%.3f 均值=%.3f' % (tag, jump, sd, mean))\n\n    curve, wasted = cold_start_curve(1)\n    print('seed=1 前 8 步 q:', ' '.join('%.3f' % v for v in curve[:8]), '零方差步占比=%.2f' % wasted)\n\n\nif __name__ == '__main__':\n    main()\n",
+        "walkthrough": [
+          {
+            "note": "group_advantages 是整道题的主角：输入一组奖励，输出一组优势。先算组内均值和总体标准差，grpo 分支做 (r-mean)/(std+eps)，drgrpo 分支只做 r-mean，最后可选对称截断。空列表直接抛错，避免后面 0 除或静默返回空优势。"
+          },
+          {
+            "note": "max_advantage_binary(G) 枚举「G 个样本里有 g 个成功」的全部情况，取 |A| 的最大值，和理论值 sqrt(G-1) 对拍。这一个函数就把「组越大、离群样本被放大得越狠」量化出来了：G=8 是 2.645，G=64 是 7.931。"
+          },
+          {
+            "note": "zero_variance_rate 用蒙特卡洛估计「整组奖励完全相同」的比例，也就是白采样的组占比。它对应 p^G+(1-p)^G 这个解析式，本机实测值与之吻合，说明冷启动（p 很小）时大部分组根本给不出梯度。"
+          },
+          {
+            "note": "step_noise 把策略简化成单参数 Bernoulli：q 是答对概率，reward=1{答对}，对 θ=logit(q) 的 log 概率梯度是 a-q，所以 g=mean_i A_i(a_i-q) 就是一步更新的真实方向。返回 E[g] 与 std[g]，用 std/|E| 衡量「噪声比信号大多少」。"
+          },
+          {
+            "note": "cold_start_curve 从 q0=0.05 出发做 12 步，每步采样 G 个回答、算优势、更新 θ，并显式跳过零方差组（梯度为 0 的步不更新参数但照常计入 wasted 计数），返回 q 轨迹与零方差步占比。它复现了「同样配置、不同随机种子早期轨迹完全不同」的震荡。"
+          },
+          {
+            "note": "shock_level 跨 30 个种子重复同一配置，给出两个可直接写进实验报告的指标：单步最大跳变、第 6 步的跨 seed 标准差。main 用它们对比 naive GRPO 与去掉 1/std 的版本。"
+          },
+          {
+            "note": "main 里除了打印，还留了四条断言把关键结论钉死：0/1 奖励下 max|A| 约等于 sqrt(G-1)；全相同的组优势必须为 0；1e-9 的差异也会被放大到约 sqrt(7)；截断真的生效。断言失败即说明实现写错了。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "全对或全错的组：std=0、优势恒 0，必须显式检测并跳过；本机 p=0.05、G=8 实测 66.3% 的组属于此类，p=0.01、G=8 时高达 92.2%。",
+        "G=1：组内没有基线，优势恒为 0，这一路完全白采样；GRPO 必须 G≥2，实践常用 8~64，G 越大单个离群样本被放大的倍数越高（约 sqrt(G-1)）。",
+        "奖励是常数（规则奖励还没触发、或 RM 已经饱和）：与全对全错一样是零方差，不要指望优势截断来救，只能换题目或换奖励。",
+        "奖励量纲不一致：正确性 0/1、格式 0/0.5、长度罚可达 -0.3，直接相加会让方差最大的那一项主导组内 std，等于隐式改了权重。",
+        "eps 取值：eps=1e-4 时幅度比理论 sqrt(G-1) 略小（本机 G=64 差 0.006）；eps 过大（如 1e-2）会把所有优势整体压小，方向不变但有效学习率被悄悄调低。",
+        "优势截断对零方差组无效（A 已经是 0），它只压离群样本；截断阈值太小（如 ±1）会削掉真正的强信号，太大（不截断）则挡不住 G=64 时的 7.93。",
+        "奖励里混入 RM 连续分：RM 的浮点抖动会被 1/std 放大成满量程优势（本机 1e-9 的差异已经足够），要么把奖励离散化/量化，要么干脆别除 std。",
+        "长度偏置：序列级共享同一个优势、损失按 token 求和时，长回答拿到的总梯度更大，会持续诱导变长；要改成 token 级归一化并加超长惩罚。",
+        "KL 项写在奖励里还是写在损失里，会让记录的 reward 曲线口径完全不同，两段曲线不能直接对比。",
+        "batch 内难度差异大时，记录的 batch 平均 reward 本身就是高方差估计：本机让策略固定不动、只重采样，B=8、G=8 时每步仍有 8.9% 的起伏（B=64、G=16 降到 2.5%），别把这部分噪声当成学习动态。"
+      ],
+      "pitfalls": [
+        "把震荡简单归因于「std=0 导致优势除零爆炸」：整组完全相同是 A≡0（白采样）而不是爆炸，真正被放大的是 σ 极小但非零的组，机理说反了面试官会当场追问。",
+        "除以 std 时不做任何保护（没 eps、没截断、没过滤），等于亲手把奖励函数的浮点噪声放大成满量程优势。",
+        "只做优势截断，却不降 LR、不加 warmup：截断只压幅度，冷启动阶段的有效步长本来就是最大的。",
+        "被「GRPO 免 critic」误导，以为没有需要调的基线；组内统计量本身就是超参（要不要除 std、G 取多大、要不要过滤零方差组）。",
+        "把零方差组当正常样本喂进 loss：优势 0、梯度 0，白跑还拉低了有效 batch 大小，让梯度噪声进一步变大。",
+        "记录 reward 时不区分「采样估计」与「真实期望」，也不报零方差组占比、clipfrac、KL、熵、回答长度，震荡时无法定位到底是奖励、优势还是优化器的问题。",
+        "奖励函数里格式分权重过高又不衰减：先被格式分推着猛涨，格式饱和后突然失速，曲线呈现「先冲高再塌陷」的假震荡。",
+        "采样温度过低或用贪心做 rollout：组内几乎没有差异，直接把 GRPO 的信号抹掉，此时除 std 只剩噪声。",
+        "KL 系数固定不变：前期太松导致跑飞、后期太紧导致不学；应当由大到小调度，先把策略锚在参考模型附近。",
+        "只看平均 reward 就宣布有效：熵塌缩后 pass@1 上涨但 pass@k 下降，指标必须成组看（pass@1、pass@k、熵、长度一起报）。"
+      ],
+      "followUps": [
+        "GRPO 与 PPO 的差别到底在哪？去掉 critic 为什么还能 work，什么情况下必须有 critic？",
+        "组内基线（GRPO）与批级基线（RLOO / REINFORCE++）的偏差和方差各差多少？分别适合什么采样预算？",
+        "奖励函数怎么设计：可验证奖励、格式奖励、长度罚的权重如何标定？怎么用 held-out 任务发现权重跑偏？",
+        "零方差组占比高到什么程度会明显伤训练？动态采样与难度课程能把它压到多少，代价是什么？",
+        "到底要不要除以 std？给出把 1/std 换成 batch 级标准化或常数缩放的实验设计与对照指标。",
+        "除了截断优势，怎么抑制重要性比 ρ = π_new/π_old 的尾部（序列级比值 GSPO、截断重要性采样）？",
+        "诊断震荡时，把 reward、KL、entropy、clipfrac、回答长度、优势幅度画在同一张图上，你会先看哪条曲线判断根因？",
+        "如果任务没有可验证奖励、只能上奖励模型，如何防止 RM 噪声被 1/std 放大以及奖励被攻击？"
+      ],
+      "variations": [
+        "PPO + GAE：用 value network 做 token 级基线，信用分配更细但要多训一个 critic。",
+        "RLOO：用留一法基线 r_i - mean(其余样本)，不需要除 std，天然避免尺度放大。",
+        "Dr. GRPO：去掉 1/std 与长度归一化偏差，只保留 r - mean 的中心化基线。",
+        "DAPO：动态采样过滤零方差组 + clip-higher 解耦裁剪 + token 级损失 + 超长奖励塑形。",
+        "GSPO：把 token 级重要性比换成序列级比，显著改善长序列与 MoE 的训练稳定性。",
+        "离线替代路线：拒绝采样微调、迭代 SFT / best-of-n 蒸馏、DPO 系列偏好优化，都不需要在线采样组。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "GRPO 初期 Reward 震荡链路",
+        "caption": "记住这条链：组内奖励同质化是第一因——全对/全错的组优势恒 0 只是白采样，σ 极小但非零的组才会被 1/std 放大到约 sqrt(G-1)；放大的噪声优势遇上未预热的优化器，就表现为 Reward 忽高忽低。修法要同时动优势侧、优化侧和数据侧。",
+        "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 240' role='img' aria-label='GRPO 初期 Reward 震荡的成因与修复链路'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15'/><text x='14' y='17' font-size='13' fill='currentColor'>GRPO 初期震荡：成因与修复</text><rect x='8' y='26' width='136' height='26' fill='none' stroke='var(--line-1)'/><text x='16' y='43' font-size='13' fill='currentColor'>G 个回答的奖励 r</text><line x1='144' y1='39' x2='166' y2='39' stroke='var(--line-1)'/><polygon points='172,39 164,35 164,43' fill='var(--line-1)'/><rect x='172' y='26' width='136' height='26' fill='none' stroke='var(--line-1)'/><text x='180' y='43' font-size='13' fill='currentColor'>A=(r-mean)/std</text><line x1='308' y1='39' x2='330' y2='39' stroke='var(--line-1)'/><polygon points='336,39 328,35 328,43' fill='var(--line-1)'/><rect x='336' y='26' width='136' height='26' fill='none' stroke='var(--accent)'/><text x='344' y='43' font-size='13' fill='currentColor'>σ 小也放大到满量程</text><path d='M404 52 V66 H119 V72' fill='none' stroke='var(--line-1)'/><polygon points='119,78 115,70 123,70' fill='var(--line-1)'/><path d='M404 66 H361 V72' fill='none' stroke='var(--line-1)'/><polygon points='361,78 357,70 365,70' fill='var(--line-1)'/><rect x='8' y='78' width='222' height='26' fill='none' stroke='var(--line-1)'/><text x='16' y='95' font-size='13' fill='currentColor'>全对或全错：优势恒 0，白采样</text><rect x='250' y='78' width='222' height='26' fill='none' stroke='var(--accent)'/><text x='258' y='95' font-size='13' fill='currentColor'>离群样本：|A| 可达 √(G-1)</text><line x1='119' y1='104' x2='119' y2='120' stroke='var(--line-1)'/><polygon points='119,126 115,118 123,118' fill='var(--line-1)'/><line x1='361' y1='104' x2='361' y2='120' stroke='var(--line-1)'/><polygon points='361,126 357,118 365,118' fill='var(--line-1)'/><rect x='8' y='126' width='464' height='26' fill='none' stroke='var(--line-1)'/><text x='16' y='143' font-size='13' fill='currentColor'>更新方向由偶然蒙对的样本决定 → 单步更新大而随机，KL 飙升</text><line x1='119' y1='152' x2='119' y2='168' stroke='var(--line-1)'/><polygon points='119,174 115,166 123,166' fill='var(--line-1)'/><line x1='361' y1='152' x2='361' y2='168' stroke='var(--line-1)'/><polygon points='361,174 357,166 365,166' fill='var(--line-1)'/><rect x='8' y='174' width='222' height='26' fill='none' stroke='var(--line-1)'/><text x='16' y='191' font-size='13' fill='currentColor'>表现：Reward 忽高忽低</text><rect x='250' y='174' width='222' height='26' fill='none' stroke='var(--accent)'/><text x='258' y='191' font-size='13' fill='currentColor'>修复：过滤零方差组 + 去 std</text><text x='12' y='226' font-size='13' fill='currentColor'>关键：σ≈0 是整组白采样，不是优势爆炸；σ 极小但非零才会被放大</text></svg>",
+        "alt": "流程图：G 个回答的奖励先做组内居中并除以 std，得到优势；σ 极小也会被放大到满量程，分叉出两种情形——全对或全错的组优势恒 0 属于白采样，离群样本则让 |A| 达到约 sqrt(G-1)；两者汇成「更新方向由偶然蒙对的样本决定、单步更新大而随机、KL 飙升」，最终表现为 Reward 忽高忽低，修复手段是过滤零方差组、去掉 1/std 并截断优势。"
+      },
+      "selfTest": [
+        "「std=0 导致优势除零爆炸」这个说法对吗？（答：不对，机理说反了。整组奖励完全相同时分子也恒为 0，A≡0，这一组只是白采样——本机实测 p=0.05、G=8 有 66.3% 的组如此。真正的问题是 σ 极小但非零：居中除以 std 是尺度不变的，δ≈1e-9 的差异也会被放大到 |A|≈sqrt(G-1)≈2.65。）",
+        "奖励只取 0/1、组大小 G 时 |A| 的最大值是多少，随 G 怎么变？（答：约等于 sqrt(G-1)：G=4/8/16/64 时本机实测 1.732/2.645/3.871/7.931，对应 sqrt(G-1)=1.732/2.646/3.873/7.937；G 越大单个离群样本越吓人，所以大 G 更需要优势截断。）",
+        "为什么奖励函数里一点点浮点噪声就能让训练跑偏？（答：因为除以 std 之后优势只看样本在组内的相对次序，与差异的绝对大小无关；本机把 [1.0, 1e-9×7] 丢进优势函数同样得到 max|A|=2.646，等于把噪声当信号用。）",
+        "同一个实验里把 1/std 去掉，震荡能小多少？（答：本机 q0=0.05、G=8、lr=3、30 个 seed：单步最大跳变 0.355→0.185，第 6 步跨 seed 标准差 0.321→0.090，均值 0.726→0.156；方向不变，幅度小了约 sqrt(G-1)≈2.6 倍。）",
+        "除了改优势，还要做哪三件事才能压住冷启动震荡？（答：① 丢弃零方差组并监控其占比，把算力还给有梯度的组；② LR warmup + 更小峰值 LR，KL 系数由大到小；③ 加大 G 或跨 prompt 合批统计以降低估计方差，同时给格式奖励加衰减、加长度罚。）"
+      ],
+      "keyPoints": [
+        "奖励设计：可验证的结果奖励打底，配少量格式奖励与长度/超长惩罚，权重要标定并逐项监控占比与方差",
+        "GRPO 用组内 mean 当基线、除以 std 做尺度归一；1/std 是尺度不变的放大器，会把奖励噪声放大成满量程优势",
+        "冷启动震荡第一因是组内奖励同质化：σ=0 的组优势恒 0 只会白采样，σ 极小但非零的组被放大到 |A|≈sqrt(G-1)",
+        "修法优先级：过滤零方差组 → 去 1/std 或改批级标准化 → 优势截断 + 梯度裁剪 → LR warmup 与 KL 调度 → 加大 G",
+        "GRPO 不是必然有效：无可验证奖励、组内无差异、熵塌缩或被奖励攻击时都会失效，要换算法或换奖励"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "输入文件为本条目的唯一依据：id=meituan-reward-shock、origin=curated、kind=exam、marker=笔试场景、difficulty=hard、topics=[大模型与RL]、sourceUrl=null；因此 sources 必须是空数组（本条目 sources=[]），全篇未出现任何链接。",
+          "题面原文只有一句三问：奖励函数如何设置与为什么、为什么一开始 Reward 大幅震荡、GRPO 是否一定有效以及还有什么解决方法；没有给任务域、模型规模、组大小、学习率、KL 系数与任何曲线数据，本条目因此只解释机制并给可落地修法，未编造题面细节。",
+          "code.source 只用标准库（math、random），已在本机 python 3.12.9 上实际运行通过并打印全部结果；其中四条断言（0/1 奖励下 max|A| 约等于 sqrt(G-1)、全相同组优势为 0、1e-9 差异被放大到约 sqrt(7)、截断生效）全部通过。",
+          "本机实测：奖励取 0/1 时，G=4/8/16/64 的 max|A| 为 1.732/2.645/3.871/7.931，与 sqrt(G-1)=1.732/2.646/3.873/7.937 吻合（eps=1e-4 使实测值略小，G=64 时差 0.006）。",
+          "本机实测（每组 2 万次采样，G=8）：零方差组占比在 p=0.01/0.05/0.20/0.50 时为 0.922/0.663/0.168/0.008，与解析式 p^G+(1-p)^G 一致。",
+          "本机实测（2 万次采样，q=0.05、G=8）：grpo 的单步梯度估计量 E[g]=+0.11614、std[g]=0.16620、std/|E|=1.43；drgrpo 为 E[g]=+0.04114、std[g]=0.06109、std/|E|=1.49。其中 drgrpo 的期望与解析式 q(1-q)(1-1/G)=0.0475×0.875=0.0416 吻合，说明组内均值基线会带来 (1-1/G) 的收缩。",
+          "本机实测（30 个 seed、q0=0.05、G=8、lr=3、12 步）：naive grpo 的单步最大跳变 0.355、第 6 步跨 seed 标准差 0.321、均值 0.726；去掉 1/std 后为 0.185 / 0.090 / 0.156；seed=1 的前 8 步 q 为 0.050 0.050 0.162 0.414 0.751 0.891 0.968 0.968，同一配置下不同 seed 早期轨迹差别极大，即「大幅震荡」。",
+          "本机实测：把奖励 [1.0, 1e-9×7] 输入 grpo 优势函数得到 max|A|=2.646≈sqrt(7)，证明居中除以 std 是尺度不变的，浮点噪声级差异同样被放大到满量程。",
+          "本机实测（策略固定不动、只重新采样，200 步）：难度各半（0.8 与 0.05）的 batch，B=8、G=8 时每步记录到的平均 reward 标准差 0.0378，相对真实均值 0.424 有 8.9% 的步间起伏；B=64、G=16 时降到 2.5%，说明曲线抖动里有一部分纯粹是采样估计噪声。"
+        ],
+        "uncertain": [
+          "题面只有一句追问，没有任何超参与数据，因此文中所有具体数值都来自本机自建玩具实验（组内优势函数 + 单参数 Bernoulli bandit），不代表真实 LLM 训练曲线；真实场景的震荡还叠加奖励模型噪声、格式奖励塌缩、token 级重要性比漂移、Adam 预热等因素，本条目只把可复现的主因量化。",
+          "「一开始」具体指多少步、幅度多大，取决于实现细节（G、学习率、KL 系数、是否 shuffle、KL 用 k1 还是 k3 估计），题面未给，无法断言具体步数或量级。",
+          "玩具实验是 1 维 bandit：优势侧的修正（去 std、过滤零方差组、截断）能显著降低单步更新的方差，但「连续蒙对」造成的早期跳跃仍要靠降低/预热学习率才能压住；真实高维策略上这两类因素的相对贡献可能与玩具不同。",
+          "玩具里用的是 reward=1{答对} 的二值奖励，真实奖励常混有奖励模型的连续分与格式/长度项，δ 的分布不同，1/std 放大噪声的严重程度会随之变化。",
+          "「GRPO 是否一定有效」没有唯一答案，本条目给的是四个失效面与替代方案清单；DAPO、Dr. GRPO、GSPO 等变体的相对优劣仍随任务变化，本条目没有做横向对照实验。",
+          "本条目没有运行任何真实强化学习训练框架，KL、clipfrac、熵这些诊断指标的作用来自公开经验共识，未在本机复现。"
+        ]
+      }
+    }
+  ]
+}

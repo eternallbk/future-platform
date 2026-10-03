@@ -1,0 +1,140 @@
+{
+  "batchId": "prob-cur-16",
+  "entries": [
+    {
+      "id": "batchnorm",
+      "tldr": "BN2d 的考点是 train/eval 两条路径：训练用 batch 逐通道统计量，推理只用 running stats。",
+      "restated": "人工题干原文：实现 BatchNorm2d——训练时用 batch 统计量并更新 running stats，推理时用 running stats；更新 running_var 时要用无偏估计。本题按 BatchNorm2d 的通用约定补全形状：输入 x 为 [B,C,H,W]（float32），逐通道在 dims=(0,2,3) 上求 mean/var 得到形状 [C] 的统计量（每通道元素数 N=B*H*W），归一化后再用 gamma/beta（各 [C]）做仿射，输出与输入同形状 [B,C,H,W]。题干未给具体数值样例与 B/C/H/W 取值。",
+      "approach": [
+        {
+          "step": "朴素写法：逐通道 Python 循环，且只实现训练分支",
+          "detail": "最容易上手的写法是 for c in range(C) 里自己累加求和求均值，再逐元素归一化。它有两个致命问题。其一是慢：把 O(B*C*H*W) 的规约拆成几百万次标量运算，还很容易在算 N 时漏掉 batch 维或空间维。其二是没有 train/eval 之分——不写 running stats、不写 eval 分支，就等于丢掉了题干的核心要求：验证/推理时统计量只能来自训练期累积的 running stats。误在推理时仍用 batch 统计的后果很具体：B=1 时统计量只来自这一个样本，输出只反映该样本内部的相对大小，尺度与训练期不一致（检测/分割小 batch 掉点的常见原因）；而当 N=B*H*W=1（例如 [1,C,1,1]）时 var=0，无偏方差是 0/0=nan，输出直接是 nan。"
+        },
+        {
+          "step": "关键设计一：一次张量规约拿到 [C] 的 mean/var，dims 排除通道维",
+          "detail": "用 x.mean(dim=(0,2,3)) 与 x.var(dim=(0,2,3)) 一次拿到形状 [C] 的逐通道统计量：dims 里没有 1，所以通道维被保留；再把 [C] view 成 (1,-1,1,1) 广播回 [B,C,H,W]，全程没有 Python 层的循环。这里必须用 unbiased=False 得到有偏方差（分母 N=B*H*W）：训练时的归一化要的是当前 batch 的真实二阶矩。若把无偏方差用于归一化，训练输出会被额外缩小 1/sqrt(N/(N-1))（N=100 时约 0.5%，N=4 时约 13%），与框架对不上。代价是 mean 与 var 各扫一遍 feature map，这正是 BN 训练前向比推理贵的地方。"
+        },
+        {
+          "step": "关键设计二：running stats 用无偏估计做滑动平均，且必须 register_buffer + no_grad",
+          "detail": "先把有偏方差乘 N/(N-1) 换成无偏估计，再按 momentum 做指数滑动平均：rm ← (1-m)*rm + m*mu，rv ← (1-m)*rv + m*unbiased（m=0.1 时新值只占 10%，方向千万别写反）。为什么这里要无偏：running_var 的定位是「整个训练集上该通道方差」的估计量，并在推理时顶替 batch 统计量，而无偏样本方差才是总体方差的无偏估计；用有偏值会系统性偏小，偏差比例是 (N-1)/N。为什么要 register_buffer：这样 rm/rv 会进 state_dict、跟着 .to(device)/.half() 迁移，eval 分支才拿得到训练期累积的值；写成普通属性 self.rm = tensor 就会在迁移或保存时丢失，eval 永远用 0/1。为什么要 torch.no_grad()：buffer 是叶子张量，原地 mul_/add_ 不能带梯度。"
+        },
+        {
+          "step": "关键设计三：用 self.training 分流成两条路径，并补上形状与退化校验",
+          "detail": "forward 里用 self.training 分流：训练分支计算并更新统计量，推理分支直接把 rm/rv 当作 mu/var 且不更新；两条分支之后共用同一段归一化 + 仿射代码——共用恰好说明「训练与测试行为不一样」的唯一来源就是统计量的出处不同，这也是为什么验证前必须 model.eval()、训练前要 model.train()。工程上还要补：输入不是 4D 或通道数不匹配就显式抛 ValueError，否则广播可能侥幸跑通而把 batch/空间维也归了；N=B*H*W<=1 时训练模式的无偏方差未定义，直接报错（torch 的 BatchNorm 也这么做）而不是返回 nan。最后记住参数量：可学习的只有 gamma/beta 共 2C 个，running_mean/running_var 是 buffer（另外 2C），绝不是 2CHW。"
+        }
+      ],
+      "complexity": {
+        "time": "训练前向 O(B*C*H*W)（mean/var 各扫一遍，系数约 2N），推理前向 O(B*C*H*W)（每个元素只做一次归一化仿射）",
+        "space": "额外 O(C)：mu/var 与 rm/rv 各 [C]；输出本身 O(B*C*H*W)；训练反向还需缓存 xhat（或 mean/inv_std 与 x）",
+        "why": "代价来自把每个 feature map 元素至少读两遍（先求均值，再求平方偏差）；显存的主要开销不是 2C 的统计量，而是反向需要的中间量。"
+      },
+      "code": {
+        "language": "python",
+        "source": "import torch\nfrom torch import nn\n\n\nclass BatchNorm2dManual(nn.Module):\n    '''训练：用当前 batch 的逐通道统计量归一化，并同步更新 running stats；\n    推理：直接用 running_mean / running_var，不再看 batch。\n\n    x: [B, C, H, W]（float32），输出同形状。可学习参数只有 2C 个（gamma/beta 各 [C]）。\n    '''\n\n    def __init__(self, num_features, eps=1e-5, momentum=0.1):\n        super().__init__()\n        if num_features <= 0:\n            raise ValueError('num_features 必须是正整数，收到 %r' % (num_features,))\n        self.num_features = num_features\n        self.eps = eps\n        self.momentum = momentum\n        self.g = nn.Parameter(torch.ones(num_features))    # gamma: [C]\n        self.b = nn.Parameter(torch.zeros(num_features))   # beta:  [C]\n        self.register_buffer('rm', torch.zeros(num_features))  # running_mean: [C]\n        self.register_buffer('rv', torch.ones(num_features))   # running_var:  [C]\n\n    def forward(self, x):\n        if x.dim() != 4:\n            raise ValueError('BatchNorm2d 需要 4D 输入 [B,C,H,W]，收到 %dD' % x.dim())\n        if x.size(1) != self.num_features:\n            raise ValueError('通道数不匹配：输入 %d，期望 %d' % (x.size(1), self.num_features))\n\n        if self.training:                          # 训练：统计量来自当前 batch\n            dims = (0, 2, 3)                       # 不包含通道维 -> 结果形状 [C]\n            mu = x.mean(dim=dims)\n            var = x.var(dim=dims, unbiased=False)  # 归一化要用有偏方差（除以 N）\n            n = x.numel() // x.size(1)             # 每个通道的元素数 N = B*H*W\n            if n <= 1:                             # 无偏方差 0/0，与 torch 一样直接报错\n                raise ValueError('训练模式每个通道至少需要 2 个元素（N=%d），无偏方差未定义' % n)\n            with torch.no_grad():                  # buffer 原地更新：不建图，也不需要梯度\n                unbiased = var * n / (n - 1)       # 无偏 = 有偏 * N/(N-1)\n                self.rm.mul_(1 - self.momentum).add_(self.momentum * mu)\n                self.rv.mul_(1 - self.momentum).add_(self.momentum * unbiased)\n        else:                                      # 推理：只用训练期累积的 running stats\n            mu, var = self.rm, self.rv\n\n        shape = (1, -1, 1, 1)                      # [C] -> [1,C,1,1]，广播回 [B,C,H,W]\n        xhat = (x - mu.view(shape)) / torch.sqrt(var.view(shape) + self.eps)\n        return xhat * self.g.view(shape) + self.b.view(shape)\n\n\ndef _demo():\n    torch.manual_seed(0)\n    x = torch.randn(4, 3, 5, 5)                    # B=4, C=3, H=W=5 -> 每通道 N=100\n    manual, ref = BatchNorm2dManual(3), nn.BatchNorm2d(3)\n    y1, y2 = manual(x), ref(x)\n    assert torch.allclose(y1, y2, atol=1e-5), (y1 - y2).abs().max()\n    assert torch.allclose(manual.rm, ref.running_mean, atol=1e-5)\n    assert torch.allclose(manual.rv, ref.running_var, atol=1e-5)\n    print('train 与 nn.BatchNorm2d 的最大差:', (y1 - y2).abs().max().item())\n\n    manual.eval(), ref.eval()                      # 关掉训练态：此后只能用 running stats\n    one = torch.randn(1, 3, 5, 5)                  # 单样本推理，batch 统计量已不可用\n    assert torch.allclose(manual(one), ref(one), atol=1e-5)\n    print('eval 输出形状:', tuple(manual(one).shape),\n          '参数量:', sum(p.numel() for p in manual.parameters()),\n          'buffer 元素:', sum(b.numel() for b in manual.buffers()))\n\n    m = BatchNorm2dManual(1, eps=0.0, momentum=0.1)      # 手算核对 [1,1,2,2] = 1,2,3,4\n    out = m(torch.tensor([[[[1.0, 2.0], [3.0, 4.0]]]]))\n    print('xhat:', [round(v, 4) for v in out.flatten().tolist()], 'rv:', round(m.rv.item(), 6))\n\n\nif __name__ == '__main__':\n    _demo()\n",
+        "walkthrough": [
+          {
+            "note": "构造与状态注册：__init__ 里 gamma/beta 是 nn.Parameter（要学，形状 [C]），running_mean/running_var 是 register_buffer（不学，但要随 state_dict 保存、随 .to(device) 迁移）。BN 的可学习参数因此只有 2C——mean/var 是算出来的统计量，不是参数；这也是「参数量算成 2CHW」这个坑的根源。"
+          },
+          {
+            "note": "形状校验前置：forward 开头就检查 4D 与通道数。BN 要跨 (0,2,3) 规约，形状或通道错位时广播很可能「侥幸」跑通却默默算错通道，早抛 ValueError 比静默错好。"
+          },
+          {
+            "note": "训练分支求统计量：x.mean/x.var(dim=(0,2,3)) 只保留通道维，得到 [C]；var 用 unbiased=False，因为归一化要的是当前 batch 的真实二阶矩。每通道元素数写成 x.numel()//x.size(1)（即 B*H*W），比手写 B*H*W 更不容易漏维，且对将来改成别的输入维度也安全。"
+          },
+          {
+            "note": "running stats 的滑动平均：先在 no_grad 下把有偏方差换成无偏（乘 N/(N-1)），再按 rm ← (1-m)*rm + m*新值 做指数滑动平均。无偏是为了让 running_var 在推理时充当他样本方差的无偏估计；no_grad 是因为 buffer 是叶子张量，原地写入不能带梯度。N<=1 时无偏方差是 0/0，这里直接报错（与 torch 行为一致）。"
+          },
+          {
+            "note": "推理分支与广播：eval 时 mu/var 直接取 rm/rv，不做任何更新；两条分支之后共用同一段归一化加仿射，用 (1,-1,1,1) 把 [C] 广播到 [B,C,H,W]。共用这段代码正说明 train/eval 的差别只在「统计量从哪里来」。"
+          },
+          {
+            "note": "_demo 自证（需要 torch，import 已写在源码首行）：同一份输入分别过本实现与 nn.BatchNorm2d，断言输出、running_mean、running_var 三者都在 1e-5 内一致；切到 eval 后对 B=1 的输入再比一次，证明推理不依赖 batch；最后手算 [1,1,2,2]=1,2,3,4 的样例核对归一化值与 running_var 的更新；另外会打印参数量/buffer 数量，直观回答「BN 有多少参数」。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "N = B*H*W = 1（如 [1,C,1,1]）：训练时 var=0、无偏方差是 0/0，本实现与 torch 一样直接抛 ValueError，而不是悄悄返回 nan。",
+        "B=1 但 H,W>1 的推理：必须走 eval 分支；若误用 batch 统计，输出只反映这一个样本内部的相对大小，与训练期的激活尺度不一致（小 batch 检测/分割掉点的常见原因）。",
+        "eval 一个从未训练过的模型（rm=0, rv=1）：等价于只做 gamma/beta 仿射，不崩，但要意识到此时推理完全没用上训练分布。",
+        "通道数不匹配或输入不是 4D（例如 [B,C,H]）：在 forward 入口显式抛 ValueError，而不是让 view/广播产生错位的对齐。",
+        "C=1：统计量形状 [1]，view((1,-1,1,1)) 得到 [1,1,1,1]，广播正常；不要用 squeeze() 取通道，B=1 时会把 batch 维也压掉。",
+        "momentum=1.0：running stats 完全等于最近一个 batch，等于放弃历史；momentum 很小时早期 batch 的噪声会被长期携带（PyTorch 的 momentum=None 是累计平均语义，本实现未覆盖）。",
+        "eps 太小 + 输入近似常量（var≈0）：xhat 会放大数值噪声甚至溢出，fp16 下尤其明显。",
+        "输入是 fp16/bf16：mean/var 的规约容易溢出或丢精度，框架会先把统计量升到 fp32 再归一化；本实现按 float32 写，未做这项处理。",
+        "训练完存 state_dict、推理时加载：只需要 rm/rv/gamma/beta 四份数据，不需要任何 batch 统计量——这也是把 BN 折叠进卷积导出推理引擎的前提。"
+      ],
+      "pitfalls": [
+        "推理时仍用 batch 统计，导致单样本推理结果异常（人工）：B=1 时尺度只来自该样本本身，N=1 时 var=0 直接 nan。",
+        "忘记 no_grad 更新 buffer（人工）：buffer 是叶子张量，带梯度原地写会报 in-place 错误，或白白建图浪费显存。",
+        "running_var 用了有偏估计导致与框架不一致（人工）：偏差比例 (N-1)/N，N 小时非常明显（N=4 时偏小 25%）。",
+        "答参数量时算成 2CHW（人工）：正确是 2C（gamma/beta），running_mean/running_var 是另外 2C 的 buffer。",
+        "补充：归一化时也误用无偏 var——训练输出比框架额外缩小 1/sqrt(N/(N-1))，属于「静默偏小」而不是报错。",
+        "补充：mean 与 var 用了不同的 dim，或忘记把 [C] view 成 (1,-1,1,1)。形状可能侥幸广播成功，但把 batch/空间维也归了进去，结果是静默错误。",
+        "补充：把 running stats 写成普通 Python/tensor 属性（self.rm = torch.zeros(C)）而不是 register_buffer，导致 .to(device)、state_dict、.half() 时全部丢失，eval 永远用初值 0/1。",
+        "补充：momentum 方向写反（rm = m*rm + (1-m)*mu），滑动平均变成以当前 batch 为主，running stats 与框架完全不同。",
+        "补充：验证/推理前忘记 model.eval()，或验证完忘记调回 model.train()——BN 与 Dropout 会一起出错，是「训练与测试行为不同」最典型的现场事故。",
+        "补充：eps 与 momentum 未与框架默认值（1e-5 / 0.1）对齐，复现论文结果时出现无法解释的差距。"
+      ],
+      "followUps": [
+        "为什么训练时归一化用有偏方差、更新 running_var 却用无偏？把两者相差的 N/(N-1) 写出来，并说明推理时用错了会差多少。",
+        "BN 的反向传播：给定 dL/dy 手推 dL/dgamma、dL/dbeta、dL/dx，解释 dL/dx 里为什么会出现「减均值、减投影」两项，以及实现为什么常缓存 xhat 或 inv_std。",
+        "batch 很小时（检测/分割常见 B=1~2）BN 为什么掉点？统计量的估计方差与 1/N 的关系是什么？SyncBN、GroupNorm、LayerNorm 各解决了哪一部分？",
+        "推理加速：怎么把 BN 折叠进前面的卷积（conv 权重乘 gamma/sqrt(var+eps)，bias 相应变换）？折叠后为什么可以完全删掉 BN 层？注意紧邻 BN 的卷积 bias 通常设 False。",
+        "微调时为什么要「冻 BN」（eval + 冻结仿射）？只冻结 affine 而不冻结 running stats 会发生什么？",
+        "SyncBN 跨卡同步统计量为什么要两次 all_reduce（sum 与 sum of squares）而不能只同步 sum？它和先算局部统计量再合并的关系是什么？",
+        "为什么方差更推荐两遍法（先求 mean 再算 E[(x-mu)^2]）而不是 E[x^2]-E[x]^2？在 fp16 与大量级激活下差别有多大？"
+      ],
+      "variations": [
+        "LayerNorm：把规约维换成最后若干维（不跨 batch），因此 train/eval 行为一致，是序列模型的默认选择。",
+        "RMSNorm：在 LayerNorm 基础上再去掉减均值、只保留均方根缩放，更省一次规约，LLM 里常用。",
+        "InstanceNorm：对每个样本、每个通道在 (2,3) 上规约，且推理时同样不需要 running stats，风格迁移常用。",
+        "GroupNorm：把 C 分成 G 组，在 (C/G,H,W) 上规约，小 batch 下比 BN 稳，检测/分割常用。",
+        "BatchNorm1d：输入 [B,C] 时 dims=(0,)，输入 [B,C,L] 时 dims=(0,2)，同一个公式换规约维。",
+        "SyncBN：训练时跨卡 all_reduce 统计量，是多卡小 batch 场景把 BN 用起来的标准解法。",
+        "Weight Standardization / 谱归一化：把「归一化激活」换成「归一化权重」，常与 BN 一起用，也与 BN folding 的推理友好性相呼应。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "BN2d 训练/推理两条路径",
+        "caption": "记住这张图：输入 [B,C,H,W] 先在 dims=(0,2,3) 上规约成每通道的 mu/var（形状 [C]，每通道 N=B*H*W 个元素），再用 (1,-1,1,1) 广播做归一化与仿射；训练分支的统计量来自当前 batch 并滑动更新 running stats（归一化用有偏 var，更新 running_var 用无偏 var*N/(N-1)），推理分支直接读 running stats 且不再更新。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15'/><text x='12' y='16' font-size='13' fill='currentColor'>BN2d: x [B,C,H,W] -> dims=(0,2,3) 逐通道 mean/var -> 仿射</text><rect x='12' y='30' width='98' height='66' fill='none' stroke='var(--line-1)'/><text x='20' y='52' font-size='13' fill='var(--fg-1)'>x 输入</text><text x='20' y='70' font-size='13' fill='currentColor'>[B,C,H,W]</text><text x='20' y='88' font-size='13' fill='currentColor'>例 [4,3,5,5]</text><line x1='110' y1='63' x2='127' y2='63' stroke='currentColor'/><polygon points='127,59 134,63 127,67' fill='currentColor'/><rect x='134' y='30' width='152' height='66' fill='none' stroke='var(--line-1)'/><text x='142' y='50' font-size='13' fill='var(--fg-1)'>mu,var=x.mean/var</text><text x='142' y='68' font-size='13' fill='currentColor'>dims=(0,2,3) -> [C]</text><text x='142' y='86' font-size='13' fill='currentColor'>N = B*H*W</text><line x1='286' y1='63' x2='303' y2='63' stroke='currentColor'/><polygon points='303,59 310,63 303,67' fill='currentColor'/><rect x='310' y='30' width='158' height='66' fill='none' stroke='var(--line-1)'/><text x='318' y='50' font-size='13' fill='var(--fg-1)'>(x-mu)/sqrt(var+eps)</text><text x='318' y='68' font-size='13' fill='currentColor'>y = xhat*g + b</text><text x='318' y='86' font-size='13' fill='currentColor'>输出 [B,C,H,W]</text><text x='12' y='112' font-size='13' fill='var(--fg-1)'>训练 training=True</text><text x='12' y='130' font-size='13' fill='var(--accent)'>· mu/var 来自当前 batch：x.mean/x.var(dim=(0,2,3))</text><text x='12' y='148' font-size='13' fill='var(--accent)'>· 归一化用有偏 var（÷N）；rv 更新用无偏 var*N/(N-1)</text><text x='12' y='166' font-size='13' fill='var(--fg-1)'>推理 eval（training=False）</text><text x='12' y='184' font-size='13' fill='currentColor'>· mu,var 直接取 running_mean/running_var [C]，不再更新</text><text x='12' y='202' font-size='13' fill='currentColor'>· buffer 随 state_dict 保存/迁移；参数量只有 2C（g、b）</text><text x='12' y='220' font-size='13' fill='var(--accent)'>· 推理误用 batch 统计：N=B*H*W=1 时 var=0 -> 输出 nan</text></svg>",
+        "alt": "BatchNorm2d 的张量形状与两条路径：输入 x [B,C,H,W]（例 [4,3,5,5]）先在 dims=(0,2,3) 上规约为每通道的 mu/var（形状 [C]，每通道 N=B*H*W 个元素），再用 (1,-1,1,1) 广播做 (x-mu)/sqrt(var+eps) 并乘 gamma 加 beta，输出同形状；训练分支统计量取自当前 batch，并在 no_grad 下按滑动平均更新 running_mean/running_var（归一化用有偏 var，更新 running_var 用无偏 var*N/(N-1)）；推理分支直接读 running stats 且不再更新；右下注明误用 batch 统计在 N=1 时 var=0 会得到 nan。"
+      },
+      "selfTest": [
+        "x = [[[[1,2],[3,4]]]]（B=C=1，H=W=2），gamma=1、beta=0、eps=0、momentum=0.1、rv 初值 1：训练输出的 xhat 与更新后的 rv 各是多少？（答：有偏 var=1.25，xhat=[-1.3416,-0.4472,0.4472,1.3416]；无偏 var=1.25*4/3=1.666667，rv=0.9*1+0.1*1.666667=1.066667。）",
+        "同一批数据在 train 模式下连续做两次前向，输出会变吗？（答：不变——训练输出只用当前 batch 的统计量，两次都一样；变的是 rm/rv。切到 eval 之后输出才会变，因为此时用的是已经被更新过的 running stats。）",
+        "为什么推理时不能把 running stats 换回 batch 统计？请举出 B=1 与 N=1 两种退化。（答：B=1 时统计量只来自这一个样本，丢失训练分布的绝对尺度，小 batch 检测/分割掉点；N=B*H*W=1 时 var=0，无偏方差 0/0 得到 nan。）",
+        "C=64 的 BatchNorm2d 有多少可学习参数、多少 buffer 元素？为什么不是 2*64*H*W？（答：各 128；mean/var 是逐通道的统计量，与 H、W 无关，gamma/beta 也只在通道维上。）",
+        "若把归一化用的 var 换成无偏估计（其余不变），训练输出会怎么变？（答：整体乘以 1/sqrt(N/(N-1))：N=100 时约小 0.5%，N=4 时约小 13%。）"
+      ],
+      "keyPoints": [
+        "训练用 batch 在 (0,2,3) 上的 mean/var；推理用 running_mean/running_var——这是训练与测试行为不同的唯一来源。",
+        "归一化要用有偏 var（除以 N=B*H*W）；更新 running_var 才用无偏估计（乘 N/(N-1)），两处不能混。",
+        "running stats 用 register_buffer 注册，并在 no_grad 下按 rm←(1-m)rm+m*mu 滑动平均，才能随 state_dict/设备迁移。",
+        "BN 参数量 = 2C（gamma 与 beta），不是 2CHW；running_mean/running_var 是另外 2C 的 buffer。",
+        "推理误用 batch 统计是致命错：B=1 时尺度失真，N=B*H*W=1 时 var=0 直接 nan。"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（batchnorm）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题干（web/data/jobs.json 的 handWrittenCoding[id=batchnorm]）：实现 BatchNorm2d，训练时用 batch 统计量并更新 running stats，推理时用 running stats，更新 running_var 时要用无偏估计。",
+          "人工 referenceSolution 的算法路径：register_buffer 存 rm/rv → 训练分支 dims=(0,2,3) 求 mu=x.mean、var=x.var(unbiased=False) → no_grad 内 n=x.numel()/x.size(1)、unbiased=var*n/(n-1)、rm/rv 按 momentum 滑动平均 → 推理分支 mu,var=rm,rv → shape=(1,-1,1,1) 广播做 (x-mu)/sqrt(var+eps) 再乘 gamma 加 beta。本文件实现与之逐步一致，只额外加了 num_features/维度/通道数校验与 N<=1 的显式报错。",
+          "人工 keyPoints 四条（(0,2,3) 统计量与推理用 running stats、running_var 用无偏、train/test 行为不同的根因、参数量 2C）与人工 pitfalls 四条均按要求保留，没有改写或反驳，只做了展开解释并各补充成因与后果。",
+          "本文件 code.source 已在本机实际运行（Python 3.12.9 / torch 2.12.1+cpu）：train 前向输出、running_mean、running_var 与 nn.BatchNorm2d 的最大差为 2.4e-7；切到 eval 后 B=1 的输入同样一致；C=3 时参数量 6、buffer 元素 6；手算样例 [1,1,2,2]=1,2,3,4 得到 xhat=[-1.3416,-0.4472,0.4472,1.3416]、rv=1.066667；N=1 与 3D 输入均按预期抛 ValueError。"
+        ],
+        "uncertain": [
+          "人工题干与 referenceSolution 都没有给出具体输入形状与数值样例：x 的 [B,C,H,W] 与 float32 是按 BatchNorm2d 的通用约定补的，属本文件的约定而非题面原文。",
+          "题干只说「更新 running_var 要用无偏估计」，未规定 eps/momentum 取值，也未要求 PyTorch 的 momentum=None（累计平均）语义；代码按框架默认 eps=1e-5、momentum=0.1 实现，未实现累计平均分支。",
+          "本实现未把统计量规约升到 fp32 再做归一化（框架在 fp16 下会这么做），也只在 CPU/float32 上验证；fp16/bf16 与 GPU 后端的数值细节未验证。",
+          "「与 nn.BatchNorm2d 一致」是与本机 torch 2.12.1+cpu、float32 比较的结论（差值 2.4e-7），其它版本或后端的实现细节差异可能带来 1e-6 量级偏差，故 demo 断言阈值取 1e-5。",
+          "人工 sources 指向牛客面经页面，本次未访问任何外部链接：按要求 sources 只列人工题库出处、url 留空，图与结论均来自题干、人工 referenceSolution 与本机实跑结果。"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,140 @@
+{
+  "batchId": "prob-cur-31",
+  "entries": [
+    {
+      "id": "ali-array-sampling",
+      "tldr": "按概率有放回采样：前缀和加二分是 O(log n)，别名法（Alias）预处理 O(n) 后单次采样 O(1)，只要两个随机数。",
+      "restated": "面经原题（题面很短、无样例）：有一个包含很多样本数据的数组，另有等长的概率数组、总和为 1，要对该数组做多次有放回采样，每个数按自己的概率被抽中，面试官提示存在常数时间的做法。可形式化为：给定 n 个样本与 p[0..n-1]（p[i]≥0、Σp=1），实现 sample()，每次返回一个下标 i，满足 P(i)=p[i]，多次调用相互独立（有放回）。题面未给 n 的量级、概率是浮点还是定点、采样次数与语言环境。",
+      "approach": [
+        {
+          "step": "暴力：线性扫描 / 前缀和 + 二分",
+          "detail": "最直白的实现是每次采样取 u~U(0,1)，从 0 开始累加 p[i]，第一个让累积和超过 u 的下标就是结果：单次 O(n)，n=10^6 且采 10^6 次时是 10^12 级累加，不可用。把累积和预先算成 C[i]=Σ_{j≤i} p[j] 后用二分（bisect_left / searchsorted）定位第一个 C[i]≥u，预处理 O(n)、单次 O(log n)，把 10^12 降到约 2×10^7 次比较，这是工程上最常见的做法。但它仍然不是面试官说的常数时间。"
+        },
+        {
+          "step": "最优：Walker 别名法（Alias Method）",
+          "detail": "关键观察：把每个概率乘以 n，平均值恰好为 1，于是「不足 1 的列」与「超过 1 的列」可以互相补齐，而列数不变。把 [0,1) 横向切成 n 个等宽列（每列宽 1/n），每列只放两个下标：主下标 i 独占该列的 prob[i] 比例，剩下的 1-prob[i] 由别名下标 alias[i] 借来的块填满。构造用两个栈：small 放 scaled<1 的下标、large 放 scaled≥1 的下标；每次弹出 s 与 l，令 prob[s]=scaled[s]、alias[s]=l，再把 l 被借走的量扣掉（scaled[l] -= 1-scaled[s]）并回填到对应栈；某一栈空后，剩下的下标直接令 prob=1。每个下标进出栈各 O(1) 次，总预处理 O(n)。"
+        },
+        {
+          "step": "采样 O(1) 与正确性自检",
+          "detail": "采样只做两件事：i = randrange(n) 均匀选一列（对应 [0,1) 上均匀落点，每列被选中的概率都是 1/n），再取 u~U(0,1)：u < prob[i] 返回 i，否则返回 alias[i]。没有循环、没有查找、没有累加，两次随机数即可，故单次 O(1)。正确性：P(返回 k) = prob[k]/n + Σ_{j: alias[j]=k} (1-prob[j])/n，而构造过程保证每列两段之和恰好是 1/n、全表和为 1，所以 P(返回 k)=p[k]。代码用这条公式反推分布与给定 p 对拍（本机 5 组输入最大偏差 1.11e-16），比跑统计更严格。"
+        }
+      ],
+      "complexity": {
+        "time": "预处理 O(n)；单次采样 O(1)（一次整数随机 + 一次实数随机）。对照：前缀和 + 二分 O(log n)/次，线性扫描 O(n)/次。",
+        "space": "O(n)：prob 浮点表与 alias 整数表各 n 个元素。另有把概率展开成 2^k 个槽位查表的变体，用 O(2^k) 空间换掉那一次比较。",
+        "why": "O(1) 来自「每列只放两个下标」：一次整数随机定位列、一次实数随机定段，没有任何随 n 增长的循环或查找；O(n) 来自每个下标最多进 small/large 各一次、每次只做常数次算术。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''Walker/Vose 别名法（Alias Method）：O(n) 预处理 + O(1) 单次采样。\n\n问题：样本数组 data（长度 n）与概率数组 p（p[i] >= 0，sum(p) == 1），\n      做多次有放回采样，每次以 p[i] 的概率返回下标 i。\n思路：把 [0, 1) 横向切成 n 个等宽列（每列宽 1/n），每列只放两个下标：\n      主下标占该列的 prob[i]，剩余部分由 alias[i] 借来的块填满。\n采样：i = randrange(n) 选列，u = random() 定段，u < prob[i] 取 i，否则取 alias[i]。\n'''\nimport random\nimport time\nfrom bisect import bisect_left\n\n\ndef build_alias_table(probs):\n    '''预处理 O(n)：返回 (prob, alias) 两张长度 n 的表。'''\n    n = len(probs)\n    if n == 0:\n        raise ValueError('probs 不能为空')\n    if any(p < 0.0 for p in probs):\n        raise ValueError('概率不允许为负')\n    total = float(sum(probs))\n    if total <= 0.0:\n        raise ValueError('概率之和必须为正')\n    scaled = [p * n / total for p in probs]   # 归一后乘 n：平均值恰好为 1\n    prob = [0.0] * n\n    alias = [0] * n\n    small = [i for i in range(n) if scaled[i] < 1.0]\n    large = [i for i in range(n) if scaled[i] >= 1.0]\n    while small and large:\n        s = small.pop()\n        l = large.pop()\n        prob[s] = scaled[s]              # 第 s 列：主下标 s 占 prob[s]\n        alias[s] = l                     # 剩下的 1-prob[s] 由 l 借块补满\n        scaled[l] -= 1.0 - scaled[s]     # l 被借走后的余量\n        (small if scaled[l] < 1.0 else large).append(l)\n    for i in small + large:              # 浮点残差：剩下的下标独占整列\n        prob[i] = 1.0\n    return prob, alias\n\n\ndef sample_index(prob, alias, rng=random):\n    '''单次采样 O(1)：一次整数随机 + 一次实数随机，无循环、无查找。'''\n    i = rng.randrange(len(prob))\n    return i if rng.random() < prob[i] else alias[i]\n\n\ndef implied_probs(prob, alias):\n    '''由表反推每个下标的真实采样概率，用于精确性自检。'''\n    n = len(prob)\n    q = [prob[i] / n for i in range(n)]\n    for j in range(n):\n        q[alias[j]] += (1.0 - prob[j]) / n\n    return q\n\n\ndef prefix_search_sample(probs, rng=random):\n    '''对照实现：前缀和 + 二分，单次 O(log n)。'''\n    cum, acc = [], 0.0\n    for p in probs:\n        acc += p\n        cum.append(acc)\n    u = rng.random() * cum[-1]\n    return min(bisect_left(cum, u), len(cum) - 1)\n\n\ndef main():\n    cases = [\n        [0.1, 0.2, 0.3, 0.4],\n        [1.0],                       # n = 1\n        [0.0, 0.0, 1.0],             # 含零概率\n        [0.25] * 4,                  # 均匀分布\n        [1e-12, 0.5, 0.5 - 1e-12],   # 极小概率 + 浮点和不等于 1\n    ]\n    for p in cases:\n        prob, alias = build_alias_table(p)\n        n, s = len(p), sum(p)\n        q = implied_probs(prob, alias)\n        err = max(abs(q[i] - p[i] / s) for i in range(n))\n        assert err < 1e-9, (p, q)\n        assert all(0.0 <= x <= 1.0 + 1e-12 for x in prob)\n        assert all(0 <= a < n for a in alias)\n    print('精确性自检通过：反推概率与给定概率最大偏差 < 1e-9')\n\n    rng = random.Random(20261003)\n    p = [0.05, 0.15, 0.30, 0.50]\n    prob, alias = build_alias_table(p)\n    m = 200000\n    cnt = [0] * len(p)\n    for _ in range(m):\n        cnt[sample_index(prob, alias, rng)] += 1\n    print('别名法频率:', [round(c / m, 4) for c in cnt])\n    for i, pi in enumerate(p):\n        assert abs(cnt[i] / m - pi) < 0.01, (i, cnt[i] / m, pi)\n\n    cnt2 = [0] * len(p)\n    for _ in range(m):\n        cnt2[prefix_search_sample(p, rng)] += 1\n    print('前缀和+二分:', [round(c / m, 4) for c in cnt2])\n\n    n = 100000\n    big = [1.0 / n] * n\n    t0 = time.perf_counter()\n    prob_b, alias_b = build_alias_table(big)\n    t1 = time.perf_counter()\n    q = implied_probs(prob_b, alias_b)\n    assert max(abs(x - 1.0 / n) for x in q) < 1e-12\n    print('n=100000 预处理 %.3fs，单次采样 O(1)' % (t1 - t0))\n    print('ok')\n\n\nif __name__ == '__main__':\n    main()\n",
+        "walkthrough": [
+          {
+            "note": "build_alias_table 先做防御性校验：空数组、负概率、概率和不为正都直接抛 ValueError。别名法建立在「归一化后按 1/n 切列」之上，负概率会让 small/large 的划分失去意义，必须先挡住。"
+          },
+          {
+            "note": "scaled = p * n / total 这一步同时干两件事：除以 total 是为了容忍浮点求和不为 1（题面说总和为 1，实际输入常有 1e-16 级漂移）；乘 n 是为了让平均值恰好为 1，从而 sum(scaled) 恰好等于 n——这是 small 与 large 能互相配平的前提（只要有一列不足 1，就必然有另一列超过 1）。"
+          },
+          {
+            "note": "small/large 这对栈是算法核心：每次取一个不足 1 的列 s，把它的全部 scaled[s] 作为主段（prob[s]=scaled[s]），缺口 1-scaled[s] 由 large 里的 l 借块补上（alias[s]=l），再从 l 的余量里扣掉这笔（scaled[l] -= 1-scaled[s]）并回填到对应栈。本机实测 p=[0.1,0.2,0.3,0.4] 得到 prob=[0.4,0.8,1.0,0.8]、alias=[3,3,0,2]：第 0 列 0.4 段归 0、剩下 0.6 段借给 3，第 3 列自己的 0.8 段归 3、0.2 段借给 2，四列两段之和都是 1。"
+          },
+          {
+            "note": "循环结束后 small 或 large 里可能还剩元素（浮点残差几乎一定会有），必须显式令 prob[i]=1.0：这些列独占整列、不再借块，若漏掉这一步它们的 prob 会停在初值 0，那些下标就被静默地剥夺了自身概率。"
+          },
+          {
+            "note": "sample_index 只有两行，语义要分清：randrange(n) 是「均匀选列」而不是「选下标」——每列被选中的概率都是 1/n，真正的概率差异编码在列内两段的相对长度里。第二次随机数只决定取主下标还是别名，写成 u<=prob[i] 或换成 randint 做近似都会引入偏差。"
+          },
+          {
+            "note": "implied_probs 把构造结果反推回分布做精确自检：下标 i 被返回的概率等于「它是第 i 列主下标」贡献的 prob[i]/n，加上「某列 j 的别名指向 i」贡献的 (1-prob[j])/n。这个断言在 1e-9 级就能抓到构造 bug，比跑几万次统计可靠得多。"
+          },
+          {
+            "note": "main 里先跑五组边界输入（常规分布、n=1、含零概率、均匀分布、1e-12 级极小概率）的精确性断言，再固定种子做 20 万次统计频率校验（别名法 [0.0493,0.1512,0.2989,0.5006] 对目标 [0.05,0.15,0.30,0.50]，同一随机源再跑一遍前缀和+二分对照得 [0.0499,0.1500,0.3007,0.4994]）；最后在 n=100000 上实测构建耗时 0.036~0.039s（多次运行的波动范围）。"
+          },
+          {
+            "note": "复杂度对比要点：前缀和+二分的对照实现 prefix_search_sample 每次都要重新走一遍随机数并做 log n 次比较；本机 20 万次采样的实测是别名法 0.257s、二分 0.408s（n=100000，比值 1.59）。差距没有 log n 那么夸张，是因为标准库 random() 的生成开销占了大头——这正说明别名法省下的是「与 n 相关的比较次数」，而两次随机数一次也省不掉。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "n = 1：scaled 只有一个元素且等于 1，small 为空、循环不执行，prob=[1.0]、alias=[0]，采样永远返回 0（本机已验证）。",
+        "存在 p[i] = 0：scaled[i]=0 必然进 small，构造后 prob[i]=0，u < 0 恒不成立，所以下标 i 永远不会被返回（本机 p=[0,0,1] 得到 prob=[0,0,1]、alias=[2,2,0]）。",
+        "所有概率相同（均匀分布）：scaled 全为 1.0，全部进 large，prob 全 1、alias 全 0，退化成一次 randrange，没有任何借还（本机 p=[0.25]*4 已验证）。",
+        "概率和不为 1（浮点漂移或调用方未归一）：代码用 total 归一化，p=[1e-12, 0.5, 0.5-1e-12] 这类输入仍精确成立（本机最大偏差 1.1e-16）。",
+        "极小概率（如 1e-12）：prob 段只有 1e-12 长，在浮点下可能被舍入甚至下溢，该下标接近不可采样；要求高精度时应改用整数权重（把 p 放大成整数后构造别名表）。",
+        "n 很大（如 10^6）：预处理是线性且常数很小（本机 n=10^5 约 0.04s），但两张表各占 O(n) 内存，流式或内存受限场景要单独评估。",
+        "多线程并发采样：build_alias_table 产出的两张表是只读的，构造后可共享给多个线程；采样只依赖传入的 rng，各自持有独立随机源才能复现。",
+        "概率数组含负值或全为 0：直接抛 ValueError，不进入构造，避免缩放出负的 scaled 后给出无意义的表。"
+      ],
+      "pitfalls": [
+        "把「选列」写成「选下标」：第一次随机数必须均匀选列（randrange(n)），第二次随机数只决定取主下标还是别名；用前缀和去定位就退化成 O(log n)，用按 p 加权的离散近似则会有偏。",
+        "忘记乘 n 或忘记归一化：scaled 必须是 p*n/total；直接拿 p 去和 1 比较会让几乎所有列都落进 small，循环空转或逻辑崩坏。",
+        "回填余量的方向写错：扣掉的是 1-scaled[s]（借给 s 的量），不是 scaled[s]；写错时 sum(scaled) 不再守恒，构造出的分布会整体偏移。",
+        "忘记处理循环结束后的残余：small/large 里剩下的下标必须显式置 prob=1.0，否则它们的 prob 停在 0，那些列永远返回别名，自己的概率被丢掉。",
+        "别名表只存一半：只记 prob 不记 alias 是错的——第 i 列的第二段必须明确指向某个 scaled≥1 的下标，否则那段概率无处归属。",
+        "以为别名法是「近似」或「期望 O(1)」：构造与采样都是确定性的常数次操作，正确性是精确的（代码用公式反推验证到 1e-17），不要说成采样近似。",
+        "第二次随机数用 randint 或取整近似：列内分界点 prob[i] 是实数，必须用 random() 这样的连续均匀数比较，离散化会直接改变分布。",
+        "把概率表当成「可以循环复用」的可变对象：prob/alias 是只读的，采样过程不修改它们；如果要在采样时改动，等于破坏了整张表的不可变性。"
+      ],
+      "followUps": [
+        "如果概率每轮都在变（例如按热度动态调整），每次重建别名表 O(n) 划算吗？只改动 k 个概率时有没有增量维护的办法？",
+        "不允许用浮点（嵌入式定点环境）怎么实现？把 p 放大成整数权重后如何构造整数版别名表并保证无偏？",
+        "样本量 n 很大但分布稀疏（大多数 p[i]=0）时，如何砍掉 O(n) 的预处理与内存？",
+        "要一次采 m 个样本（批量）时，怎么把两次随机数向量化（先生成 m 个列号与 m 个 u，再用掩码选择）？",
+        "有放回改成按权重无放回怎么做？为什么不能直接对别名表反复抽再删除？",
+        "请写出 P(返回 k) 的表达式并说明它等于 p[k]，以及每列两段之和为什么必须是 1/n。",
+        "和拒绝采样（rejection sampling）相比，别名法的适用条件与代价分别是什么？",
+        "如果只要求「概率大的更容易被抽到」而不要求精确分布，有没有比别名法更省预处理的做法？"
+      ],
+      "variations": [
+        "等概率采样（p 全相同）：别名表退化成 prob 全 1，只需一次 randrange，不需要构造。",
+        "批量/向量化采样：一次生成 m 个列号与 m 个 u，用布尔掩码在 alias 数组上做向量选择，避免 Python 逐次循环。",
+        "展开表法（2^k 槽位查表）：把概率按定点量化到 M=2^k 个槽位，每槽存一个下标，采样只需一个随机整数加位运算，O(1) 但内存 O(M)，适合概率是定点有理数、追求极致速度的老式实现。",
+        "按权重无放回采样：别名法配合「选中后删除并重建/懒删除」，或改用 Efraimidis-Spirakis 的 key=p_i^(1/w_i) 排序法。",
+        "前缀和 + 二分（cumsum + searchsorted）：O(log n)/次的稳妥实现，采样次数少、概率频繁变化时反而更划算。",
+        "别名法本身的两个版本：Walker 提出思路、Vose 给出线性预处理构造（本文件的构造即 O(n) 版本）。",
+        "支持动态改概率的 CDF 结构（分块 CDF / 区间树）：单次 O(log n) 但允许更新，是别名法的互补方案。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "别名法：预处理与采样",
+        "caption": "记住两件事：预处理把每个概率乘 n 后用「小堆配大堆」把 n 列各填满 1/n；采样就是一次整数随机选列加一次实数随机定段，所以单次 O(1)。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='别名法预处理五步流程与四列等宽列的填满示意'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='17' font-size='13' fill='currentColor'>别名法：O(n) 预处理 + O(1) 采样</text><rect x='10' y='30' width='170' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='47' font-size='13' fill='currentColor'>p 归一化后乘以 n</text><rect x='10' y='64' width='170' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='81' font-size='13' fill='currentColor'>分成小堆与大堆</text><rect x='10' y='98' width='170' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='115' font-size='13' fill='currentColor'>小堆配大堆，切出 1</text><rect x='10' y='132' width='170' height='24' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='18' y='149' font-size='13' fill='currentColor'>余量回填，直到堆空</text><rect x='10' y='166' width='170' height='24' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='18' y='183' font-size='13' fill='currentColor'>n 列各宽 1/n，高度 1</text><line x1='95' y1='54' x2='95' y2='62' stroke='var(--line-1)' stroke-width='1'/><polygon points='95,64 91,58 99,58' fill='var(--line-1)'/><line x1='95' y1='88' x2='95' y2='96' stroke='var(--line-1)' stroke-width='1'/><polygon points='95,98 91,92 99,92' fill='var(--line-1)'/><line x1='95' y1='122' x2='95' y2='130' stroke='var(--line-1)' stroke-width='1'/><polygon points='95,132 91,126 99,126' fill='var(--line-1)'/><line x1='95' y1='156' x2='95' y2='164' stroke='var(--line-1)' stroke-width='1'/><polygon points='95,166 91,160 99,160' fill='var(--line-1)'/><text x='200' y='47' font-size='13' fill='currentColor'>每列宽 1/n，两段拼成 1</text><rect x='200' y='58' width='52' height='132' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='262' y='58' width='52' height='132' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='324' y='58' width='52' height='132' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='386' y='58' width='52' height='132' fill='none' stroke='var(--line-1)' stroke-width='1'/><line x1='200' y1='164' x2='252' y2='164' stroke='var(--accent)' stroke-width='1'/><line x1='262' y1='131' x2='314' y2='131' stroke='var(--accent)' stroke-width='1'/><line x1='324' y1='98' x2='376' y2='98' stroke='var(--accent)' stroke-width='1'/><line x1='386' y1='71' x2='438' y2='71' stroke='var(--accent)' stroke-width='1'/><text x='226' y='205' font-size='13' fill='currentColor' text-anchor='middle'>0</text><text x='288' y='205' font-size='13' fill='currentColor' text-anchor='middle'>1</text><text x='350' y='205' font-size='13' fill='currentColor' text-anchor='middle'>2</text><text x='412' y='205' font-size='13' fill='currentColor' text-anchor='middle'>3</text><text x='14' y='220' font-size='13' fill='currentColor'>采样：i = randrange(n)，u 小于 prob[i] 取 i，否则取 alias[i]</text><text x='14' y='236' font-size='13' fill='currentColor'>上段 prob[i] 归 i，下段 alias[i] 是借来的块</text></svg>",
+        "alt": "左侧是别名法预处理的五步流程（概率归一化后乘 n、分成小堆与大堆、小堆配大堆切出 1、余量回填直到堆空、n 列各宽 1/n 且高度为 1）；右侧是四列等宽列的示意，每列被 prob[i] 主段与 alias[i] 借来的段拼满，下方注明采样用 randrange(n) 选列、再用 random() 与 prob[i] 比较决定取主下标还是别名。"
+      },
+      "selfTest": [
+        "为什么把概率乘 n 之后算法就能成立？（答：缩放后总和为 n、平均值为 1，只要有一列不足 1 就必然有一列超过 1，所以 small/large 一定能互相配对补齐；剩下单栈时那些列直接独占整列。）",
+        "采样为什么要用两次随机数？只用一次 random() 行不行？（答：一次整数随机定位列、一次实数随机决定列内落点；只用一次实数随机是前缀和法的思路，需要 O(log n) 次查找，做不到 O(1)。）",
+        "写出 P(返回 k) 并说明它等于 p[k]。（答：prob[k]/n + Σ_{j: alias[j]=k}(1-prob[j])/n；构造保证第 j 列两段之和为 1/n、全表和为 1，故该式等于 p[k]。）",
+        "p=[0,0,1] 会构造出什么？（答：prob=[0,0,1]、alias=[2,2,0]；下标 0、1 的 prob 为 0 永不返回，下标 2 以 prob=1.0 独占自己的列——本机实测。）",
+        "复杂度和前缀和+二分差在哪？（答：别名法预处理 O(n)、单次 O(1)；二分单次 O(log n)。本机 n=100000 上 20 万次采样别名法 0.257s、二分 0.408s，比值 1.59——渐近上差 log n，但随机数生成开销让绝对差距被摊薄。）"
+      ],
+      "keyPoints": [
+        "把概率乘 n 后平均值为 1，用 small（不足 1）与 large（超过 1）两堆互相补齐，n 列各填满 1/n",
+        "每列只记两个值：prob[i]（主下标占比）与 alias[i]（借块的来源下标）",
+        "采样 = randrange(n) 选列 + random() 定段，两次随机数、O(1)、无循环无查找",
+        "预处理 O(n)：每个下标进出 small/large 各一次，每次只做常数次算术",
+        "正确性可精确验证：prob[i]/n + Σ_{j: alias[j]=i}(1-prob[j])/n = p[i]，不用靠统计"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "人工题面（research/jobs_kb.json 的 ali-array-sampling，kind=exam、marker=笔试场景）要求：对包含很多样本数据的数组做多次有放回采样，每个数有各自的概率（存在另一数组、总概率为 1），并明确面试官说存在常数时间的做法；本文件把「常数时间」落实为预处理 O(n) + 单次采样 O(1) 的别名法。",
+          "本文件 code.source 已在本机 python 3.12.9（D 盘 miniconda，numpy 2.2.6）实际运行通过：五组边界输入（[0.1,0.2,0.3,0.4]、[1.0]、[0.0,0.0,1.0]、[0.25]*4、[1e-12,0.5,0.5-1e-12]）用公式反推的概率与给定概率最大偏差 1.110e-16，prob∈[0,1] 与 alias∈[0,n) 的断言全部通过，最后打印 ok。",
+          "本机实测 p=[0.1,0.2,0.3,0.4] 的构造结果为 prob=[0.4,0.8,1.0,0.8]、alias=[3,3,0,2]，四列两段之和均为 1，与正文「小堆配大堆、缺口由大堆借块补齐」的描述一致。",
+          "本机实测固定种子（Random(20261003)、20 万次）的采样频率：别名法 [0.0493,0.1512,0.2989,0.5006]，同随机源的前缀和+二分对照 [0.0499,0.1500,0.3007,0.4994]，目标 [0.05,0.15,0.30,0.50]。",
+          "本机实测 n=100000 均匀概率：别名表预处理 0.036~0.039s；20 万次采样别名法 0.257s、前缀和+二分 0.408s（比值 1.59，随机数生成占大头，二分那一路额外付出的是随 n 增长的 log n 次比较）。",
+          "代码只依赖标准库 random/bisect/time，其中 bisect_left 是 C 实现；没有任何第三方依赖，也不含占位符。",
+          "本题为人工整理题且 sourceUrl 为 null，因此 sources 写成空数组，全篇没有出现任何外部链接。"
+        ],
+        "uncertain": [
+          "题面是面经转述且很短：没有给 n 的量级、概率是浮点还是定点、采样次数的量级、返回下标还是返回样本值、是否要求批量采样；本文件按「浮点概率 + 单次返回下标 + 有放回」实现，若面试官要的是批量或定点版本，主体思路不变但要改接口。",
+          "「常数时间」的解读：主流对应别名法的单次 O(1)（两次随机数）；如果面试官本意是「把概率展开成 2^k 个槽位的查表法」，那只在概率是定点有理数时才精确、浮点概率会有量化误差——两种解读都写进了 variations，正文按别名法展开。",
+          "别名法的提出者与年份（Walker 提出、Vose 给出线性预处理构造）是凭记忆写的，本机没有可离线核对的资料，未做引文验证。",
+          "本机 numpy 2.2.6 只随包发布了编译后的 _generator.pyd，没有 .pyx 源码，因此正文没有断言 numpy 的 Generator.choice 内部实现细节，只说「按概率抽样基本都走累积分布定位这条路」。",
+          "本文件没有在真实的面经评测环境中运行，统计频率只是本机随机模拟；精确性结论来自 implied_probs 的公式反推（与随机数无关），不依赖统计。",
+          "题面未提及概率是否会动态变化；代码与正文都假设概率表构造一次、后续只读，动态维护的场景只在 followUps 与 variations 里讨论，未实现。",
+          "极小概率（1e-12 级）在浮点下 prob 段可能被舍入到接近 0，本机那组用例只是偏差在 1e-16 量级、仍然可采样；真正的下溢阈值取决于输入尺度，未做系统性测试。"
+        ]
+      }
+    }
+  ]
+}

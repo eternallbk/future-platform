@@ -1,0 +1,136 @@
+{
+  "batchId": "prob-cur-27",
+  "entries": [
+    {
+      "id": "deepseek-kv-cache-calc",
+      "tldr": "KV 缓存=2·L·H_kv·d_head·S·B·位宽；GQA 只改 H_kv，MLA 换成 d_c+d_rope，量化压 BPE。",
+      "restated": "笔试场景：写出 KV Cache 的标准显存公式，说明 MLA/GQA/量化各自改变公式里的哪一项，并给出一组具体配置的量级估算。题干没有给层数、头数、d_head、上下文长度与精度，只强调版本号与参数规模要以公开模型配置和可复现实验为准；本文件按公开配置量级取 60/61 层、128 头、d_head=128、d_c=512、d_rope=64、bf16、4K/128K 上下文做示例计算，并明确这些数字只是示例而非题目约束。",
+      "approach": [
+        {
+          "step": "先立标准式（MHA 上界）",
+          "detail": "KV Cache 的本质是推理时把每层每个历史 token 的 K、V 张量留在显存里，避免重新计算。标准式写成 bytes = 2 · L · H_kv · d_head · S · B · BPE：2 是 K 和 V 两份，L 是层数，H_kv 是真正参与缓存的 KV 头数（MHA 时等于总头数 H），d_head 是每头维度（不是 d_model），S 是已缓存的历史长度（≈上下文长度），B 是并发/beam 展开后的 batch，BPE 是每元素字节数（fp16/bf16 为 2、fp32 为 4、fp8 为 1）。现场最稳的写法是先定住不变量「每 token 每层元素数 = 2·H_kv·d_head」，再乘 L·S·B·BPE，这样不会漏项也不会把维度搞混。它是精确上界而不是错解：不改结构时长上下文下 KV 往往超过权重占用，这正是所有压缩方案的动机。"
+        },
+        {
+          "step": "GQA/MQA：只把 H_kv 降下来",
+          "detail": "GQA 让 G 个 query 头共享一组 KV 头，缓存量变成 2 · L · (H/G) · d_head · S · B · BPE；MQA 是 H_kv=1 的极端情形。公式里只有 H_kv 一项变化，L、d_head、S、B 全都不动，所以压缩比恰好是 H/H_kv、与上下文长度无关，代价是 KV 的表达容量下降、需要靠训练补偿。最容易犯的错是把 H_kv 写成总头数 H，那会让估算直接放大 G 倍（8 组时差 8 倍）。"
+        },
+        {
+          "step": "MLA：把 2·H_kv·d_head 整项换掉",
+          "detail": "MLA 不再为每个 KV 头缓存 d_head 维的 K、V，而是把 K/V 压缩成一个低维潜向量 c（维度 d_c，量级 512），并把位置信息解耦出来单独存 d_rope 维（量级 64），于是每 token 每层元素数从 2·H_kv·d_head 变成 d_c + d_rope。推理时不必把潜向量解压成完整 K/V 再缓存，是因为 W_k/W_v 的升维矩阵可以做矩阵吸收（折进 W_q 与输出投影），注意力等价改写、缓存里只留潜向量。对公式的影响是结构性的：项数与头数 H_kv 解耦，压缩比与 H、d_head 都无关，只由 d_c+d_rope 决定。"
+        },
+        {
+          "step": "量化：只改 BPE，并落到一组具体配置",
+          "detail": "KV 量化不动元素个数，只把 BPE 从 2 降到 bits/8，因此 FP8 精确减半、INT4 再减半；但分组量化要额外存 scale（有时还有 zero-point），实际 BPE = bits/8 + scale_bytes/group_size，例如 INT4、group=64、fp16 scale 时是 0.53125 而不是 0.5（高 6.25%），group 越小开销越大。三项合起来做估算：同配置 MHA（60 层、128 KV 头、d_head=128、bf16）每 token 3.75 MiB，S=4096 单序列 15.00 GiB、128K 上下文单序列 480 GiB；换成 d_c=512、d_rope=64 的 MLA 后每 token 67.5 KiB，压缩 512/9 ≈ 56.9 倍，61 层 + 128K 上下文单序列约 8.58 GiB，40 GiB 预算可放 4 条并发序列。"
+        }
+      ],
+      "complexity": {
+        "time": "O(1) 闭式乘加（枚举候选配置或扫描层数时为 O(候选数)）",
+        "space": "O(1) 标量计算；真实显存占用就是公式算出的那个字节数本身",
+        "why": "字节数只由 L、H_kv、d_head、d_c、d_rope、S、B 与位宽相乘得到，没有迭代、没有中间张量；估算的复杂度不在算法而在单位换算与漏项。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''KV Cache 显存估算：MHA / GQA / MQA / MLA 与 KV 量化。\n\n公式主线（MHA/GQA/MQA）：bytes = 2 * L * H_kv * d_head * S * B * BPE\n其中 2 是 K 与 V 两份；MLA 把 2 * H_kv * d_head 换成 d_c + d_rope\n（压缩潜向量 + 解耦的 RoPE 分量）；BPE 是每元素字节数，由位宽与量化分组决定。\n运行：python kv_cache_calc.py   只依赖标准库，模型参数都是可替换的示例量级。\n'''\n\nGIB = 1024 * 1024 * 1024\n\n\nclass AttnConfig:\n    '''一种注意力结构的 KV 缓存形状：非 MLA 用 kv_heads * d_head，MLA 用潜维。'''\n\n    def __init__(self, name, layers, kv_heads=None, head_dim=None,\n                 latent_dim=0, rope_dim=0, heads=None):\n        if layers <= 0:\n            raise ValueError('layers 必须为正，实际 %r' % (layers,))\n        if latent_dim > 0:\n            if rope_dim < 0:\n                raise ValueError('rope_dim 不能为负')\n        elif not (kv_heads and head_dim):\n            raise ValueError('非 MLA 结构必须同时给出 kv_heads 与 head_dim')\n        self.name, self.layers = name, layers\n        self.kv_heads, self.head_dim = kv_heads, head_dim\n        self.latent_dim, self.rope_dim = latent_dim, rope_dim\n        self.heads = heads\n\n    @property\n    def is_mla(self):\n        return self.latent_dim > 0\n\n    def elements_per_token(self):\n        '''每 token 每层缓存多少元素（与精度无关，是估算的不变量）。'''\n        if self.is_mla:\n            return self.latent_dim + self.rope_dim\n        return 2 * self.kv_heads * self.head_dim\n\n    def describe(self):\n        if self.is_mla:\n            return 'MLA d_c=%d + d_rope=%d' % (self.latent_dim, self.rope_dim)\n        kind = 'MHA' if self.heads and self.kv_heads == self.heads else 'GQA/MQA'\n        return '%s H_kv=%d d_head=%d' % (kind, self.kv_heads, self.head_dim)\n\n\ndef bytes_per_element(bits, group_size=0, scale_bytes=2):\n    '''BPE = bits / 8 + scale_bytes / group_size；group_size=0 表示无分组也无 scale。'''\n    if bits <= 0:\n        raise ValueError('bits 必须为正')\n    if group_size < 0 or scale_bytes < 0:\n        raise ValueError('group_size / scale_bytes 不能为负')\n    bpe = bits / 8.0\n    if group_size:\n        bpe += scale_bytes / group_size\n    return bpe\n\n\ndef kv_cache_bytes(cfg, seq_len, batch=1, bits=16, group_size=0):\n    '''整段 KV 缓存字节数；seq_len 或 batch 为 0 时返回 0.0。'''\n    if seq_len < 0 or batch < 0:\n        raise ValueError('seq_len / batch 不能为负')\n    if seq_len == 0 or batch == 0:\n        return 0.0\n    per_token = cfg.layers * cfg.elements_per_token() * bytes_per_element(bits, group_size)\n    return per_token * seq_len * batch\n\n\ndef max_sequences(cfg, seq_len, budget_bytes, bits=16, group_size=0):\n    '''显存预算内能同时驻留几条该长度的序列（向下取整）。'''\n    one = kv_cache_bytes(cfg, seq_len, bits=bits, group_size=group_size)\n    if one <= 0:\n        raise ValueError('单序列占用为 0，无法估算并发数')\n    return int(budget_bytes // one)\n\n\ndef human(n):\n    for unit in ('B', 'KiB', 'MiB'):\n        if abs(n) < 1024:\n            return '%.2f %s' % (n, unit)\n        n /= 1024.0\n    return '%.2f GiB' % n\n\n\ndef main():\n    seq = 4096\n    mha = AttnConfig('MHA 基线', layers=60, kv_heads=128, head_dim=128, heads=128)\n    gqa = AttnConfig('GQA 8 组', layers=60, kv_heads=8, head_dim=128, heads=128)\n    mqa = AttnConfig('MQA 单组', layers=60, kv_heads=1, head_dim=128, heads=128)\n    mla = AttnConfig('MLA 潜向量', layers=60, latent_dim=512, rope_dim=64)\n\n    print('每 token 每层元素数：MHA=%d GQA=%d MQA=%d MLA=%d' % (\n        mha.elements_per_token(), gqa.elements_per_token(),\n        mqa.elements_per_token(), mla.elements_per_token()))\n    for cfg in (mha, gqa, mqa, mla):\n        print('%-10s %-22s 每 token %10s | S=%d 单序列 %10s' % (\n            cfg.name, cfg.describe(), human(kv_cache_bytes(cfg, 1)),\n            seq, human(kv_cache_bytes(cfg, seq))))\n\n    ratio = kv_cache_bytes(mha, 1) / kv_cache_bytes(mla, 1)\n    print('MLA 相对同层数同头数 MHA：%.2f 倍压缩，降 %.1f%%' % (ratio, 100 * (1 - 1 / ratio)))\n\n    for bits, group in ((16, 0), (8, 0), (4, 64), (4, 128)):\n        print('量化 bits=%2d group=%3d -> BPE=%.5f | MLA 每 token %s' % (\n            bits, group, bytes_per_element(bits, group),\n            human(kv_cache_bytes(mla, 1, bits=bits, group_size=group))))\n\n    v3 = AttnConfig('V3 量级', layers=61, latent_dim=512, rope_dim=64)\n    ctx = 131072\n    print('61 层 MLA、S=%d：每 token %s，单序列 %s' % (\n        ctx, human(kv_cache_bytes(v3, 1)), human(kv_cache_bytes(v3, ctx))))\n    print('40 GiB 预算下并发 128K 序列数：%d' % max_sequences(v3, ctx, 40 * GIB))\n\n    assert mha.elements_per_token() == 2 * 128 * 128 == 32768\n    assert gqa.elements_per_token() == 2 * 8 * 128\n    assert mla.elements_per_token() == 512 + 64\n    assert kv_cache_bytes(mha, 1) == 2 * 128 * 128 * 60 * 2\n    assert kv_cache_bytes(mla, 1) == (512 + 64) * 60 * 2\n    assert abs(ratio - 512 / 9) < 1e-9\n    assert bytes_per_element(4, 64) == 0.5 + 2 / 64\n    assert bytes_per_element(4, 128) < bytes_per_element(4, 64)\n    assert kv_cache_bytes(gqa, seq, bits=8) == kv_cache_bytes(gqa, seq, bits=16) / 2\n    assert kv_cache_bytes(mla, 0) == 0.0 and kv_cache_bytes(mla, 10, batch=0) == 0.0\n    assert max_sequences(v3, ctx, 40 * GIB) == 4\n    print('all assertions passed')\n\n\nif __name__ == '__main__':\n    main()\n",
+        "walkthrough": [
+          {
+            "note": "AttnConfig 用一个类装下三种结构的缓存形状：非 MLA 存 kv_heads×head_dim，MLA 存 latent_dim+rope_dim。构造函数就把层数、rope_dim、非 MLA 的必填维度校验掉，避免后面出现 None 或负数相乘而不报错。"
+          },
+          {
+            "note": "elements_per_token 是整个估算的不变量：MHA/GQA/MQA 返回 2·H_kv·d_head（2 是 K 和 V），MLA 返回 d_c+d_rope。把「每 token 每层」定死之后，剩下就是乘 L、S、B 和 BPE，现场不会漏项。"
+          },
+          {
+            "note": "bytes_per_element 实现 BPE = bits/8 + scale_bytes/group_size：group_size=0 表示不分组、无 scale 开销（fp16/bf16/fp8 走这条），group>0 时把 scale 分摊到每个元素上；这一项正是 INT4 估算最容易漏的 6%。"
+          },
+          {
+            "note": "kv_cache_bytes 把三项乘起来，并在 seq_len 或 batch 为 0 时直接返回 0.0（空缓存就是 0 字节），负数输入显式报错，而不是静默算出负显存这种没有意义的数。"
+          },
+          {
+            "note": "max_sequences 把公式反过来用：预算 // 单序列占用，回答「这张卡能跑几条 128K 并发」——面试里比单纯报一个字节数更能体现工程判断。"
+          },
+          {
+            "note": "main 打印四组结果：四种结构的每 token 与单序列占用、MLA 相对 MHA 的压缩比、四种精度下的 BPE 与占用、61 层 MLA 在 128K 上下文下的占用与并发数；随后用 11 条断言把每个数值钉死（含 S=0、batch=0、fp8 精确减半等边界）。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "S=0 或 batch=0：还没有任何历史 token，缓存占用为 0.0 字节，函数直接返回 0 而不是走进乘法。",
+        "MHA：H_kv = H，公式退化成 2·L·H·d_head·S·B·BPE，是所有其它结构的对照上界。",
+        "MQA：H_kv = 1，公式里只剩 2·d_head，压缩比等于总头数 H，但 KV 容量也降到最低。",
+        "MLA：d_rope=0 的退化情形（位置信息不做解耦）仍然成立，此时每 token 每层就是 d_c 个元素。",
+        "权重量化与 KV 量化是两件独立的事：只把权重做成 INT4 并不会让 KV Cache 变小，必须单独量化缓存。",
+        "投机解码/前缀共享：命中共享前缀时可以只存一份，公式要乘上「唯一前缀数」而不是请求数。",
+        "batch/并发与 beam search：B 是所有同时解码序列的总数，beam=4 时最坏情况就是 4 倍。",
+        "单位换算：KiB/MiB/GiB 按 1024，按 1000 报数会把 GiB 说成 GB、差约 7%。"
+      ],
+      "pitfalls": [
+        "漏乘 2：KV Cache 同时存 K 和 V，只算一份会少一半。",
+        "把 d_model 当成 d_head：d_head = d_model / H，用 d_model 会把每 token 占用放大 H 倍。",
+        "GQA/MQA 里用总头数 H 而不是 KV 头数 H_kv：8 组时估算直接放大 8 倍。",
+        "漏掉层数 L 或漏掉 S/B 之一：只背了「两倍头数乘维度」而忘了按层累加、按序列长度与并发累加。",
+        "把量化当成简单的 bytes = bits/8：分组量化还要摊 scale，INT4、group=64、fp16 scale 时真实 BPE 是 0.53125 而不是 0.5。",
+        "MLA 仍按 2·H_kv·d_head 计费：MLA 缓存的是 d_c+d_rope 的潜向量，不是解压后的完整 K、V（升维矩阵已被吸收进 W_q 与输出投影）。",
+        "只算权重不算 KV：长上下文推理时 KV 常常超过权重占用，必须与权重、激活一起对显存预算。",
+        "把估算当成恰好值：框架有 reserved/碎片/对齐开销，公式值是下界，工程上要留余量。"
+      ],
+      "followUps": [
+        "如果上下文从 4K 拉到 128K，KV Cache 会涨多少倍？权重占用变吗？",
+        "PagedAttention 把 KV 分成 block 管理，它改变的是公式里的哪一项？（不是元素个数，而是碎片与预留）",
+        "MLA 为什么能把 W_k/W_v 的升维矩阵吸收掉？吸收以后注意力的计算图变成了什么形状？",
+        "KV 量化里为什么 K 常按通道（per-channel）、V 常按 token（per-token）分组？搞反会怎样？",
+        "除了量化，还有哪些不改模型结构就能压 KV 的路子（滑窗、H2O/SnapKV 之类的驱逐、token 合并、前缀共享）？各自丢的是什么信息？",
+        "为什么在相同 KV 预算下 MLA 的精度通常好于同等压缩比的 MQA/GQA？（低秩潜向量 vs 头共享）",
+        "训练时的激活显存与推理时的 KV Cache 是同一回事吗？两者公式差在哪？"
+      ],
+      "variations": [
+        "把公式反过来做容量规划：给定单卡显存与权重占用，求最大并发数与最大上下文长度。",
+        "PagedAttention / 连续批处理下的 KV 显存管理：按 block 分配、碎片与预留怎么算。",
+        "滑窗注意力（StreamingLLM）：只保留最近 W 个 token 加若干 attention sink，S 被换成常数 W。",
+        "KV 驱逐：H2O、SnapKV、Scissorhands 按注意力分数保留重要 token，把 S 变成「预算 token 数」。",
+        "跨层共享 KV（如 YOCO / CLA 一类结构）或跨请求共享前缀（RadixAttention），把 L 或 B 折掉一部分。",
+        "GQA 的分组数 G 与精度/吞吐的联合调参：为什么 G=8 常被当成性价比拐点。",
+        "把同一份公式用到训练侧：不同 micro-batch 下的激活显存估算与重计算（activation checkpointing）的取舍。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "KV 缓存公式与三种改法",
+        "caption": "记住一条主线：先写标准式 2·L·H_kv·d_head·S·B·BPE，然后只允许三处改动——GQA/MQA 改 H_kv、MLA 把 2·H_kv·d_head 整项换成 d_c+d_rope、量化只改 BPE；最后乘出具体配置的每 token 占用，再用预算除以单序列占用得并发数。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='KV 缓存标准公式与 GQA、MLA、量化三种改法，以及一组具体配置的量级估算'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='14' y='17' font-size='13' fill='currentColor'>KV 缓存公式与三种改法</text><rect x='20' y='24' width='440' height='38' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='34' y='41' font-size='13' fill='currentColor'>标准公式（MHA 上界，H_kv = H）</text><text x='34' y='57' font-size='13' fill='currentColor'>bytes = 2 · L · H_kv · d_head · S · B · BPE</text><line x1='90' y1='62' x2='90' y2='88' stroke='var(--line-1)' stroke-width='1'/><polygon points='90,92 86,86 94,86' fill='var(--line-1)'/><line x1='240' y1='62' x2='240' y2='88' stroke='var(--line-1)' stroke-width='1'/><polygon points='240,92 236,86 244,86' fill='var(--line-1)'/><line x1='390' y1='62' x2='390' y2='88' stroke='var(--line-1)' stroke-width='1'/><polygon points='390,92 386,86 394,86' fill='var(--line-1)'/><rect x='20' y='92' width='140' height='54' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='30' y='110' font-size='13' fill='currentColor'>GQA / MQA</text><text x='30' y='126' font-size='13' fill='currentColor'>H_kv = H/G 或 1</text><text x='30' y='142' font-size='13' fill='currentColor'>只省掉 G 倍</text><rect x='170' y='92' width='140' height='54' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='180' y='110' font-size='13' fill='currentColor'>MLA 潜向量</text><text x='180' y='126' font-size='13' fill='currentColor'>d_c + d_rope</text><text x='180' y='142' font-size='13' fill='currentColor'>2·H_kv·d_head 消失</text><rect x='320' y='92' width='140' height='54' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='330' y='110' font-size='13' fill='currentColor'>KV 量化</text><text x='330' y='126' font-size='13' fill='currentColor'>BPE = bits/8 + s/g</text><text x='330' y='142' font-size='13' fill='currentColor'>FP8 减半</text><line x1='90' y1='146' x2='90' y2='152' stroke='var(--line-1)' stroke-width='1'/><line x1='240' y1='146' x2='240' y2='152' stroke='var(--line-1)' stroke-width='1'/><line x1='390' y1='146' x2='390' y2='152' stroke='var(--line-1)' stroke-width='1'/><line x1='90' y1='152' x2='390' y2='152' stroke='var(--line-1)' stroke-width='1'/><line x1='240' y1='152' x2='240' y2='158' stroke='var(--line-1)' stroke-width='1'/><polygon points='240,164 236,158 244,158' fill='var(--line-1)'/><rect x='20' y='164' width='440' height='46' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='34' y='182' font-size='13' fill='currentColor'>具体估算：61 层 × 576 元素 × 2B ≈ 68.6 KiB / token</text><text x='34' y='200' font-size='13' fill='currentColor'>128K 上下文单序列 ≈ 8.6 GiB；预算 ÷ 此值 = 并发数</text></svg>",
+        "alt": "自上而下的流程图：顶部是标准公式 bytes = 2·L·H_kv·d_head·S·B·BPE，向下分出三个分支——GQA/MQA 把 H_kv 改成 H/G 或 1、MLA 把 2·H_kv·d_head 换成 d_c+d_rope、KV 量化把每元素字节 BPE 改成 bits/8 加 scale 分摊；三个分支再汇到底部的具体估算：61 层 MLA 每 token 约 68.6 KiB，128K 上下文单序列约 8.6 GiB，用显存预算除以该值得到并发数。"
+      },
+      "selfTest": [
+        "写出标准 KV Cache 显存公式，并说明 MLA 改了其中哪一项。（答：bytes = 2·L·H_kv·d_head·S·B·BPE；MLA 把 2·H_kv·d_head 整项换成 d_c+d_rope，因为缓存的是压缩潜向量而不是解压后的 K、V。）",
+        "60 层、128 个 KV 头、d_head=128、bf16、S=4096 的 KV Cache 有多大？（答：每 token 每层 2×128×128=32768 个元素，每 token 3932160 字节 = 3.75 MiB；乘 4096 得 15.00 GiB。）",
+        "同样 60 层，换成 d_c=512、d_rope=64 的 MLA，每 token 多少、压缩多少倍？（答：576×60×2 = 69120 字节 = 67.5 KiB，相对上面的 MHA 压缩 512/9 ≈ 56.9 倍，即降约 98.2%。）",
+        "INT4、group=64、fp16 scale 时每元素多少字节？那 6% 从哪来？（答：BPE = 4/8 + 2/64 = 0.53125；多出来的 0.03125 是每个分组一个 fp16 scale 摊到 64 个元素上的开销。）",
+        "一张能给出 40 GiB 给 KV 的卡，跑 128K 上下文、61 层 MLA（d_c=512、d_rope=64、bf16）能并发几条？（答：单序列 9,210,691,584 字节 ≈ 8.58 GiB，40 GiB // 8.58 GiB = 4 条。）"
+      ],
+      "keyPoints": [
+        "标准式 bytes = 2·L·H_kv·d_head·S·B·BPE，2 是 K 和 V 两份，d_head 不是 d_model",
+        "GQA/MQA 只改 H_kv（H/G 或 1），压缩比 = H/H_kv 且与上下文长度无关",
+        "MLA 把 2·H_kv·d_head 换成 d_c+d_rope，靠矩阵吸收避免物化完整 K、V",
+        "量化只改 BPE：bits/8 之外还要摊 scale（INT4、g=64 时是 0.53125）",
+        "先算每 token 每层元素数这个不变量，再乘层数、序列长度、并发，最后用预算除以单序列占用得并发数"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "题面（人工整理，origin=curated，sourceUrl 为空）要求三件事：写出 KV Cache 的标准显存公式、说明 MLA/GQA/量化如何改变公式、给出一组具体配置的量级估算；本文件的公式、三种改法与估算表逐一对应这三点。",
+          "公式可由「缓存了哪些张量」直接推出：每层每个历史 token 都要留下 K 与 V，各有 H_kv 个头、每头 d_head 维，故每 token 每层元素数 = 2·H_kv·d_head，总量再乘 L·S·B·BPE；MLA 缓存的是 d_c+d_rope 的潜向量，因此该项被整体替换。",
+          "code.source 只依赖标准库，已在本机 python 3.12.9 上实机运行，末尾 11 条断言全部通过（未抛 AssertionError），并打印出四组估算结果与 all assertions passed。",
+          "实机数值：MHA（60 层、128 个 KV 头、d_head=128、bf16）每 token 3,932,160 字节 = 3.75 MiB，S=4096 单序列 16,106,127,360 字节 = 15.00 GiB，128K 上下文单序列 480.00 GiB。",
+          "实机数值：同层数 MLA（d_c=512、d_rope=64）每 token 69,120 字节 = 67.50 KiB，压缩比 512/9 ≈ 56.89 倍（降约 98.2%）；GQA 8 组每 token 245,760 字节 = 240.00 KiB，MQA 每 token 30,720 字节，三者与手工推导一致。",
+          "实机数值：INT4、group=64、fp16 scale 时 BPE = 0.53125（比 0.5 高 6.25%）；61 层 MLA 每 token 70,272 字节 = 68.625 KiB，128K 上下文单序列 9,210,691,584 字节 ≈ 8.58 GiB，40 GiB 预算下 max_sequences 返回 4。",
+          "本文件为人工题（sourceUrl 为 null），sources 是空数组，全文没有出现任何外部链接。"
+        ],
+        "uncertain": [
+          "题面没有给出任何具体模型参数与上下文长度，「60 层 / 128 头 / d_head=128 / 61 层 / d_c=512 / d_rope=64 / 4K / 128K」都是公开配置的量级示例，只用于演示估算流程，不是题目给定的硬性数字；真实作答应以现场给出的配置为准。",
+          "MLA 的矩阵吸收（把 W_k/W_v 的升维折进 W_q 与输出投影，从而不必物化完整 K、V）是推理实现细节，题面只要求「说明 MLA 如何改变公式」；本文件按「缓存里只存 d_c+d_rope」计费，未展开数学等价性证明，也未计入吸收后新增的算子与带宽开销。",
+          "不同公开材料给出的 KV 压缩百分比互不相同（取决于对照基线是同规模 MHA 还是上一代 GQA 模型），本文件只给出同层数、同头数 MHA 对照下的 512/9 ≈ 56.9 倍，没有复述任何单一来源的官方百分比。",
+          "量化部分只估算到「位宽 + scale 分摊」，未计 per-channel/per-token 的元数据、显存对齐 padding、框架 reserved 预留与碎片，工程实测占用通常高于公式值；且 K 与 V 的分组策略往往不同（K 常按通道、V 常按 token），实际开销还会再变。",
+          "题面是人工整理的一段描述（marker=笔试场景），没有原始题号、样例与评分细则，也没有给参考答案；本文件的结论是自行推导并用可运行代码自检得到的，未与出题方原文逐条比对。",
+          "本文件按人工题规则未引用任何外部链接，因此没有对照某一份公开模型配置表逐项核对；表中层数/头数/维度若要写进正式材料，需再对着对应模型的开源配置核一遍。"
+        ]
+      }
+    }
+  ]
+}

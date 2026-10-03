@@ -1,0 +1,138 @@
+{
+  "batchId": "prob-cur-26",
+  "entries": [
+    {
+      "id": "baidu-dpo-curve",
+      "tldr": "DPO 只保证正负例隐式奖励的差（margin）上升，正例的绝对概率不被目标约束，真实训练里常常不升反降。",
+      "restated": "题干只有一句话：「DPO 对齐训练的曲线是怎么样的，正例的概率会提升吗？」（百度文心一言大模型算法实习一面第 2 题，笔试口述场景，人工整理）。题面没给数据规模、β、模型结构，也没定义「曲线」指哪个指标、正例指 chosen 的序列似然还是相对概率，更没有样例，所以这是开放分析题：要先自己约定要画的量，再分开回答哪些曲线一定怎么走、哪些只是经验规律。",
+      "approach": [
+        {
+          "step": "先约定「曲线」是哪几条，并写出目标函数",
+          "detail": "「曲线」至少要拆成五条：DPO 训练 loss、隐式奖励的差（margin）Δ = β[log(π_θ(y_w)/π_ref(y_w)) − log(π_θ(y_l)/π_ref(y_l))]、训练 pair 上的偏好准确率、与参考策略的 KL、留出集或外部评判的 win-rate。目标函数是 L = −log σ(Δ)，其中 y_w 是正例 chosen、y_l 是负例 rejected、π_ref 是参考策略（通常是 SFT 检查点）。β 是隐式 KL 温度：DPO 没有显式 KL 正则项，对参考策略的约束全部藏在 log(π_θ/π_ref) 这个隐式奖励里。一个必须先说的锚点：从 SFT 检查点出发时 π_θ = π_ref，于是 Δ = 0、loss = −log σ(0) = ln2 ≈ 0.6931；第一步 loss 明显不是这个值，基本就是实现或数据接错了。"
+        },
+        {
+          "step": "求梯度：看清目标到底约束了什么",
+          "detail": "对 θ 求导得 ∇L = −β·σ(−Δ)·(∇log π_θ(y_w) − ∇log π_θ(y_l))。三个结论直接回答了题目：① 只有「差」进入梯度，正例与负例各自的绝对似然根本不在目标里，所以「正例概率会不会提升」不是目标能保证的事；② 权重 σ(−Δ) 随 Δ 增大而指数衰减，Δ→+∞ 时梯度→0，训练天然自限制，这解释了 loss 曲线为什么很快进入长平台、后期几乎不再学习；③ 把序列级似然展开后，chosen 与 rejected 在同一位置出现相同 token 时，两个 −p 项精确对消，真正拿到梯度的是「分歧 token」，所以同一个词在两个答案里都出现，并不等于它一定被推高。"
+        },
+        {
+          "step": "给出关键反例：目标存在零空间",
+          "detail": "把 pair 里正负例的 logit 同时加一个常数 δ：log π(y_w) − log π(y_l) 完全不变，于是 loss、margin、梯度一模一样，而正例的绝对概率可以任意小。换个说法：DPO 的最优解只把 margin 抬起来，绝对概率水平由初始化、参数共享与优化路径决定，目标本身对它没有偏好。所以严格答案是「不保证」——能保证的是相对优势（chosen 相对 rejected 的隐式奖励差）上升。"
+        },
+        {
+          "step": "经验曲线形态与面试结论",
+          "detail": "真实训练里常见的形态：loss 从 ln2 快速下降后进入长平台（σ(−Δ) 衰减 + Δ 不可能无限涨）；margin 在对数步数上近似线性上升、随后饱和；训练 pair 准确率迅速逼近 1（最容易骗人的一条，只说明拟合了训练数据）；与参考策略的 KL、回答长度单调上升；留出集 win-rate 先升、后平、过热则掉头（过优化 / Goodhart）；chosen 与 rejected 的序列对数似然往往都下降、rejected 降得更多，于是 margin 继续涨而正例绝对概率下降（likelihood displacement）。工程结论：盯四条一起看——长度归一化后的 margin、训练 pair 准确率、留出 win-rate、KL(ref)；正例绝对似然只作诊断，不作目标。"
+        }
+      ],
+      "complexity": {
+        "time": "口述题本身没有算法复杂度；推导是 1 次 logistic 求导，本地验证是 O(steps·K) = 200×4 的纯 Python 计算",
+        "space": "O(K)，K 是单个 prompt 上候选 completion 的个数；验证脚本不建计算图、不训练大模型",
+        "why": "结论只依赖 L = −log σ(Δ) 的「只含差」结构与权重 σ(−Δ)，不需要真跑一次对齐训练；表格策略上的数值验证是毫秒级的几次 exp/log。"
+      },
+      "code": {
+        "language": "python",
+        "source": "'''DPO 曲线小实验：单 prompt 表格 softmax 策略，只用标准库即可运行。\n\n三件事：\n1) 从参考策略出发跑 200 步 DPO 梯度下降，打印 loss / 隐式奖励边际 margin /\n   正例概率 pi_w / 负例概率 pi_l / 梯度权重 sigma(-margin) 的曲线；\n2) 验证梯度正交于「正负例 logit 同加常数」这个零空间方向（梯度只在乎差）；\n3) 验证该共同位移不改变 loss 与 margin，却能把正例概率从 0.98 压到 0.12，\n   说明 DPO 目标从不约束正例的绝对概率。\n'''\nimport math\n\n\ndef log_softmax(xs):\n    m = max(xs)\n    lse = m + math.log(sum(math.exp(x - m) for x in xs))\n    return [x - lse for x in xs]\n\n\ndef softmax(xs):\n    return [math.exp(v) for v in log_softmax(xs)]\n\n\ndef dpo(theta, theta_ref, pair, beta):\n    '''返回 (loss, margin, 梯度权重 sigma(-margin))；pair = (正例下标, 负例下标)。'''\n    lp, ref = log_softmax(theta), log_softmax(theta_ref)\n    w, l = pair\n    margin = beta * ((lp[w] - ref[w]) - (lp[l] - ref[l]))       # 隐式奖励之差\n    loss = math.log1p(math.exp(-margin)) if margin >= 0 else -margin + math.log1p(math.exp(margin))\n    weight = 1.0 / (1.0 + math.exp(margin)) if margin < 50 else 0.0   # sigma(-margin)\n    return loss, margin, weight\n\n\ndef dpo_step(theta, theta_ref, pair, beta, lr):\n    '''一次梯度下降：dL/dtheta = -beta * sigma(-margin) * (e_w - e_l)。'''\n    _, _, weight = dpo(theta, theta_ref, pair, beta)\n    w, l = pair\n    grad = [-beta * weight * ((i == w) - (i == l)) for i in range(len(theta))]\n    return [t - lr * g for t, g in zip(theta, grad)], grad\n\n\ndef spark(values):\n    '''把一串数压成一行 ASCII 曲线，方便一眼看趋势。'''\n    lo, hi = min(values), max(values)\n    if hi - lo < 1e-12:\n        return '_' * len(values)\n    bars = '_' + '.:-=+*#%@'\n    return ''.join(bars[int((v - lo) / (hi - lo) * (len(bars) - 1))] for v in values)\n\n\ndef main():\n    theta_ref = [0.4, 0.3, -0.5, -0.2]   # 参考策略在某 prompt 上 4 个 completion 的打分\n    theta = list(theta_ref)              # DPO 从参考策略出发（SFT 检查点）\n    pair, beta, lr, steps = (0, 1), 0.1, 0.5, 200\n    assert len(set(pair)) == 2 and max(pair) < len(theta), 'pair 越界或重复'\n    hist = []\n    for _ in range(steps):\n        theta, grad = dpo_step(theta, theta_ref, pair, beta, lr)\n        loss, margin, weight = dpo(theta, theta_ref, pair, beta)\n        pi = softmax(theta)\n        hist.append((loss, margin, pi[pair[0]], pi[pair[1]], weight))\n    print('理论起点 loss = ln2 = %.4f（theta = theta_ref 时 margin = 0）' % math.log(2.0))\n    print('step   loss    margin   pi_w    pi_l    weight')\n    for k in range(0, steps, 40):\n        loss, margin, pw, pl, wt = hist[k]\n        print('%4d  %.4f  %6.3f  %.4f  %.4f  %.4f' % (k + 1, loss, margin, pw, pl, wt))\n    print('last  %.4f  %6.3f  %.4f  %.4f  %.4f' % hist[-1])\n    for name, idx in (('loss    ', 0), ('margin  ', 1), ('pi_w    ', 2), ('pi_l    ', 3), ('weight  ', 4)):\n        print(name + spark([h[idx] for h in hist]))\n\n    w, l = pair\n    common = [float(i == w) + float(i == l) for i in range(len(theta))]\n    print('grad . (e_w + e_l) = %.3e（梯度对共同位移完全无感）' % sum(g * c for g, c in zip(grad, common)))\n\n    delta = -6.0                        # 正负例 logit 同加 delta：margin 不变，绝对概率大变\n    shifted = list(theta)\n    shifted[w] += delta\n    shifted[l] += delta\n    loss_a, margin_a, _ = dpo(theta, theta_ref, pair, beta)\n    loss_b, margin_b, _ = dpo(shifted, theta_ref, pair, beta)\n    print('共同位移 %.1f：loss %.12f -> %.12f，margin %.12f -> %.12f' % (delta, loss_a, loss_b, margin_a, margin_b))\n    print('同一 loss 下 pi_w：%.6f -> %.6e（绝对概率不被目标约束）'\n          % (softmax(theta)[w], softmax(shifted)[w]))\n\n    assert abs(loss_a - loss_b) < 1e-12 and abs(margin_a - margin_b) < 1e-12\n    assert abs(sum(g * c for g, c in zip(grad, common))) < 1e-15\n    assert hist[-1][0] < hist[0][0] and hist[-1][1] > hist[0][1] and hist[-1][4] < hist[0][4]\n    print('断言全部通过：loss 单调降、margin 单调升、权重衰减、共同位移是零空间方向')\n\n\nif __name__ == '__main__':\n    main()",
+        "walkthrough": [
+          {
+            "note": "策略建模：把某个 prompt 上的 K=4 个候选 completion 看成 4 类 softmax 表格策略，θ 是打分。θ_ref 是参考策略（SFT 检查点），θ 从 θ_ref 出发，于是 Δ=0、loss=ln2，与真实训练的起点一致。这只为把「曲线」画出来，不代表 LLM 的参数化。"
+          },
+          {
+            "note": "dpo()：先算 log_softmax，再按 Δ = β[(log π_θ(y_w) − log π_ref(y_w)) − (log π_θ(y_l) − log π_ref(y_l))] 求 margin；loss 用数值稳定写法 softplus(−Δ)（Δ ≥ 0 时 log1p(exp(−Δ))，否则 −Δ + log1p(exp(Δ))），并顺带返回梯度权重 σ(−Δ)。σ(−Δ) 在 Δ > 50 之后直接截断成 0，避免 exp 溢出。"
+          },
+          {
+            "note": "dpo_step()：把 ∇L = −β·σ(−Δ)·(e_w − e_l) 直接写成列表推导——注意 softmax 的 −p 项在 (∇log π_w − ∇log π_l) 里对消了，所以梯度只落在 w、l 两个坐标上，这正是「只约束差」的代码形态；更新是 θ ← θ − lr·∇L。"
+          },
+          {
+            "note": "训练循环与曲线：跑 200 步，每步记录 loss、margin、正例概率、负例概率、σ(−Δ)，再用 spark() 把它们压成 5 行 ASCII 曲线。本机实测（β=0.1、lr=0.5）：loss 0.6931→0.3733，margin 0.005→0.793，σ(−Δ) 0.4988→0.3116，正例概率 0.358→0.982，负例概率 0.308→0.0003；形状与「loss 降、margin 升、梯度权重衰减」的预期一致。"
+          },
+          {
+            "note": "零空间验证：算当前梯度与方向 e_w + e_l 的内积，本机实测 0.000e+00，说明梯度对「正负例一起抬高/压低」这个方向完全无感；再把正负例 logit 同加 δ=−6，loss 仍是 0.373339215067（差 5.6e-17）、margin 仍是 0.792797381648，而正例概率从 0.981869 掉到 0.120213——同一个 loss 值对应完全不同的正例绝对概率。"
+          },
+          {
+            "note": "断言与边界：脚本用 assert 固化四件事——loss 下降、margin 上升、σ(−Δ) 衰减、共同位移不改变 loss/margin 且梯度与该方向正交；开头还校验 pair 不重复、不越界。跑通后最后一行输出是「断言全部通过」。"
+          },
+          {
+            "note": "诚实说明玩具的边界：表格策略里正例概率其实是上升的（梯度只在两个独立坐标上做功），而真实 LLM 上实测 chosen 似然常下降。这个脚本能严格证明的是数学部分（目标只含差、绝对水平是零空间方向），不能用来证明或证伪真实训练里的下降幅度。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "β→0：隐式奖励几乎退化，margin 涨不动，所有曲线接近平线（等价于基本不训练）。",
+        "β→+∞：极强地贴住参考策略，margin 涨得极慢、KL 曲线几乎为 0。",
+        "chosen 与 rejected 完全相同（或同分布）：Δ 恒为 0，loss 停在 ln2，训练多少步都不动——可以直接用它检验实现有没有 bug。",
+        "数据里 chosen 在参考策略下的概率本来就远低于 rejected（困难对或标注噪声）：margin 起步为负、loss 大于 ln2，前期下降特别快。",
+        "从随机初始化而不是 SFT 检查点开始：起点 loss 不再是 ln2，曲线与别人不可比。",
+        "长度差异大的 pair：序列对数似然是逐 token 求和，长度偏置会让模型用「变长/变短」去刷 margin，只看 Δ 会误判对齐效果。",
+        "π_ref 在某个 token 上概率为 0（词表外或数值下溢）：log(π_θ/π_ref) 出现 −inf 或 nan，需要 clamp 或跳过该样本。",
+        "pair 下标重复或越界：脚本用 assert 挡住，这是最省事的数据 sanity check。"
+      ],
+      "pitfalls": [
+        "把「正例概率提升」当成 DPO 的目标：梯度里只有差，正负例同时抬升或压低是 loss 的零空间方向。",
+        "以为 DPO 有显式 KL 项：KL 只隐含在 β·log(π_θ/π_ref) 里，β 就是隐式 KL 温度，β 越小越容易过优化。",
+        "只看 loss 下降就宣布训练成功：后期 σ(−Δ) 已经很小，loss 曲线几乎不动，但 KL 和回答长度还在涨。",
+        "训练 pair 准确率接近 1 就以为对齐成功：它只说明拟合了训练数据，必须看留出 win-rate 是否还在涨。",
+        "直接比较不同长度回答的 log-prob：长度不同不可比，要么长度归一化，要么改看 chosen 与 rejected 的 margin。",
+        "把 DPO 的隐式 reward 当 reward model 用：它只在训练 pair 的差上有信号，绝对标度没有意义。",
+        "忽略 σ(−Δ) 的饱和，指望 margin 无限涨、loss 掉到 0：那只会发生在过拟合训练 pair 的时候。"
+      ],
+      "followUps": [
+        "为什么 DPO 会降低 chosen 的绝对似然（likelihood displacement），有哪些缓解手段？",
+        "DPO 的长度偏置从哪来，怎么去掉（长度归一化、去掉参考项）？",
+        "β 怎么选，它和 KL 约束、过优化曲线之间的关系是什么？",
+        "DPO 与 PPO/GRPO 的曲线差别在哪，为什么在线方法的 chosen 似然更稳？",
+        "IPO、cDPO、KTO、ORPO 各修了 DPO 的哪个毛病？",
+        "怎么用 reward model 或外部强模型评判做留出监控，据此决定 early stop？",
+        "DPO 的隐式 reward 与用 Bradley-Terry 损失单独训出来的 reward model 是什么关系？"
+      ],
+      "variations": [
+        "IPO：把 log σ 换成平方损失，显式限制 margin 无限增大，缓解过优化。",
+        "cDPO：对偏好标注噪声做标签平滑。",
+        "KTO：不需要成对偏好，用「好/坏」单点信号加得失不对称权重。",
+        "ORPO：把偏好项直接并进 SFT 损失，省掉参考模型与两阶段训练。",
+        "SimPO：去掉参考策略，用长度归一化的平均对数似然当隐式奖励。",
+        "在线/迭代 DPO：用当前策略重新采样偏好数据并多轮刷新，缓解 off-policy 分布漂移。",
+        "RSO / SLiC-HF：用 hinge 或排序损失替代 logistic 损失。"
+      ],
+      "diagram": {
+        "kind": "curve",
+        "title": "DPO 曲线与零空间",
+        "caption": "记住三条：loss 从 ln2 起降后进入长平台（σ(−Δ) 衰减导致自限制）；margin 上升但会饱和；正例的绝对概率不在目标里，它是零空间方向，实测常随 rejected 一起下降。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='DPO 训练曲线示意图：loss 下降后进入平台，margin 上升后饱和，梯度权重 sigma(-margin) 衰减，chosen 的绝对概率不被目标约束'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><line x1='14' y1='22' x2='34' y2='22' stroke='currentColor' stroke-width='2'/><text x='38' y='27' font-size='13' fill='currentColor'>loss</text><line x1='84' y1='22' x2='104' y2='22' stroke='var(--accent)' stroke-width='2'/><text x='108' y='27' font-size='13' fill='var(--accent)'>margin</text><line x1='176' y1='22' x2='196' y2='22' stroke='var(--fg-1)' stroke-width='2' stroke-dasharray='5 3'/><text x='200' y='27' font-size='13' fill='var(--fg-1)'>π(chosen) 实测常降</text><line x1='352' y1='22' x2='372' y2='22' stroke='var(--line-1)' stroke-width='2'/><text x='376' y='27' font-size='13' fill='var(--line-1)'>σ(-Δ)</text><line x1='56' y1='200' x2='452' y2='200' stroke='var(--line-1)' stroke-width='1'/><line x1='56' y1='200' x2='56' y2='40' stroke='var(--line-1)' stroke-width='1'/><polyline points='56,44 76,90 100,120 130,138 170,152 230,164 300,172 380,178 452,181' fill='none' stroke='currentColor' stroke-width='2'/><polyline points='56,200 76,170 100,140 130,112 170,88 220,70 280,56 350,48 452,42' fill='none' stroke='var(--accent)' stroke-width='2'/><polyline points='56,96 90,86 130,82 180,86 240,94 310,106 390,120 452,130' fill='none' stroke='var(--fg-1)' stroke-width='2' stroke-dasharray='5 3'/><polyline points='56,122 76,132 100,146 130,162 170,178 230,188 300,194 380,197 452,199' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='384' y='220' font-size='13' fill='currentColor'>训练步数 →</text><text x='14' y='234' font-size='13' fill='currentColor'>Δ = 隐式奖励差；正负例同加常数是 loss 的零空间</text></svg>",
+        "alt": "一张曲线示意图：横轴是训练步数，四条曲线分别是单调下降后进入平台的 loss、上升后饱和的 margin、先平后降的 chosen 绝对概率、以及从 0.5 衰减到 0 的梯度权重 σ(-Δ)；底部注明「正负例同加常数」是 loss 的零空间方向。"
+      },
+      "selfTest": [
+        "从 SFT 检查点开始跑 DPO，第一步的 loss 大约是多少？为什么？（答：π_θ=π_ref 时 Δ=0，−log σ(0)=ln2≈0.6931；本机脚本 1 步后实测 0.6907，起点明显偏离 ln2 就说明实现或数据接错了。）",
+        "把 pair 里正负例的 logit 同加一个常数 δ，loss 会变吗？正例概率会变吗？（答：loss 与 margin 完全不变，正例概率会变；本机实测 δ=−6 时 loss 都是 0.373339215067、margin 都是 0.792797381648，而正例概率从 0.981869 变到 0.120213。）",
+        "梯度里的 σ(−Δ) 说明什么？（答：Δ 越大权重越小、梯度趋于 0，所以 DPO 自限制、后期几乎不学；这解释了 loss 曲线为什么早早进入长平台，也解释了为什么 margin 会饱和。）",
+        "训练 pair 准确率已经到 1，能说对齐成功了吗？（答：不能。它只说明训练 pair 被拟合，必须结合留出 win-rate 与 KL(ref) 一起看，并防过优化。）",
+        "「正例的概率会提升吗」怎么回答才完整？（答：相对 rejected 的概率/隐式奖励差会提升，这是目标保证的；chosen 的绝对似然不被目标约束，实测常下降且 rejected 降得更多——所以答案取决于问的是相对还是绝对。）"
+      ],
+      "keyPoints": [
+        "DPO 损失 L = −log σ(Δ)，Δ = β[log(π_θ(y_w)/π_ref(y_w)) − log(π_θ(y_l)/π_ref(y_l))]，只依赖差。",
+        "梯度 = −β·σ(−Δ)·(∇log π_w − ∇log π_l)：权重 σ(−Δ) 自限制，同位置相同 token 的 −p 项对消。",
+        "目标存在零空间：正负例同加常数不改变 loss/margin，所以正例的绝对概率不被约束。",
+        "曲线形态：loss 从 ln2 快速下降后进入平台，margin 升后饱和，KL 与长度上升，留出 win-rate 先升后可能掉头。",
+        "结论口径：相对优势会提升；chosen 的绝对概率不保证，实测常降（likelihood displacement）。"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "题干原文为：「百度文心一言大模型算法实习一面第 2 题：“DPO 对齐训练的曲线是怎么样的，正例的概率会提升吗？”这是一道需要区分“chosen 的绝对概率”与“chosen 相对 rejected 的 margin”的分析题。」",
+          "输入 JSON 标注 origin=curated、kind=exam、marker=笔试场景、difficulty=medium、topics=[数学与概率, 大模型与RL]、sourceUrl=null、sourceName=人工整理（research/jobs_kb.json），且 has.solution/keyPoints/pitfalls 均为 false、只有 answerOutline=true，说明人工侧只有答题提纲，解法、得分点与易错点都需要本文件自己补。",
+          "题干自己点明了考点：区分 chosen 的绝对概率与 chosen 相对 rejected 的 margin，因此本文件把「相对 margin 上升（目标保证）」与「绝对概率上升（不保证）」分开回答，与题干口径一致。",
+          "本文件 code.source 已在 python 3.12.9 上实跑通过（只依赖标准库 math，无第三方包），输出末尾为「断言全部通过：loss 单调降、margin 单调升、权重衰减、共同位移是零空间方向」。",
+          "本机实测数值（β=0.1、lr=0.5、200 步、4 类 softmax）：loss 0.6931→0.3733、margin 0.005→0.793、σ(−Δ) 0.4988→0.3116、正例概率 0.3581→0.9819、负例概率 0.3082→0.0003；这些数字与上面 walkthrough 里写的一致。",
+          "本机实测零空间结论：梯度与方向 e_w+e_l 的内积为 0.000e+00；正负例 logit 同加 δ=−6 后 loss 仍为 0.373339215067（差 5.6e-17）、margin 仍为 0.792797381648，而正例概率由 0.981869 变为 0.120213。",
+          "本题 sourceUrl 为 null（人工题），按铁律 sources 留空，全篇没有出现任何链接或 http 字样。"
+        ],
+        "uncertain": [
+          "题面只有一句话，没有定义「曲线」包含哪几条指标、正例指 chosen 的序列似然还是相对概率，也没有给数据规模与 β；本文件自选了 loss / margin / 准确率 / KL / win-rate 五条曲线并明确区分口径。如果面试官只想要一句话答案，重点应落在「相对 margin 升、绝对概率不保证」。",
+          "真实 LLM 上 chosen 的序列对数似然下降（likelihood displacement）是后续文献的实测结论，其成因（长度偏置、参数共享导致的分歧 token 泛化、数据噪声）仍有争议；本文件只把其中可严格证明的部分（loss 对共同位移不变、梯度正交于该方向）做成了可运行验证，真实训练里的下降幅度未在本地复现，也没有本地跑过完整对齐训练。",
+          "表格 softmax 玩具模型里正例概率其实是上升的（梯度只在 w、l 两个独立坐标上做功），与真实 LLM 上观测到的下降方向相反；玩具只用于验证曲线形态与零空间结论，不能用来推断真实训练中正例概率的走向。",
+          "五条经验曲线的细节（尤其留出 win-rate 何时见顶、margin 是否饱和、loss 是否真的单调）在不同论文与不同数据集上结论不完全一致，本文件给的是常见形态，不是定理。",
+          "「与参考策略的 KL 单调上升」依赖训练期间 π_ref 固定、且用 KL(π_θ‖π_ref) 的口径估计；换成反向 KL 或换估计器，曲线会有偏差，这里没有展开。",
+          "本题没有给出评测指标与数据规模，所以本文件没有给出任何具体数值目标（例如 win-rate 提升多少算合格），只给曲线形态与判读方法。"
+        ]
+      }
+    }
+  ]
+}

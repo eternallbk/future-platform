@@ -1,0 +1,165 @@
+{
+  "batchId": "prob-cur-13",
+  "entries": [
+    {
+      "id": "max-subarray-monotonic-stack",
+      "tldr": "两个 O(n) 单遍扫描：Kadane 滚动变量解 lc53，存下标的单调递减栈解 lc739。",
+      "restated": "输入两段一维整数序列，写出两个函数。(1) lc53：nums 是元素可负的整数数组，长度 n ≥ 1（公开题面 n ≤ 1e5），求非空连续子数组的最大和；空数组无定义。(2) lc739：temps 是正整数每日温度序列，长度 n ≥ 1，输出等长数组 res，res[i] = 第 i 天之后第一次出现更高温度相隔的天数，之后没有更高温则为 0。人工题干还要求说明两者的状态定义与不变量；题干未给具体样例与输出格式。",
+      "approach": [
+        {
+          "step": "朴素写法：枚举所有子数组 / 每天向后暴力扫",
+          "detail": "lc53 枚举左右端点再求和是 O(n^2)~O(n^3)；lc739 对每天向后找第一个更高温是 O(n^2)，在严格递减的温度序列上每天都要扫到尾。两者共同的毛病是：每换一个起点就把中间结果全丢掉，从头再算一遍，于是 n=1e5 时上亿次操作不可接受。"
+        },
+        {
+          "step": "易错写法：把「空子数组」当合法候选 / 把温度值当栈元素",
+          "detail": "Kadane 初值写 0 等于允许长度为 0 的子数组，全负数数组会返回 0（人工 pitfall）；单调栈里存温度值则答不出「相隔几天」，因为距离只能由下标差得到（人工 pitfall）；另外只留一个变量 cur 就 return，会漏掉「答案不在末尾」的情况。这三处都不是思路错，而是定义没定死。"
+        },
+        {
+          "step": "正确写法 A：lc53 先定状态 dp[i] = 以 nums[i] 结尾的最大子数组和",
+          "detail": "「以 i 结尾」这个约束是关键：它把候选压成两种——要么把 nums[i] 接到以 i-1 结尾的最优段后面，要么从 nums[i] 另起一段，于是 dp[i] = max(nums[i], dp[i-1] + nums[i])，不需要枚举任何区间。因为答案可以结束在任何位置，另设 best 记录 max(dp[0..i])；又因为 dp[i] 只依赖 dp[i-1]，用一个滚动变量 cur 就能把 dp 表压掉，空间从 O(n) 降到 O(1)（人工 keyPoint 1）。"
+        },
+        {
+          "step": "正确写法 B：lc739 用单调递减栈，栈里存下标",
+          "detail": "为什么是栈：对第 i 天来说，只有「还没遇到更高温」的天需要被记着，而它们必然按温度从高到低排列，这正好是一个单调递减栈（人工 keyPoint 2）。新温度 t 到来时，凡是栈顶温度小于 t 的，t 就是它们等的第一个更高温，可以立刻弹栈结算 res[j] = i - j；弹到栈顶温度 ≥ t 为止再把 i 入栈。不变量：任一时刻栈内下标递增、对应温度严格递减；每个下标只在「答案被算出的那一刻」出栈。"
+        },
+        {
+          "step": "收尾与共同点：剩下的位置天然就是 0，两者都是 O(n) 单遍扫描",
+          "detail": "循环结束后仍留在栈里的下标，说明之后没有更高温，res 保持初值 0 即正确语义，不需要额外收尾循环（人工 pitfall 提醒的那一步被初始化吸收了）。两个解法的共同点是单遍扫描 O(n)、每步均摊 O(1)：区别在于不变量保不保序——Kadane 的状态只依赖前一个位置，所以能压成标量；lc739 的答案依赖「上一个更高温」，必须显式维护一个按温度有序的结构，空间最坏 O(n)（人工 keyPoint 3）。"
+        }
+      ],
+      "complexity": {
+        "time": "O(n)（两个函数各一次单遍扫描。lc739 的 while 总弹栈次数 ≤ n，是均摊 O(1)，不是每步 O(n)）",
+        "space": "lc53 是 O(1)；lc739 除输出数组 O(n) 外，栈最坏 O(n)（温度严格递减时所有下标留栈），最好 O(1)",
+        "why": "lc53 每步只做一次比较取 max，只留 cur/best 两个标量；lc739 每个下标恰好入栈一次、至多出栈一次，所以两个解法的总代价都与 n 成正比。"
+      },
+      "code": {
+        "language": "python",
+        "source": "\"\"\"手撕题：最大子数组和（lc53，Kadane）+ 每日温度（lc739，单调递减栈）。\n\n与人工 referenceSolution 完全同一算法：\n  · max_subarray        dp[i] = max(nums[i], dp[i-1] + nums[i])，即以 nums[i] 结尾的\n                        最大子数组和；滚动变量把 dp 压到 O(1) 空间，best 单独维护。\n  · daily_temperatures  单调递减栈里存「下标」（不是温度值）；temps[stack[-1]] < t 时\n                        弹栈并写 res[j] = i - j；留在栈里的位置保持初值 0。\n本文件额外补的只有：空输入/单元素等边界守卫、两个 O(n^2) 暴力参照与 main 自测，\n算法本体与人工参考实现逐步一致。\n\n形状约定（纯 Python，无张量维度）：\n  nums  : 一维整数序列，长度 n >= 1（上游若给 torch 一维张量，先 .tolist()）\n  temps : 一维整数序列，长度 n >= 1，元素为正整数温度\n  res   : 与 temps 等长的一维 list[int]，取值 0 表示之后没有更高温度\n只依赖标准库。\n\"\"\"\nimport random\n\n\ndef max_subarray(nums):\n    \"\"\"lc53：返回非空连续子数组的最大和。O(n) 时间 / O(1) 额外空间。\"\"\"\n    if len(nums) == 0:\n        raise ValueError(\"max_subarray 要求至少 1 个元素：空数组的最大子数组和没有定义\")\n    best = cur = nums[0]            # 不用 0 初始化：全负数数组的答案必须还是 max(nums)\n    for x in nums[1:]:\n        cur = max(x, cur + x)       # 接着上一段（cur + x），还是从 x 另起一段\n        best = max(best, cur)       # 答案可以结束在任何位置，所以 best 必须独立维护\n    return best\n\n\ndef daily_temperatures(temps):\n    \"\"\"lc739：res[i] = 第 i 天之后第一个更高温相隔的天数，之后没有更高温则为 0。\"\"\"\n    res = [0] * len(temps)\n    stack = []                      # 存下标；对应温度严格递减（栈底温度最高）\n    for i, t in enumerate(temps):\n        while stack and temps[stack[-1]] < t:   # 严格小于：等温不算「更高」\n            j = stack.pop()\n            res[j] = i - j          # 下标差就是天数差（这也是必须存下标的原因）\n        stack.append(i)             # i 还没遇到更高温，先入栈等以后结算\n    return res                      # 栈里剩下的下标保持 0：后面没有更高温度\n\n\ndef brute_max_subarray(nums):\n    \"\"\"O(n^2) 暴力参照：枚举左端点后向右累加，用于对拍。\"\"\"\n    best = nums[0]\n    for i in range(len(nums)):\n        run = 0\n        for x in nums[i:]:\n            run += x\n            if run > best:\n                best = run\n    return best\n\n\ndef brute_daily_temperatures(temps):\n    \"\"\"O(n^2) 暴力参照：对每天向后找第一个更高温，用于对拍。\"\"\"\n    res = []\n    for i in range(len(temps)):\n        gap = 0\n        for j in range(i + 1, len(temps)):\n            if temps[j] > temps[i]:\n                gap = j - i\n                break\n        res.append(gap)\n    return res\n\n\ndef main():\n    # --- 定向用例：边界优先 ---\n    assert max_subarray([-3, -1, -2]) == -1, \"全负数：初值写 0 的写法会错答 0\"\n    assert max_subarray([5]) == 5\n    assert max_subarray([1, -10]) == 1, \"答案可以不在末尾\"\n    assert max_subarray([-2, 1, -3, 4, -1, 2, 1, -5, 4]) == 6\n    assert max_subarray([1, 2, 3, 4]) == 10\n\n    assert daily_temperatures([73, 74, 75, 71, 69, 72, 76, 73]) == [1, 1, 4, 2, 1, 1, 0, 0]\n    assert daily_temperatures([30]) == [0]\n    assert daily_temperatures([90, 80, 70]) == [0, 0, 0], \"严格递减：无人结算，栈深 n\"\n    assert daily_temperatures([30, 40, 50, 60]) == [1, 1, 1, 0]\n    assert daily_temperatures([70, 70, 71]) == [2, 1, 0], \"等温不算更高温\"\n\n    rejected = False\n    try:\n        max_subarray([])\n    except ValueError:\n        rejected = True\n    assert rejected, \"空数组必须显式报错，而不是抛 IndexError\"\n\n    # --- 随机对拍：Kadane 对 O(n^2)、单调栈对 O(n^2) ---\n    rng = random.Random(20261003)\n    for _ in range(500):\n        n = rng.randint(1, 12)\n        nums = [rng.randint(-9, 9) for _ in range(n)]\n        assert max_subarray(nums) == brute_max_subarray(nums), nums\n        temps = [rng.randint(0, 9) for _ in range(n)]       # 允许相等，专门检验严格小于\n        got = daily_temperatures(temps)\n        assert got == brute_daily_temperatures(temps), (temps, got)\n    print(\"all tests passed\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
+        "walkthrough": [
+          {
+            "note": "文件头的形状约定先声明「输入是一维序列、无张量维度、长度 ≥ 1」：这道题两问都是序列上的单遍扫描；上游若给的是 torch 一维张量，先 .tolist() 或直接用 len/下标访问即可，算法本体不用改，也不需要 import torch。"
+          },
+          {
+            "note": "max_subarray 开头用 len(nums) == 0 显式守卫。人工参考实现直接取 nums[0]，空数组会抛 IndexError；lc53 保证 n ≥ 1，这里把「无定义」写成一句明确的 ValueError，面试时比裸 IndexError 更好解释。"
+          },
+          {
+            "note": "best = cur = nums[0] 是人工 pitfall 第一条的直接落实：初值取 nums[0] 而不是 0，等于声明「子数组非空」。全负数数组 [-3, -1, -2] 的正确答案是 -1，初值写 0 会返回 0，等于把空子数组合法化了。"
+          },
+          {
+            "note": "循环只遍历 nums[1:]：每轮 cur = max(x, cur + x) 就是 dp 转移 max(nums[i], dp[i-1] + nums[i]) 的滚动写法——要么把 x 接到「以 i-1 结尾的最优段」后面，要么从 x 另起一段。关键不变量是「cur 恒等于以当前元素结尾的最大子数组和」，所以一段和为负时会被自动丢掉，等价于在合适的位置重新开始。"
+          },
+          {
+            "note": "best = max(best, cur) 必须与 cur 分开维护：cur 只回答「以当前元素结尾」，而答案可以是任意结尾。例如 [1, -10] 的答案是 1，而循环结束时 cur = -9；写成一个变量直接 return cur 是这道题最常见的手撕错误。"
+          },
+          {
+            "note": "daily_temperatures 先开 res = [0] * len(temps)，这一步同时承担了人工 pitfall 第三条「留在栈里的位置填 0」——没被弹出就说明之后没有更高温，语义正好是 0，于是不需要任何收尾循环。"
+          },
+          {
+            "note": "stack 里存的是下标而不是温度值：比较写 temps[stack[-1]] < t，弹出后用 i - j 得到天数差。存值的话 j 就丢了，这正是人工 pitfall 第二条。比较用严格小于，因为「更高温」不含等温——写成 <= 时 [70, 70, 71] 会错答 [1, 1, 0]（正确是 [2, 1, 0]）。"
+          },
+          {
+            "note": "while 是「一次性结算所有已经等到答案的天」：i 这天温度高于栈顶那些更低温的日子，每弹一个就写一条答案。在 [73, 74, 75, 71, 69, 72, 76, 73] 的 i = 6（t = 76）处会连续弹出下标 5 与 2，写上 res[5] = 1、res[2] = 4；弹到栈顶温度不低于 t 后把 i 入栈，继续维持「栈内温度严格递减」的不变量。"
+          },
+          {
+            "note": "main 先跑定向边界（全负数、单元素、答案不在末尾、严格递减、等温），再随机对拍各 500 组：Kadane 对 O(n^2) 暴力、单调栈对 O(n^2) 暴力，随机温度允许重复值，专门验证「等温不算更高温」这条语义。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "空 nums：lc53 保证 n ≥ 1，本实现显式抛 ValueError；人工参考实现直接取 nums[0] 会抛 IndexError，答题时应说明前提。",
+        "空 temps 序列：返回 []（res = [0] * 0），循环体不执行，无任何越界。",
+        "n = 1：Kadane 的 for 循环一次都不进，直接返回 nums[0]；daily_temperatures 返回 [0]。",
+        "全负数（如 [-3, -1, -2]）：答案必须是 max(nums) = -1，不能是 0——这是人工 pitfall 第一条的判定用例。",
+        "答案不在末尾（如 [1, -10]）：必须靠 best 独立维护，只有 cur 会错答 -9。",
+        "全为正数（如 [1, 2, 3, 4]）：答案是整段和 10，dp 一次都不重启。",
+        "严格递减温度（如 [90, 80, 70]）：没有任何一天被结算，res 全 0，栈深达到 n，是空间最坏情况。",
+        "严格递增温度（如 [30, 40, 50, 60]）：每天入栈后下一步立刻被弹掉，栈深最多 2。",
+        "含相等温度（如 [70, 70, 71]）：等温不算「更高」，走严格小于分支；答 [2, 1, 0]，答成 [1, 1, 0] 就是写成了 <=。",
+        "两段整体单调的极端输入：lc739 在严格递减时每步只入栈不出栈，均摊分析里「每个下标至多出栈一次」正好兜住这种最坏情况。",
+        "极大/极小整数混合：Kadane 只做加法和比较，Python 整数无溢出；n 很大时（公开题面 n ≤ 1e5）单遍 O(n) 必须，不许用 O(n^2) 交卷。",
+        "res[i] = 0 有歧义（「没有更高温」而不是「当天」）：这是 lc739 题面自带的约定，实现必须与它一致。"
+      ],
+      "pitfalls": [
+        "Kadane 初值设为 0 导致全负数数组返回 0（应为 max(nums)）——人工 pitfall：初值写 0 等于允许空子数组，正确做法是 best = cur = nums[0]。",
+        "单调栈存值而不是下标，无法计算距离——人工 pitfall：答案要的是 i - j，只有存下标才能拿到 j；比较时用 temps[stack[-1]] 取值。",
+        "每日温度忘记最后留在栈里的位置填 0——人工 pitfall：本实现靠 res 初始化成全 0 吸收这一步，若改成收集「已结算」的结果就会漏。",
+        "把 best 与 cur 合成一个变量、循环结束直接返回 cur：cur 只表示「以最后一个元素结尾」的最大和，答案可以结束在任何位置（[1, -10] 会错答 -9）。",
+        "把 lc739 的比较写成 <=：等温被当成更高温，[70, 70, 71] 会错答 [1, 1, 0] 而不是 [2, 1, 0]。",
+        "while 条件里漏掉 stack and 的短路：空栈时去取 temps[stack[-1]] 直接 IndexError。",
+        "写 res[j] = i - j 时把 j 或 i 写反、或写成 res[i]：结算的是「被弹出那一天」的位置，不是当前天。",
+        "把单调栈的方向做反（用递增栈或比较 temps[stack[-1]] > t）：栈里必须保持温度递减，才能保证弹出时遇到的是第一个更高温。",
+        "混淆两个子问题的不变量：Kadane 的状态只与相邻位置有关，不需要任何容器；lc739 必须保留保序结构，别试图用「一个变量」记住上一个更高温。",
+        "对空输入靠异常「顺便」通过：空 nums 抛 IndexError 而不是有说明的错误，面试里应主动指出 lc53 的 n ≥ 1 前提。",
+        "认为 while 弹栈会让复杂度退化：每个下标最多入栈一次、出栈一次，while 的总执行次数 ≤ n，整体仍是 O(n)。",
+        "返回结果与输入不等长（例如只返回被结算过的那些天，或返回 dict）：lc739 要求与 temps 等长的定长数组。"
+      ],
+      "followUps": [
+        "lc53 如果要求返回最大和子数组的起止下标，怎么在保持 O(n) 的前提下记录？（在 cur 重启时更新起点，best 刷新时快照终点。）",
+        "为什么 best 不能省？请用 [1, -10] 举出反例，并说明「非空子数组」这个约束在初值上怎么体现。",
+        "环形数组版本（lc918）怎么处理？（答案要么不跨环 = Kadane，要么跨环 = 总和 - 最小子数组和；要单独处理全负数。）",
+        "lc739 如果问的是「第一个更低温」或「第一个不低于的温度」，栈的比较符分别怎么改？",
+        "如果温度是流式到来的（在线，不能预知后面），单调栈还能用吗？答案会延迟到什么时候才能输出？",
+        "单调栈的均摊 O(n) 怎么严格证？（每个下标恰好入栈一次、至多出栈一次，故 while 体总执行次数 ≤ n。）",
+        "单调栈与单调队列（lc239 滑动窗口最大值）有什么本质区别？什么条件下必须用队列？",
+        "lc739 能否 O(n) 求出「左右两侧第一个更高温」？（左右各扫一遍单调栈，与 lc42 接雨水的双栈视角同源。）",
+        "如果输入是 torch 张量且 n 很大，Kadane 能不能向量化？（前缀和之差的最大值 max_{j>i}(P[j]-P[i])，用累积最大值即可向量化。）"
+      ],
+      "variations": [
+        "lc152 乘积最大子数组：乘法下负数会翻转大小关系，必须同时维护最大与最小两个状态。",
+        "lc918 环形子数组的最大和：不跨环用 Kadane，跨环用「总和 - 最小子数组和」，全负数要特判。",
+        "lc121 买卖股票的最佳时机：Kadane 的等价形式（把价格差看成数组）。",
+        "lc42 接雨水 / lc84 柱状图中最大矩形：同样是「找左右第一个更大/更小元素」的单调栈应用。",
+        "lc496 / lc503 下一个更大元素 I / II：lc739 的模板换个问法，II 需循环数组（取模扫两遍）。",
+        "lc901 股票价格跨度 / lc907 子数组的最小值之和：单调栈做区间计数与求和。",
+        "lc239 滑动窗口最大值：单调队列（两端都能操作），与单调栈只在一端操作形成对照。",
+        "二维版最大子矩阵和：枚举上下边界压成一维后用 Kadane，复杂度 O(rows^2 * cols)。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "Kadane 与单调栈不变量",
+        "caption": "记住两条不变量：Kadane 的 cur 是「以 i 结尾」的最大和（所以能滚动成一个标量，best 另记全局最优，初值取 nums[0] 才不会在全负数时错答 0）；单调栈里存的是「还没遇到更高温的下标」（所以弹出那一刻就能用下标差算出天数，最后仍在栈里的位置 res 保持 0）。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='12' y='17' font-size='14' fill='currentColor'>两个 O(n) 单遍扫描：状态与不变量</text><text x='12' y='38' font-size='13' fill='var(--accent)'>A. lc53 Kadane：dp[i] = max(nums[i], dp[i-1]+nums[i])</text><text x='12' y='62' font-size='13' fill='var(--fg-1)'>nums</text><text x='12' y='88' font-size='13' fill='var(--fg-1)'>cur</text><text x='12' y='114' font-size='13' fill='var(--fg-1)'>best</text><rect x='52' y='44' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='96' y='44' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='140' y='44' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='184' y='44' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='228' y='44' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='272' y='44' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='316' y='44' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='360' y='44' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='404' y='44' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='74' y='62' font-size='13' fill='currentColor' text-anchor='middle'>-2</text><text x='118' y='62' font-size='13' fill='currentColor' text-anchor='middle'>1</text><text x='162' y='62' font-size='13' fill='currentColor' text-anchor='middle'>-3</text><text x='206' y='62' font-size='13' fill='currentColor' text-anchor='middle'>4</text><text x='250' y='62' font-size='13' fill='currentColor' text-anchor='middle'>-1</text><text x='294' y='62' font-size='13' fill='currentColor' text-anchor='middle'>2</text><text x='338' y='62' font-size='13' fill='currentColor' text-anchor='middle'>1</text><text x='382' y='62' font-size='13' fill='currentColor' text-anchor='middle'>-5</text><text x='426' y='62' font-size='13' fill='currentColor' text-anchor='middle'>4</text><rect x='52' y='70' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='96' y='70' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='140' y='70' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='184' y='70' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='228' y='70' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='272' y='70' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='316' y='70' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='360' y='70' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='404' y='70' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='74' y='88' font-size='13' fill='currentColor' text-anchor='middle'>-2</text><text x='118' y='88' font-size='13' fill='currentColor' text-anchor='middle'>1</text><text x='162' y='88' font-size='13' fill='currentColor' text-anchor='middle'>-2</text><text x='206' y='88' font-size='13' fill='currentColor' text-anchor='middle'>4</text><text x='250' y='88' font-size='13' fill='currentColor' text-anchor='middle'>3</text><text x='294' y='88' font-size='13' fill='currentColor' text-anchor='middle'>5</text><text x='338' y='88' font-size='13' fill='currentColor' text-anchor='middle'>6</text><text x='382' y='88' font-size='13' fill='currentColor' text-anchor='middle'>1</text><text x='426' y='88' font-size='13' fill='currentColor' text-anchor='middle'>5</text><rect x='52' y='96' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='96' y='96' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='140' y='96' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='184' y='96' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='228' y='96' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='272' y='96' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='316' y='96' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='360' y='96' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='404' y='96' width='44' height='26' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='74' y='114' font-size='13' fill='currentColor' text-anchor='middle'>-2</text><text x='118' y='114' font-size='13' fill='currentColor' text-anchor='middle'>1</text><text x='162' y='114' font-size='13' fill='currentColor' text-anchor='middle'>1</text><text x='206' y='114' font-size='13' fill='currentColor' text-anchor='middle'>4</text><text x='250' y='114' font-size='13' fill='currentColor' text-anchor='middle'>4</text><text x='294' y='114' font-size='13' fill='currentColor' text-anchor='middle'>5</text><text x='338' y='114' font-size='13' fill='currentColor' text-anchor='middle'>6</text><text x='382' y='114' font-size='13' fill='currentColor' text-anchor='middle'>6</text><text x='426' y='114' font-size='13' fill='currentColor' text-anchor='middle'>6</text><rect x='316' y='96' width='44' height='26' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='338' y='114' font-size='13' fill='var(--accent)' text-anchor='middle'>6</text><text x='12' y='138' font-size='13' fill='var(--fg-1)'>cur = 以当前元素结尾的最大和；best 单独维护全局最优</text><text x='12' y='153' font-size='13' fill='var(--fg-1)'>初值取 nums[0] 而不是 0：全负数数组才不会错答 0</text><text x='12' y='174' font-size='13' fill='var(--accent)'>B. lc739：栈内温度严格递减（栈底在左），i=6 时 t=76 到达</text><rect x='12' y='180' width='140' height='28' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='82' y='199' font-size='13' fill='currentColor' text-anchor='middle'>栈底 下标2 t=75</text><rect x='160' y='180' width='140' height='28' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='230' y='199' font-size='13' fill='currentColor' text-anchor='middle'>栈顶 下标5 t=72</text><rect x='308' y='180' width='162' height='28' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='389' y='199' font-size='13' fill='var(--accent)' text-anchor='middle'>i=6 t=76 更高</text><text x='12' y='222' font-size='13' fill='var(--fg-1)'>弹出即结算 res[j]=i-j：弹5→res[5]=1、弹2→res[2]=4</text><text x='12' y='237' font-size='13' fill='var(--fg-1)'>栈里剩下的下标（i=6、7）保持 res=0：之后没有更高温度</text></svg>",
+        "alt": "上半部分在 nums=[-2,1,-3,4,-1,2,1,-5,4] 上画出 Kadane 的三行状态：nums 原始值、每步滚动更新后的 cur（以当前元素结尾的最大子数组和）=[-2,1,-2,4,3,5,6,1,5]、以及单独维护的 best=[-2,1,1,4,4,5,6,6,6]，其中 best 峰值 6 用强调色框出，下方注明 cur 只回答「以当前元素结尾」而 best 记全局最优、初值必须取 nums[0] 而不是 0。下半部分画 lc739 在 i=6、t=76 到达时栈内从底到顶是「下标2 t=75」「下标5 t=72」，76 比两者都高，于是依次弹出并结算 res[5]=1、res[2]=4；留在栈里的下标 6、7 之后没有更高温，res 保持 0。"
+      },
+      "selfTest": [
+        "为什么 best 必须与 cur 分开维护？请用 [1, -10] 说明：cur 结束时是 -9，而答案是 1。",
+        "全负数数组 [-3, -1, -2]，把初值写成 0 会返回什么？为什么错？（返回 0，但空子数组不合法，正确是 -1。）",
+        "lc739 里为什么栈里必须存下标而不是温度值？（答案要的是天数差 i - j，存值拿不到 j。）",
+        "把 temps[stack[-1]] < t 改成 <= 会怎样？请用 [70, 70, 71] 算出两种结果（正确 [2, 1, 0]，改成 <= 得到 [1, 1, 0]）。",
+        "循环结束后为什么不需要再处理栈里剩下的下标？（res 初始化全 0，正好等于「之后没有更高温」的语义。）",
+        "单调栈的 while 循环为什么不会让复杂度退化？（每个下标恰好入栈一次、至多出栈一次，while 体总执行次数 ≤ n。）"
+      ],
+      "keyPoints": [
+        "Kadane：dp[i] = max(nums[i], dp[i-1]+nums[i])，可用滚动变量优化到 O(1) 空间",
+        "单调栈存下标，栈内对应温度单调递减；遇到更高温度就弹栈并记录距离",
+        "两个都是 O(n) 单遍扫描，区别在于是否保序结构",
+        "best 必须独立于 cur 维护（答案可结束在任何位置），初值取 nums[0] 以支持全负数",
+        "留在栈里的下标即「之后没有更高温」，res 初值 0 已覆盖该语义"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（max-subarray-monotonic-stack）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题干（web/data/jobs.json 与 research/jobs_kb.json 的 handWrittenCoding[id=max-subarray-monotonic-stack]）要求：实现 lc53 最大子数组和（Kadane，DP 视角）与 lc739 每日温度（单调递减栈），并说明两者的状态定义与不变量。",
+          "人工 referenceSolution 的算法路径为：max_subarray 用 best = cur = nums[0]，循环 nums[1:] 做 cur = max(x, cur + x)、best = max(best, cur)，返回 best；daily_temperatures 用 res = [0]*len(temps)、stack 存下标，while stack and temps[stack[-1]] < t 时弹栈写 res[j] = i - j，再 append(i)，返回 res。本文件的两个函数与之逐步一致，只额外加了空输入守卫、O(n^2) 暴力参照与 main 自测。",
+          "人工 keyPoints 三条（Kadane 的转移与 O(1) 滚动、单调栈存下标且温度递减、两者都是 O(n) 单遍扫描而区别在保序结构）在 keyPoints 中原样保留，正文与代码未改写或反驳其中任何一条。",
+          "人工 pitfalls 三条（Kadane 初值 0 导致全负数返回 0、单调栈存值无法算距离、每日温度忘记给留在栈里的位置填 0）全部保留在 pitfalls 中，各补了触发条件与正确做法。",
+          "本文件的实现已在本地用 CPython 3.12 实际运行 main：定向边界用例全部通过，并与 O(n^2) 暴力参照在 500 组随机输入上对拍一致（随机温度含重复值，专门覆盖「等温不算更高温」）。"
+        ],
+        "uncertain": [
+          "人工题干未给具体样例、输入形状与输出格式（是否要求返回子数组下标、是否要求打印结果），本文件按「两个函数各返回一个值/一个等长数组」的通用约定书写，样例数据取自 lc53/lc739 的公开题面，不代表人工题库的约定。",
+          "restated 与 edgeCases 里的规模上界（n ≤ 1e5）取自公开题面的约束，人工题干与 keyPoints 都没有给出约束；若面试只关心正确性而不关心 n，这一条不影响算法。",
+          "人工题干只给了 referenceSolution 代码，没有文字版的状态定义与不变量；本文件里的不变量表述（cur 恒等于 dp[i]、栈内温度严格递减、每个下标恰好出栈一次）是按代码反推的，如果人工另有措辞需要确认。",
+          "两个子问题被写在同一条题干里，但人工没有说明面试是「两个都手写」还是「二选一」；本文件按「两个都写」组织题解。",
+          "人工 pitfall「每日温度忘记最后留在栈里的位置填 0」所指的场景（人工参考实现用 res 初始化吸收这一步，本身不会漏）在本文件的实现里同样被初始化覆盖，我把该条表述为「若改成只收集已结算结果就会漏」，这是对人工观点的解释而非修改。",
+          "仓库里只有参考实现的静态文本，我运行验证的是与之逐步等价的改写版（含空输入守卫、暴力参照与随机对拍），不是人工原文本身；本题没有可在题库侧运行的人工测试。",
+          "本题无外部可引用链接：人工 sources 里的面经链接不是算法题出处，且按写作纪律不放任何外部链接，sources[].url 留空字符串。"
+        ]
+      }
+    }
+  ]
+}

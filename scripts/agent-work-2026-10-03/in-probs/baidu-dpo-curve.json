@@ -1,0 +1,25 @@
+{
+  "batchId": "prob-cur-26",
+  "problem": {
+    "id": "baidu-dpo-curve",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "DPO 对齐训练的曲线形态与正例概率是否提升",
+    "topics": [
+      "数学与概率",
+      "大模型与RL"
+    ],
+    "difficulty": "medium",
+    "statement": "百度文心一言大模型算法实习一面第 2 题：“DPO 对齐训练的曲线是怎么样的，正例的概率会提升吗？”这是一道需要区分“chosen 的绝对概率”与“chosen 相对 rejected 的 margin”的分析题。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

@@ -2,1201 +2,831 @@
   "batchId": "queue-09",
   "entries": [
     {
-      "id": "a61bf1c90a479e68",
-      "tldr": "提出 RLE-Bench，用四类机器人开发工作流评测编码智能体，汇总为 RLE Index 与分工作流能力画像。",
+      "id": "8efe6e6f68558ea2",
+      "tldr": "为 MLX 视觉与语言模型提供 OpenAI 兼容接口的 FastAPI 本地服务",
       "keyPoints": [
-        "覆盖交互控制、策略学习、感知与估计、机械设计四类工作流",
-        "用任务专属指标评测智能体提交的产物，而非只看单个策略性能",
-        "指标汇总成 RLE Index，并给出分工作流能力画像",
-        "辅以案例研究，指出当前智能体的能力与局限",
-        "强调真实机器人开发还要构建、集成、诊断与改进异质产物"
+        "用 Python + FastAPI 实现，专注本地运行 MLX 模型",
+        "对外暴露 OpenAI 兼容端点，可直接替换云端 API",
+        "同时支持 MLX 视觉模型与语言模型",
+        "强调高效、可扩展、易用，面向本地部署",
+        "仓库名为 cubist38/mlx-openai-server"
       ],
-      "why": "世界模型/机器人岗常被问「怎么评测 agent 的工程能力」，这条给出从工作流到统一指数的评测设计范式，也是编码智能体走向物理世界的入口。",
+      "why": "本地推理加 OpenAI 兼容接口是上线多模态能力的常见工程形态，面试常问服务化细节",
       "difficulty": "medium",
       "tags": [
-        "robot-learning",
-        "benchmark",
-        "coding-agent",
-        "embodied-ai",
-        "evaluation"
+        "mlx",
+        "apple-silicon",
+        "fastapi",
+        "openai-compatible",
+        "inference-serving"
       ],
       "entities": [
-        "RLE-Bench",
-        "RLE Index",
-        "coding agents",
-        "robot learning"
+        "mlx-openai-server",
+        "MLX",
+        "FastAPI",
+        "OpenAI",
+        "cubist38"
       ],
       "diagram": {
         "kind": "flow",
-        "title": "RLE-Bench 评测流水线",
-        "caption": "四类工作流各自评分，再聚合成 RLE Index 并保留分维度画像。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='RLE-Bench 评测流水线：四类工作流到产物到指标到指数'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>四类工作流</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>控制/策略/感知/设计</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>智能体提交产物</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>策略/harness/结构</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>任务专属指标</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>成功率等</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>RLE Index 与画像</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>总分+分维度</text>\n</svg>",
-        "alt": "流程图：四类机器人工作流产出智能体提交的产物，经任务专属指标评分后聚合成 RLE Index 与分工作流能力画像。"
+        "title": "MLX 兼容服务请求链路",
+        "caption": "同一套 OpenAI 兼容接口，把请求转成本机 MLX 模型推理",
+        "svg": "<svg viewBox='0 0 480 260' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='MLX OpenAI 兼容服务请求链路'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>OpenAI 兼容请求</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>/v1 风格端点</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>FastAPI 路由</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>Python 服务层</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>调度与排队</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>复用同进程模型</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>MLX 模型推理</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>语言或视觉模型</text><line x1='240' y1='216' x2='240' y2='224' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,232 236,224 244,224' fill='var(--line-1)'/><rect x='56' y='232' width='368' height='20' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1.2'/><text x='240' y='247' font-size='13' text-anchor='middle' fill='currentColor'>按 OpenAI 格式返回结果</text></svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {"label": "OpenAI 兼容请求", "detail": "客户端沿用现有 SDK"},
+            {"label": "FastAPI 服务", "detail": "Python 编写，负责路由与校验"},
+            {"label": "MLX 本地推理", "detail": "视觉模型与语言模型共用一套服务"},
+            {"label": "格式化响应", "detail": "返回 OpenAI 风格结果"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "HTTP"},
+            {"from": 1, "to": 2, "label": "调用本机模型"},
+            {"from": 2, "to": 3, "label": "聚合输出"}
+          ]
+        },
+        "alt": "请求经 FastAPI 路由进入本机 MLX 模型推理，再按 OpenAI 格式返回结果"
       },
       "concepts": [
         {
-          "name": "Agent-as-Engineer Benchmark（智能体工程能力评测）",
-          "readable": "不再只考智能体能不能调通一个策略，而是把它当机器人工程师：在资源约束下搭建、集成、诊断并改进多种异质产物，再用产物表现打分。",
-          "analogy": "像招厨师不只看他切一刀的刀工，而是让他从备料、开火、调味到上菜独立做一桌菜，再请不同评委分别给每道菜打分。",
-          "analogyBreaksDown": "厨房里菜品标准相对统一，评委口味也稳定；机器人任务的成功率依赖仿真器、硬件与随机种子，同一道菜换一次运行分数就变，评测噪声大得多。",
-          "mechanism": "把评测拆成四条真实开发工作流（交互控制、策略学习、感知估计、机械设计），每条用任务专属指标度量智能体提交的产物，再聚合成统一指数，避免单点指标掩盖工程短板。",
-          "visual": "横轴为四条工作流，纵轴为归一化得分，每个被测智能体画成一条折线（四点多边形），面积大者工程能力更全面；RLE Index 作为多边形面积数值标注在中心。",
+          "name": "OpenAI-Compatible Serving Layer",
+          "readable": "在本地模型外面套一层服务，让请求和响应长得跟 OpenAI 官方 API 一样，这样已有的客户端和代码几乎不用改就能切到本机模型。",
+          "analogy": "像给自家方言配了个官方翻译，外来的访客照着官方的表格说话，屋里听懂后照常干活。",
+          "analogyBreaksDown": "翻译只对齐了格式，不对齐语义：OpenAI 的采样默认值、函数调用字段、错误码语义并不会自动一致，模型能力差距也不会被这层壳抹平。",
+          "mechanism": "关键设计是把协议适配与推理执行解耦：服务层负责请求校验、字段映射与流式响应拼装，模型层只管吐 token，因此同一个服务能挂语言模型也能挂视觉模型。",
+          "visual": "横轴是请求生命周期，纵轴是抽象层级：上层画一条扁平的 OpenAI 字段带，中间一层做字段映射的漏斗，下层是 MLX 张量计算块，箭头标出流式分块回传。",
           "prerequisites": [
-            "强化学习/机器人基础（策略、控制回路）",
-            "benchmark 与指标设计的基本概念"
+            "HTTP 与 REST 基本概念",
+            "Transformer 自回归解码流程",
+            "OpenAI Chat Completions 请求与响应字段"
           ],
           "selfTest": [
-            "为什么要按工作流分别报告指标，而不是只报一个总分？",
-            "如果某智能体策略学习很强但机械设计为零，RLE Index 会掩盖什么？",
-            "案例研究相对排行榜补充了什么信息？"
-          ],
-          "formula": "\\mathrm{RLE} = \\sum_{w \\in W} \\alpha_w \\, \\hat{m}_w"
-        },
-        {
-          "name": "Capability Profile（能力画像）",
-          "readable": "把总分拆开，看一个智能体在每条工作流上各自强弱的向量或雷达形状，而不是一个标量排名。",
-          "analogy": "像体检报告：总分只告诉你「亚健康」，真正有用的是血脂、肝功、心率各项分别偏高还是偏低。",
-          "analogyBreaksDown": "体检各项大致独立，而机器人工作流彼此耦合——机械设计做不好会直接拖垮策略学习分数，画像里看似的两项都弱可能其实是同一个根因。",
-          "mechanism": "用统一任务集合与归一化指标产出跨维度可比分数，让研究者定位失败发生在感知、控制还是设计环节，并据此指导后续 agent 训练的数据配比。",
-          "visual": "雷达图，四条轴对应四条工作流，半径为该工作流归一化得分；同一智能体的不同版本用不同颜色叠加，形状凹陷处即为能力缺口。",
-          "prerequisites": [
-            "指标归一化",
-            "多维对比图（雷达图）的阅读"
-          ],
-          "selfTest": [
-            "能力画像与排行榜排名分别适合回答什么问题？",
-            "四个维度的分数可以直接相加吗，为什么？",
-            "作者为什么强调 profile 而不是单一 rank？"
+            "为什么说这层适配器不能只做字段改名就算完成？",
+            "同一服务同时挂视觉模型和语言模型时，哪部分代码必须共用、哪部分必须分开？",
+            "流式返回相比一次性返回，对服务层多提出了什么要求？"
           ],
           "formula": ""
         }
       ],
       "formulas": [
         {
-          "id": "f-rle-index-aggregation",
-          "name": "RLE 指数聚合（RLE Index Aggregation）",
-          "category": "agent",
-          "latex": "\\mathrm{RLE} = \\sum_{w \\in W} \\alpha_w \\, \\hat{m}_w, \\quad \\hat{m}_w = \\frac{m_w - m_w^{\\min}}{m_w^{\\max} - m_w^{\\min}}, \\quad \\sum_w \\alpha_w = 1",
+          "id": "f-mlx-openai-compat-latency",
+          "name": "兼容服务响应时延拆解（Serving Latency Breakdown）",
+          "category": "engineering",
+          "latex": "T_{\\text{resp}} = T_{\\text{net}} + T_{\\text{queue}} + T_{\\text{prefill}} + N_{\\text{out}} \\cdot T_{\\text{decode}}",
           "symbols": [
-            [
-              "W",
-              "四条评测工作流集合（交互控制/策略学习/感知估计/机械设计）"
-            ],
-            [
-              "m_w",
-              "第 w 条工作流的任务专属指标原始值"
-            ],
-            [
-              "\\hat{m}_w",
-              "归一化后的工作流得分"
-            ],
-            [
-              "\\alpha_w",
-              "工作流权重，满足权重和为 1"
-            ],
-            [
-              "\\mathrm{RLE}",
-              "聚合得到的总体 RLE Index"
-            ]
+            ["T_{\\text{resp}}", "客户端拿到完整响应的总时延"],
+            ["T_{\\text{net}}", "网络往返与序列化开销"],
+            ["T_{\\text{queue}}", "请求在服务内排队等待的时长"],
+            ["T_{\\text{prefill}}", "提示词预填充一次前向的耗时"],
+            ["N_{\\text{out}}", "生成的输出 token 数"],
+            ["T_{\\text{decode}}", "每个输出 token 的解码步耗时"]
           ],
           "derivation": [
-            "第 1 步：四条工作流的指标量纲不同（成功率是比例，机械设计可能是可行性或相似度），不能直接相加，先各自做 min-max 归一化到 [0,1]。",
-            "第 2 步：为每条工作流指定权重 α_w，反映它在整体工程能力中的重要性，并约束权重和为 1。",
-            "第 3 步：加权求和得到 RLE Index 作为可比较总分；同时把各 \\hat{m}_w 单独保留，构成 workflow-specific capability profile。"
+            "第 1 步：把一次兼容接口调用拆成互不重叠的阶段，便于定位瓶颈在服务层还是在模型层。",
+            "第 2 步：预填充只与输入长度相关，可写成单次前向耗时 T_prefill，与输出长度无关。",
+            "第 3 步：解码是逐 token 串行的，输出 N_out 个 token 就要付 N_out 次 T_decode，因此这一项通常主导长回答。",
+            "第 4 步：把联网、排队、预填充、解码四项相加，得到总时延表达式，用于判断该优化网络、并发调度还是模型本身。"
           ],
-          "analogy": "像高考总分：各科满分不同，先各自折算成标准分，再按权重加总排名，但成绩单上仍保留每科分数供你判断偏科。",
+          "analogy": "像去医院看病：路上时间、候诊排队、医生问诊一次、然后一条条开药，总时间等于这四段之和，而开药条数越多越慢。",
           "pitfalls": [
-            "把四条工作流的原始指标直接平均，忽略量纲与取值范围差异",
-            "只报 RLE Index 不报分维度画像，无法定位能力短板",
-            "不同 harness 与算力下的绝对分数不可直接跨论文比较"
+            "把首 token 时延 TTFT 与总时延混为一谈，长回答下两者差距很大",
+            "以为加机器就能降 T_decode，但单请求解码是串行瓶颈",
+            "忽略排队项，在并发升高时误判为模型变慢"
           ],
-          "code": "def rle_index(metrics, mins, maxs, weights):\n    norm = {w: (metrics[w]-mins[w])/(maxs[w]-mins[w]) for w in metrics}\n    assert abs(sum(weights.values())-1) < 1e-6\n    return sum(weights[w]*norm[w] for w in norm), norm",
+          "code": "import time\n\ndef timed_generate(model, prompt, max_tokens=64):\n    t0 = time.perf_counter()\n    prefill = model.prefill(prompt)          # 预填充一次\n    t1 = time.perf_counter()\n    out = []\n    for _ in range(max_tokens):\n        tok = model.decode_step(prefill)     # 逐 token 解码\n        out.append(tok)\n    t2 = time.perf_counter()\n    return {\n        \"prefill_s\": t1 - t0,\n        \"decode_s\": t2 - t1,\n        \"per_token_s\": (t2 - t1) / max_tokens,\n        \"tokens\": out,\n    }",
           "sources": [
-            {
-              "title": "RLE-Bench: A Qualifying Exam for Coding Agents as Robot Learning Engineers",
-              "url": "https://huggingface.co/papers/2609.34210"
-            }
+            {"title": "cubist38/mlx-openai-server", "url": "https://github.com/cubist38/mlx-openai-server"}
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "RLE-Bench 覆盖交互控制、策略学习、感知与估计、机械设计四类机器人开发工作流",
-          "评测对象是编码智能体提交的产物，包括智能体达到的成功率、训练出的策略、搭建的 harness 与设计的机械结构",
-          "任务专属指标被聚合成 RLE Index，并输出分工作流的能力画像",
-          "论文包含对代表性任务上智能体行为的案例研究",
-          "摘要称现有机器人 benchmark 主要关注单个 artifact（策略或控制器）的性能，对更宽的工程能力覆盖有限",
-          "输入条目列出的作者为 Haitong Ma、Chenxiao Gao、Rushi Qiang、Bo Dai、Na Li"
+          "该仓库是一个为 MLX 模型提供 OpenAI 兼容端点的 API 服务器",
+          "实现语言是 Python，Web 框架是 FastAPI",
+          "服务同时面向 MLX 视觉模型与语言模型",
+          "仓库地址为 https://github.com/cubist38/mlx-openai-server"
         ],
         "uncertain": [
-          "RLE Index 的具体聚合方式（是否加权平均、权重如何确定）摘要未给出，公式为按摘要重建的通用形式，需核对原文",
-          "摘要表述为 four representative robotics development workflows，四条与所列工作流的对应关系需核对原文",
-          "摘要未给出任务规模、数据集、基线方法与具体分数"
+          "服务内部是否实现连续批处理、抢占或 KV 缓存复用，摘要未说明（待核实）",
+          "是否支持 FLUX 图像生成、视频模型或 embedding 端点，摘要未写入（待核实）",
+          "响应时延公式是按通用服务链路重建的通用形式，非官方给出的公式，需核对原文实现"
         ]
       },
       "teaching": {
         "progressive": [
-          {
-            "level": "一句话",
-            "text": "它给会写代码的 AI 出了一套机器人工程师上岗考，考完给总分也给各项能力画像。"
-          },
-          {
-            "level": "入门",
-            "text": "机器人 benchmark 通常只测单个策略的性能，但真实机器人开发还要搭建环境、集成模块、诊断故障、设计机械结构。RLE-Bench 把这四件事拆成四类工作流，让编码智能体在每类任务里提交产物，再用各自指标打分。"
-          },
-          {
-            "level": "进阶",
-            "text": "关键设计是把智能体的工程能力变得可测：四条工作流各有任务专属指标——交互控制看成功率，策略学习看训练出的策略表现，感知估计看效果，机械设计看结构是否可用。再把指标聚合成 RLE Index 用于横向排名，同时保留分工作流画像，避免一个标量分数掩盖结构性短板；最后用案例研究解释分数从何而来。"
-          },
-          {
-            "level": "专家",
-            "text": "与既有机器人 benchmark 相比，RLE-Bench 的评测单元从 artifact（策略/控制器）上移到 workflow：要求智能体在资源约束下构建、集成、诊断并改进异质产物，还要从多模态反馈中推理。代价是评测成本与噪声更高、跨任务可比性依赖归一化假设；收益是能同时暴露「会决策」与「会动手」之间的差距，并为 agent 训练提供分维度信号。边界是仍以定义好的任务集为主，对真实硬件长尾故障覆盖有限。"
-          }
+          {"level": "一句话", "text": "把本机 MLX 模型包装成一个像 OpenAI 一样的接口服务"},
+          {"level": "入门", "text": "这个项目用 Python 和 FastAPI 写了一个服务，对外提供 OpenAI 兼容的 HTTP 端点，对内调用本机的 MLX 语言模型与视觉模型。对使用者来说，改一个 base_url 就能把云 API 换成自己的机器，数据不出本地。"},
+          {"level": "进阶", "text": "关键取舍在服务层与模型层的分工：服务层负责协议适配、参数校验、流式分块与并发排队，模型层只负责前向计算。把两者解耦后，同一个进程里挂语言模型还是视觉模型对客户端是透明的。代价是兼容层只能对齐格式，无法对齐云端模型的采样默认值与工具调用语义，且 MLX 只跑在 Apple Silicon 上。"},
+          {"level": "专家", "text": "与 vLLM、TGI 这类以吞吐为中心的服务相比，这类 MLX 服务的定位是单机、低运维、隐私优先：没有分布式调度，换来的是零配置启动。它真正的工程风险不在模型精度，而在并发行为：如果服务层只是给每个请求起一段独立解码循环，那么吞吐随时延线性恶化，排队项会主导总时延。评估时要分别测首 token 时延、单请求解码速度和并发吞吐三条曲线，而不是只报一个平均响应时间。何时不该用它：需要多卡张量并行、需要跨机扩缩容，或者团队根本没有 Apple Silicon 机器。"}
         ],
         "socratic": [
-          {
-            "q": "如果不按工作流拆分，只报一个总分会怎样？",
-            "a": "排名看似简洁，但策略学习的高分可能掩盖机械设计为零的失败，读者无法知道该补哪一环。"
-          },
-          {
-            "q": "为什么不能只用现有机器人 benchmark 的策略成功率？",
-            "a": "那只覆盖控制这一环，测不到智能体搭建环境、集成模块、诊断故障和设计结构的能力。"
-          },
-          {
-            "q": "为什么必须同时给案例研究？",
-            "a": "分数只说明结果好坏，案例研究才能解释智能体在哪一步卡住，为改进入口提供依据。"
-          }
+          {"q": "如果只做字段改名、不做流式与错误码对齐，会发生什么？", "a": "现有 SDK 会在流式解析或异常处理时直接崩，客户端被迫改代码，兼容层的价值就消失了。"},
+          {"q": "为什么不干脆让客户端直接调用 MLX 的 Python API？", "a": "那样每个调用方都要装 MLX 环境并自己写并发与排队逻辑，服务层把这些收敛到一处并复用已加载的权重。"},
+          {"q": "为什么兼容层再完善，也不能声称等价于 OpenAI 模型？", "a": "它只对齐接口契约，权重、训练数据与后训练策略完全不同，能力上界由本地模型决定。"}
         ],
-        "mechanism": "工程能力本身不可直接测量，必须落成可观测产物。作者的选择是：先用四条真实开发工作流圈定评测面，再为每条工作流选任务专属指标（成功率、策略表现、结构可用性），最后聚合成统一指数并保留分维度画像。这样既得到可比较的排名，又保留失败发生在哪一环的诊断信息，案例研究进一步解释分数背后的行为模式。",
-        "boundary": "评测结果依赖仿真环境与预设任务集，真实硬件长尾故障、传感器噪声与人类协作难以覆盖；不同工作流指标量纲不同，聚合权重一变排名就可能变；被测分数也受 harness 与工具链质量影响，未必纯反映模型能力。",
-        "analogyBoundary": "厨房类比假设每道菜相互独立，而机器人工作流彼此耦合：机械设计缺陷会直接压低策略学习分数，同一个根因会在多个维度同时扣分，看画像时不能按独立科目归因。",
+        "mechanism": "必须这样设计的原因在于复用已有生态：客户端 SDK、重试逻辑、流式解析都已经围绕 OpenAI 契约写好，只要服务端对齐契约，本地模型就能零改造接入现有代码。把协议适配独立成一层，还能让模型加载与热替换不影响客户端，并允许同一个进程同时服务视觉与语言两类模型。",
+        "boundary": "MLX 只支持 Apple Silicon，无法部署到 NVIDIA 集群；兼容层对齐的是格式而非语义，函数调用、结构化输出与采样默认值可能不一致；高并发场景下若服务层不做批处理，吞吐会明显劣于 vLLM 等专用推理引擎。",
+        "analogyBoundary": "翻译类比在性能上失效：翻译官可以并行接待很多人，而这里的模型推理是有限算力的串行资源，排队与显存占用无法靠加一个翻译官解决。",
         "misconceptions": [
-          "把它当成又一份策略性能榜——它评的是智能体的工程产物，不是单个控制策略。",
-          "以为 RLE Index 高就代表每项都强——总分高仍可能在某一工作流上接近零分。",
-          "以为分数可跨论文直接比较——不同 harness、算力与工具集会让绝对分数不可比。"
+          "以为兼容 OpenAI 接口就等于能力对齐 OpenAI 模型",
+          "把 FastAPI 当成推理加速器，实际上它只负责路由与调度",
+          "忽略 Apple Silicon 限制，以为能直接搬到 GPU 服务器集群"
         ],
-        "ownAnalysis": "摘要把评测单元从 artifact 上移到 workflow，这与近两年「agent 做科研/做工程」的评测趋势一致：先定义交付物，再定义评分器。可疑处在于四条工作流的指标量纲差异很大（成功率是比例，机械结构可能是可行性或相似度），摘要没有说明归一化与权重细节，因此 RLE Index 的可解释性存疑（推断）。若在求职项目里复现，建议先只实现一条工作流（如策略学习）的 harness，再谈聚合。",
+        "ownAnalysis": "（推断）从标签里的 continuous-batching、flux、mlx-vlm 看，仓库很可能已经提供了连续批处理与图像生成端点，但摘要正文只承诺了「OpenAI 兼容 + 本地 MLX 视觉/语言模型」，我没有在正文中找到这些能力的证据，因此只把它们当作待核实项。把这类工作放在简历上时，面试官几乎一定会追问并发下的调度策略与显存管理，而这正是摘要没有覆盖的部分。",
         "officialNotes": [
-          {
-            "position": "现有机器人 benchmark 主要关注单个 artifact（策略或控制器）的性能，对编码智能体更宽的工程能力覆盖有限；RLE-Bench 用四类工作流、任务专属指标、RLE Index 与能力画像来补齐，并辅以案例研究。",
-            "source": "hf_papers / arXiv 摘要（https://huggingface.co/papers/2609.34210）"
-          }
+          {"position": "仓库自述为面向 MLX 模型的高性能 OpenAI 兼容 API 服务器，用 Python 与 FastAPI 实现，主打本地运行视觉与语言模型", "source": "github"}
         ],
-        "interviewAnswer": "我关注 RLE-Bench 是因为它把机器人评测从「策略跑多少分」换成「智能体能不能当工程师」。它覆盖交互控制、策略学习、感知估计和机械设计四条工作流，用任务专属指标评价智能体提交的产物，再聚合成 RLE Index 并给出分工作流能力画像，还配了案例研究。我的判断是它的价值在诊断维度而不是排名本身：算力和 harness 一变，绝对分数就不可比。",
+        "interviewAnswer": "这个项目解决的是本地模型接入成本的问题：它用 FastAPI 包一层 OpenAI 兼容接口，对内调用 MLX 的语言和视觉模型。我会这样讲它的设计：协议适配与推理执行分层，客户端几乎不用改代码，数据也不出本机。讲的时候我会强调边界——MLX 只在 Apple Silicon 上跑，兼容的是接口契约而不是模型能力；真正的难点在并发，如果服务层不做批处理，吞吐会随时延线性变差，所以我会分首 token 时延、解码速度、并发吞吐三条曲线去评估。",
         "studyPath": {
           "prerequisites": [
-            "强化学习与机器人控制基础",
-            "benchmark 与指标设计常识",
-            "PyTorch 与仿真环境（如 MuJoCo/Isaac）使用经验"
+            "FastAPI 与异步 HTTP 基础",
+            "自回归解码与 KV 缓存概念",
+            "OpenAI Chat Completions 接口字段"
           ],
           "nextSteps": [
-            "读原文的任务定义与评分器实现",
-            "复现一条工作流的 harness",
-            "对比其它 coding agent benchmark 的评分设计"
+            "读仓库源码，画出请求从路由到 MLX 推理的调用链",
+            "用同一提示词对比首 token 时延与总时延，定位瓶颈",
+            "对照 vLLM 的调度文档，思考连续批处理如何降低排队项"
           ]
         }
       }
     },
     {
-      "id": "44bfa5cd4d38d970",
-      "tldr": "用 RL 训练概率 actor-critic 与传感器预测，喂给采样式 PAC-NMPC，硬约束保证碰撞概率与价值下降。",
+      "id": "e8f4a2385a007c81",
+      "tldr": "自动驾驶视觉-语言-动作模型的综述资源库，梳理过去现在与未来",
       "keyPoints": [
-        "先用 RL 训练概率 actor-critic 与传感器预测模型",
-        "概率模型被用作采样式 SNMPC 框架 PAC-NMPC 的组件",
-        "硬约束给出碰撞概率与价值函数改善的有限时间统计保证",
-        "有限时域策略令价值函数期望下降，逼近 RL 的长时域性能",
-        "仿真之外还有固定翼飞行器视觉导航的硬件实验"
+        "主题是自动驾驶中的视觉-语言-动作模型",
+        "仓库定位为 awesome 资源清单，汇总相关研究",
+        "副标题覆盖 Past、Present 与 Future 三个阶段",
+        "关联多模态大模型与具身智能两条线索",
+        "仓库拥有 484 stars、42 forks"
       ],
-      "why": "RL/后训练岗常问「策略如何给出安全保证」，这条把采样式 MPC 硬约束与 actor-critic 结合，是 RL 加控制的典型范式，可迁移到自驾与机器人。",
-      "difficulty": "hard",
+      "why": "VLA 是具身与世界模型的交叉热点，自动驾驶又是落地最实的场景，适合作为方向入门索引",
+      "difficulty": "easy",
       "tags": [
-        "reinforcement-learning",
-        "model-predictive-control",
-        "safe-rl",
-        "robot-navigation",
-        "actor-critic"
-      ],
-      "entities": [
-        "PAC-NMPC",
-        "SNMPC",
-        "actor-critic",
-        "sensor prediction model",
-        "fixed-wing aerial vehicle"
-      ],
-      "diagram": {
-        "kind": "architecture",
-        "title": "RL 引导的安全控制架构",
-        "caption": "RL 只提供概率模型，安全由 SNMPC 的硬约束负责。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='RL 引导 PAC-NMPC 架构：RL 训练概率模型，采样式 SNMPC 施加硬约束，最后仿真与硬件验证'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>RL 训练概率模型</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>actor-critic+预测</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>采样式 SNMPC</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>PAC-NMPC 框架</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>硬约束</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>碰撞概率/价值下降</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>验证</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>仿真+固定翼试飞</text>\n</svg>",
-        "alt": "架构图：RL 训练概率 actor-critic 与传感器预测模型，送入采样式 PAC-NMPC 并用硬约束保证碰撞概率与价值下降，最后由仿真和固定翼硬件实验验证。"
-      },
-      "concepts": [
-        {
-          "name": "Stochastic NMPC（随机非线性模型预测控制）",
-          "readable": "在预测控制里显式建模不确定性：每一步不只滚一条轨迹，而是采样得到一族可能轨迹，据此估计碰撞概率与期望代价。",
-          "analogy": "开车过没有路灯的窄巷，你不会只按一条理想线走，而是心里同时模拟「对面可能来车」「路边可能开门」几种情形再打方向。",
-          "analogyBreaksDown": "人脑模拟的情形数很少且靠直觉加权，SNMPC 用采样近似分布，维数一高就需要海量样本，样本质量直接决定安全保证能否成立。",
-          "mechanism": "用动力学模型滚动多条采样轨迹，把碰撞概率与代价期望写成优化目标或约束；采样把不可解的高维期望变成可估计的蒙特卡洛量，从而在高维传感器输入下仍能求解。",
-          "visual": "横轴为时间步、纵轴为位置；同一起点画出多条半透明灰色采样轨迹形成扇形束，红色区域为障碍，落在红色内的轨迹比例即碰撞概率，最优轨迹用蓝色加粗。",
-          "prerequisites": [
-            "最优控制/MPC 基础",
-            "蒙特卡洛采样与概率基础"
-          ],
-          "selfTest": [
-            "为什么随机 MPC 需要采样而不是解析求解？",
-            "采样数量会如何影响碰撞概率估计的可靠性？",
-            "把碰撞概率放进约束与放进代价有什么区别？"
-          ],
-          "formula": "\\min_{u_{0:H-1}} \\; \\mathbb{E}\\Big[\\sum_{k=0}^{H-1} c(x_k,u_k) + V(x_H)\\Big]"
-        },
-        {
-          "name": "PAC Guarantee（Probably Approximately Correct 保证）",
-          "readable": "不保证「绝对不撞」，而是给出有限时间内以高概率成立的统计边界：碰撞概率不超过某个小量，且策略改进也以高概率发生。",
-          "analogy": "天气预报不说「明天一定不下雨」，而说「九成把握降雨概率低于两成」——把确定性换成带置信度的量化承诺。",
-          "analogyBreaksDown": "天气预报的置信度来自长期统计，PAC-NMPC 的置信界依赖采样次数与分布假设；模型失配或非平稳环境会让这个界在有限时间内不再有效。",
-          "mechanism": "用有限样本构造碰撞概率的置信上界，并作为硬约束写入 SNMPC；同时要求候选策略的价值函数期望下降，从而得到有限时域内的改进保证。",
-          "visual": "横轴为采样次数（对数刻度）、纵轴为碰撞概率估计的上界；一条随样本增加而下降的曲线，外加阴影带表示置信区间，水平虚线是安全阈值。",
-          "prerequisites": [
-            "集中不等式与置信界",
-            "随机 MPC 与约束优化"
-          ],
-          "selfTest": [
-            "PAC 保证中的有限时间具体指什么？",
-            "为什么用硬约束而不是软惩罚来落实安全？",
-            "如果采样数不足，保证会怎样失效？"
-          ],
-          "formula": "\\Pr(\\text{collision}) \\le \\varepsilon \\;\\text{w.p.}\\; 1-\\delta"
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-pac-nmpc-chance-constraint",
-          "name": "PAC-NMPC 概率安全硬约束（Chance Constraint with PAC Bound）",
-          "category": "rl",
-          "latex": "\\Pr_{x_k \\sim p(\\cdot)}\\big(\\, x_k \\in \\mathcal{X}_{\\text{obs}} \\,\\big) \\;\\le\\; \\varepsilon \\quad \\text{w.p. } 1-\\delta, \\qquad \\forall k = 0, \\dots, H",
-          "symbols": [
-            [
-              "x_k",
-              "第 k 步状态（含位置）"
-            ],
-            [
-              "p(\\cdot)",
-              "由采样与传感器预测模型给出的状态分布"
-            ],
-            [
-              "\\mathcal{X}_{\\text{obs}}",
-              "障碍或碰撞集合"
-            ],
-            [
-              "\\varepsilon",
-              "允许的碰撞概率上界"
-            ],
-            [
-              "\\delta",
-              "置信参数，保证以 1-δ 的概率成立"
-            ],
-            [
-              "H",
-              "有限时域长度"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：随机 MPC 中状态是分布而非单点，安全应表述为碰撞概率而非确定性的不可行。",
-            "第 2 步：用概率传感器预测模型采样有限条轨迹，以样本频率估计碰撞概率。",
-            "第 3 步：用集中不等式把样本频率放大成置信上界，并在优化中把它约束在 ε 以内，成为硬约束；样本越多上界越紧。",
-            "第 4 步：对所有预测步 k 施加该约束，即得有限时域上的概率安全条件。"
-          ],
-          "analogy": "过窄巷前先要求「我模拟的十条路线里最多一条会碰到墙」，而不是「绝对不会碰到墙」，并额外要求这个判断有九成把握。",
-          "pitfalls": [
-            "把概率安全约束误当成确定性避障约束",
-            "忽略置信上界随样本数变化，样本太少时保证无效",
-            "只在终端步施加约束，忽略中间步的碰撞风险"
-          ],
-          "code": "import torch\n# 采样 M 条轨迹，估计碰撞概率并用 Hoeffding 上界\ncoll = (traj_pos.abs() < obs_half).all(-1).float()   # [M, H]\nphat = coll.mean(0)                                   # [H]\nub = phat + torch.sqrt(torch.log(1 / delta) / (2 * M))\nloss = torch.relu(ub - eps).sum()                     # 硬约束惩罚",
-          "sources": [
-            {
-              "title": "RL-Guided PAC-NMPC for Probabilistically-Safe Perception-Based Navigation in Unknown Environments",
-              "url": "https://arxiv.org/abs/2609.39854v1"
-            }
-          ]
-        },
-        {
-          "id": "f-snmpc-value-decrease",
-          "name": "有限时域价值下降条件（Value Function Decrease Condition）",
-          "category": "rl",
-          "latex": "\\mathbb{E}_{x_{k+1} \\sim p(\\cdot \\mid x_k, u_k)}\\big[V(x_{k+1})\\big] \\;\\le\\; V(x_k) - \\gamma \\, \\ell(x_k, u_k), \\qquad \\gamma > 0",
-          "symbols": [
-            [
-              "V(\\cdot)",
-              "概率 actor-critic 学到的价值函数"
-            ],
-            [
-              "x_k, u_k",
-              "第 k 步状态与控制输入"
-            ],
-            [
-              "p(\\cdot \\mid x_k, u_k)",
-              "随机动力学转移分布"
-            ],
-            [
-              "\\ell(x_k, u_k)",
-              "单步代价"
-            ],
-            [
-              "\\gamma",
-              "要求的下降系数"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：长时域性能由价值函数刻画，要避免滚动时域控制器短视，就要求每步价值期望不上升。",
-            "第 2 步：把该要求写成不等式：下一步价值的期望至少比当前价值低 γ 倍的单步代价。",
-            "第 3 步：把该条件作为约束加入 SNMPC，使有限时域解在期望意义下单调改进价值函数，从而继承 RL 的长时域回报。"
-          ],
-          "analogy": "登山时规定「每走一步，海拔期望值必须比现在低一点」，哪怕只看得见前方十米，长期也会朝谷底走而不是原地打转。",
-          "pitfalls": [
-            "把价值下降条件当成全局收敛证明，它通常只是单步期望条件",
-            "忽略期望取自随机动力学，单条采样轨迹的价值下降不代表条件成立",
-            "价值函数估计偏差会直接破坏该条件"
-          ],
-          "code": "import torch\n# 用 critic 估计候选控制后的期望价值，惩罚期望上升\nv_now = critic(state)\nv_next = (critic(next_states) * probs).sum(-1)   # 随机动力学加权\nviol = torch.relu(v_next - (v_now - gamma * cost))\nloss = viol.mean()",
-          "sources": [
-            {
-              "title": "RL-Guided PAC-NMPC for Probabilistically-Safe Perception-Based Navigation in Unknown Environments",
-              "url": "https://arxiv.org/abs/2609.39854v1"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "方法把随机非线性模型预测控制（SNMPC）与强化学习结合，用于未知环境下基于感知的导航",
-          "RL 被用来训练概率 actor-critic 与传感器预测模型",
-          "这些概率模型被用于采样式 SNMPC 框架 PAC-NMPC",
-          "PAC-NMPC 用硬约束对碰撞概率与价值函数改善给出有限时间统计保证",
-          "论文论证有限时域 SNMPC 策略使价值函数期望下降，从而逼近 RL 的长时域性能",
-          "除仿真外还做了固定翼飞行器、基于视觉的导航硬件实验",
-          "摘要称方法可扩展到高维传感器输入空间与复杂非线性动力学"
-        ],
-        "uncertain": [
-          "碰撞概率置信界的具体形式（Hoeffding、Bernstein 或其它分布假设）摘要未给出，公式为按摘要重建的通用形式，需核对原文",
-          "有限时域价值下降条件中的下降系数与约束形式摘要未给出，属通用写法",
-          "仿真的对比基线、成功率与硬件实验的量化指标摘要未给出",
-          "硬约束是逐采样约束还是期望约束，摘要未说明"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "先让强化学习学会预判风险，再用带硬约束的预测控制保证撞车概率足够低。"
-          },
-          {
-            "level": "入门",
-            "text": "未知环境里靠视觉导航，纯 RL 策略性能好但难保证安全，纯 MPC 安全但短视。论文先用 RL 训练概率 actor-critic 和传感器预测模型，再把这些概率模型放进采样式的 PAC-NMPC，让控制器在滚动优化时显式约束碰撞概率。"
-          },
-          {
-            "level": "进阶",
-            "text": "难点在于把统计保证写进控制器：PAC-NMPC 用有限样本构造碰撞概率的置信上界，作为硬约束加进采样式 SNMPC；同时要求候选策略使价值函数期望下降，从而在有限时域内既改善性能又不违反安全概率。这样短时域 MPC 能继承 RL 的长时域回报，还能扩展到高维传感器输入与复杂非线性动力学。"
-          },
-          {
-            "level": "专家",
-            "text": "与「RL 加事后安全层」或「MPC 加手工终端代价」相比，本文的安全来自采样统计而非手工鲁棒集：概率 actor-critic 提供价值与不确定性估计，传感器预测模型提供感知不确定性，两者一起进入 SNMPC 的采样与约束。优势是能处理高维观测并给出可陈述的 PAC 式保证；代价是每个控制步都需要大量采样，实时性依赖算力，且保证的有效性绑定模型与分布假设。固定翼视觉导航硬件实验说明真实平台可行，但摘要未给安全违规率的绝对值。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "如果只在 RL 奖励里加碰撞惩罚会怎样？",
-            "a": "惩罚只是软约束，策略在训练分布外仍可能撞，且没有可陈述的概率保证。"
-          },
-          {
-            "q": "为什么不能只用短时域 MPC 而不接 RL？",
-            "a": "短时域 MPC 只看眼前代价，会陷入局部避障、绕远或来回摆动，拿不到长时域回报。"
-          },
-          {
-            "q": "为什么安全必须写成硬约束而不是大权重惩罚？",
-            "a": "大权重仍可被性能收益交易掉；硬约束保证在可行域内安全条件始终不被违反。"
-          }
-        ],
-        "mechanism": "安全保证不能事后补：必须在每一步决策时就排除高碰撞概率的动作。作者因此让 RL 输出概率化的价值与传感器预测，再把这些概率模型嵌入采样式 SNMPC，用有限样本构造碰撞概率置信上界作为硬约束，并额外要求价值函数期望下降。硬约束保证安全不被性能优化交易掉，价值下降条件保证短时域滚动仍朝长期回报改进，两者合起来才是安全且有效的控制。",
-        "boundary": "保证依赖动力学模型、传感器预测模型与采样分布的正确性，模型失配或非平稳环境会削弱有限时间保证；高维观测下采样成本高，实时控制受限；PAC 是统计保证而非绝对安全，置信度之外仍有失败概率；摘要只给仿真与单个固定翼平台结果，泛化性待验证。",
-        "analogyBoundary": "天气预报类比里置信度来自长期统计，而这里的置信界由在线采样与模型假设推得；样本少或分布漂移时上界会低估真实碰撞概率，类比中的九成把握并不自动成立。",
-        "misconceptions": [
-          "以为 PAC 保证等于绝对安全——它是高概率成立的概率界，仍有 δ 的失败概率。",
-          "以为把碰撞写进奖励就够了——软惩罚不提供有限时间统计保证。",
-          "以为 MPC 时域越长越安全——时域拉长会让采样与优化迅速不可解。"
-        ],
-        "ownAnalysis": "这篇是典型 hybrid 路线：学习模块负责价值与感知不确定性，优化模块负责约束与保证，分工与安全 RL 里的 shield 或 safety filter 思路相近，但把安全界做成 SNMPC 的硬约束而不是事后过滤。可疑点在实时性：摘要强调可扩展到高维传感器与大非线性动力学，却没给单步求解时间与控制频率（推断这是硬件可行性的关键）。另外价值函数期望下降的条件通常是局部的，长时域性能逼近 RL 的说法需要看实验设定。",
-        "officialNotes": [
-          {
-            "position": "该工作把 SNMPC 与 RL 结合：RL 训练概率 actor-critic 与传感器预测模型，PAC-NMPC 用硬约束对碰撞概率与价值函数改善给出有限时间统计保证，从而在满足概率安全约束的同时逼近 RL 的长时域性能。",
-            "source": "arXiv 摘要（https://arxiv.org/abs/2609.39854v1）"
-          }
-        ],
-        "interviewAnswer": "我理解的思路是分工：RL 负责学价值函数和感知不确定性，用概率 actor-critic 加传感器预测模型；控制层用采样式 PAC-NMPC，把碰撞概率的置信上界作为硬约束，并要求价值函数期望下降。前者保证高概率不撞，后者保证短时域滚动仍朝长期回报改进，所以能接近 RL 的性能又不丢安全。硬件上他们用敏捷固定翼做了视觉导航验证。我关心的落地问题是采样带来的实时性。",
-        "studyPath": {
-          "prerequisites": [
-            "MPC 与最优控制",
-            "随机动力学与概率基础",
-            "深度 RL（actor-critic 与价值估计）"
-          ],
-          "nextSteps": [
-            "读 PAC-NMPC 原始工作理解置信约束",
-            "实现小车避障的采样 SNMPC 玩具版",
-            "对比 safety filter 与 shielding 类方法"
-          ]
-        }
-      }
-    },
-    {
-      "id": "b23fa633aed23b9e",
-      "tldr": "用等变黎曼流生成模型粗粒化预测分子晶体结构，再用策略梯度 RL 微调偏向低能候选。",
-      "keyPoints": [
-        "CG-OMatG 是等变的、基于黎曼流的生成模型",
-        "把分子视为刚体，做分子间与分子内消息传递",
-        "重建质心位置、取向与晶格参数，条件为化学物种与构象几何",
-        "在 OMC25 与 CSD 的子集上训练",
-        "用策略梯度 RL 微调以偏向低能结构，并在 CSP blind test 上验证"
-      ],
-      "why": "生成式加 RL 微调解决科学发现中的组合搜索，是「生成模型出候选、RL 做偏好」范式在材料方向的实例，与后训练岗的偏好对齐思路可直接迁移。",
-      "difficulty": "hard",
-      "tags": [
-        "reinforcement-learning",
-        "generative-model",
-        "flow-matching",
-        "crystal-structure-prediction",
-        "equivariant"
-      ],
-      "entities": [
-        "CG-OMatG",
-        "Riemannian flow",
-        "OMC25",
-        "CSD",
-        "COMPACK",
-        "policy gradient"
-      ],
-      "diagram": {
-        "kind": "architecture",
-        "title": "CG-OMatG 两段式流程",
-        "caption": "几何合法性交给黎曼流，低能偏好交给策略梯度。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='CG-OMatG 流程：粗粒化刚体表示、分子内外消息传递、黎曼流生成、策略梯度微调'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>粗粒化刚体表示</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>分子当刚体</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>分子内外消息传递</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>等变几何表示</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>黎曼流生成</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>质心/取向/晶格</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>策略梯度微调</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>偏向低能结构</text>\n</svg>",
-        "alt": "架构图：先把分子粗粒化为刚体并做分子内外消息传递，再用黎曼流生成质心位置、取向与晶格参数，最后用策略梯度微调使生成偏向低能结构。"
-      },
-      "concepts": [
-        {
-          "name": "Riemannian Flow Model（黎曼流模型）",
-          "readable": "普通流匹配在欧氏空间把噪声搬到数据；晶体里取向属于旋转群、晶格参数属于正定矩阵，各在不同弯曲流形上，于是把流匹配搬到黎曼流形按各自几何做生成。",
-          "analogy": "快递不只在平地上运：有的包裹要在球面上走最短弧，有的要在橡皮膜上按拉伸限制移动，路线规则随地形而变。",
-          "analogyBreaksDown": "球面与橡皮膜的几何固定，而晶体流形上的度规与有效坐标依赖建模选择；选错坐标系会让最短路径在物理上毫无意义。",
-          "mechanism": "对质心位置、取向、晶格参数分别选合适的流形（欧氏、旋转群、对称正定矩阵），用等变网络参数化流场，保证整体对旋转平移等变，从而在满足几何约束前提下生成合法晶体。",
-          "visual": "左侧为噪声分布、右侧为真实晶体分布，中间几条弯曲流线穿过半透明曲面（代表流形）；曲面上小箭头表示速度场，欧氏部分画直线、旋转部分画弧线。",
-          "prerequisites": [
-            "flow matching 与连续归一化流",
-            "群等变网络（SO(3)、平移等变）",
-            "基础黎曼几何（切空间、指数映射）"
-          ],
-          "selfTest": [
-            "为什么取向不能直接用三个欧拉角做流匹配？",
-            "等变性对晶体生成带来什么好处？",
-            "晶格参数为什么适合放在对称正定矩阵流形上？"
-          ],
-          "formula": "\\mathcal{L}_{\\mathrm{FM}} = \\mathbb{E}_{t, x_0, x_1}\\big\\| v_\\theta(x_t, t) - \\dot{x}_t \\big\\|^2_{g(x_t)}"
-        },
-        {
-          "name": "Policy-Gradient Fine-Tuning（策略梯度微调生成模型）",
-          "readable": "把生成一个候选结构看成动作，把结构能量当作奖励，用策略梯度更新生成模型，让它更常生成低能候选。",
-          "analogy": "像训练射箭选手：先让他随便射（预训练分布），再只按箭落点离靶心的距离给奖励，慢慢把出手习惯调向靶心。",
-          "analogyBreaksDown": "射箭每次只有一支箭、奖励清晰；晶体生成是连续高维动作，能量奖励稀疏且有大量局部极小，奖励设计不当会把模型推向重复生成少数结构。",
-          "mechanism": "以生成模型采样为策略、结构能量为奖励，用策略梯度估计目标对参数的梯度并微调生成模型；相对只用最大似然训练，奖励项把模型分布朝低能区域重新加权。",
-          "visual": "横轴为生成结构能量、纵轴为概率密度；预训练分布画成宽而高的灰色钟形曲线，微调后画成向左（低能）偏移、变尖的彩色曲线，箭头标出分布移动方向。",
-          "prerequisites": [
-            "策略梯度与 REINFORCE",
-            "生成模型的采样与对数似然估计"
-          ],
-          "selfTest": [
-            "为什么最大似然预训练之后还需要 RL 微调？",
-            "奖励只用能量会有什么问题？",
-            "策略梯度估计的方差为什么在生成模型上更大？"
-          ],
-          "formula": "\\nabla_\\theta J = \\mathbb{E}_{x \\sim p_\\theta}\\big[ R(x) \\, \\nabla_\\theta \\log p_\\theta(x) \\big]"
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-riemannian-flow-matching-crystal",
-          "name": "晶体黎曼流匹配目标（Riemannian Flow Matching for Crystals）",
-          "category": "generative",
-          "latex": "\\mathcal{L}_{\\mathrm{FM}}(\\theta) = \\mathbb{E}_{t \\sim U[0,1],\\, x_0 \\sim p_{\\text{noise}},\\, x_1 \\sim p_{\\text{data}}} \\Big[ \\big\\| v_\\theta(x_t, t) - \\dot{x}_t \\big\\|^2_{g(x_t)} \\Big], \\quad x_t = \\mathrm{Exp}_{x_0}\\big( t \\, \\log_{x_0} x_1 \\big)",
-          "symbols": [
-            [
-              "x_1",
-              "真实晶体结构（质心位置、取向 R 属于 SO(3)、晶格参数）"
-            ],
-            [
-              "x_0",
-              "噪声先验样本"
-            ],
-            [
-              "v_\\theta",
-              "等变网络参数化的流场（切向量）"
-            ],
-            [
-              "g(x_t)",
-              "流形度规，决定切向量范数"
-            ],
-            [
-              "\\mathrm{Exp}, \\log",
-              "流形上的指数与对数映射（沿测地线搬运）"
-            ],
-            [
-              "t",
-              "流匹配时间，在 [0,1] 上均匀采样"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：在欧氏空间，流匹配让网络回归从噪声到数据的最短路径速度场，损失是速度差的平方。",
-            "第 2 步：晶体自由度不全在欧氏空间——取向在 SO(3)、晶格参数在对称正定矩阵上，直接线性插值会离开合法集合。",
-            "第 3 步：改用流形上的测地线插值：用对数映射把 x_1 搬到 x_0 的切空间，线性插值后再用指数映射回到流形，得到 x_t。",
-            "第 4 步：损失在该点切空间用度规计算范数，并用等变网络参数化流场，使速度场在旋转平移下等变。"
-          ],
-          "analogy": "平地上搬箱子走直线就行；若要在地球仪上搬，就必须沿大圆弧走，方向还得在每一点的切平面上描述，长度也按当地尺度来量。",
-          "pitfalls": [
-            "对旋转直接用欧拉角线性插值，会经过非物理的中间姿态",
-            "忽略度规，把切向量范数当欧氏范数，梯度尺度失真",
-            "忘记等变性，生成结构随全局旋转而变化",
-            "把粗粒化刚体近似当成无损表示"
-          ],
-          "code": "import torch\ndef fm_loss(v_theta, x0, x1, t, log_map, exp_map, metric):\n    # 流形上测地线插值: Exp_{x0}(t * log_{x0}(x1))\n    v = log_map(x0, x1)          # 切空间方向, 测地线速度恒定\n    x_t = exp_map(x0, t * v)     # 回到流形\n    pred = v_theta(x_t, t)\n    return (metric(x_t) * (pred - v) ** 2).sum(-1).mean()",
-          "sources": [
-            {
-              "title": "Riemannian Flow Models with Reinforcement Learning for Molecular Crystal Structure Prediction",
-              "url": "https://arxiv.org/abs/2609.39773v1"
-            }
-          ]
-        },
-        {
-          "id": "f-crystal-csp-policy-gradient",
-          "name": "低能偏好策略梯度（Energy-Reward Policy Gradient）",
-          "category": "rl",
-          "latex": "\\nabla_\\theta J(\\theta) = \\mathbb{E}_{\\mathcal{C} \\sim p_\\theta(\\cdot)}\\Big[ \\big( R(\\mathcal{C}) - b \\big) \\, \\nabla_\\theta \\log p_\\theta(\\mathcal{C}) \\Big], \\qquad R(\\mathcal{C}) = -E(\\mathcal{C})",
-          "symbols": [
-            [
-              "\\mathcal{C}",
-              "生成的分子晶体结构"
-            ],
-            [
-              "p_\\theta",
-              "生成模型（流模型）诱导的分布"
-            ],
-            [
-              "R(\\mathcal{C})",
-              "奖励，取负的晶体能量"
-            ],
-            [
-              "b",
-              "基线，用于降低梯度方差"
-            ],
-            [
-              "E(\\mathcal{C})",
-              "结构能量"
-            ],
-            [
-              "\\theta",
-              "生成模型参数"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：预训练只拟合数据分布，不区分能量高低；材料发现真正想要的是低能候选。",
-            "第 2 步：把生成过程视作策略：采样一个结构即一个动作，结构的负能量即奖励。",
-            "第 3 步：用似然比技巧把奖励期望的梯度写成奖励乘对数似然梯度，无需奖励可微。",
-            "第 4 步：减去基线 b 降方差，用该估计做随机梯度上升，把分布质量推向低能区域。"
-          ],
-          "analogy": "像让一支会随手画图的笔按「画得越接近靶心奖励越高」来调整手感：你不直接改图，而是提高画出好图的动作再次发生的概率。",
-          "pitfalls": [
-            "奖励只用负能量且无多样性正则，容易模式塌缩到少数结构",
-            "用单样本估计梯度方差极大，缺基线时训练不稳",
-            "把 RL 微调当成能突破训练分布覆盖，实际只是重加权已有模式"
-          ],
-          "code": "import torch\n# 策略梯度微调: 奖励 = 负能量\nlogp = flow.log_prob(structures)         # 或轨迹对数似然之和\nreward = -energies\nadv = reward - reward.mean()             # 基线降方差\nloss = -(adv.detach() * logp).mean()",
-          "sources": [
-            {
-              "title": "Riemannian Flow Models with Reinforcement Learning for Molecular Crystal Structure Prediction",
-              "url": "https://arxiv.org/abs/2609.39773v1"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "论文提出 CG-OMatG，一个等变的、基于黎曼流的生成模型，用于分子晶体结构预测",
-          "CG-OMatG 采用粗粒化、层次化表示，把分子视为刚体",
-          "模型同时做分子间与分子内消息传递，以构造分子堆积的几何表示",
-          "模型重建分子质心位置、取向与晶格参数，条件为化学物种与构象几何",
-          "训练数据取自 Open Molecular Crystals（OMC25）与剑桥结构数据库（CSD）的子集",
-          "作者用策略梯度强化学习微调模型，使生成偏向低能候选结构",
-          "在 CSP blind test 上用 COMPACK 堆积相似性分析与实验测定晶体比对",
-          "摘要称多晶型普遍、晶胞大与堆积几何复杂使分子 CSP 对现有模型仍具挑战"
-        ],
-        "uncertain": [
-          "黎曼流匹配损失的具体形式、各自由度流形的分解与度规选择摘要未给出，公式为按摘要重建的通用形式，需核对原文",
-          "策略梯度的具体算法（REINFORCE 或 PPO 变体）与奖励定义（是否只用能量、是否含惩罚项）摘要未说明",
-          "CSP blind test 的通过率、对比模型与量化指标摘要未给出",
-          "OMC25 与 CSD 子集的具体规模与划分摘要未给出"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "先学一个会画分子晶体的生成模型，再用强化学习让它专挑低能量的画。"
-          },
-          {
-            "level": "入门",
-            "text": "分子晶体结构预测的难点是可能结构太多（多晶型），传统模型难处理大晶胞与复杂堆积。CG-OMatG 把分子当刚体、用粗粒化层次表示，通过黎曼流生成模型同时预测质心位置、取向与晶格参数，再用策略梯度微调，让模型更常生成低能结构。"
-          },
-          {
-            "level": "进阶",
-            "text": "生成侧的关键选择是几何：分子内部构象已知，需要预测的是分子如何堆积，于是模型对分子内与分子间都做消息传递，构造等变几何表示，并在各自流形上（位置、旋转、晶格）做流匹配，保证输出满足对称性约束。训练分两段：先在 OMC25/CSD 子集上做生成式预训练，再用策略梯度以能量为目标微调，把概率质量推向低能区域。评测走 CSP blind test，用 COMPACK 判断生成结构与实验结构的堆积相似性。"
-          },
-          {
-            "level": "专家",
-            "text": "与只用扩散或流匹配做 CSP 的工作相比，CG-OMatG 的差异有二：几何表示上采用粗粒化刚体加层次消息传递，把自由度从原子级降到分子级，从而能处理大晶胞；训练目标上不满足于拟合数据分布，而是用 RL 微调把先验重加权到低能区。代价是刚体假设丢掉了分子内柔性，奖励只反映能量时容易塌缩到少数模式，评测也只能用堆积相似性这种间接指标。它更像「生成候选加 RL 偏好」范式在材料科学的一次落地。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "如果只用最大似然训练生成模型会怎样？",
-            "a": "模型只会重现训练分布，仍会大量生成高能、亚稳结构，而材料发现关心的是低能可合成候选。"
-          },
-          {
-            "q": "为什么不能直接在原子坐标上做流匹配？",
-            "a": "原子级自由度太多，大晶胞与复杂堆积下维数爆炸；粗粒化成刚体层次表示才可扩展。"
-          },
-          {
-            "q": "为什么评测用 COMPACK 而不是直接比能量？",
-            "a": "预测的目标是与实验测定的晶体结构是否一致，堆积相似性直接对应这个目标，能量只是间接代理。"
-          }
-        ],
-        "mechanism": "CSP 的本质是在巨大的离散连续混合空间里找低能解，直接枚举不可行，所以用生成模型给出候选分布。要让分布可用，必须保证两点：生成样本遵守旋转平移等变与晶格合法性，这通过把不同自由度放到各自流形上做等变流匹配实现；生成样本偏向低能，这通过以能量为奖励的策略梯度微调实现。先验负责覆盖多晶型，RL 负责挑出有用的，两者缺一不可。",
-        "boundary": "刚体近似忽略分子内柔性，对柔性分子或构象多变的体系会失效；RL 微调依赖能量的可得性与准确性，用经验势或 DFT 的成本会限制规模；评测依赖 COMPACK 堆积相似性，相似不等于可合成或热力学稳定；摘要未给失败案例分布，泛化到无机晶体也未被验证。",
-        "analogyBoundary": "射箭类比里奖励即时且单峰，而晶体能量面有大量局部极小，策略梯度可能把模型推入某几个低能模式而丢失多晶型多样性，类比完全体现不出这种模式塌缩风险。",
-        "misconceptions": [
-          "以为生成模型直接学低能分布——低能偏好来自 RL 微调，不是最大似然训练。",
-          "以为刚体假设没有代价——它牺牲了分子内柔性，柔性体系会失效。",
-          "以为 COMPACK 相似度高就等于结构预测正确——它只衡量堆积几何相似性。"
-        ],
-        "ownAnalysis": "这篇把两条成熟路线拼在一起：等变生成模型负责几何合法性，策略梯度负责偏好对齐，和语言模型「预训练加 RLHF」的结构同构（推断这种类比是作者未明说的动机）。值得关注的是奖励只用晶体能量，属于稀疏且可能被钻空子的信号，摘要没提多样性约束或熵正则，因此模式塌缩风险是全篇最可疑处（推断）。若求职项目要复现，可先在有机小分子晶体子集上做流匹配预训练，再验证 RL 微调是否降低平均能量而不只是降低少数样本。",
-        "officialNotes": [
-          {
-            "position": "CG-OMatG 是等变黎曼流生成模型，用粗粒化层次表示把分子视为刚体、做分子内外消息传递，重建质心位置、取向与晶格参数；在 OMC25 与 CSD 子集上训练，并用策略梯度 RL 微调以偏向低能候选结构，最终在 CSP blind test 上用 COMPACK 评估。",
-            "source": "arXiv 摘要（https://arxiv.org/abs/2609.39773v1）"
-          }
-        ],
-        "interviewAnswer": "我把它理解成「生成候选加 RL 排序」在材料上的落地。晶体结构预测难在多晶型和大晶胞，CG-OMatG 的解法是粗粒化：分子当刚体，做分子间和分子内消息传递得到等变表示，再在位置、旋转、晶格各自的流形上做流匹配生成结构，条件给化学物种和构象。预训练在 OMC25 和 CSD 子集上完成，之后用策略梯度以低能为奖励微调，评测走 CSP blind test 加 COMPACK 相似性。我觉得最需要警惕的是奖励只用能量导致的多样性塌缩。",
-        "studyPath": {
-          "prerequisites": [
-            "生成模型（扩散与流匹配）",
-            "等变网络与 SO(3) 表示",
-            "晶体学基础概念（晶格、多晶型）"
-          ],
-          "nextSteps": [
-            "读 CSP blind test 的评测协议",
-            "复现小规模流匹配晶体生成",
-            "研究 RL 微调中的多样性正则"
-          ]
-        }
-      }
-    },
-    {
-      "id": "b1dbc9cc24709fe3",
-      "tldr": "系统评测 GPT-6 Astra 当具身策略：混合控制可用，但运动控制不可靠，推理延迟与 token 成本极高。",
-      "keyPoints": [
-        "跨六个领域评测直接控制、与学习策略混合控制、反馈驱动适应",
-        "夹爪操作中能纠正任务目标，并为后续策略准备接触条件",
-        "混合控制成功率：RoboDojo 48%、DexJoCo 50%、RoboCasa365 38.7%",
-        "导航领先：RxR 指令跟随 92%、HM3D 物体搜索 82%，但绕路严重",
-        "运动控制失败：单障碍赛道五次尝试均未到终点，延迟与 token 开销巨大"
-      ],
-      "why": "具身方向最现实的问题不是能不能规划，而是能不能实时可靠控制；这条给出大模型当策略的能力边界与成本账，是 VLA 求职面试的高频素材。",
-      "difficulty": "medium",
-      "tags": [
-        "embodied-ai",
         "vision-language-action",
-        "robot-manipulation",
-        "evaluation",
-        "inference-latency"
+        "autonomous-driving",
+        "embodied-ai",
+        "awesome-list"
       ],
       "entities": [
-        "GPT-6 Astra",
-        "π0.5",
-        "RoboDojo",
-        "DexJoCo",
-        "RoboCasa365",
-        "RxR",
-        "HM3D",
-        "HumanoidBench"
+        "awesome-vla-for-ad",
+        "worldbench",
+        "Vision-Language-Action",
+        "Autonomous Driving"
+      ],
+      "diagram": {
+        "kind": "timeline",
+        "title": "自动驾驶 VLA 研究脉络",
+        "caption": "这个清单按过去、现在、未来三段组织自动驾驶 VLA 的研究地图",
+        "spec": {
+          "type": "timeline",
+          "nodes": [
+            {"label": "过去", "detail": "模块化感知-预测-规划与早期多模态融合"},
+            {"label": "现在", "detail": "VLA 与多模态大模型进入自动驾驶决策"},
+            {"label": "未来", "detail": "面向开放场景与具身泛化的方向"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "端到端化"},
+            {"from": 1, "to": 2, "label": "泛化与落地"}
+          ]
+        },
+        "alt": "时间线把自动驾驶视觉-语言-动作研究分成过去、现在与未来三个阶段"
+      },
+      "concepts": [
+        {
+          "name": "Vision-Language-Action Model for Autonomous Driving",
+          "readable": "把摄像头画面、语言指令和驾驶动作放进同一个模型：模型看图、理解语言目标，直接输出油门、刹车、转向或者轨迹。",
+          "analogy": "像教一个学员开车：先要看得懂路（视觉），听得懂「靠边停」这类指令（语言），最后手上真能打方向盘（动作），三样缺一不可。",
+          "analogyBreaksDown": "学员能在少量示范后举一反三，而 VLA 的泛化来自数据覆盖；更关键的是驾驶的容错率极低，一次错误动作就是事故，模型输出的连续控制量也没有语言那样的可解释性。",
+          "mechanism": "关键设计是把驾驶决策统一成序列建模问题：视觉编码器提特征，语言模型做推理与规划，动作头把隐状态解码为控制量或轨迹，因此感知与决策不再靠人工接口衔接。",
+          "visual": "画三列并排：左列是环视图像网格，中列是语言指令与推理文本，右列是转向角与速度的时间曲线，中间用两条粗箭头表示图到语言、语言到控制，标出端到端可训练的范围。",
+          "prerequisites": [
+            "Transformer 与多模态对齐基础",
+            "自动驾驶的感知-预测-规划流水线",
+            "模仿学习与行为克隆"
+          ],
+          "selfTest": [
+            "VLA 相比传统模块化自动驾驶流水线，最大的结构差别是什么？",
+            "为什么驾驶任务的容错要求会限制 VLA 的直接部署？",
+            "语言模态在驾驶决策里到底提供什么信息，能不能去掉？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [],
+      "selfCheck": {
+        "claims": [
+          "该仓库标题为「Vision-Language-Action Models for Autonomous Driving: Past, Present, and Future」",
+          "仓库定位是 awesome 资源清单，地址为 https://github.com/worldbench/awesome-vla-for-ad",
+          "仓库质量信号为 484 stars、42 forks",
+          "相关标签包含自动驾驶、具身智能与多模态大模型"
+        ],
+        "uncertain": [
+          "具体收录了多少篇论文、按什么分类组织，摘要未提供（待核实）",
+          "清单内容是否包含代码实现与基准评测，摘要未说明（待核实）",
+          "「过去/现在/未来」各自的代表作与技术判断，属于仓库正文内容，未在摘要中给出（待核实）"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "一份把自动驾驶 VLA 研究整理成时间脉络的资源清单"},
+          {"level": "入门", "text": "VLA 指视觉-语言-动作模型：输入图像和语言，输出动作。这个仓库把自动驾驶场景下的这类工作汇编成清单，标题把它分成过去、现在和未来三段，方便快速建立领域地图。"},
+          {"level": "进阶", "text": "它的价值在于索引而非方法：面对一个交叉方向，先看别人怎么分期、怎么分类，比随机读论文效率高。使用时要注意 awesome 清单的质量差异很大，收录标准、更新频率和维护者背景决定了它能不能当作可靠入口。"},
+          {"level": "专家", "text": "把它和世界模型、具身智能两条线对照着读：自动驾驶 VLA 的核心张力是端到端可微与安全可验证之间的冲突。清单里的方法大多在闭环仿真或基准上评测，距离车规级验证还有距离，因此读的时候要区分数据规模驱动的模仿学习与实际部署约束。这个仓库适合当检索入口，不适合当技术结论来源——它本身不提供实验证据，判断仍需回到原论文。"}
+        ],
+        "socratic": [
+          {"q": "为什么这类清单值得读，直接搜 arXiv 不行吗？", "a": "清单已经做过一轮筛选与分期，能快速告诉你哪些子问题被研究过、哪些还是空白，省掉冷启动的检索成本。"},
+          {"q": "为什么不能把清单里的分期当作技术结论？", "a": "分期是维护者的主观组织方式，既不证明方向优越，也不代表实验可复现，只能当检索索引。"},
+          {"q": "如果清单很久不更新，风险是什么？", "a": "会把已过时的路线当主流，漏掉最新工作，误导选题与简历方向。"}
+        ],
+        "mechanism": "这类资源库存在的意义是把分散的论文按共同问题聚类：自动驾驶 VLA 横跨感知、语言模型与规划三个社区，检索词彼此不通，清单用统一分期把三条线索对齐，从而降低跨社区阅读的入口成本。",
+        "boundary": "摘要只有一行标题，无法确认收录标准与更新时间；没有代码与实验结论，不能作为方法优劣的证据；awesome 类仓库质量波动大，误当权威综述会带偏方向判断。",
+        "analogyBoundary": "把清单类比成地图是合理的，但地图有测绘标准，而清单没有：它不保证覆盖完整，也不标注哪些条目已被后续工作推翻。",
+        "misconceptions": [
+          "把 awesome 清单当成同行评审综述，直接引用它的技术判断",
+          "以为清单里的方法都经过真实道路验证，实际多为仿真基准",
+          "混淆 VLA 与纯端到端驾驶：语言模态并非所有路线都有"
+        ],
+        "ownAnalysis": "（推断）从标签里同时出现 3d、embodied-ai 与 llm 判断，这个清单很可能同时覆盖 3D 感知与语言决策两条线，而这类交叉正是近两年自动驾驶研究的增长点。需要提醒自己的是：清单的 star 数反映的是检索价值而不是技术深度，把它写进学习路径时应该标成索引，而不是已掌握。",
+        "officialNotes": [
+          {"position": "仓库自述为「Vision-Language-Action Models for Autonomous Driving: Past, Present, and Future」的资源汇总", "source": "github"}
+        ],
+        "interviewAnswer": "我把这个仓库当作领域索引来用：它把自动驾驶里的视觉-语言-动作工作按过去、现在、未来三段整理。我会说清楚它的定位——它是清单，不是综述，不提供实验证据，所以任何结论我都会回到原论文核对。读它的收益是快速建立地图，知道哪几个子问题被做透了、哪些还有空间，然后挑两三篇代表作精读，重点看它们的评测协议是不是闭环仿真、动作空间是轨迹还是控制量。",
+        "studyPath": {
+          "prerequisites": [
+            "自动驾驶感知-预测-规划基本流水线",
+            "多模态大模型的视觉编码与对齐基础",
+            "模仿学习与行为克隆基本概念"
+          ],
+          "nextSteps": [
+            "从清单挑 2 到 3 篇代表作精读并复现推理流程",
+            "对比不同工作的动作空间定义与评测协议差异",
+            "关注闭环仿真指标与真实路测之间的落差"
+          ]
+        }
+      }
+    },
+    {
+      "id": "091fedf2566cfb0a",
+      "tldr": "ATW 用世界建模加世界探测的智能体流程做物理推理，CLEVRER 达 80.82%",
+      "keyPoints": [
+        "提出通用智能体 ATW，分世界建模与世界探测两阶段",
+        "配套 PolyWorld Engine，基于 Warp 的可编程多物理模拟器",
+        "世界建模用 CEM 系统辨识恢复动力学，探测阶段对世界提问与干预",
+        "CLEVRER 逐题准确率 80.82%，比直接 VLM 高 46.50 点",
+        "ContPhy 达 70.56%，三个真实场景达 71.67%，均超 GPT-5.5"
+      ],
+      "why": "把模拟器与 VLM 组成可干预的推理回路，是具身与世界模型方向的高频面试话题",
+      "difficulty": "hard",
+      "tags": [
+        "world-model",
+        "physical-reasoning",
+        "agent",
+        "simulation",
+        "vlm"
+      ],
+      "entities": [
+        "Asking the World",
+        "ATW",
+        "PolyWorld Engine",
+        "CEM",
+        "Gemini-3-Flash",
+        "GPT-5.5",
+        "PhysMind",
+        "CLEVRER",
+        "ContPhy",
+        "Warp"
       ],
       "diagram": {
         "kind": "flow",
-        "title": "具身评测的四层结论",
-        "caption": "六领域评测显示决策可用、控制不可靠、成本高昂。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='GPT-6 Astra 具身评测流程：六领域评测、三种用法、分层成功率、延迟与 token 成本'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>六领域评测</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>操作/导航/运动</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>三种用法</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>直接/混合/反馈</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>成功率分层</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>导航强/运动弱</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>延迟与 token 成本</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>250 次/约 39.9 秒</text>\n</svg>",
-        "alt": "流程图：六领域具身评测区分直接控制、混合控制与反馈适应三种用法，得出导航强、运动弱的分层成功率结论，并给出推理延迟与 token 成本约束。"
+        "title": "ATW 建模与探测回路",
+        "caption": "先按视频校准一个可执行世界，再在这个世界里做实验取证",
+        "svg": "<svg viewBox='0 0 480 208' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='ATW 世界建模与世界探测流程'><rect x='60' y='16' width='360' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='76' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>输入视频与问题</text><text x='404' y='40' font-size='13' text-anchor='end' fill='currentColor'>推理对象</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='60' y='70' width='360' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='76' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>世界建模</text><text x='404' y='94' font-size='13' text-anchor='end' fill='currentColor'>CEM 辨识动力学</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='60' y='124' width='360' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='76' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>世界探测</text><text x='404' y='148' font-size='13' text-anchor='end' fill='currentColor'>提问、模拟、干预</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='60' y='170' width='360' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='76' y='194' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>证据作答</text><text x='404' y='194' font-size='13' text-anchor='end' fill='currentColor'>PolyWorld Engine</text></svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {"label": "视频与问题", "detail": "需要超越直接观察的物理推理"},
+            {"label": "世界建模", "detail": "按场景校准可执行世界，CEM 恢复动力学"},
+            {"label": "世界探测", "detail": "对世界提问、模拟与干预取证"},
+            {"label": "答案", "detail": "基于实验证据回答问题"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "校准"},
+            {"from": 1, "to": 2, "label": "作为工作区"},
+            {"from": 2, "to": 3, "label": "汇总证据"}
+          ]
+        },
+        "alt": "视频与问题先经世界建模校准出可执行世界，再经世界探测做模拟与干预，最后给出答案"
       },
       "concepts": [
         {
-          "name": "Hybrid Control（大模型决策加学习策略执行）",
-          "readable": "不让大模型直接输出每个关节动作，而是让它做任务级决策——纠正目标、准备接触条件——再把控制交给专门训练的策略执行。",
-          "analogy": "像外科手术：主刀医生决定切哪里、什么时候停，具体缝合交给熟练助手按肌肉记忆完成。",
-          "analogyBreaksDown": "手术里两人能实时对话、共享视野；大模型与底层策略之间只靠有限接口（目标点、预备动作）传递信息，接口一旦没对齐，交接处就是失败高发区。",
-          "mechanism": "把控制拆成慢速语义决策与快速反应控制两层，用预训练策略承担高频闭环，从而绕开大模型推理延迟；代价是上层不能修正下层执行细节，只能改变任务设定与初始条件。",
-          "visual": "时间轴上画两条平行流：上方稀疏方块代表大模型调用，下方连续锯齿线代表学习策略的高频控制回路；连接点用竖线标出并注为交接。",
+          "name": "Agentic World Modeling and Probing",
+          "readable": "不让模型凭一段视频直接猜答案，而是先按视频搭一个能跑物理的世界，再在这个世界里做实验，拿实验结果当证据来回答。",
+          "analogy": "像法医办案：先按现场重建一个可以推演的沙盘，然后在沙盘上做碰撞、抽拉等试实验，用实验结果回答「如果当时刹车会怎样」。",
+          "analogyBreaksDown": "沙盘是人工搭建的，重建误差会系统性污染结论；现实案件还有无法建模的变量，而这里的答案完全建立在模拟器保真度之上，模拟器没建模的物理量就永远问不出来。",
+          "mechanism": "关键设计是不预先写死工具流水线，而是让智能体按场景与问题自行决定怎么建模、怎么探测，再用 CEM 在模拟器里辨识出与问题相关的动力学参数，使世界成为可干预的实验工作区。",
+          "visual": "左侧画一段视频的几帧缩略图，中间画一个带坐标轴的沙盘，用不同颜色小体块表示刚体、软体、布料、绳索、流体，右侧画问题文本与从沙盘射出的若干探测箭头，箭头末端标出证据。",
           "prerequisites": [
-            "模仿学习与 VLA 基础",
-            "机器人控制回路与频率概念"
+            "多物理仿真与刚体动力学基础",
+            "VLM 的视觉问答范式",
+            "黑盒优化与 CEM 采样方法"
           ],
           "selfTest": [
-            "为什么混合控制通常优于大模型直接控制？",
-            "交接接口设计不当会带来哪类失败？",
-            "上下层频率差几个数量级时会发生什么？"
+            "为什么作者认为直接让 VLM 推理在复杂物理任务上不可靠？",
+            "世界建模阶段用 CEM 做系统辨识，它在辨识什么？",
+            "世界探测与普通工具调用流水线的本质区别在哪里？"
           ],
-          "formula": "a_t = \\pi_{\\text{low}}\\big(s_t, g_t\\big), \\qquad g_t = \\pi_{\\text{LLM}}(\\text{history})"
+          "formula": ""
         },
         {
-          "name": "Inference-Latency-Bound Control（推理延迟约束下的控制）",
-          "readable": "当模型单次调用要几十秒、一个 30 秒任务需要 250 次调用时，控制实际上不再连续：物理要暂停等模型想完。",
-          "analogy": "像玩需要实时反应的格斗游戏，但每按一次键系统要卡 40 秒才响应，期间游戏被暂停，等你想好了对手也停在原地。",
-          "analogyBreaksDown": "游戏暂停是对称的、状态不变；真实物理世界暂停推理期间的执行误差、接触力与延迟效应不会消失，恢复后状态已与模型假设不符。",
-          "mechanism": "用物理暂停把推理时间从控制回路中剥离，使离线评测可完成；但这掩盖了真实部署的实时性要求，也把成本转成 token 数与调用次数这两个可测量。",
-          "visual": "横轴为任务时间、纵轴为等待时间；画成一串宽柱子（每次调用约 39.86 秒）与细缝（实际动作执行），30 秒任务总跨度被拉长，柱子上标注累计 token 数。",
+          "name": "CEM-based System Identification",
+          "readable": "系统辨识就是不知道世界的物理参数（比如质量、摩擦、弹性）时，通过反复试参数、看模拟结果和视频像不像，把参数调到最贴合。CEM 是其中一种按优秀样本更新分布的黑盒优化方法。",
+          "analogy": "像调老式收音机的旋钮：听声音糊不糊，反复微调几个旋钮，每次都往最近听起来最清楚的方向再调一点。",
+          "analogyBreaksDown": "调收音机旋钮彼此独立，而物理参数高度耦合，动一个会把另一个的最优值带跑；此外目标函数在模拟器里可能不光滑，CEM 的精英筛选会收敛到局部最优。",
+          "mechanism": "设计要点是把辨识限定在任务相关参数上，并用模拟轨迹与观测轨迹的差异当适应度，避免为了全局保真去拟合与提问无关的自由度，从而在少量采样下得到可用世界。",
+          "visual": "画参数空间上的一团采样点，每轮把得分最高的若干点染成强调色，然后在这批点周围收窄画一个更小的椭圆表示新一轮采样分布，迭代几轮后椭圆收缩到极小。",
           "prerequisites": [
-            "LLM 推理服务与延迟概念",
-            "机器人控制频率要求"
+            "黑盒优化与采样估计",
+            "轨迹误差度量",
+            "模拟器参数化概念"
           ],
           "selfTest": [
-            "为什么延迟是具身策略的一阶约束而不是工程细节？",
-            "物理暂停式评测与真机部署差在哪里？",
-            "token 消耗为什么能作为控制成本指标？"
+            "CEM 与随机搜索的关键区别是什么？",
+            "为什么只辨识任务相关参数比拟合全部参数更稳？",
+            "如果适应度函数不光滑，CEM 会出现什么行为？"
           ],
-          "formula": "C_{\\text{tokens}} = N_{\\text{calls}} \\times \\bar{n}"
+          "formula": ""
         }
       ],
       "formulas": [
         {
-          "id": "f-embodied-inference-token-cost",
-          "name": "具身推理成本核算（Embodied Inference Cost Accounting）",
+          "id": "f-atw-cem-system-id",
+          "name": "CEM 系统辨识迭代（CEM System Identification）",
           "category": "worldmodel",
-          "latex": "C_{\\text{tokens}} = N_{\\text{calls}} \\times \\bar{n}, \\qquad T_{\\text{wall}} = N_{\\text{calls}} \\times \\bar{\\tau}, \\qquad \\bar{\\tau} = 39.86\\,\\text{s},\\; N_{\\text{calls}} = 250",
+          "latex": "\\theta_{k+1} \\sim \\mathcal{N}\\!\\left(\\mathrm{mean}(\\mathcal{E}_k),\\, \\mathrm{var}(\\mathcal{E}_k)\\right),\\quad \\mathcal{E}_k = \\mathrm{TopK}_{\\theta \\sim \\mathcal{N}(\\mu_k,\\sigma_k^2)}\\;\\big[-\\,\\ell(\\theta)\\big]",
           "symbols": [
-            [
-              "N_{\\text{calls}}",
-              "完成一次任务所需的模型调用次数"
-            ],
-            [
-              "\\bar{n}",
-              "单次调用的平均 token 数"
-            ],
-            [
-              "C_{\\text{tokens}}",
-              "任务总 token 消耗"
-            ],
-            [
-              "\\bar{\\tau}",
-              "单次调用的平均墙钟延迟"
-            ],
-            [
-              "T_{\\text{wall}}",
-              "推理累计耗时（推理期间物理暂停）"
-            ]
+            ["\\theta", "世界的物理参数向量，如质量、摩擦与弹性"],
+            ["\\ell(\\theta)", "模拟轨迹与观测轨迹的偏差损失，越小越好"],
+            ["\\mathcal{E}_k", "第 k 轮得分最高的精英参数集合"],
+            ["\\mu_k", "第 k 轮采样分布的均值"],
+            ["\\sigma_k^2", "第 k 轮采样分布的方差"],
+            ["\\mathrm{TopK}", "按损失取前 K 个样本的算子"]
           ],
           "derivation": [
-            "第 1 步：把具身控制的成本拆成调用次数与单次调用开销两个可直接测量的量。",
-            "第 2 步：总 token 消耗等于调用次数乘单次平均 token，可比较直接控制与策略辅助控制的开销（摘要给出 11.32 亿与 6.248 亿）。",
-            "第 3 步：总延迟等于调用次数乘单次平均延迟；摘要给出 30 秒运动任务需 250 次调用、平均每次 39.86 秒。",
-            "第 4 步：把该延迟与任务真实时长对比即可判断实时性——累计耗时远超任务时长，说明必须暂停物理才能完成评测。"
+            "第 1 步：把「世界像不像视频」写成一个可优化的标量损失，即模拟轨迹与观测轨迹的偏差。",
+            "第 2 步：因为模拟器不可微且存在接触突变，直接求梯度不可靠，改用采样式黑盒优化。",
+            "第 3 步：每轮从当前高斯分布采一批参数，挑出损失最小的前 K 个作为精英集合。",
+            "第 4 步：用精英集合的均值与方差重建采样分布，使下一轮采样集中在高分区，重复若干轮直至收敛。"
           ],
-          "analogy": "像打车算成本：总花费等于叫车次数乘每单均价；哪怕每单不远，只要叫 250 次又每单等 40 秒，这趟行程在时间上就不可能实时。",
+          "analogy": "像一群人分头试菜谱，每人交一道菜，选出最好吃的几份，然后照着这几份的口味微调调料再试一轮，一轮轮逼近想要的味儿。",
           "pitfalls": [
-            "只用平均延迟评估，忽略调用次数带来的累计开销",
-            "不说明 token 口径（是否含 prompt）就跨模型比较成本",
-            "忽略推理时物理暂停这一评测假设，误以为控制器满足实时性"
+            "把 CEM 当成有收敛保证的算法，实际上它只保证在精英筛选下分布收缩，可能陷入局部最优",
+            "精英集合取得过大或过小都会失效：太大不收缩，太小方差塌缩",
+            "误以为辨识出的参数就是真实物理量，其实只是让任务相关轨迹吻合的等效参数"
           ],
-          "code": "# 按摘要数字核算 30 秒运动任务\nn_calls, tau = 250, 39.86\nprint('累计推理耗时(s):', n_calls * tau)     # 9965\nprint('与任务时长之比:', n_calls * tau / 30) # 约 332\n# 直接控制与策略辅助控制的 token 比\nprint('token ratio:', 1.132e9 / 624.8e6)     # 约 1.81",
+          "code": "import numpy as np\n\ndef cem_system_id(simulate, loss_fn, mu, sigma, iters=30, n=64, k=8):\n    for _ in range(iters):\n        thetas = np.random.normal(mu, sigma, size=(n, mu.size))\n        scores = np.array([-loss_fn(theta, simulate) for theta in thetas])\n        elite = thetas[np.argsort(scores)[-k:]]      # 取精英样本\n        mu = elite.mean(axis=0)                      # 更新均值\n        sigma = elite.std(axis=0) + 1e-4             # 更新方差，防塌缩\n    return mu, sigma\n\ndef make_loss(simulate, observed, horizon):\n    def loss(theta):\n        traj = simulate(theta, horizon)\n        return float(np.mean((traj - observed) ** 2))\n    return loss",
           "sources": [
-            {
-              "title": "Systematically Exploring the Capabilities of GPT-6 Astra as Embodied Policies",
-              "url": "https://huggingface.co/papers/2609.38537"
-            }
-          ]
-        },
-        {
-          "id": "f-embodied-hybrid-success-decomposition",
-          "name": "混合控制成功率分解（Hybrid Control Success Decomposition）",
-          "category": "worldmodel",
-          "latex": "P(\\text{success}) = P(\\text{handoff ok}) \\times P(\\text{execution ok} \\mid \\text{handoff ok})",
-          "symbols": [
-            [
-              "P(\\text{handoff ok})",
-              "大模型把目标纠正、接触条件准备做对的比例"
-            ],
-            [
-              "P(\\text{execution ok} \\mid \\text{handoff ok})",
-              "底层学习策略在给定目标下执行成功的比例"
-            ],
-            [
-              "P(\\text{success})",
-              "混合控制的端到端成功率（摘要给出 48%、50%、38.7% 等）"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：混合控制把回路拆成「大模型决定目标」与「底层策略执行」两段，端到端成功要两段都成功。",
-            "第 2 步：按条件概率链式展开，得到总成功率等于交接正确率乘条件执行成功率。",
-            "第 3 步：由此可判断瓶颈在哪一段：底层策略固定时，提升只能来自改善交接（目标纠正与接触准备）；反过来若交接正确而成功率仍低，说明瓶颈在底层策略。",
-            "第 4 步：摘要只给出总成功率，两个因子需实测拆解，不能由总数反推。"
-          ],
-          "analogy": "像工地上的项目经理与班组：项目成败等于经理指令正确的比例乘班组按指令干成的比例，经理喊得再勤也弥补不了班组干不了。",
-          "pitfalls": [
-            "把两段成功率当严格独立，实际底层失败会触发上层重新决策",
-            "只看成功率不看交接频率，忽略延迟约束",
-            "用大模型直接控制的成绩推断混合控制的上下限"
-          ],
-          "code": "# 混合控制成功率分解: 交接成功 × 条件执行成功\ndef hybrid_success(p_handoff, p_exec_given_handoff):\n    return p_handoff * p_exec_given_handoff\n# 摘要只给了总成功率, 两个因子需实测拆解\nfor total in (0.48, 0.50, 0.387):\n    print(total, '<- 需拆成两个因子')",
-          "sources": [
-            {
-              "title": "Systematically Exploring the Capabilities of GPT-6 Astra as Embodied Policies",
-              "url": "https://huggingface.co/papers/2609.38537"
-            }
+            {"title": "Asking the World: Generalist Physical Reasoning through Agentic World Modeling and Probing", "url": "https://arxiv.org/abs/2609.39135v1"}
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "评测覆盖六个领域，考察直接控制、与学习策略协作和反馈驱动适应三种模式",
-          "夹爪操作中 Astra 能纠正任务目标并为后续策略执行准备接触条件",
-          "与 π0.5 的混合控制在所评测的 RoboDojo 子集上达到 48% 成功率",
-          "灵巧操作中十次经验引导的 DexJoCo 试验里混合控制达到 50% 成功率，而直接在手控制难以协调手指接触",
-          "移动操作中混合控制在所评测的 RoboCasa365 上达到 38.7% 成功率",
-          "导航中 Astra 在本地对比中领先：RxR 指令跟随 92%、HM3D 物体搜索 82%，但搜索会产生大量绕路",
-          "运动控制不可靠：单障碍赛道五次连续尝试均未到达终点，稳定性与前向推进虽有改进",
-          "人形 loco-manipulation 中，配合预训练全身控制器在 30 个 HumanoidBench 任务里有 13 个超过基线方法",
-          "每个条件 50 个 RoboDojo 实例下，策略辅助与直接控制分别消耗 6.248 亿与 11.32 亿 token",
-          "30 秒运动任务需要 250 次模型调用、平均每次 39.86 秒，推理期间物理暂停"
+          "ATW 分世界建模与世界探测两个自适应阶段，不预设两阶段的具体操作",
+          "PolyWorld Engine 是基于 Warp 的轻量可编程多物理模拟器，支持刚体、软体、布料、绳索、流体及其耦合",
+          "世界建模阶段使用基于 CEM 的系统辨识恢复任务相关动力学",
+          "以 Gemini-3-Flash 为基座 VLM，ATW 在 CLEVRER 达 80.82% 逐题准确率",
+          "CLEVRER 上比直接 Gemini-3-Flash 高 46.50 点，比 GPT-5.5 高 13.58 点，比 PhysMind 高 8.27 点",
+          "ContPhy 达 70.56%，高出 Gemini-3-Flash 28.10 点、GPT-5.5 3.53 点",
+          "三个真实场景达 71.67%，比 GPT-5.5 高 28.33 点"
         ],
         "uncertain": [
-          "六个领域与摘要提到的夹爪操作、灵巧操作、移动操作、导航、运动、人形 loco-manipulation 的对应关系是按摘要列举推断的，需核对原文",
-          "所评测的 RoboDojo 子集与 RoboCasa365 的具体任务范围、基线设置与置信区间摘要未给出",
-          "token 计数口径（是否含 prompt token、是否含工具调用）摘要未说明",
-          "HumanoidBench 超过基线的 13/30 未给具体基线方法与显著性",
-          "累计推理耗时 9965 秒、约为任务时长 332 倍、直接控制 token 约为策略辅助 1.81 倍，均由摘要给出的数字直接运算得出，摘要未原样列出"
+          "ATW 的具体提示词、动作空间与阶段切换判据，摘要未给出（待核实）",
+          "真实场景具体是哪三个、用什么指标统计，摘要只说三个真实场景（待核实）",
+          "摘要末尾被截断，ATW 的完整结论句不可得（待核实）",
+          "CEM 公式为按摘要重建的通用形式，需核对原文"
         ]
       },
       "teaching": {
         "progressive": [
-          {
-            "level": "一句话",
-            "text": "把大模型当机器人大脑测了一圈：会做决定，但动手不稳，而且太慢太贵。"
-          },
-          {
-            "level": "入门",
-            "text": "作者系统评测 GPT-6 Astra 能否直接当具身策略，覆盖夹爪操作、灵巧操作、移动操作、导航、运动和人形 loco-manipulation 六类任务，并区分直接控制、与学习策略协作、反馈驱动适应三种用法。结论是它能给出有用的任务级决策，但可靠的低层物理控制仍是瓶颈。"
-          },
-          {
-            "level": "进阶",
-            "text": "评测设计的关键是把模型能力与控制能力分开：混合控制让 Astra 只负责纠正目标、准备接触条件等高层动作，底层交给 π0.5 之类的学习策略。结果显示混合控制明显优于直接控制——RoboDojo 48%、DexJoCo 50%、RoboCasa365 38.7%——但在需要密集运动参考的运动任务上完全失败。与此同时推理延迟成了一阶约束：30 秒任务要 250 次调用、平均每次 39.86 秒，评测时物理被暂停。"
-          },
-          {
-            "level": "专家",
-            "text": "与端到端 VLA 路线相比，这篇把大模型定位成慢速语义层：它擅长从指令与反馈推断该做什么，短于输出可靠的连续动作。证据是同一模型直接控制灵巧手时手指接触难以协调，而混合控制可达 50%；导航反而强（RxR 92%、HM3D 82%），因为语义对齐比力矩控制更吃语言能力。代价被量化得很直白：每个条件 50 个实例下直接控制消耗 11.32 亿 token，远高于策略辅助的 6.248 亿。这说明瓶颈已从智能转到延迟与可靠性。"
-          }
+          {"level": "一句话", "text": "让智能体先搭一个物理世界，再在世界里做实验来回答物理问题"},
+          {"level": "入门", "text": "从视频回答物理问题，仅靠看画面很难推断质量、摩擦这类看不出来的量。ATW 先根据视频校准出一个能跑的多物理世界，再让智能体在这个世界里提问、模拟、干预，拿实验结果当证据回答原问题。"},
+          {"level": "进阶", "text": "设计上的关键取舍是把建模和探测都留给智能体决定，而不是写死一条工具流水线。好处是不依赖任务先验，能跨材料与动力学泛化；代价是引入了模拟器保真度这个新的错误来源。世界建模阶段用 CEM 在模拟器里辨识任务相关参数，使世界成为可干预的工作区而非固定的下游工具。"},
+          {"level": "专家", "text": "对比两条基线：直接 VLM 推理省事但在复杂物理上不可靠；预定义工具流水线依赖任务与领域先验，换材料或换动力学就崩。ATW 用 PolyWorld Engine 提供刚体、软体、布料、绳索、流体及其耦合的仿真，把通用性交给智能体调度。代价是每道题都要付建模与探测的算力，且结论受模拟器覆盖范围约束：模拟器里没有的物理现象，探测再多次也问不出来。评测上 CLEVRER 80.82%、ContPhy 70.56%、真实场景 71.67% 都说明它相对基座 VLM 有明显提升，但这些提升同时依赖一个手工构建的模拟器，这一点在讨论可扩展性时必须讲清楚。"}
         ],
         "socratic": [
-          {
-            "q": "如果让 Astra 直接输出底层动作会怎样？",
-            "a": "灵巧操作里手指接触难以协调，成功率明显低于混合控制；连续高频控制超出其能力与延迟预算。"
-          },
-          {
-            "q": "为什么导航表现远好于运动控制？",
-            "a": "导航吃语义与指令理解，允许较慢决策；运动控制需要密集实时的运动参考，模型生成不可靠。"
-          },
-          {
-            "q": "为什么评测要暂停物理？",
-            "a": "单次调用平均 39.86 秒，不暂停就无法在有限时间内跑完 250 次调用的任务，但这也意味着真机实时性未被验证。"
-          }
+          {"q": "如果不做世界建模，直接让 VLM 看图回答会怎样？", "a": "摘要明确指出直接 VLM 推理在复杂物理任务上不可靠，因为它只能观察不能干预，无法验证隐含物理量的推断。"},
+          {"q": "为什么预定义工具流水线不够，非要让智能体自己决定怎么建模？", "a": "写死的工具带任务与领域先验，换材料、换动力学就要重写，泛化性被先验锁死。"},
+          {"q": "世界探测里的干预操作为什么比多问几次更有价值？", "a": "提问只能读出现有轨迹里的相关性，干预能主动制造反事实轨迹，才能回答「如果当时那样会怎样」。"}
         ],
-        "mechanism": "评测要区分决策与控制两种能力，否则分数无法归因。作者因此把用法分成三层：直接控制暴露模型自身的连续动作能力，混合控制让模型只输出目标与接触准备、把闭环交给学习策略，反馈驱动适应考察它能否根据结果修正计划。指标用成功率，成本用 token 与调用次数，并把推理期间的物理暂停显式写出来——因为延迟已经和成功率同等重要。这样才能说明它何时有用、何时完全不可用。",
-        "boundary": "结论绑定具体模型版本、评测任务子集与物理暂停的评测协议，不能外推为「大模型不能做控制」；混合控制依赖已有高质量底层策略，缺少可用策略时结论不成立；成功率未给置信区间与随机种子次数；token 口径未说明，跨模型成本比较需谨慎。",
-        "analogyBoundary": "格斗游戏暂停类比忽略了物理世界的不可逆性：暂停期间接触、滑动与累积误差不会停止，恢复控制后模型赖以决策的状态已与暂停前不同，真机部署无法靠暂停获得这份从容。",
+        "mechanism": "必须这样设计的原因是可观测性不足：视频只给出可见表面，质量、摩擦、接触力这些决定结果的量根本不在像素里。先用 CEM 把这些量辨识出来，世界才具备可执行性；有了可执行世界，智能体才能用模拟和干预生成训练时没见过的反事实证据，把猜答案换成做实验取证。",
+        "boundary": "结论受模拟器保真度上限约束：PolyWorld 未建模的物理过程无法被探测出来；每道题都要付建模与探测的额外算力，延迟和成本远高于直接 VLM；真实场景只有三个，泛化到更复杂交通或人机交互场景尚缺证据；CEM 采样在参数维度高时样本效率会明显下降。",
+        "analogyBoundary": "法医沙盘类比在误差传播上失效：真实沙盘可以标注不确定度，而这里的模拟器偏差是系统性的，重建错了参数，后续所有实验都会一致地给出错误证据，并不可自检。",
         "misconceptions": [
-          "以为大模型做具身就是端到端输出动作——本文显示直接控制明显弱于混合控制。",
-          "只看成功率不看延迟——30 秒任务 250 次调用、每次约 40 秒，实时性根本不满足。",
-          "以为 token 消耗只是成本问题——它同时反映控制所需的模型调用密度。"
+          "以为 ATW 是端到端训练出来的新模型，实际基座 VLM 是 Gemini-3-Flash，创新在流程",
+          "把提升全部归功于模拟器精度，忽略智能体自主决定建模与探测这一步的贡献",
+          "以为世界建模是精确反演真实物理参数，其实只是任务相关的等效参数"
         ],
-        "ownAnalysis": "这篇的价值在于把具身大模型的能力拆成决策与控制，并给出量化的成本账，方法上是评测论文而非新模型。最值得注意的是评测采用推理时物理暂停，这让 39.86 秒的调用延迟下仍能跑完任务，但真机部署不存在这种便利（推断这也是作者要把延迟数字单列的原因）。可疑处是六类任务的评测条件差异很大：RoboDojo 50 个实例、DexJoCo 只有 10 次试验、运动任务仅 5 次尝试，跨领域比较成功率的统计可靠性不均，结论应分领域读。",
+        "ownAnalysis": "（推断）把 ATW 和「用世界模型做规划」的路线放在一起看，会发现它在做同一件事的另一个方向：不是学一个隐空间动力学让策略在里面对齐目标，而是现场构造一个显式可执行世界再从中取证。显式的好处是可解释、可干预，代价是需要一个足够通用的模拟器，而 PolyWorld 由同一批作者构建，这使通用智能体的主张部分依赖自家基座组件，跨模拟器的可迁移性仍有待独立验证（待核实）。",
         "officialNotes": [
-          {
-            "position": "GPT-6 Astra 能生成数值化机器人动作、超越高层规划；六领域评测显示混合控制有用（RoboDojo 48%、DexJoCo 50%、RoboCasa365 38.7%），导航领先（RxR 92%、HM3D 82%），但运动控制不可靠（五次尝试均未到达终点），且推理延迟与 token 成本构成实际约束（30 秒运动任务 250 次调用、平均 39.86 秒，物理暂停）。",
-            "source": "hf_papers / arXiv 摘要（https://huggingface.co/papers/2609.38537）"
-          }
+          {"position": "论文称直接 VLM 推理在复杂物理任务上不可靠，预定义工具流水线受任务与领域先验限制，因此提出两阶段的自适应智能体 ATW", "source": "arxiv"},
+          {"position": "论文报告以 Gemini-3-Flash 为基座时 CLEVRER 80.82%、ContPhy 70.56%、真实场景 71.67%", "source": "arxiv"}
         ],
-        "interviewAnswer": "我会强调这篇的结论是决策可用、控制不可靠。Astra 在导航这种吃语义的任务上很强，RxR 指令跟随 92%、HM3D 物体搜索 82%，但绕路严重；混合控制下操作类任务成功率在 38.7% 到 50% 之间，而它直接控制灵巧手时连手指接触都协调不好；运动任务五次尝试一次都没到终点。更关键的是成本：30 秒运动任务要 250 次调用、平均每次 39.86 秒，评测还得暂停物理，直接控制消耗 11.32 亿 token。所以瓶颈是延迟和可靠性，不是语义理解。",
+        "interviewAnswer": "ATW 解决的是视频物理推理里的可观测性问题：决定结果的物理量不在像素里，光看图猜不可靠，写死工具流水线又缺泛化。它的做法是两阶段——先用基于 CEM 的系统辨识在 Warp 多物理模拟器里校准出任务相关的可执行世界，再让智能体对这个世界上提问、模拟、干预，取证据回答原问题，而且两个阶段的具体操作都不预设。结果上，以 Gemini-3-Flash 为基座，CLEVRER 逐题准确率 80.82%，比直接基座高 46.5 点。我会强调它的边界：结论受模拟器保真度约束，算力开销也远高于直接推理。",
         "studyPath": {
           "prerequisites": [
-            "VLA 与模仿学习基本概念",
-            "机器人操作与运动控制任务常识",
-            "LLM 推理延迟与 token 计费"
+            "刚体与多体动力学仿真基础",
+            "视觉问答与 VLM 提示工程",
+            "黑盒优化与 CEM 采样"
           ],
           "nextSteps": [
-            "读原文六领域任务与评分细节",
-            "复现一个混合控制 baseline（LLM 出目标加学习策略执行）",
-            "研究动作分块或推理加速以降低调用次数"
+            "读 CLEVRER 与 ContPhy 的评测协议，理解逐题准确率怎么算",
+            "自己写一个参数未知的小物理场景，跑通 CEM 辨识",
+            "对比直接 VLM 提示与先模拟后作答在反事实问题上的差异"
           ]
         }
       }
     },
     {
-      "id": "d6bcc8f5d8cb2993",
-      "tldr": "RASteer 免训练：先从要保留的概念建子空间，再把擦除方向里与它共线的成分按重叠度自适应剔除。",
+      "id": "43e251293f423815",
+      "tldr": "AutoGUIWorld 用图像生成器当视觉世界模型合成 GUI 轨迹，OSWorld 升至 40.8%",
       "keyPoints": [
-        "现有激活引导只由目标概念构造擦除方向",
-        "目标与保留概念在表示空间重叠，方向中含共享成分",
-        "RASteer 先从要保留的概念构造 retain subspace",
-        "ROS 把擦除方向中与保留子空间对齐的成分移除，使引导更针对目标",
-        "OAC 按层、按去噪步用重叠度调节共享成分去掉多少"
+        "不部署真实软件，用图像生成器合成 GUI 交互轨迹",
+        "从操作系统上下文、视觉外观与界面状态的结构化规格采样初始界面",
+        "规划器给出原子动作及其预期视觉后果，生成器迭代编辑截图",
+        "动作 grounding 与转移级质量过滤得到 79,266 条带标注样本",
+        "覆盖 Ubuntu、Windows、macOS 与 Chrome，微调后 OSWorld 升至 40.8%"
       ],
-      "why": "生成式安全与合规（版权风格、可识别角色、不安全内容擦除）是扩散模型落地的硬需求，这条给出免训练、推理期可控的干预方案，工程上易接入。",
-      "difficulty": "medium",
+      "why": "用生成式世界模型替代真实环境采数据，是 GUI 与 Agent 数据瓶颈的主流解法，面试高频",
+      "difficulty": "hard",
       "tags": [
-        "diffusion-model",
-        "concept-erasure",
-        "activation-steering",
-        "safety",
-        "training-free"
+        "gui-agent",
+        "data-generation",
+        "world-model",
+        "image-generation",
+        "agent"
       ],
       "entities": [
-        "RASteer",
-        "Retain-Orthogonal Steering",
-        "ROS",
-        "Overlap-Adaptive Calibration",
-        "OAC",
-        "text-to-image diffusion"
+        "AutoGUIWorld",
+        "Qwen3.5-35B-A3B",
+        "OSWorld",
+        "ScienceBoard",
+        "Ubuntu",
+        "Windows",
+        "macOS",
+        "Chrome"
       ],
       "diagram": {
-        "kind": "architecture",
-        "title": "RASteer 的两步干预",
-        "caption": "先正交化去掉共享成分，再按重叠度决定去多少。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='RASteer 架构：目标概念方向、保留概念子空间、ROS 正交化、OAC 自适应校准'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>擦除方向 d</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>由目标概念构造</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>保留子空间</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>要保留的概念</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>ROS 正交化</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>减去共享投影</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>OAC 校准</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>按重叠度去多少</text>\n</svg>",
-        "alt": "架构图：先由目标概念构造擦除方向，再由要保留的概念构造保留子空间，经 ROS 减去共享投影，最后用 OAC 按重叠度决定校准强度。"
+        "kind": "flow",
+        "title": "AutoGUIWorld 轨迹合成管线",
+        "caption": "规格采样出界面，规划器给动作，图像生成器画出下一条截图",
+        "svg": "<svg viewBox='0 0 480 208' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='AutoGUIWorld 轨迹合成流程'><rect x='60' y='16' width='360' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='76' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>结构化规格</text><text x='404' y='40' font-size='13' text-anchor='end' fill='currentColor'>系统与界面状态</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='60' y='70' width='360' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='76' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>采样初始界面与任务</text><text x='404' y='94' font-size='13' text-anchor='end' fill='currentColor'>按场景出题</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='60' y='124' width='360' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='76' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>规划器给原子动作</text><text x='404' y='148' font-size='13' text-anchor='end' fill='currentColor'>含预期视觉后果</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='60' y='170' width='360' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='76' y='194' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>生成器迭代编辑截图</text><text x='404' y='194' font-size='13' text-anchor='end' fill='currentColor'>产出训练轨迹</text></svg>",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {"label": "结构化规格采样", "detail": "操作系统上下文、视觉外观与界面状态"},
+            {"label": "场景条件出题", "detail": "基于采样出的界面生成任务"},
+            {"label": "规划器指定动作", "detail": "原子动作及其预期视觉后果"},
+            {"label": "生成器编辑截图", "detail": "迭代产出后续观测"},
+            {"label": "grounding 与过滤", "detail": "得到 79,266 条带空间标注样本"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "条件"},
+            {"from": 1, "to": 2, "label": "任务分解"},
+            {"from": 2, "to": 3, "label": "预期后果"},
+            {"from": 3, "to": 4, "label": "质量筛选"}
+          ]
+        },
+        "alt": "从结构化规格采样界面并出题，规划器给出原子动作与预期视觉后果，图像生成器迭代编辑截图，最后过滤成带标注训练样本"
       },
       "concepts": [
         {
-          "name": "Activation Steering（激活引导）",
-          "readable": "不改权重，只在推理时给中间激活加一个方向向量，把生成往远离目标概念的方向推；方向通常由目标概念的激活统计得到。",
-          "analogy": "像调音台上的推子：不想让某个音色出现，就在对应频段往下压一点，乐器本身没换，只是每次出声都被削。",
-          "analogyBreaksDown": "频段在物理上接近正交，压低一个频段基本不影响别的；而概念在表示空间高度纠缠，压这个画家很容易连带压掉油画这种共享特征。",
-          "mechanism": "在特定层与去噪步对激活做线性干预，免训练、可控；但方向纯度决定副作用大小，因此如何构造引导方向是方法核心。",
-          "visual": "把表示空间画成二维平面：红箭头是目标概念方向，蓝箭头是要保留概念方向，两者夹角很小形成扇形重叠区；引导就是把样本沿红箭头反向推。",
+          "name": "Image Generator as Visual World Model",
+          "readable": "把图像生成模型当成 GUI 的世界模型：给它当前屏幕截图和要执行的动作，它画出执行之后屏幕应该变成什么样，从而不用真的运行软件就能造轨迹。",
+          "analogy": "像拍电影用布景代替实景：需要一间咖啡馆的镜头，不必真租店铺，搭个能骗过镜头的布景、按剧本换道具就行。",
+          "analogyBreaksDown": "布景只需在镜头里自洽，而 GUI 轨迹要训练真实操作能力：生成器画出的按钮位置、菜单层级、状态变化可能与真实系统不一致，学到的策略会在真实界面上踩空，这种错误还会沿轨迹逐步累积。",
+          "mechanism": "关键设计是让规划器先给出原子动作与预期视觉后果，再把按预期改图这个受约束的编辑任务交给图像生成器，用语言描述的后果约束生成方向，避免生成器自由发挥导致状态漂移。",
+          "visual": "左侧一格初始截图，中间用箭头标一个带坐标的动作（如点击 312, 208），右侧是生成的下一帧截图，两帧之间用虚线框圈出发生变化的区域，框的颜色深浅表示置信度。",
           "prerequisites": [
-            "扩散模型去噪过程",
-            "线性代数（投影与正交分解）"
+            "扩散或自回归图像生成基础",
+            "GUI 智能体的动作空间与观测定义",
+            "监督微调的数据格式"
           ],
           "selfTest": [
-            "激活引导为什么不改权重就能改变生成内容？",
-            "擦除方向与保留概念方向接近时会发生什么？",
-            "为什么要在不同层与去噪步分别干预？"
+            "为什么让规划器先写出预期视觉后果，而不是直接让生成器自由编辑？",
+            "生成式世界模型造出的轨迹，最主要的系统性误差来源是什么？",
+            "为什么这套流程能覆盖 Ubuntu、Windows、macOS 和 Chrome，而真实环境采集很难？"
           ],
-          "formula": "a' = a - \\alpha \\, d"
+          "formula": ""
         },
         {
-          "name": "Orthogonal Projection Decomposition（正交投影分解）",
-          "readable": "把擦除方向拆成两块：与保留子空间对齐的共享成分，和与之垂直的目标专属成分；只保留后者做引导，就能少伤保留概念。",
-          "analogy": "像从一段混音里剥出人声：先把与伴奏重合的频段认出来减掉，只留下伴奏里没有的那部分人声特征。",
-          "analogyBreaksDown": "混音可以按频率精确分离，而概念子空间由有限样本估计，估计误差会让正交并不真正正交，残余共享成分仍会泄漏到保留概念上。",
-          "mechanism": "用保留概念的激活构造子空间基，计算擦除方向在该子空间上的投影并减去；再用重叠度决定减多少，避免把擦除能力一起减掉。",
-          "visual": "画一条斜向红向量 d 与一个灰色平面（retain subspace）；红向量分解成落在平面上的投影（虚线）与垂直于平面的分量（实线），只保留垂直分量作为新方向。",
+          "name": "Action Grounding and Transition-level Filtering",
+          "readable": "合成出来的轨迹必须标注哪一步点了屏幕的哪个位置，还要逐步筛掉画得不对的转移。前者叫动作 grounding，后者叫转移级质量过滤，两者共同保证样本可用。",
+          "analogy": "像校对菜谱：不光要写清加两勺盐，还得确认每一步做出来的菜色真的对得上，对不上的那一步整页重写。",
+          "analogyBreaksDown": "校对菜谱有明确的对错标准，而这一帧截图是否真实反映了动作后果没有绝对真值，只能靠模型或启发式打分，过滤标准本身就成了误差来源。",
+          "mechanism": "设计要点是把质量判断下放到转移级别而非轨迹级别：单步截图容易判断对错，整条轨迹难以打分，于是逐步过滤，坏步被剔除后仍保留轨迹中的其余可用片段，样本利用率更高。",
+          "visual": "画一条横向的步骤链，每步上方标一个分数条，低于阈值的步骤用强调色标出并被划掉，保留下来的步骤重连成一条新链。",
           "prerequisites": [
-            "子空间与投影矩阵",
-            "余弦相似度"
+            "GUI 动作空间（点击、输入、滚动）定义",
+            "数据清洗与阈值筛选",
+            "空间标注格式"
           ],
           "selfTest": [
-            "投影分解为什么能减少对保留概念的伤害？",
-            "全部剔除共享成分会有什么后果？",
-            "为什么用有限样本估计的 retain subspace 会有误差？"
+            "为什么过滤要做在转移级而不是轨迹级？",
+            "缺少动作 grounding 的截图序列能不能直接用于训练 GUI 智能体？",
+            "过滤阈值调高会带来什么副作用？"
           ],
-          "formula": "d_{\\perp} = d - P_{\\mathcal{R}} d, \\qquad P_{\\mathcal{R}} = U U^{\\top}"
+          "formula": ""
         }
       ],
       "formulas": [
         {
-          "id": "f-retain-orthogonal-steering",
-          "name": "保留正交引导（Retain-Orthogonal Steering）",
-          "category": "generative",
-          "latex": "d_{\\perp} = d - P_{\\mathcal{R}} \\, d, \\qquad P_{\\mathcal{R}} = U_{\\mathcal{R}} U_{\\mathcal{R}}^{\\top}, \\qquad a' = a - \\alpha \\, d_{\\perp}",
+          "id": "f-guipilot-action-conditioned-edit",
+          "name": "动作条件截图编辑（Action-conditioned Screenshot Editing）",
+          "category": "agent",
+          "latex": "o_{t+1} = G_{\\phi}\\!\\left(o_t,\\, a_t,\\, c_t\\right), \\qquad a_t \\sim \\pi_{\\theta}(\\cdot \\mid o_t, g), \\quad c_t = \\mathrm{Plan}(g, o_t)",
           "symbols": [
-            [
-              "d",
-              "由目标概念构造的擦除方向"
-            ],
-            [
-              "U_{\\mathcal{R}}",
-              "保留概念激活张成的 retain subspace 正交基"
-            ],
-            [
-              "P_{\\mathcal{R}}",
-              "到 retain subspace 的正交投影矩阵"
-            ],
-            [
-              "d_{\\perp}",
-              "去掉共享成分后的擦除方向"
-            ],
-            [
-              "a",
-              "中间层激活"
-            ],
-            [
-              "\\alpha",
-              "引导强度"
-            ]
+            ["o_t", "第 t 步的界面截图观测"],
+            ["a_t", "第 t 步的原子动作，如点击坐标或输入文本"],
+            ["c_t", "规划器给出的预期视觉后果描述"],
+            ["G_{\\phi}", "图像生成器，充当视觉世界模型"],
+            ["\\pi_{\\theta}", "策略或规划器，按目标与观测选动作"],
+            ["g", "任务目标"]
           ],
           "derivation": [
-            "第 1 步：先构造擦除方向 d，通常来自目标概念激活的均值差或判别方向。",
-            "第 2 步：用要保留的概念的激活构造子空间基 U_R，它张成保留概念所依赖的方向集合。",
-            "第 3 步：计算 d 在 U_R 上的投影 P_R d，这部分是与保留概念共享的成分；从 d 中减去它得到 d_⊥，使引导尽量只在目标专属方向上进行。",
-            "第 4 步：推理时对激活做 a ← a 减 α 乘 d_⊥（或沿该方向加强擦除），且不更新任何权重。"
+            "第 1 步：真实环境里观测转移由软件本身决定，写成 o_{t+1} = E(o_t, a_t)，但 E 需要部署与运行软件，代价高。",
+            "第 2 步：把不可得的 E 换成一个可学习的生成器 G_phi，用当前截图加动作预测下一帧截图。",
+            "第 3 步：只给动作信息太弱，生成器容易自由发挥，于是注入规划器给出的预期视觉后果 c_t 作为条件，约束编辑方向。",
+            "第 4 步：动作本身由策略或规划器按目标采样，于是整条轨迹可由生成器与规划器闭环生成，无需真实环境。",
+            "第 5 步：生成结果再经动作 grounding 与转移级过滤，只有被判定为合理的转移才进入训练集。"
           ],
-          "analogy": "把两种颜色混在一起的颜料分离：先认出两边共有的底色并刮掉，只留目标概念独有的那层颜色再上色。",
+          "analogy": "像让画师按分镜作画：给出上一格画面、角色要做的动作，再给一句这一格他推开门，画师照着画出下一格，而不是任意发挥。",
           "pitfalls": [
-            "把正交投影当成严格正交：子空间由有限样本估计，投影后仍有残余共享成分",
-            "投影系数过大导致擦除能力被一起削弱",
-            "忘记这是推理期干预，误以为目标概念的知识已从权重中删除"
+            "把生成器当成精确模拟器，忽略它画出的界面可能与真实系统结构不一致",
+            "以为单步误差可忽略，实际上闭环生成时误差会沿轨迹累积放大",
+            "漏掉预期视觉后果这一条件，生成质量会明显退化"
           ],
-          "code": "import torch\ndef ros_steer(act, d, U_R, alpha=1.0):\n    # d: [D] 目标概念擦除方向; U_R: [D, k] 保留子空间基\n    d_perp = d - U_R @ (U_R.t() @ d)     # 去掉共享成分\n    d_perp = d_perp / (d_perp.norm() + 1e-8)\n    return act - alpha * d_perp          # 推理期引导, 不改权重",
+          "code": "import random\n\ndef synthesize_trajectory(gen_model, planner, scene, goal, steps=6):\n    obs = scene\n    traj = []\n    for t in range(steps):\n        action = planner.propose(obs, goal)        # 采样原子动作\n        intent = planner.expected_effect(action)   # 预期视觉后果\n        nxt = gen_model.edit(obs, action, intent)  # 条件生成下一帧\n        traj.append({\"t\": t, \"obs\": obs, \"action\": action, \"next\": nxt})\n        obs = nxt\n    return traj\n\ndef filter_transitions(traj, scorer, thr=0.6):\n    keep = []\n    for tr in traj:\n        s = scorer(tr[\"obs\"], tr[\"action\"], tr[\"next\"])\n        if s >= thr:\n            keep.append(tr)\n    return keep",
           "sources": [
-            {
-              "title": "RASteer: Retain-Aware Activation Steering for Concept Erasure in Diffusion Models",
-              "url": "https://arxiv.org/abs/2610.01969v1"
-            }
-          ]
-        },
-        {
-          "id": "f-overlap-adaptive-calibration",
-          "name": "重叠自适应校准（Overlap-Adaptive Calibration）",
-          "category": "generative",
-          "latex": "\\tilde{d} = d - \\lambda(\\rho) \\, P_{\\mathcal{R}} \\, d, \\qquad \\rho = \\frac{\\| P_{\\mathcal{R}} d \\|}{\\| d \\|}",
-          "symbols": [
-            [
-              "\\rho",
-              "擦除方向与 retain subspace 的重叠度，0 表示完全正交"
-            ],
-            [
-              "\\lambda(\\rho)",
-              "由重叠度决定的校准系数，控制共享成分去掉多少"
-            ],
-            [
-              "\\tilde{d}",
-              "校准后的擦除方向"
-            ],
-            [
-              "P_{\\mathcal{R}}",
-              "到 retain subspace 的投影矩阵"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：ROS 若把共享成分一次去干净，擦除力度会明显下降，说明共享成分中也含目标概念的信息。",
-            "第 2 步：用重叠度 ρ 等于投影范数除以方向范数量化纠缠程度：ρ 接近 0 说明方向已较纯，ρ 接近 1 说明与保留概念高度共享。",
-            "第 3 步：把 ρ 映射成校准系数 λ(ρ)，在每个层与每个去噪步分别计算，控制共享成分去掉多少。",
-            "第 4 步：用 λ(ρ) 替代固定系数得到校准方向并做引导，从而在擦除与保留之间自适应折中。"
-          ],
-          "analogy": "擦桌子时先看污渍和桌面纹路重不重叠：重叠多就轻擦免得刮花纹理，重叠少就用力擦干净。",
-          "pitfalls": [
-            "用固定系数处理所有层与去噪步，忽略纠缠程度的层间与步间差异",
-            "把重叠度高当成该多去掉——恰恰相反，重叠高时更要保守",
-            "λ(ρ) 的具体形式摘要未给，直接假定为线性需核对原文"
-          ],
-          "code": "import torch\ndef oac_steer(act, d, U_R, lam=lambda rho: rho, alpha=1.0):\n    Pd = U_R @ (U_R.t() @ d)                # 共享成分\n    rho = Pd.norm() / (d.norm() + 1e-8)     # 重叠度\n    d_cal = d - lam(rho) * Pd               # 自适应去掉多少\n    return act - alpha * d_cal / (d_cal.norm() + 1e-8)",
-          "sources": [
-            {
-              "title": "RASteer: Retain-Aware Activation Steering for Concept Erasure in Diffusion Models",
-              "url": "https://arxiv.org/abs/2610.01969v1"
-            }
+            {"title": "AutoGUIWorld: Image Generators as Visual World Models for GUI Agent", "url": "https://arxiv.org/abs/2610.01215v1"}
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "概念擦除的目标是从预训练文生图扩散模型中移除目标概念（如版权风格、可识别角色、不安全内容），同时保留生成其他内容的能力",
-          "现有激活引导方法主要从目标概念构造擦除方向，并在推理时沿该方向调整模型激活",
-          "论文指出目标与保留概念在模型表示空间中常常重叠，因此该方向也含保留概念依赖的共享成分，直接引导会压制保留概念、损害非目标内容生成",
-          "RASteer 是免训练（training-free）方法，先从要保留的概念构造 retain subspace",
-          "Retain-Orthogonal Steering（ROS）把与保留子空间对齐的成分从擦除方向中移除，使引导更针对目标",
-          "因为完全移除共享成分会削弱擦除，作者进一步提出 Overlap-Adaptive Calibration（OAC）",
-          "OAC 在每一层与每个去噪步用擦除方向与保留子空间的重叠度控制共享成分移除多少，以平衡擦除与保留",
-          "在不安全内容、实例与艺术风格擦除上、跨多个骨干与基准，RASteer 达到或超过所评测的激活引导与权重编辑基线"
+          "AutoGUIWorld 是数据生成框架，结合图像生成器的视觉先验与规划器的任务知识合成 GUI 交互轨迹",
+          "它不部署也不运行对应的软件环境",
+          "初始界面从操作系统上下文、视觉外观与界面状态的结构化规格中采样，任务再以这些界面为条件生成",
+          "规划器指定原子动作及其预期视觉后果，图像生成器迭代编辑当前截图产生后续观测",
+          "经动作 grounding 与转移级质量过滤得到 79,266 条带空间标注的步级训练样本，覆盖 Ubuntu、Windows、macOS 与 Chrome",
+          "微调 Qwen3.5-35B-A3B 后 OSWorld 平均任务分从 33.0% 升到 40.8%，ScienceBoard 任务成功率从 14.0% 升到 32.2%"
         ],
         "uncertain": [
-          "ROS 中投影是否带系数、OAC 如何把重叠度映射成校准系数（线性、阈值还是其它）摘要未给出，公式为按摘要重建的通用形式，需核对原文",
-          "retain subspace 的构造方式（PCA、均值差还是其它）与所用层数、概念样本数摘要未说明",
-          "具体骨干模型、基准名称与量化指标数值摘要未给出",
-          "统计的擦除场景为不安全内容、实例与艺术风格三类，具体类别定义需核对原文"
+          "所用的图像生成器具体型号与训练方式，摘要未说明（待核实）",
+          "规划器是否由大模型担任、是否使用人工任务模板，摘要未给出（待核实）",
+          "质量过滤的具体打分器与阈值，摘要未提供（待核实）",
+          "动作条件截图编辑公式为按摘要重建的通用形式，需核对原文"
         ]
       },
       "teaching": {
         "progressive": [
-          {
-            "level": "一句话",
-            "text": "擦除扩散模型里的某个概念前，先算清哪些方向是别人的，别一起擦掉。"
-          },
-          {
-            "level": "入门",
-            "text": "要让文生图模型忘掉某个画风或角色，一种免训练做法是在推理时给激活加反向偏移。问题是目标概念和要保留的概念在表示空间纠缠，偏移会连带伤害正常生成。RASteer 先从要保留的概念构造子空间，把擦除方向里与它重合的成分去掉，再用重叠度决定去多少。"
-          },
-          {
-            "level": "进阶",
-            "text": "线性干预的副作用来自方向不纯。RASteer 把它拆成两步：ROS 用保留概念的激活张成 retain subspace，把擦除方向投影到该子空间并减去，得到近似正交的擦除方向；但共享成分里也含目标概念信息，全减掉会让擦除失效，于是 OAC 在每层、每个去噪步用擦除方向与保留子空间的重叠度动态决定校准强度，从而在擦除与保留之间取平衡。"
-          },
-          {
-            "level": "专家",
-            "text": "与权重编辑（微调或闭式权重修改）相比，激活引导免训练、可在推理时按条件开启，但精度受方向纯度限制。本文的贡献是把方向不纯显式建模为子空间重叠，并用投影加自适应校准处理：全投影保真但擦除弱，不投影擦除强但伤害保留，OAC 在两者之间按层与步连续插值。边界在于 retain subspace 由有限概念样本估计，概念集一变就要重建；评测集中在三类擦除场景与若干骨干，跨架构与视频扩散的泛化未被摘要覆盖。"
-          }
+          {"level": "一句话", "text": "让图像生成器扮演软件，凭想象造出 GUI 操作轨迹来训练智能体"},
+          {"level": "入门", "text": "训练 GUI 智能体需要大量点这里、然后屏幕变成那样的轨迹，但真机采集要安装配置各种软件，覆盖不了太多场景。AutoGUIWorld 改为从结构化规格采样出界面并出题，让规划器给动作、让图像生成器画出动作后的截图，从而不装软件也能造数据。"},
+          {"level": "进阶", "text": "设计要点是把生成器的自由度收紧：规划器必须同时给出原子动作和它的预期视觉后果，生成器做的是按预期改图而不是自由创作，这样状态转移才受任务约束。生成之后还要做动作 grounding 与转移级过滤，因为单帧好不好判断、整条轨迹难打分，所以质量筛选下放到步级。最终得到 79,266 条带空间标注样本，覆盖四个桌面与浏览器环境。"},
+          {"level": "专家", "text": "把它和两条替代路线对比：真机采集保真但受安装与配置成本限制，无法大规模扩覆盖；纯文本合成轨迹便宜但缺视觉状态，学不会依赖像素的动作定位。生成式世界模型走中间路线，用视觉先验换掉部署成本。代价是引入生成误差这个新错误源，且误差在闭环多步生成中会累积。论文给出的证据是下游提升：微调 Qwen3.5-35B-A3B 后 OSWorld 从 33.0% 到 40.8%，ScienceBoard 从 14.0% 到 32.2%，说明生成数据在真实桌面与科学任务上确实迁移得动，但摘要没有给出与真机数据混合训练的更细消融。"}
         ],
         "socratic": [
-          {
-            "q": "如果直接用目标概念构造的方向做引导会怎样？",
-            "a": "该方向含与保留概念共享的成分，引导时会顺带压制非目标内容，出现风格或语义退化。"
-          },
-          {
-            "q": "为什么把共享成分全部去掉也不行？",
-            "a": "共享成分里也携带目标概念信息，去得太干净会让擦除力度不足，目标概念仍能生成。"
-          },
-          {
-            "q": "为什么校准要按层和去噪步分别做？",
-            "a": "不同层与不同去噪步的概念纠缠程度不同，固定强度会在某些层过度擦除、某些层擦除不足。"
-          }
+          {"q": "如果不做动作 grounding，只留截图序列会怎样？", "a": "智能体学不到哪个坐标对应哪个动作，只能模仿视觉变化，无法在真实界面上定位可点元素。"},
+          {"q": "为什么不干脆只用真机轨迹，非要生成？", "a": "真机轨迹受已安装软件、界面状态与工作流限制，扩大覆盖要付安装与配置成本，且难以覆盖 macOS、Chrome 等多环境组合。"},
+          {"q": "为什么把预期视觉后果写进条件里，比让生成器自由编辑更好？", "a": "自由编辑会让画面偏离任务语义，后续步骤建立在错误的界面上，整条轨迹失效。"}
         ],
-        "mechanism": "免训练引导要同时满足两件事：擦除目标、保住其余。线性方向无法两全，因为它混有共享成分。作者因此把方向做正交分解：用保留概念张成子空间，减掉其中的共享部分，让引导尽量只作用在目标专属方向上。但完全正交会削弱擦除，所以又用重叠度做自适应校准——重叠大说明共享多、需要保守；重叠小说明方向已足够纯、可以加强擦除。这个先分解再按纠缠程度调节的设计正是方法核心。",
-        "boundary": "retain subspace 由有限保留概念样本估计，样本集变化或概念过多时估计不准，正交性打折；方法只作用于推理期激活、不改权重，因此无法阻止通过微调或其它路径重新生成目标概念；摘要只在若干骨干与三类擦除任务上验证，对视频扩散、多概念同时擦除与对抗性提示的鲁棒性未说明。",
-        "analogyBoundary": "混音分离类比假设频段正交可精确切除，而概念子空间是估计出来的：样本不足或概念非线性纠缠时，投影后仍残留共享成分，擦除与保留的取舍比调音台复杂得多。",
+        "mechanism": "必须这样设计的原因是数据瓶颈在环境覆盖而不在数据量：真实环境的可访问工作流有限，装更多软件成本线性上升。用图像生成器替代环境执行，等于把不可扩展的部署成本换成可扩展的采样成本；再用规划器的预期视觉后果做条件，把生成从自由创作压成受约束的状态转移预测，才使轨迹具备训练价值。",
+        "boundary": "生成器未见过或难以想象的真实界面细节会失真，闭环多步生成会累积误差；仅在 OSWorld、ScienceBoard 这类基准上验证了提升，长流程任务与专业软件场景证据不足；过滤阈值与打分器本身会引入偏置，可能系统性丢弃某些界面类型；摘要未说明与真机数据混合训练的效果。",
+        "analogyBoundary": "布景类比在闭环交互上失效：布景只被看一次，而生成的界面会被智能体反复操作，前一帧的错误会变成后一帧的输入，误差累积是这个类比完全没覆盖的风险。",
         "misconceptions": [
-          "以为擦除方向越纯越好——完全正交会削弱擦除，需要按重叠度折中。",
-          "以为激活引导改了模型权重——它是推理期干预，权重未变，可随时关闭。",
-          "以为一个固定强度适用所有层和步——OAC 的存在正说明纠缠程度逐层逐步不同。"
+          "以为 AutoGUIWorld 训练了一个新智能体，实际它是数据生成框架，提升来自微调下游模型",
+          "把生成的截图当成真实界面，忽略结构与布局可能不一致",
+          "以为不需要真机数据，实际上论文只证明生成轨迹能提升基准成绩，混合训练未做结论"
         ],
-        "ownAnalysis": "这篇的技术内核是线性代数的老工具（子空间投影）加上一个自适应折中系数，属于推理期可控生成与模型编辑这条线的自然演进。与权重编辑相比，它的优势是可逆、可组合、无需训练数据，弱势是无法真正删除知识，只能压低生成概率（推断这也是作者强调 balance 而不是 guarantee 的原因）。可疑处是 retain subspace 的构造与概念集规模没有在摘要里交代，而这直接决定方法在多概念与长尾概念上的稳定性。若做求职项目，可用中间层激活搭一个最小复现来验证投影的副作用。",
+        "ownAnalysis": "（推断）这条路线的关键在于生成器是不是足够忠实的世界模型。摘要只报告了下游成绩，没有给出生成质量与真实界面的一致性指标，因此很难判断提升是来自真实界面知识还是来自动作与后果的因果对齐。另一个待核实点是跨环境泛化：四个平台的结构化规格由同一套流程采样，若规格分布偏窄，基准提升未必代表对陌生软件的适应能力。设计面试答法时，把它和世界模型用于规划的路线放在一起对比会更有说服力。",
         "officialNotes": [
-          {
-            "position": "现有激活引导方法主要从目标概念构造擦除方向，但目标与保留概念在表示空间重叠，方向含保留概念依赖的共享成分，直接引导会损害非目标内容；RASteer 用 retain subspace 构造（ROS）与重叠自适应校准（OAC）在擦除与保留间取得更好平衡，并在不安全内容、实例、艺术风格擦除上匹配或超过所评测的激活引导与权重编辑基线。",
-            "source": "arXiv 摘要（https://arxiv.org/abs/2610.01969v1）"
-          }
+          {"position": "论文称可用轨迹的多样性受底层环境可访问的应用、界面状态与工作流限制，扩大覆盖需部署更复杂的软件并承担安装配置与运行成本", "source": "arxiv"},
+          {"position": "论文报告生成 79,266 条带空间标注样本，微调 Qwen3.5-35B-A3B 后 OSWorld 从 33.0% 到 40.8%、ScienceBoard 从 14.0% 到 32.2%", "source": "hf_papers"}
         ],
-        "interviewAnswer": "RASteer 解决的是激活引导擦除概念时的副作用问题。只从目标概念构造擦除方向，方向里会混入与保留概念共享的成分，引导时就把正常生成也压下去了。它的做法是免训练的：先用要保留的概念建一个 retain subspace，用 ROS 把擦除方向在该子空间上的投影减掉，让方向更针对目标；又因为完全减掉会削弱擦除，用 OAC 按每层每个去噪步的重叠度决定减多少。实验覆盖不安全内容、实例和艺术风格擦除，平衡优于所评测的基线与权重编辑方法。",
+        "interviewAnswer": "它解决的是 GUI 智能体的数据覆盖瓶颈：真实环境里能跑的应用和界面状态有限，装更多软件成本很高。AutoGUIWorld 的做法是不执行软件，而是从操作系统上下文、视觉外观和界面状态的结构化规格采样出初始界面并出题，规划器给出原子动作和预期视觉后果，图像生成器照着迭代编辑截图生成后续观测，再做动作 grounding 和转移级过滤，得到 79,266 条带空间标注样本。用这些数据微调 Qwen3.5-35B-A3B，OSWorld 从 33.0% 提到 40.8%，ScienceBoard 从 14.0% 提到 32.2%。我会补一句边界：多步生成的误差会累积，生成器与真实界面的一致性还没有公开指标。",
         "studyPath": {
           "prerequisites": [
-            "扩散模型与去噪过程",
-            "线性代数（投影与子空间）",
-            "文生图模型的激活与注意力结构"
+            "扩散模型或自回归图像生成基础",
+            "GUI 智能体的观测与动作空间定义",
+            "监督微调与数据过滤流程"
           ],
           "nextSteps": [
-            "读原文的 retain subspace 构造与 OAC 公式",
-            "复现最小激活引导擦除实验",
-            "对比权重编辑类方法与推理期方法的取舍"
+            "跑通 OSWorld 评测，理解任务成功率的统计口径",
+            "自己用图像编辑模型做一次动作条件生成的小实验",
+            "对比生成轨迹与真机轨迹微调同一模型的差异"
+          ]
+        }
+      }
+    },
+    {
+      "id": "6c670d26b9e72aaf",
+      "tldr": "CTWM 用潜在位移预测器加 log-det 正则学保通勤时间的世界模型",
+      "keyPoints": [
+        "世界模型在隐空间选动作，靠拉近与目标状态距离来规划",
+        "图拉普拉斯谱嵌入能反映通勤时间，但需特定特征值缩放",
+        "大规模连续环境中直接构造图拉普拉斯不可行",
+        "现有方法鼓励各向同性表示，破坏正确特征值缩放",
+        "CTWM 用位移预测器加 log-det 正则，可证明恢复正确缩放"
+      ],
+      "why": "隐空间度量的正确性决定世界模型规划质量，是表示学习与规划交叉面试的好素材",
+      "difficulty": "hard",
+      "tags": [
+        "world-model",
+        "latent-planning",
+        "spectral-embedding",
+        "self-supervised",
+        "representation-learning"
+      ],
+      "entities": [
+        "CTWM",
+        "Commute-Time-Preserving World Models",
+        "graph Laplacian",
+        "LeWM"
+      ],
+      "diagram": {
+        "kind": "curve",
+        "title": "隐空间距离与通勤时间",
+        "caption": "只有按特征值正确缩放，隐空间距离才正比于真实通勤时间",
+        "spec": {
+          "type": "curve",
+          "nodes": [
+            {"label": "低特征值分量", "value": 0.35, "detail": "被过度压缩，远程可达性被低估"},
+            {"label": "正确缩放", "value": 1.0, "detail": "距离与通勤时间成正比"},
+            {"label": "各向同性基线", "value": 0.62, "detail": "均匀尺度破坏特征值相关缩放"}
+          ],
+          "edges": [
+            {"from": 0, "to": 1, "label": "log-det 正则抑制塌缩"},
+            {"from": 1, "to": 2, "label": "对比基线"}
+          ]
+        },
+        "alt": "曲线显示正确缩放时隐空间距离与通勤时间成正比，各向同性方法会偏离这一关系"
+      },
+      "concepts": [
+        {
+          "name": "Commute-Time-Preserving Embedding",
+          "readable": "通勤时间是从一个状态到另一个状态再回来的平均步数，衡量两点在环境里有多难互相到达。这个嵌入要求隐空间里的欧氏距离正比于通勤时间，这样在世界模型里做朝目标靠近的规划才符合真实几何。",
+          "analogy": "像给城市画地铁图：图上两站的距离应该大致正比于实际要坐多久，如果只按直线距离画，隔条河看似很近实则要绕很远。",
+          "analogyBreaksDown": "地铁图可以为了可读性故意歪曲距离，而这个嵌入一旦歪曲就会让规划器选错动作；另外通勤时间依赖整张图的连接结构，环境一变就得重估，不像地铁图那样一次画好长期可用。",
+          "mechanism": "关键设计是用自监督方式逼近图拉普拉斯的谱嵌入，但必须保留特征值相关的缩放：低频分量对应大范围可达性，必须按特定方式拉伸，否则远距离目标会被系统性低估，规划会偏向局部捷径。",
+          "visual": "画两条曲线对比：横轴是拉普拉斯特征值序号，纵轴是隐空间里对应方向的尺度，一条是理想的特征值幂律下降，另一条是现有方法的平坦化曲线，两者在高频端分叉。",
+          "prerequisites": [
+            "图拉普拉斯与谱嵌入基础",
+            "马尔可夫链与随机游走",
+            "自监督表示学习与表示塌缩"
+          ],
+          "selfTest": [
+            "为什么隐空间距离必须正比于通勤时间，而不是正比于欧氏距离？",
+            "各向同性约束为什么反而会破坏通勤时间的表示？",
+            "在连续大环境中为什么不能直接构造图拉普拉斯？"
+          ],
+          "formula": "\\lVert z(s) - z(s') \\rVert_2^2 \\;\\propto\\; C(s, s')"
+        },
+        {
+          "name": "Log-Determinant Anti-Collapse Regularizer",
+          "readable": "只要预测器把不同状态映射到相近的表示上，损失就会变小，这就是表示塌缩。log-det 正则惩罚表示协方差矩阵的行列式变小，等价于要求表示铺满整个空间而不挤成一条线或一个点。",
+          "analogy": "像一个房间里站一群人：如果全挤在角落，谁跟谁都挨着，看不出关系；正则要求他们尽量散开站满房间，位置才有区分度。",
+          "analogyBreaksDown": "人群散开只要求不重叠，而这里还要求散开的方式遵循特定方向的缩放，单纯最大化体积会把所有方向均等拉伸，恰好破坏所需的特征值缩放。",
+          "mechanism": "关键设计是用 log-det 而非各向同性归一化来防塌缩：log-det 惩罚协方差行列式过小，只约束体积不强制各方向等尺度，从而在防止塌缩的同时保留拉普拉斯表示要求的特征值相关缩放。",
+          "visual": "画同一个隐空间的两次采样点云：左图点挤成一条细带、协方差椭球退化，右图铺开成饱满椭球，两者旁标注 log-det 数值大小与行列式的几何含义。",
+          "prerequisites": [
+            "协方差矩阵与行列式的几何含义",
+            "自监督学习的塌缩现象",
+            "不动点与可逆动力学概念"
+          ],
+          "selfTest": [
+            "表示塌缩的极端形式是什么，为什么损失会变低？",
+            "为什么用 log-det 而不是各向同性约束来防塌缩？",
+            "正则强度调得过大，会带来什么副作用？"
+          ],
+          "formula": "\\mathcal{L}_{\\text{reg}} = -\\log\\det \\mathrm{Cov}(z)"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-commute-time-spectral-scaling",
+          "name": "通勤时间的谱嵌入缩放（Commute-Time Spectral Scaling）",
+          "category": "worldmodel",
+          "latex": "C(s, s') = \\sum_{k \\ge 2} \\frac{1}{\\lambda_k}\\,(u_k(s) - u_k(s'))^2, \\qquad z_k(s) = \\frac{u_k(s)}{\\sqrt{\\lambda_k}}",
+          "symbols": [
+            ["C(s, s')", "状态 s 与 s' 之间的通勤时间，即往返平均步数"],
+            ["\\lambda_k", "图拉普拉斯第 k 个特征值"],
+            ["u_k(s)", "第 k 个特征向量在状态 s 上的取值"],
+            ["z_k(s)", "嵌入后第 k 个坐标，用 1/\\sqrt{\\lambda_k} 缩放"],
+            ["k \\ge 2", "跳过对应平稳分布的第 1 个平凡特征向量"]
+          ],
+          "derivation": [
+            "第 1 步：把环境状态图上的随机游走写成马尔可夫链，两点间的通勤时间由拉普拉斯谱决定。",
+            "第 2 步：对拉普拉斯做特征分解，通勤时间可展开为各特征方向上差值的加权平方和，权重恰为 1/\\lambda_k。",
+            "第 3 步：若把嵌入坐标定义为 u_k 除以 \\sqrt{\\lambda_k}，则嵌入中的欧氏距离平方直接等于该加权和，也就是通勤时间。",
+            "第 4 步：因此距离反映通勤时间等价于嵌入必须保留 1/\\sqrt{\\lambda_k} 这一特征值相关缩放，任何强制各向同性的约束都会破坏它。"
+          ],
+          "analogy": "像把一张公路网重画成地图：每条路按走这条路的平均耗时定长度，于是图上的直线距离就直接代表真实车程，导航才不用绕弯。",
+          "pitfalls": [
+            "以为只要隐空间距离和真实距离单调相关就够了，实际上缩放不对时规划会系统性偏向局部目标",
+            "忽略跳过平凡特征向量的细节，平稳分布方向会污染距离度量",
+            "把谱嵌入的维度当作超参数随便设，维度过低会截断低频可达性信息"
+          ],
+          "code": "import numpy as np\n\ndef commute_time_embedding(L, dim=8):\n    # L: 图拉普拉斯矩阵（对称半正定）\n    w, v = np.linalg.eigh(L)\n    order = np.argsort(w)\n    w, v = w[order], v[:, order]\n    keep = slice(1, 1 + dim)               # 跳过第 1 个平凡特征向量\n    scale = 1.0 / np.sqrt(np.maximum(w[keep], 1e-8))\n    return v[:, keep] * scale              # z = u / sqrt(lambda)\n\ndef commute_time_from_embedding(Z):\n    # 嵌入空间欧氏距离平方即通勤时间\n    sq = ((Z[:, None, :] - Z[None, :, :]) ** 2).sum(-1)\n    return sq",
+          "sources": [
+            {"title": "Learning Commute-Time-Preserving World Models for Planning", "url": "https://arxiv.org/abs/2610.01373v1"}
+          ]
+        },
+        {
+          "id": "f-logdet-anticollapse-regularizer",
+          "name": "log-det 防塌缩正则（Log-Determinant Anti-Collapse Regularizer）",
+          "category": "worldmodel",
+          "latex": "\\mathcal{L}_{\\text{total}} = \\big\\lVert \\hat{z}_{t+1} - z_{t+1} \\big\\rVert_2^2 \\;-\\; \\beta \\log \\det \\mathrm{Cov}(z)",
+          "symbols": [
+            ["\\hat{z}_{t+1}", "潜在位移预测器给出的下一状态表示"],
+            ["z_{t+1}", "编码器给出的下一状态表示"],
+            ["\\mathrm{Cov}(z)", "批内表示的经验协方差矩阵"],
+            ["\\log\\det", "协方差对数行列式，衡量表示张成的体积"],
+            ["\\beta", "正则项权重"]
+          ],
+          "derivation": [
+            "第 1 步：潜在位移预测的目标是最小化预测表示与真实表示的距离，但这个目标存在退化解——把所有状态映射到同一点。",
+            "第 2 步：常用做法是施加各向同性约束，可是摘要指出这会破坏拉普拉斯表示所需的特征值相关缩放。",
+            "第 3 步：改用一个只约束表示体积的量：协方差行列式，它的对数越小说明表示越集中在低维子空间。",
+            "第 4 步：以负的 log-det 作为惩罚项加入总损失，阻止行列式塌缩到零，同时不强制各方向等尺度。",
+            "第 5 步：论文证明在可逆确定性动力学下、在预测器的不动点处，这一组合可恢复正确缩放的拉普拉斯表示。"
+          ],
+          "analogy": "像给气球充气：不规定它必须圆，只要求它别瘪掉。体积够大，里面每个点才分得开，又不至于被强行拉成球形而丢掉原有形状。",
+          "pitfalls": [
+            "以为 log-det 越大越好，实际上权重过大时会过度拉伸表示，反而破坏谱结构",
+            "把 log-det 正则与各向同性归一化当成等效手段，两者对特征值缩放的影响完全不同",
+            "忽略协方差估计的数值问题，批量小或维度高时需要加抖动项才能稳定计算"
+          ],
+          "code": "import torch\n\ndef ctwm_loss(pred_z, target_z, beta=0.1, eps=1e-4):\n    pred_loss = ((pred_z - target_z) ** 2).sum(-1).mean()\n    z = target_z - target_z.mean(0, keepdim=True)\n    cov = (z.T @ z) / max(z.shape[0] - 1, 1)\n    cov = cov + eps * torch.eye(cov.shape[0], device=cov.device)\n    logdet = torch.linalg.slogdet(cov).logabsdet\n    return pred_loss - beta * logdet      # 负 log-det 抑制塌缩\n\ndef rollout_step(predictor, z, action):\n    return predictor(torch.cat([z, action], dim=-1))",
+          "sources": [
+            {"title": "Learning Commute-Time-Preserving World Models for Planning", "url": "https://arxiv.org/abs/2610.01373v1"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "世界模型让智能体在隐空间选动作序列，以最大程度拉近与目标状态的距离",
+          "图拉普拉斯的谱嵌入空间能满足距离反映通勤时间的要求，但前提是服从特定特征值相关缩放",
+          "在大型连续环境中实例化图拉普拉斯不可行",
+          "现有自监督方法常鼓励各向同性表示以防塌缩，却会破坏正确的特征值缩放，导致通勤时间表示不准",
+          "CTWM 组合潜在位移预测器与 log-det 正则，在可逆确定性动力学下与预测器不动点处可证明恢复正确缩放的拉普拉斯表示",
+          "数值仿真中 CTWM 在多个连续目标到达基准上匹配或超过 LeWM，参数量为其一半"
+        ],
+        "uncertain": [
+          "公式的具体形式在摘要中未给出，两条公式均为按摘要重建的通用形式，需核对原文",
+          "可逆确定性动力学的证明前提在实际环境中的满足程度，摘要未讨论（待核实）",
+          "LeWM 的具体架构与参数量，摘要未说明（待核实）",
+          "数值仿真的基准名称与指标定义，摘要只说复杂连续目标到达基准（待核实）"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "让隐空间距离等于真实世界的往返通行难易程度，规划才不走偏"},
+          {"level": "入门", "text": "世界模型在隐空间里规划：选一串动作让表示尽量靠近目标。这要求隐空间距离反映真实通行成本。图拉普拉斯的谱嵌入正好有这个性质，但大环境里算不出整个图，于是要用自监督学出来，而学的时候必须保留正确的特征值缩放。"},
+          {"level": "进阶", "text": "现有方法为了防表示塌缩，常把表示约束成各向同性，也就是各方向尺度差不多。摘要指出这会顺带把特征值相关缩放抹平，于是低频方向被压缩，远距离目标的通行成本被低估，规划更偏向局部。CTWM 改用 log-det 正则：它只要求表示协方差的行列式别塌到零，不强制各方向等尺度，从而既防塌缩又保住谱结构。"},
+          {"level": "专家", "text": "从表示学习角度，这是一次对防塌缩手段会改变几何的明确诊断：各向同性是出于优化稳定性的工程选择，但它隐含了一个与环境无关的度量先验，与规划所需的通勤时间度量冲突。CTWM 的做法是换约束目标——从约束各方向尺度改为约束体积，从而把几何自由度还给数据。论文在可逆确定性动力学下、在预测器不动点处给出了恢复正确缩放拉普拉斯表示的证明，并在数值仿真中匹配或超过任务无关基线 LeWM 且参数量减半。边界在于证明依赖可逆确定性动力学的假设，真实随机环境中的表现摘要未讨论。"}
+        ],
+        "socratic": [
+          {"q": "如果不做 log-det 正则，只优化预测损失会怎样？", "a": "会出现退化解：把所有状态映射到接近同一点，预测误差很小但表示毫无区分度，规划完全失效。"},
+          {"q": "既然各向同性约束能防塌缩，为什么不能用它？", "a": "它强制各方向等尺度，抹掉了 1 除以根号特征值这一特征值相关缩放，使隐空间距离不再反映通勤时间。"},
+          {"q": "为什么不能直接算图拉普拉斯拿到正确嵌入？", "a": "在大型连续环境里要枚举状态并构造整张图，规模上不可行，只能靠自监督在采样的轨迹上逼近。"}
+        ],
+        "mechanism": "必须这样设计的原因在于表示几何直接决定规划行为：规划器只看到隐空间距离，距离错了，目标就会被换算错。各向同性约束的副作用是它用一个环境无关的度量替换了真实可达性度量。用 log-det 代替它，等于只禁止表示的体积塌缩，而把方向尺度的决定权留给数据，这样拉普拉斯所需的特征值缩放才能在对预测损失优化时自然保留下来。",
+        "boundary": "理论保证依赖可逆确定性动力学与预测器不动点这两个前提，随机转移或不可逆动力学下不成立；数值验证限于连续目标到达基准，未在图像观测或高维真实环境上验证；log-det 权重需要调，过大过小都会破坏谱结构或塌缩；实际规划仍取决于动作采样与目标距离度量的实现细节。",
+        "analogyBoundary": "地铁图类比在度量可学性上失效：地铁图是人工设计给乘客看的，而这个嵌入要从轨迹里被优化出来，优化目标与规划目标不一致时，学到的地图会看似规整却系统性歪曲远距离。",
+        "misconceptions": [
+          "以为只要防止表示塌缩，隐空间几何就自然正确",
+          "把各向同性约束当成无害的正则，忽略它会破坏特征值缩放",
+          "以为 CTWM 直接构造了图拉普拉斯，实际上它是在连续环境里自监督逼近它"
+        ],
+        "ownAnalysis": "（推断）这篇的价值更多在对既有做法的诊断而不只是新模块：它指出防塌缩这个看似中立的工程手段会隐含地改变隐空间度量，进而影响规划。这也是世界模型方向容易被忽略的一点——大家盯预测损失，却少问隐空间距离的语义。可疑之处在证明前提：可逆确定性动力学在实际控制任务里很难严格满足，若放宽到随机动力学，正确缩放是否还能恢复，摘要没有给出结论，这可能是后续工作的切入点（待核实）。",
+        "officialNotes": [
+          {"position": "论文称现有方法常鼓励各向同性表示以防表示塌缩，却倾向于破坏正确的特征值相关缩放，导致通勤时间表示不准", "source": "arxiv"},
+          {"position": "论文称 CTWM 在可逆确定性动力学下与预测器不动点处可证明恢复正确缩放的拉普拉斯表示，并在数值仿真中匹配或超过 LeWM 且参数量减半", "source": "arxiv"}
+        ],
+        "interviewAnswer": "这篇的核心是隐空间度量要对。规划就是选动作让表示靠近目标，所以隐空间距离最好正比于环境的通勤时间，图拉普拉斯的谱嵌入正好满足，但大环境里造不出整个图，只能自监督学。作者发现现有方法为了防塌缩常鼓励各向同性，而这会把 1 除以根号特征值这个特征值相关缩放抹平，于是远距离可达性被低估，规划偏局部。CTWM 换成用 log-det 正则防塌缩，只约束表示协方差的体积，不强制各方向等尺度，并在可逆确定性动力学下、预测器不动点处证明了能恢复正确缩放的拉普拉斯表示。实验上它在连续目标到达基准上匹配或超过 LeWM，参数量只有一半。我会补充：证明前提较强，随机环境下的表现还没有结论。",
+        "studyPath": {
+          "prerequisites": [
+            "图拉普拉斯与谱图理论入门",
+            "马尔可夫链与通勤时间定义",
+            "自监督表示学习与表示塌缩"
+          ],
+          "nextSteps": [
+            "在小网格世界手推谱嵌入并验证距离等于通勤时间",
+            "复现 log-det 正则与各向同性约束的对比实验",
+            "读 LeWM 的设计，弄清任务无关基线强在哪里"
           ]
         }
       }

@@ -6,180 +6,162 @@
   "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
   "items": [
     {
-      "id": "277441ea3ddc25e9",
-      "title": "C++ push_back与emplace_back的区别：原地构造、完美转发、性能差异与选择策略",
-      "category": "coding",
-      "channel": "kamacoder_notes",
-      "url": "https://notes.kamacoder.com/cpp/pushback-vs-emplaceback.html",
+      "id": "fcfa54ba9b6cca9e",
+      "title": "Learning Steganography Is Easy, Learning Steganographic Reasoning Is Hard",
+      "category": "posttraining",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.39838v1",
       "sources": [
         {
-          "url": "https://notes.kamacoder.com/cpp/pushback-vs-emplaceback.html",
-          "name": "kamacoder_notes"
+          "url": "https://arxiv.org/abs/2609.39838v1",
+          "name": "arxiv"
         }
       ],
       "tags": [
-        "八股",
-        "卡码笔记"
+        "cs.AI",
+        "cs.CL",
+        "cs.LG"
       ],
-      "summary": "C++ Java Go 🔥大模型🔥 大厂面经 大厂面经 大模型面经 Java面经 C++面经 大模型Github (opens new window) 代码随想录 (opens new window) 首页 计算机基础 C++ Java Go 🔥大模型🔥 大厂面经 大厂面经 大模型面经 Java面经 C++面经 大模型Github (opens new window) 代码随想录 (opens new window) 本栏必读 关于本专栏 C++学习路线 C++零基础入门课 C++面试题系优化 基础与语法 面向对象 STL 与容器 手写STL实战课 STL容器了解哪些 STL中allocator的作用 STL中迭代器失效的场景 c++的map和unordered_map有什么区别和实现原理 map,deque,list的底层实现原理 unordered_map的rehash机制 vector底层原理和扩容过程 push_back()和emplace_back()的区别 简要回答 详细回答 知识拓展 内存管理 C++11 与现代 C++ 智能指针 并发与 I/O # push_back 与 emplace_back 的区别 面试官问\"push_back 和 emplace_back 有什么区别\"，大多数人能答出\"emplace_back 更高效\"，但追问\"高效在哪\"\"什么时候 push_back 反而更好\"\"扩容时 emplace_back 还能省拷贝吗\"，就开始含糊了。 这道题考的是你对 STL 容器内存模型和 C++11 完美转发机制的理解。把\"在哪构造\"和\"怎么传参\"讲清楚，面试官就不会继续追了。 # 简要回答 push_back 接受一个 已经构造好的对象 （左值或右值），通过拷贝或移动把它放进容器。 emplace_back 接受的是 构造函数的参数 ，通过完美转发直接在容器尾部的内存上原地构造对象，省掉了临时对象和一次拷贝/移动。 一句话区分： push_back 是\"做好了搬进去\"，emplace_back 是\"直接在里面做\"。 # 详细回答 底层机制的核心差异 push_back(const T& val) 和 push_back(T&& val) 接受的是一个完整的对象。调用时要么传一个左值（触发拷贝构造），要么传一个右值/临时对象（触发移动构造）。不管哪种，容器外面先有一个对象，然后\"搬\"进容器内存。 emplace_back(Args&&... args) 是个变参模板，接受任意数量的参数，通过 std::forward 完美转发给元素类型的构造函数，直接在容器已分配的内存上 placement new 构造对象。整个过程只有一次构造，没有临时对象，没有拷贝/移动。 性能差异体现在哪 对于 vec.push_back(MyClass(\"hello\", 42)) ，实际发生了：1）构造临时对象 2）移动构造到容器内存 3）析构临时对象。而 vec.emplace_back(\"hello\", 42) 只发生一次构造。当",
-      "authors": [],
-      "publishedAt": "2026-10-03T02:19:09+08:00",
-      "knowledgeType": "fundamentals",
-      "why": "归属「面试手撕题」方向；命中关键词 面经、八股；中文来源，贴近国内求职语境",
-      "relevanceScore": 67.6,
+      "summary": "Chain-of-thought monitoring as an approach for AI oversight and control is threatened by the possibility of steganographic reasoning, where LLMs conceal their reasoning inside innocuous-looking text. Two neighbouring capabilities, steganographic messaging (passing a concealed message) and encoded reasoning (reasoning in an illegible but unconcealed format), have already been shown to emerge under training pressures that occur in real pipelines, such as reinforcement learning against monitors. This suggests that steganographic reasoning too might arise as an unintended side effect of training. Here, we compare how easily models learn steganographic reasoning and these two neighbouring capabilities across three elicitation methods: reinforcement learning, in-context learning, and supervised fine-tuning (SFT). For most tasks, models learn steganographic reasoning only under SFT, while they learn steganographic messaging and encoded reasoning under all three elicitation methods. Even under SFT, steganographic reasoning requires at least twice as much training as messaging, and for several model-task combinations it is not learned at all. However, on a cover task that makes hiding information especially convenient, steganographic reasoning can be successfully learned under all three elicitation methods. Steganographic reasoning is thus much harder than steganographic messaging and encoded reasoning, and learning the latter two does not imply learning the former. Yet it lies within reach: an easy version is learned under every elicitation method, when the cover task is convenient for hiding information.",
+      "authors": [
+        "Julian Schulz",
+        "Lukas Fülle",
+        "Rieke Fruengel"
+      ],
+      "publishedAt": "2026-09-30T02:34:12+08:00",
+      "knowledgeType": "method",
+      "why": "归属「后训练」方向；命中关键词 sft；疑似附带开源实现；领域核心工作",
+      "relevanceScore": 74.0,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 74.0,
+      "planDepthScore": 79.11
+    },
+    {
+      "id": "5b906eb7f347d41b",
+      "title": "MEND: Label-Free Detection, Localisation, and Correction of Latent Hallucination in World Models",
+      "category": "worldmodel",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.39182v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2609.39182v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "summary": "World Models are appearing as the next major frontier in computer vision. However, their robustness is currently largely unexplored. We identify the phenomenon of hallucination in latent World Models: given a state and an action, the predicted next latent can decode to a scene that never occurs. Because the prediction is statistically ordinary and is fed back autoregressively by the model, the error is both silent and compounding. We study whether such latent hallucination can be detected, localised, and corrected at inference time, on a frozen self-supervised world model in the absence of ground-truth error labels. We introduce Masked Empirical-Bayes Neural Denoising (MEND), a single conditional score network trained by denoising score matching on real transitions, whose score field serves three roles: its magnitude detects hallucination, its per-token field localises it to specific image patches, and it defines an inference-time correction direction. On two navigation environments MEND detects hallucination with an AUROC of up to 0.80 without using actions, exceeding a single-Gaussian density baseline while also localising the error (per-token AUPRC up to 0.87) and correcting it, all from one score field. Our correction reliably reduces single-step latent error and improves predictions. We identify that a part of the error is tangent to the data manifold, hence, we focus on detection and localisation while highlighting promises of the correction.",
+      "authors": [
+        "Ali J Alrasheed",
+        "Aryan Yazdan Parast",
+        "Basim Azam",
+        "James Bailey",
+        "Naveed Akhtar"
+      ],
+      "publishedAt": "2026-09-29T19:38:49+08:00",
+      "knowledgeType": "method",
+      "why": "归属「世界模型」方向；命中关键词 world model；疑似附带开源实现；领域核心工作",
+      "relevanceScore": 73.9,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": true,
+      "planRelevanceScore": 73.9,
+      "planDepthScore": 79.07
+    },
+    {
+      "id": "4fdc664724b1ad3a",
+      "title": "In CEM, a World Model Is Also a Proposal Mechanism",
+      "category": "worldmodel",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2610.00921v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2610.00921v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.LG",
+        "cs.RO"
+      ],
+      "summary": "The cross-entropy method (CEM) uses world-model scores to select action sequences and fit the distribution sampled in its next iteration. A scoring error can therefore change both the present decision and the candidates considered later. We evaluate these two roles separately. Four types of predictive model generate CEM traces, and every model rescores every saved candidate pool. Executing the same candidates in the environment provides a reference elite set and proposal update. Across twelve independently trained task-seed units on Walker and Cheetah, the pre-specified proposal distance falls from the first to the final CEM iteration in every unit. Proposal widths contract and fitted means separate relative to the remaining search width. Pairwise ranking agreement stays near chance on Walker and declines on Cheetah; elite-set agreement does not improve. This comparison shows greater variation between scorers than between pool sources on Cheetah; Walker has variation in both and in their pairings. We use the original six units to select Random nonlinear for a one-update intervention, without inspecting intervention outcomes. Replacing its first model-ranked update with an environment-ranked update lowers final realised selected-sequence cost in those six units and in six further units held out from the selection.",
+      "authors": [
+        "Oliver Obst",
+        "Frieder Stolzenburg"
+      ],
+      "publishedAt": "2026-10-01T09:57:24+08:00",
+      "knowledgeType": "method",
+      "why": "归属「世界模型」方向；命中关键词 world model、world-model；领域核心工作",
+      "relevanceScore": 84.7,
       "qualitySignals": {},
       "peerReviewed": false,
       "codeAvailable": false,
-      "planRelevanceScore": 67.6,
-      "planDepthScore": 88.79
+      "planRelevanceScore": 84.7,
+      "planDepthScore": 76.4
     },
     {
-      "id": "30480cd0e3a058a6",
-      "title": "C++11移动语义作用与原理：右值引用标识临时对象、移动构造接管指针O(1)转移、std::move类型转换本质",
-      "category": "coding",
-      "channel": "kamacoder_notes",
-      "url": "https://notes.kamacoder.com/cpp/move-semantics.html",
+      "id": "33e25aa5c1066c89",
+      "title": "Social-WM: Safety-Aware Latent World Models for Robot Social Navigation",
+      "category": "worldmodel",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.40177v1",
       "sources": [
         {
-          "url": "https://notes.kamacoder.com/cpp/move-semantics.html",
-          "name": "kamacoder_notes"
+          "url": "https://arxiv.org/abs/2609.40177v1",
+          "name": "arxiv"
         }
       ],
       "tags": [
-        "八股",
-        "卡码笔记"
+        "cs.RO"
       ],
-      "summary": "C++ Java Go 🔥大模型🔥 大厂面经 大厂面经 大模型面经 Java面经 C++面经 大模型Github (opens new window) 代码随想录 (opens new window) 首页 计算机基础 C++ Java Go 🔥大模型🔥 大厂面经 大厂面经 大模型面经 Java面经 C++面经 大模型Github (opens new window) 代码随想录 (opens new window) 本栏必读 关于本专栏 C++学习路线 C++零基础入门课 C++面试题系优化 基础与语法 面向对象 STL 与容器 内存管理 C++11 与现代 C++ C++11中的新特性有哪些 C++11中的多线程编程 左值引用和右值引用的区别 移动语义有什么作用，原理是什么 简要回答 详细回答 知识拓展 完美转发的作用及实现 说一下c++中stdmove与stdforward的区别 说一下lambda函数 仿函数与lambda性能对比 C++中的RAII机制 C++中的异常处理机制 C++中的协程概念及实现 智能指针 并发与 I/O # 移动语义有什么作用，原理是什么 面试官问\"移动语义有什么作用，原理是什么\"，很多人能说出\"避免深拷贝\"，但追问\"std::move到底做了什么\"\"移动后的对象还能用吗\"\"编译器什么时候自动触发移动\"就答不清楚了。这道题的核心是理解：移动语义把 O(n) 的深拷贝变成了 O(1) 的指针接管。 # 简要回答 移动语义让对象\"搬家\"而不是\"克隆\"。C++11 之前，把一个 vector 传给函数或从函数返回，必须深拷贝所有元素——分配新内存、逐个复制、释放旧内存，代价是 O(n)。移动语义通过右值引用 T&& 识别出\"这个对象马上要死了\"，然后移动构造函数直接把源对象的内部指针拿过来、把源对象的指针置空，整个过程只是两次指针赋值，O(1)。 # 详细回答 解决的问题 C++11 之前，临时对象（函数返回值、表达式中间结果）赋值给新变量时，必须走拷贝构造——分配新内存、逐字节复制、释放临时对象。对于管理堆内存的类（ string 、 vector 、自定义资源类），这个拷贝完全是浪费：临时对象马上就要析构了，它的内存完全可以直接\"接管\"过来。 移动语义就是为了解决这个问题：让编译器识别出\"源对象即将销毁\"的场景，触发移动构造而非拷贝构造，把资源转移而非复制。 实现原理 右值引用 T&& 是移动语义的语法基础。它只能绑定到右值（临时对象、将亡值），编译器看到参数类型是 T&& 就知道可以\"偷\"这个对象的资源。 移动构造函数的实现很简单：把源对象的指针拿过来，把源对象的指针置为 nullptr 。两步完成，不分配新内存、不复制数据。移动赋值运算符类似，只是多了一步\"先释放自己的旧资源\"。 std::move 的本质 std::move(x) 等价于 static_cast (x) ，它不移动任何数据，只是把左值的类型强转成右值引用，告诉编译器\"这个对象我不要了，你可以搬",
-      "authors": [],
-      "publishedAt": "2026-10-03T02:12:44+08:00",
-      "knowledgeType": "fundamentals",
-      "why": "归属「面试手撕题」方向；命中关键词 面经、八股；中文来源，贴近国内求职语境",
-      "relevanceScore": 67.6,
+      "summary": "Safe social navigation requires a robot to anticipate not only the future consequences of its actions, but also whether a nominal action can actually be executed under surrounding physical and social constraints. We present Social-WM, an efficient latent world-model planning framework trained from egocentric RGB video sequences. Our key observation is that social-navigation experience contains a systematic discrepancy between the nominal action and the realizable action: a nominal forward action may be fully executed in free space, but needs to be constrained when heading towards a pedestrian or obstacle. Social-WM learns these safety-relevant consequences directly through action-conditioned future prediction, where the target is the actual observed future following each command. We further introduce a realizable inverse-dynamics objective that associates observed latent transitions with the action actually realized rather than the nominal one. At deployment, candidate actions are imagined through the latent world model, and the inverse dynamics model estimates their realizability; nominal--realizable discrepancy then provides a safety signal before execution. The learned dynamics and realizability model remain goal-independent and support both position- and image-goal navigation. On Social-HM3D, Social-WM achieves 63.77% success while reducing human collisions to 21.67%, and maintains strong performance under zero-shot transfer to Social-MP3D, without explicit pedestrian tracking, privileged human state, or online reinforcement learning.",
+      "authors": [
+        "Zhihao Zheng",
+        "Mooi Choo Chuah"
+      ],
+      "publishedAt": "2026-09-30T05:03:21+08:00",
+      "knowledgeType": "method",
+      "why": "归属「世界模型」方向；命中关键词 world model、world-model；领域核心工作",
+      "relevanceScore": 84.1,
       "qualitySignals": {},
       "peerReviewed": false,
       "codeAvailable": false,
-      "planRelevanceScore": 67.6,
-      "planDepthScore": 88.79
+      "planRelevanceScore": 84.1,
+      "planDepthScore": 76.17
     },
     {
-      "id": "98ecc61a0f6c206b",
-      "title": "Learning Chaos Without Seeing Chaos: Extrapolation of Global Dynamics in Autoregressive Transformers",
-      "category": "foundation",
-      "channel": "hf_papers",
-      "url": "https://huggingface.co/papers/2609.38814",
+      "id": "09ca9ee164ef6e05",
+      "title": "DashVMC: Real-Time Discrete World Model Control in Geometry Dash",
+      "category": "worldmodel",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.40003v1",
       "sources": [
         {
-          "url": "https://huggingface.co/papers/2609.38814",
-          "name": "hf_papers"
-        },
-        {
-          "url": "https://arxiv.org/abs/2609.38814",
-          "name": "canonical"
+          "url": "https://arxiv.org/abs/2609.40003v1",
+          "name": "arxiv"
         }
       ],
-      "tags": [],
-      "summary": "Autoregressive models are trained to predict a system's behavior one step at a time, and recursive generation allows the learned dynamics to unfold over long horizons. To what extent can such dynamics learned from local observations recover broader organization of an underlying system that was only partially observed during training? Here we study small autoregressive transformers trained from scratch on trajectories sampled from restricted parameter regimes of several non-linear dynamical systems, including logistic and sine maps, the Lorenz system, and the generalized Hopf system, with control parameters and state trajectories represented as sequences of continuous tokens. Under closed-loop evaluation at parameters far outside the training distribution, the models can recover self-similar period-doubling cascades, chaotic dynamics, and attractor structures with remarkable visual and numerical fidelity. For the logistic map, a transformer reproduces successive period doublings up to period 128, yielding a finite-order scaling ratio of 4.6687, matching the Feigenbaum constant to within 5times10^{-4}. We further investigate how these structures emerge over the course of training, and reveal with causal interventions how control-parameter information is processed through attention into state prediction and shapes the resulting closed-loop dynamics. These results suggest that a surprisingly narrow window into a system's local behavior may suffice for autoregressive transformers to generalize to its unseen global dynamical organization.",
-      "authors": [
-        "Yilun Liu",
-        "Yi Zhang",
-        "Ganyu Wu",
-        "Sikuan Yan",
-        "Mengyue Wang",
-        "Alois Knoll",
-        "Volker Tresp",
-        "Yunpu Ma"
+      "tags": [
+        "cs.LG"
       ],
-      "publishedAt": "2026-09-30T08:00:00+08:00",
-      "knowledgeType": "fundamentals",
-      "why": "归属「基础理论」方向；命中关键词 transformer、attention；社区热度 1",
-      "relevanceScore": 70.0,
-      "qualitySignals": {
-        "upvotes": 1
-      },
+      "summary": "World-model agents are usually evaluated in simulators that can wait for the policy; live games impose the opposite constraint, requiring capture, prediction, and action before the next frame. We present DashVMC, which learns a compact, action-conditioned world model from approximately two hours of recorded Geometry Dash gameplay. To test whether the learned dynamics are actionable, a controller is initialized by behavioural cloning (BC) and refined with Proximal Policy Optimization (PPO) entirely in frozen-model rollouts, without further interaction with the live game. Across three controller seeds, the refined policies survive longer than their BC initializations on all three official levels and a held-out community layout. At deployment, the baseline skips visual generation and sustains a 60-Hz capture-to-action loop on a consumer GPU. Action-conditioned continuations and rollout diagnostics show that the model remains useful for control despite imperfect long-horizon fidelity.",
+      "authors": [
+        "Florent Tariolle",
+        "Florian Yger"
+      ],
+      "publishedAt": "2026-09-30T03:48:50+08:00",
+      "knowledgeType": "method",
+      "why": "归属「世界模型」方向；命中关键词 world model、world-model；领域核心工作",
+      "relevanceScore": 84.0,
+      "qualitySignals": {},
       "peerReviewed": false,
       "codeAvailable": false,
-      "planRelevanceScore": 70.0,
-      "planDepthScore": 88.09
-    },
-    {
-      "id": "dd3ee83684a019cf",
-      "title": "langchain4j/langchain4j - LangChain4j is an idiomatic, open-source Java library for building LLM-powered applications on the JVM. It offers a unified API over popular LLM providers and vector stores, and makes implementing tool calling (including MCP support), agents and RAG easy. It integrates seamlessly with enterprise Java frameworks like Quarkus and Spring Boot.",
-      "category": "agent",
-      "channel": "github",
-      "url": "https://github.com/langchain4j/langchain4j",
-      "sources": [
-        {
-          "url": "https://github.com/langchain4j/langchain4j",
-          "name": "github"
-        }
-      ],
-      "tags": [
-        "anthropic",
-        "chatgpt",
-        "chroma",
-        "embeddings",
-        "gemini",
-        "gpt",
-        "huggingface",
-        "java",
-        "Java"
-      ],
-      "summary": "LangChain4j is an idiomatic, open-source Java library for building LLM-powered applications on the JVM. It offers a unified API over popular LLM providers and vector stores, and makes implementing tool calling (including MCP support), agents and RAG easy. It integrates seamlessly with enterprise Java frameworks like Quarkus and Spring Boot.",
-      "authors": [
-        "langchain4j"
-      ],
-      "publishedAt": "2026-09-30T23:37:58+08:00",
-      "knowledgeType": "fundamentals",
-      "why": "归属「Agent 理论与实践」方向；命中关键词 tool calling、mcp；GitHub 13186 stars；疑似附带开源实现",
-      "relevanceScore": 80.9,
-      "qualitySignals": {
-        "stars": 13196,
-        "forks": 2582,
-        "codeAvailable": true
-      },
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 80.9,
-      "planDepthScore": 86.14
-    },
-    {
-      "id": "8a60bc7ca8f1e1b9",
-      "title": "dromara/Omega-AI - Omega-AI is a Java-based deep learning framework that helps you quickly build neural networks for inference and training. Its engine supports automatic differentiation, multithreading, and GPU acceleration with CUDA and cuDNN.",
-      "category": "engineering",
-      "channel": "github",
-      "url": "https://github.com/dromara/Omega-AI",
-      "sources": [
-        {
-          "url": "https://github.com/dromara/Omega-AI",
-          "name": "github"
-        }
-      ],
-      "tags": [
-        "ai",
-        "deeplearning",
-        "diffusion",
-        "llm",
-        "neural-network",
-        "yolo",
-        "Java"
-      ],
-      "summary": "Omega-AI is a Java-based deep learning framework that helps you quickly build neural networks for inference and training. Its engine supports automatic differentiation, multithreading, and GPU acceleration with CUDA and cuDNN.",
-      "authors": [
-        "dromara"
-      ],
-      "publishedAt": "2026-09-27T21:06:07+08:00",
-      "knowledgeType": "fundamentals",
-      "why": "归属「工程与系统」方向；命中关键词 inference、cuda；GitHub 852 stars；疑似附带开源实现",
-      "relevanceScore": 75.3,
-      "qualitySignals": {
-        "stars": 854,
-        "forks": 63,
-        "codeAvailable": true
-      },
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 75.3,
-      "planDepthScore": 82.36
+      "planRelevanceScore": 84.0,
+      "planDepthScore": 76.13
     }
   ]
 }

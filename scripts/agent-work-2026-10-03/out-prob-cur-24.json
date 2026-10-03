@@ -1,0 +1,134 @@
+{
+  "batchId": "prob-cur-24",
+  "entries": [
+    {
+      "id": "youzan-hmm-lora-exam",
+      "tldr": "联想 AI 岗笔试＝20 单选＋1 编程＋1 AI coding；贪心只过 18% 说明要换 DP，本文给考点判定式与可跑对拍代码。",
+      "restated": "题干是考生回忆的结构记录，没有任何具体题目、样例、约束或分值：20 道单选涉及算法题补充代码、RNN、HMM、强化学习、LoRA、SQL、激活函数与简单排序；1 道编程题考生用贪心只通过 18% 用例；1 道 AI coding 为首次遇到，需要自己指定关键约束。所以下文只写记录能确定的三块结构，并按「贪心非全局最优」这一最贴合 18% 的解释，配零钱兑换、HMM Viterbi、LoRA 增量三个可运行示例。",
+      "approach": [
+        {
+          "step": "选择题：把 20 题压成六类判定式",
+          "detail": "RNN：同一组权重沿时间展开，BPTT 的梯度是 Jacobian 连乘，长序列下按谱半径指数衰减或爆炸，LSTM 用输入/遗忘/输出门加 cell state 的加法通路缓解。HMM 三问题要能对号入座——求观测序列概率用前向算法（对上一时刻所有状态求和）、求最优状态序列用 Viterbi（对上一时刻取最大并记回溯指针）、学参数用 Baum-Welch/EM；前向与 Viterbi 只差 sum 与 max，这是最容易出单选的地方。强化学习：值迭代/策略迭代解 Bellman 期望方程、需要已知模型；Q-learning 是 off-policy 且更新里出现 max；策略梯度/REINFORCE 直接对 log 策略求导，需要 baseline 降方差。LoRA：冻结 W，只训练 (α/r)·BA 这一低秩增量。激活函数：Sigmoid/Tanh 两端饱和导致梯度消失，ReLU 正区间导数为 1 但负区间可能死亡，GELU 平滑过渡。SQL：WHERE 在分组前过滤、HAVING 在分组后过滤，聚合函数只能写在 HAVING 里。"
+        },
+        {
+          "step": "编程题：18% 通过率是贪心失效的典型指纹",
+          "detail": "只过 18% 说明小规模与随机生成的弱用例能过、构造性用例全挂——这是「局部最优 ≠ 全局最优」的形状，而不是语法错误（语法错会 0%）。诊断分三步：① 先手工找反例，例如零钱兑换 coins=[1,3,4]、amount=6，贪心先抢下 4 得到 4+1+1 共 3 枚，最优是 3+3 共 2 枚；② 用交换论证说清贪心何时才成立——只有当每个面值都是前面面值的倍数（规范币制）时，把一枚大面值换成若干小面值一定不更少，贪心才正确，而随机弱用例恰好容易落在这种币制上；③ 换成 DP，dp[a]=min(dp[a-c]+1)，并用暴力搜索或小规模随机对拍验证，而不是靠「样例过了」。"
+        },
+        {
+          "step": "AI coding：先把关键约束写进题面",
+          "detail": "首次遇到 AI coding，失分点通常不是写不出代码，而是没先指定关键约束：输入规模决定 O(n²) 还是 O(n log n)（amount 上限 1e5 与 1e9 是两种解法）、是否需要流式/在线处理、空输入与非法值该抛异常还是返回默认值、并列最优怎么打破、要不要在意内存峰值。稳妥流程是先输出一份约束清单并请面试官确认，再给实现、自测断言与复杂度，最后主动说明哪些场景没有覆盖。"
+        }
+      ],
+      "complexity": {
+        "time": "编程题 DP 为 O(n·amount)；HMM 为 O(T·|S|²)；LoRA 前向增量 O(d·r·k)",
+        "space": "O(amount) / O(T·|S|) / O(d·r + r·k)",
+        "why": "时间由状态数乘转移数决定；DP 用一维滚动数组把 O(n·amount) 压到 O(amount)，Viterbi 每步只留回溯指针。"
+      },
+      "code": {
+        "language": "python",
+        "source": "# 联想 AI 岗笔试三块的可跑对照模板（纯标准库，无第三方依赖）。\n# 1) 编程题「贪心只过 18%」：零钱兑换，贪心 vs 完全背包 DP 对拍，\n#    反例 coins=[1,3,4]、amount=6（贪心 3 枚，最优 2 枚）。\n# 2) 选择题 HMM：Viterbi 解码（对数域，避免连乘下溢）。\n# 3) 选择题 LoRA：增量 (alpha/r)·B@A 与可训练参数量对比。\n# 直接运行本文件会跑完全部断言并打印结果。\nimport math\n\nINF = float('inf')\n\n\ndef greedy_min_coins(coins, amount):\n    '''贪心：每次取不超过余额的最大面值；币制不成链式倍数时会错。'''\n    if amount < 0:\n        raise ValueError('amount 必须非负')\n    rest, used = amount, 0\n    for c in sorted(coins, reverse=True):\n        if c <= 0:\n            raise ValueError('面值必须为正整数')\n        used += rest // c\n        rest %= c\n    return used if rest == 0 else -1\n\n\ndef dp_min_coins(coins, amount):\n    '''完全背包：dp[a] 是凑出金额 a 的最少硬币数，无解返回 -1。'''\n    if amount < 0:\n        raise ValueError('amount 必须非负')\n    if any(c <= 0 for c in coins):\n        raise ValueError('面值必须为正整数')\n    dp = [0] + [INF] * amount\n    for a in range(1, amount + 1):\n        for c in coins:\n            if c <= a and dp[a - c] + 1 < dp[a]:\n                dp[a] = dp[a - c] + 1\n    return -1 if dp[amount] == INF else dp[amount]\n\n\ndef viterbi(obs, states, start_p, trans_p, emit_p):\n    '''HMM 解码：返回 (最优状态序列, 对数概率)，全程取 log 防下溢。'''\n    if not obs:\n        return [], 0.0\n    lg = lambda p: math.log(p) if p > 0 else -INF\n    dp = {s: lg(start_p[s]) + lg(emit_p[s][obs[0]]) for s in states}\n    back = []\n    for t in range(1, len(obs)):\n        prev, cur = {}, {}\n        for s in states:\n            best_s, best_v = None, -INF\n            for p in states:\n                v = dp[p] + lg(trans_p[p][s])\n                if v > best_v:\n                    best_s, best_v = p, v\n            prev[s] = best_s\n            cur[s] = best_v + lg(emit_p[s][obs[t]])\n        back.append(prev)\n        dp = cur\n    last = max(states, key=lambda s: dp[s])\n    path = [last]\n    for prev in reversed(back):\n        path.append(prev[path[-1]])\n    path.reverse()\n    return path, dp[last]\n\n\ndef lora_delta(w, a, b, alpha, r):\n    '''LoRA 前向：W' = W + (alpha/r) * B @ A，A 是 [r,k]、B 是 [d,r]。'''\n    if r <= 0 or alpha <= 0:\n        raise ValueError('r 与 alpha 必须为正')\n    d, k = len(w), len(w[0])\n    if len(a) != r or len(a[0]) != k or len(b) != d or len(b[0]) != r:\n        raise ValueError('形状必须是 A[r,k]、B[d,r]')\n    scale = alpha / r\n    return [[w[i][j] + scale * sum(b[i][t] * a[t][j] for t in range(r))\n             for j in range(k)] for i in range(d)]\n\n\ndef _self_test():\n    # 1) 贪心失效的形状：小样例过、全局最优挂\n    assert greedy_min_coins([1, 3, 4], 6) == 3\n    assert dp_min_coins([1, 3, 4], 6) == 2\n    # 规范币制（每个面值都是前面面值的倍数）下贪心才等于最优\n    canonical = [1, 5, 10, 50]\n    for amount in range(0, 61):\n        assert greedy_min_coins(canonical, amount) == dp_min_coins(canonical, amount)\n    # 边界：无解、金额 0、面值非法\n    assert dp_min_coins([3, 5], 1) == -1 and dp_min_coins([3, 5], 0) == 0\n    for bad in ([0], [-1, 2]):\n        try:\n            dp_min_coins(bad, 4)\n            raise AssertionError('非法面值没有被拦下')\n        except ValueError:\n            pass\n    # 2) HMM：观测 [a, b] 下最优状态序列应为 ['H', 'L']\n    states = ['H', 'L']\n    start = {'H': 0.6, 'L': 0.4}\n    trans = {'H': {'H': 0.7, 'L': 0.3}, 'L': {'H': 0.4, 'L': 0.6}}\n    emit = {'H': {'a': 0.9, 'b': 0.1}, 'L': {'a': 0.2, 'b': 0.8}}\n    path, score = viterbi(['a', 'b'], states, start, trans, emit)\n    assert path == ['H', 'L'] and score < 0\n    assert viterbi([], states, start, trans, emit) == ([], 0.0)\n    # 3) LoRA：alpha/r 缩放、B 零初始化让起点等于原模型、参数量对比\n    w = [[1.0, 0.0], [0.0, 1.0]]\n    got = lora_delta(w, [[1.0, 0.0]], [[2.0], [3.0]], alpha=2, r=1)\n    assert got == [[5.0, 0.0], [6.0, 1.0]]\n    assert lora_delta([[7.0]], [[1.0]], [[0.0]], alpha=8, r=1) == [[7.0]]\n    d = k = 4096\n    rr = 8\n    assert rr * k + d * rr == 65536 and d * k == 256 * (rr * k + d * rr)\n    print('贪心 coins=[1,3,4] amount=6 ->', greedy_min_coins([1, 3, 4], 6),\n          '| DP ->', dp_min_coins([1, 3, 4], 6))\n    print('Viterbi 状态序列 =', path, '对数概率 =', round(score, 4))\n    print('LoRA 可训练参数 =', rr * k + d * rr, '全参 =', d * k, '压缩倍数 = 256')\n\n\nif __name__ == '__main__':\n    _self_test()\n    print('all self-tests passed')\n",
+        "walkthrough": [
+          {
+            "note": "greedy_min_coins 就是那道只过 18% 的写法：面值降序，每次用 rest // c 把不超过余额的最大面值全拿走，最后 rest 不为 0 就返回 -1。它先在 [1,3,4]、6 上拿到 3 枚（4+1+1），暴露了局部最优的缺陷；amount 为负、面值非正时直接抛 ValueError，避免负数除法语义错乱。"
+          },
+          {
+            "note": "dp_min_coins 是正确解法：dp[a] 表示凑出金额 a 的最少硬币数，dp[0]=0 是唯一的初值，其余先置 INF。外层枚举金额、内层枚举硬币且 a 正序遍历，同一枚硬币可以被反复取用，所以这是完全背包而不是 0/1 背包；转移只做 dp[a-c]+1 < dp[a] 的松弛。答案仍是 INF 说明无解，按题目常见的输出约定返回 -1。"
+          },
+          {
+            "note": "viterbi 把整套概率连乘搬到对数域：lg(p) 在 p=0 时返回负无穷，正好让不可能的状态被自然淘汰。dp[s] 保存「以 s 结尾的最优对数概率」，内层对上一时刻所有状态求 max 并记下前驱 best_s，这就是与「前向算法求和」的唯一差别；回溯时按 reversed(back) 顺着前驱指针往回走再反转，得到最优状态序列。"
+          },
+          {
+            "note": "lora_delta 写的是选择题里的 LoRA 公式：W' = W + (α/r)·B@A，A 的形状是 [r,k]、B 是 [d,r]，缩放系数显式取 alpha/r 而不是 alpha。形状校验把「r 与 A/B 不匹配」挡在前面，否则矩阵乘法会静默报出难以定位的错误；返回的是加了增量之后的新权重，体现推理阶段可以把增量合并回 W 的性质。"
+          },
+          {
+            "note": "_self_test 分三组断言：① 贪心与 DP 在反例上分道扬镳，同时验证规范币制 [1,5,10,50] 在 0..60 上两者完全一致（这正是弱用例容易掩盖 bug 的原因），并覆盖无解、金额 0、非法面值；② Viterbi 在给定小模型上必须解出 ['H','L']，空观测返回空序列；③ LoRA 的 α/r 缩放、B 零初始化时增量恒为 0（训练起点等价于原模型）、以及 d=k=4096、r=8 时参数量 65536 对比全参 16777216 的 256 倍压缩。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "amount=0：dp[0]=0 直接返回 0，贪心也返回 0，不需要特判但要保证数组不越界。",
+        "无解：coins=[3,5]、amount=1，dp 保持 INF，必须显式返回 -1，不能把 INF 直接输出。",
+        "面值含 0 或负数：会造成死循环或负数除法语义错误，函数入口就要抛 ValueError。",
+        "观测序列为空：Viterbi 返回 ([], 0.0)，不能让 max() 在空字典上抛异常。",
+        "发射概率为 0：取 log 得负无穷，该状态被自然淘汰；若某一时刻所有状态都是负无穷，需要额外兜底否则回溯结果无意义。",
+        "长观测序列：概率连乘会下溢到 0，必须全程在对数域计算。",
+        "LoRA 的 r 超过 d 或 k：低秩假设不成立，参数量反而超过全参微调。",
+        "B 未零初始化：训练起点不再是原模型，初始 loss 会突然跳高。",
+        "amount 远大于内存能承受的一维数组规模：O(amount) 的 DP 必须先确认约束上界。"
+      ],
+      "pitfalls": [
+        "把「样例都过了」当成贪心正确的证明——18% 通过率就是这么来的，必须找反例或做交换论证。",
+        "完全背包与 0/1 背包写反：dp[a] 从 dp[a-c] 转移、金额正序遍历才允许重复取同一面值。",
+        "无解时返回 INF 或返回 0 而不是 -1，输出格式直接判错。",
+        "HMM 用概率连乘不做对数，长序列下溢为 0 后所有状态并列。",
+        "把「求观测序列概率」答成 Viterbi：前向算法是求和，Viterbi 是求最大。",
+        "Viterbi 回溯时把 best_s 记成当前状态而不是前驱，路径整体偏一位。",
+        "LoRA 的缩放写成 α·BA（忘记除 r），等价于把增量的学习率放大了 r 倍。",
+        "说 ReLU 也会饱和、或说 Sigmoid 不会梯度消失，这是激活函数单选题最常见的错项。",
+        "SQL 把聚合条件写在 WHERE 里，正确位置是 HAVING。"
+      ],
+      "followUps": [
+        "如果面值体系是规范币制（每个面值都是前面面值的倍数），请用交换论证证明贪心正确。",
+        "18% 的通过率还可能由哪些 bug 造成（数组越界、整型溢出、多测未清空、取模遗漏、排序稳定性）？怎么用对拍快速区分？",
+        "HMM 的三个问题分别对应什么算法、复杂度各是多少？前向算法与 Viterbi 的递推式差在哪一项？",
+        "Viterbi 与 Beam Search 的关系？束宽为 1 时是什么？",
+        "LoRA 的 rank 怎么选？QLoRA、AdaLoRA、DoRA 分别改了什么，代价是什么？",
+        "为什么 LoRA 推理时可以把 BA 合并进 W？合并之后还能继续训练吗？",
+        "RNN 梯度消失的定量解释是什么（Jacobian 连乘与谱半径）？LSTM 的常数误差传送带如何缓解它？",
+        "策略梯度为什么需要 baseline？优势函数与 GAE 在实现上怎么落地？",
+        "Q-learning 与 SARSA 的区别、off-policy 带来的收敛条件差异是什么？",
+        "AI coding 场景里，你会先向面试官确认哪几条关键约束？"
+      ],
+      "variations": [
+        "编程题换成加权区间调度或任务调度：同样按结束时间贪心会错，正确解法是排序后 DP 加二分查找。",
+        "把零钱兑换换成 0/1 背包、多重背包，或把「最少枚数」换成「方案数」，转移方程的初值与取最值方向随之改变。",
+        "用 BFS/Dijkstra 在金额图上求最少硬币数，与 DP 对照可以解释「状态图最短路」这一统一视角。",
+        "HMM 的 Viterbi 换成 CRF 的 Viterbi：转移分数从 log 概率变成可学习权重。",
+        "把 LoRA 换成 Prefix Tuning / Adapter / 全参微调的参数量与显存对比单选。",
+        "把单选改成多选或不定项，判定式相同但需要额外判断每个选项是否「都」成立。",
+        "把 RNN 换成 Transformer 的注意力复杂度比较（O(T·d²) 与 O(T²·d)）。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "笔试三板块与破解动作",
+        "caption": "记住三个板块各配一个动作：单选背判定式、编程先找反例再换 DP、AI coding 先锁约束再动手。",
+        "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 240'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15'/><text x='14' y='17' font-size='13' fill='currentColor'>笔试三板块 → 破解动作</text><rect x='12' y='32' width='120' height='34' fill='none' stroke='var(--line-1)'/><text x='24' y='54' font-size='13' fill='currentColor'>20 道单选</text><rect x='180' y='26' width='288' height='46' fill='none' stroke='var(--accent)'/><text x='192' y='45' font-size='13' fill='currentColor'>单选 ＝ 判定式清单</text><text x='192' y='63' font-size='13' fill='currentColor'>RNN/HMM/RL/LoRA/激活/SQL</text><line x1='134' y1='49' x2='174' y2='49' stroke='var(--line-1)'/><polygon points='180,49 173,45 173,53' fill='var(--line-1)'/><rect x='12' y='100' width='120' height='34' fill='none' stroke='var(--line-1)'/><text x='24' y='122' font-size='13' fill='currentColor'>1 道编程</text><rect x='180' y='94' width='288' height='46' fill='none' stroke='var(--accent)'/><text x='192' y='113' font-size='13' fill='currentColor'>编程 ＝ 贪心 → DP</text><text x='192' y='131' font-size='13' fill='currentColor'>先找反例，再对拍验证</text><line x1='134' y1='117' x2='174' y2='117' stroke='var(--line-1)'/><polygon points='180,117 173,113 173,121' fill='var(--line-1)'/><rect x='12' y='168' width='120' height='34' fill='none' stroke='var(--line-1)'/><text x='24' y='190' font-size='13' fill='currentColor'>1 道 AI coding</text><rect x='180' y='162' width='288' height='46' fill='none' stroke='var(--accent)'/><text x='192' y='181' font-size='13' fill='currentColor'>先锁约束：规模/边界</text><text x='192' y='199' font-size='13' fill='currentColor'>再写实现＋自测＋复杂度</text><line x1='134' y1='185' x2='174' y2='185' stroke='var(--line-1)'/><polygon points='180,185 173,181 173,189' fill='var(--line-1)'/><text x='14' y='228' font-size='13' fill='currentColor'>18% 的形状：小样例过，全局最优挂</text></svg>",
+        "alt": "横向流程图：左侧三块笔试结构（20 道单选、1 道编程、1 道 AI coding）各用箭头指向右侧的破解动作（背六类判定式、贪心换 DP 并与暴力对拍、先锁定关键约束再写实现与自测），底部标注 18% 通过率的含义是小样例过而全局最优挂。"
+      },
+      "selfTest": [
+        "面值 [1,3,4]、金额 6，贪心与 DP 分别得到几枚？为什么这能解释 18% 的通过率？（答：贪心 3 枚、DP 2 枚；弱用例多为规范币制，贪心恰好等于最优，构造性用例才暴露。）",
+        "HMM 里「求观测序列概率」和「求最优状态序列」分别用什么算法？递推式的差别是什么？（答：前向算法与 Viterbi；前者对上一时刻所有状态求和，后者取最大并记录回溯指针。）",
+        "LoRA 的权重表达式和可训练参数量是什么？α/r 的作用？（答：W'=W+(α/r)·BA，参数量 r·(d+k)；α/r 是固定缩放，配合学习率调节增量幅度。）",
+        "为什么 Viterbi 必须在对数域做？（答：T 个概率连乘会下溢为 0，多个状态并列无法比较；取 log 变连加，数值稳定。）",
+        "完全背包的内层循环写成逆序会变成什么？（答：dp[a-c] 用的是本轮更新前的旧值，同一枚硬币只能用一次，退化成 0/1 背包。）"
+      ],
+      "keyPoints": [
+        "18% 通过率＝局部最优失效：先找反例再换 DP，不要用「样例过了」当正确性证明",
+        "零钱兑换是 DP 而非贪心；只有规范币制下贪心才正确",
+        "HMM 三问题对号入座：前向求和、Viterbi 取最大并回溯、Baum-Welch 学参数",
+        "LoRA 只训练低秩增量 (α/r)·BA，B 零初始化让起点等价于原模型，推理可合并",
+        "AI coding 先锁定规模、边界与失败模式，再写实现、自测与复杂度"
+      ],
+      "sources": [],
+      "selfCheck": {
+        "claims": [
+          "题干记录的结构是 20 道单选 + 1 道编程 + 1 道 AI coding，三者都只给了名称，没有具体题目。",
+          "题干逐一列出了单选涉及的内容：算法题补充代码、RNN、HMM、强化学习、LoRA、SQL、激活函数、简单排序。",
+          "题干明确写「编程题面试者用贪心但只通过 18% 用例」，这是本题唯一可量化的信息。",
+          "题干明确写 AI coding「首次遇到，需要自己指定关键约束」。",
+          "该题 origin 为 curated 且 sourceUrl 为 null，因此 sources 为空数组，正文与图解中不含任何链接。",
+          "本文件 code.source 可在本机 python 上直接运行：全部 assert 通过，并打印贪心与 DP 的对照结果、Viterbi 状态序列与 LoRA 参数量，最后输出 all self-tests passed。"
+        ],
+        "uncertain": [
+          "题面没有任何具体题目、样例、约束、分值与时间限制；20 道单选的真实问法、编程题的输入输出、AI coding 的题目全部缺失，本文只能拆解记录里能确定的三块结构。",
+          "零钱兑换、HMM Viterbi、LoRA 增量是依据题干列举的考点挑的通用代表示例，不是原题；如果原编程题不是币值类问题，「找反例 → 换 DP → 对拍」的诊断思路仍适用，但具体代码需要替换。",
+          "18% 的具体成因无法从记录判断，本文按「贪心非全局最优」这一最常见解释展开；也可能是多测未清空、越界、取模遗漏，需要拿到原题与失败用例才能定论。",
+          "题干来自考生回忆、来源标注为人工整理，题量与科目顺序可能与真实笔试有偏差。",
+          "「自己指定关键约束」的评分口径未知（是否考查需求澄清、是否要求写测试），本文给的是通用做法。",
+          "HMM 三问题与强化学习算法的对照属于通用教科书结论，题干没有给出具体选项，无法确认原题究竟考哪一条。",
+          "本文件没有运行任何真实笔试题，只运行了自己写的对照代码。"
+        ]
+      }
+    }
+  ]
+}

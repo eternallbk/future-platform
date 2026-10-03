@@ -1,17 +1,17 @@
 {
   "date": "2026-10-03",
-  "generatedAt": "2026-10-03T02:31:20+08:00",
+  "generatedAt": "2026-10-04T00:08:55+08:00",
   "generatedBy": "scripts/plan_agent_batches.py",
   "workDir": "scripts/agent-work-2026-10-03",
   "sourcePlan": {
     "file": "web/data/deep-read-plan.json",
-    "generatedAt": "2026-10-03T02:29:11+08:00",
-    "queueTotal": 94,
-    "backfillTotal": 6
+    "generatedAt": "2026-10-04T00:06:47+08:00",
+    "queueTotal": 92,
+    "backfillTotal": 7
   },
-  "excluded": 28,
-  "queueToProcess": 66,
-  "backfillToProcess": 6,
+  "excluded": 27,
+  "queueToProcess": 67,
+  "backfillToProcess": 7,
   "batches": [
     {
       "batchId": "queue-01",
@@ -20,11 +20,11 @@
       "input": "in-queue-01.json",
       "output": "out-queue-01.json",
       "ids": [
-        "c97a5a7e82e644b9",
-        "84dc5ede05e7bd20",
-        "34583f8e3d5d4c78",
-        "9e9baefb2a456ef3",
-        "a0eba0aa1c5bae4d"
+        "d33259475a53fac2",
+        "ac40e833ba73fe15",
+        "23069db90511de2a",
+        "de3a19c3241846b4",
+        "083c003429750705"
       ]
     },
     {
@@ -34,11 +34,11 @@
       "input": "in-queue-02.json",
       "output": "out-queue-02.json",
       "ids": [
-        "ca33c1c95f651461",
-        "7be70fc8379e7991",
-        "806ec4de46376616",
-        "1c0c06f03796d16e",
-        "250593b8b2b6a7ad"
+        "1703f162fe0be3df",
+        "22144df60f7e221b",
+        "50c04a4ca3002542",
+        "fac19566f6132cb4",
+        "d248dc5a6bb9d099"
       ]
     },
     {
@@ -48,11 +48,11 @@
       "input": "in-queue-03.json",
       "output": "out-queue-03.json",
       "ids": [
-        "277441ea3ddc25e9",
-        "30480cd0e3a058a6",
-        "98ecc61a0f6c206b",
-        "dd3ee83684a019cf",
-        "8a60bc7ca8f1e1b9"
+        "fcfa54ba9b6cca9e",
+        "5b906eb7f347d41b",
+        "4fdc664724b1ad3a",
+        "33e25aa5c1066c89",
+        "09ca9ee164ef6e05"
       ]
     },
     {
@@ -62,11 +62,11 @@
       "input": "in-queue-04.json",
       "output": "out-queue-04.json",
       "ids": [
-        "fe8effbbe5b24d57",
-        "622683b4a1f31b43",
-        "527f4b1f6ad840c7",
-        "8be496c85ad5ec3b",
-        "6e9fe3c163df33a0"
+        "483f6b709cc8709e",
+        "6970d2bfa1b76ac3",
+        "579733cec8a05533",
+        "fd3bb0fd738612e2",
+        "e6d52698eb6bc0d3"
       ]
     },
     {
@@ -76,11 +76,11 @@
       "input": "in-queue-05.json",
       "output": "out-queue-05.json",
       "ids": [
-        "a237aabcd4ae8069",
-        "6fa3fa31816e0d5b",
-        "e1903dd600f227bc",
-        "4f5b506dfea832c7",
-        "d94ed02fbc3c269b"
+        "8de457329ff33065",
+        "c30d1d5bd0bc6992",
+        "0f7c333f87356008",
+        "c01d8e1196c7d976",
+        "48da160f81e4f589"
       ]
     },
     {
@@ -90,11 +90,11 @@
       "input": "in-queue-06.json",
       "output": "out-queue-06.json",
       "ids": [
-        "a2675c908b72c1ca",
-        "ffccce0f53a7f7d2",
-        "6a22b0c8beb59101",
-        "eebff77cf06b8b95",
-        "99373303e219b8c5"
+        "2464bfdb1f99b200",
+        "ce8adac751035736",
+        "03b7d33155ec3826",
+        "c11ece1b5ce8f921",
+        "46e46e5e396eb9ef"
       ]
     },
     {
@@ -104,11 +104,11 @@
       "input": "in-queue-07.json",
       "output": "out-queue-07.json",
       "ids": [
-        "249413542592e5b7",
-        "03cc95f58cdf7d9d",
-        "3192f3e121d782ee",
-        "9e285061cb75920c",
-        "a9ac6f5d38bf0a3c"
+        "891fdc7983aeb96a",
+        "199afbc0e96d447e",
+        "dc373482c9fa535f",
+        "c6cf073644ed8f6e",
+        "e57c363c256725b4"
       ]
     },
     {
@@ -118,11 +118,11 @@
       "input": "in-queue-08.json",
       "output": "out-queue-08.json",
       "ids": [
-        "75ce314787189989",
-        "c5702c5feb87be26",
-        "b5b41c240c3c8cc6",
-        "ee167de8caea4748",
-        "071d08582672f10b"
+        "e49b616b91114a52",
+        "df0685d3ab6cb432",
+        "a1642ac8a891453d",
+        "8f84f93062b042f9",
+        "d07e4a916ba60b87"
       ]
     },
     {
@@ -132,11 +132,11 @@
       "input": "in-queue-09.json",
       "output": "out-queue-09.json",
       "ids": [
-        "a61bf1c90a479e68",
-        "44bfa5cd4d38d970",
-        "b23fa633aed23b9e",
-        "b1dbc9cc24709fe3",
-        "d6bcc8f5d8cb2993"
+        "8efe6e6f68558ea2",
+        "e8f4a2385a007c81",
+        "091fedf2566cfb0a",
+        "43e251293f423815",
+        "6c670d26b9e72aaf"
       ]
     },
     {
@@ -146,24 +146,25 @@
       "input": "in-queue-10.json",
       "output": "out-queue-10.json",
       "ids": [
-        "ca54e0e87014d24a",
-        "ae5f1b9da8e383f0",
-        "bc031c1e6dc62d26",
-        "7397e6533ba9328b",
-        "7c2cfefa9fa6ab63"
+        "beb8222de71bd303",
+        "40a89bb34e62abfb",
+        "eb7fa08cb81b897b",
+        "a1020975a27a34ad",
+        "c44346574fe421aa"
       ]
     },
     {
       "batchId": "queue-11",
       "mode": "full",
-      "count": 4,
+      "count": 5,
       "input": "in-queue-11.json",
       "output": "out-queue-11.json",
       "ids": [
-        "2760b3ea24e31fe2",
-        "c68ae3f5745b08f4",
-        "ee2e59c46b3f17f3",
-        "1787bd32264be89f"
+        "f3a23f89c9a8fb34",
+        "3c23a289ae566ea1",
+        "1ccf724dac9d1501",
+        "c7a49d8868aeffb0",
+        "500b7b2c77308a10"
       ]
     },
     {
@@ -173,10 +174,10 @@
       "input": "in-queue-12.json",
       "output": "out-queue-12.json",
       "ids": [
-        "4b9f93bba7c4e1a6",
-        "9802701805b37556",
-        "3024b1b3d6f0b3b3",
-        "7d4462ca7e3eb405"
+        "9b23e623279c9bb7",
+        "b39f4ced4d8182a6",
+        "fdc43f955113fdaf",
+        "4569f436f3ced941"
       ]
     },
     {
@@ -186,10 +187,10 @@
       "input": "in-queue-13.json",
       "output": "out-queue-13.json",
       "ids": [
-        "23a2fc68ba96e9ac",
-        "3cc4365e8f7535f1",
-        "09f51ee819492fa5",
-        "3a84cc26c0af785b"
+        "c2a48520692a2a6a",
+        "7c90ce0a4a70a53e",
+        "12012beb2f76b18b",
+        "736d6d6aef93f413"
       ]
     },
     {
@@ -199,22 +200,23 @@
       "input": "in-queue-14.json",
       "output": "out-queue-14.json",
       "ids": [
-        "ac2524af5b9231f7",
-        "92c09201f9fa3e53",
-        "b1ec28947f12f9bd",
-        "7f653843af9f1aba"
+        "1bd6dc963f664078",
+        "6b8e02c845919dd7",
+        "d821c97b149a0920",
+        "ea462175f524a3f9"
       ]
     },
     {
       "batchId": "backfill-01",
       "mode": "backfill",
-      "count": 3,
+      "count": 4,
       "input": "in-backfill-01.json",
       "output": "out-backfill-01.json",
       "ids": [
-        "0b3e16ecf4f67dcb",
-        "28f899c9d5f4731d",
-        "97fae90c627e5adb"
+        "0fe3d8b02701d756",
+        "6b4fea8c9d73c5b4",
+        "796ed0cc88e165e2",
+        "909e1c8682a2c82f"
       ]
     },
     {
@@ -224,12 +226,14 @@
       "input": "in-backfill-02.json",
       "output": "out-backfill-02.json",
       "ids": [
-        "99fb8b7ff588817d",
-        "cbfe6087f9c43604",
-        "f92d0f5913e59e39"
+        "949462393c28b944",
+        "a974726e38630532",
+        "edc977a25048a279"
       ]
     }
   ],
   "missingItemIds": [],
-  "unknownSkipIds": []
+  "unknownSkipIds": [
+    "df9779ef2a1128bd"
+  ]
 }

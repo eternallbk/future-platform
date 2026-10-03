@@ -2,1162 +2,1293 @@
   "batchId": "queue-04",
   "entries": [
     {
-      "id": "fe8effbbe5b24d57",
-      "tldr": "免训练对比解码 LoopCD：用早期回路的弱预测校正最终预测，AIME 2024 通过率升到 73.33%。",
+      "id": "483f6b709cc8709e",
+      "tldr": "VLA 时延拆解：流匹配去噪压到 2 步，推理 61.6→22.0 ms，机器人侧另有开销。",
       "keyPoints": [
-        "循环 Transformer 每个回路都能解码同一 next token 的中间预测",
-        "早期回路计算量更小，天然形成对齐的弱-强预测对，无需辅助模型",
-        "LoopCD-Logits 在 logit 空间对比，代价是额外一次输出前向",
-        "LoopCD-Hidden 在隐状态空间对比，零额外输出开销",
-        "四个循环模型家族一致增益，循环数减半仍追平全深度基线"
+        "VLA 存在低推理率与高执行率之间的时延缺口",
+        "重复的流匹配去噪是模型推理开销的主要来源",
+        "速度场前期幅度方向稳定，末端才有强方向修正",
+        "两阶段非均匀去噪把步数从 10 降到 2",
+        "以 π0.5 为基线在叠衣任务上评测六种执行方法"
       ],
-      "why": "推理侧降本增效的典型样本：不训练、不加模型就能提点并砍掉最多 48.2% 前向 FLOPs，很适合用来回答『怎么省算力又不掉点』。",
+      "why": "世界模型与具身智能面试高频题：VLA 怎么做到实时；这条给出时延拆解与去噪步数取舍的量化答案。",
       "difficulty": "medium",
       "tags": [
-        "inference",
-        "contrastive-decoding",
-        "looped-transformer",
-        "decoding",
-        "efficiency"
+        "vla",
+        "flow-matching",
+        "real-time",
+        "robot-learning",
+        "inference-efficiency",
+        "world-model"
       ],
       "entities": [
-        "LoopCD",
-        "LoopCD-Logits",
-        "LoopCD-Hidden",
-        "Ouro-2.6B-Thinking",
-        "Huginn",
-        "AIME 2024",
-        "HumanEval"
-      ],
-      "diagram": {
-        "kind": "flow",
-        "title": "LoopCD 解码流程",
-        "caption": "把早期回路的弱预测当对照项，强化最终回路的判别性",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='LoopCD 解码流程：早期回路的弱预测与最终回路的强预测对比后选出 token'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>输入与共享块</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>同一块反复执行</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>早期回路 k</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>弱预测 p_k</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>最终回路 N</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>强预测 p_N</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>对比后选 token</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>p_N 减 α·p_k</text></svg>",
-        "alt": "竖排流程：输入进入共享块反复执行，早期回路给出弱预测 p_k，最终回路给出强预测 p_N，两者在 logit 或隐状态空间对比后选出 token。"
-      },
-      "concepts": [
-        {
-          "name": "LoopCD（Looped Contrastive Decoding）",
-          "readable": "对循环 Transformer，把最后一次回路的预测与更早一次回路的预测做对比，放大两者差异后再选词，让最终回路真正看好的 token 更容易胜出。",
-          "analogy": "考试先打草稿再定稿：把草稿答案与定稿答案并排看，只有当定稿比草稿更笃定的选项才值得填上去。",
-          "analogyBreaksDown": "草稿与定稿都错时，对比只会放大共同的错误方向；类比里两人的判断相互独立，而这里两次预测共享权重与上下文，错误高度相关。",
-          "mechanism": "同一共享块在不同回路深度天然产生『弱-强』预测差，把中间状态变成引导信号，省掉外部弱模型与额外训练。",
-          "visual": "横轴为循环次数，纵轴为 logit 差值；早期回路曲线平缓，末次回路曲线峰值突出，标出相减后的对比分数。",
-          "prerequisites": [
-            "Transformer 解码与 logits/softmax 基础",
-            "对比解码（contrastive decoding）的基本思路",
-            "循环/权重共享 Transformer 概念"
-          ],
-          "selfTest": [
-            "LoopCD 为什么不需要额外训练或外部弱模型？",
-            "Logits 版与 Hidden 版的主要开销差异在哪？",
-            "为什么性能提升后还能把循环次数减半？"
-          ],
-          "formula": "\\Delta = \\log p_{N}(x) - \\alpha \\log p_{k}(x),\\ k < N"
-        },
-        {
-          "name": "Recurrent Depth / Loop Count（循环深度）",
-          "readable": "循环 Transformer 用同一共享块反复执行，回路次数就等于一个可自由伸缩的『深度』旋钮：次数越多算得越多，质量通常越好。",
-          "analogy": "同一道菜反复回锅收汁：锅（共享块）不变，回锅次数决定味道浓淡，也直接决定燃气账单。",
-          "analogyBreaksDown": "回锅次数多不一定更好，可能过咸或收益饱和；这里次数影响的是表征逐层细化，收益随深度递减且存在最优区间。",
-          "mechanism": "权重共享换来参数效率，但推理时深度变成可调超参；LoopCD 让更浅的深度也能逼近深深度质量，这正是该旋钮的价值来源。",
-          "visual": "横轴为循环次数 1..N，纵轴为任务准确率：曲线先陡升后饱和；画一条水平虚线标全深度基线，再标出浅深度加 LoopCD 的交叉点。",
-          "prerequisites": [
-            "Transformer 层堆叠与残差连接",
-            "参数量与计算量（FLOPs）的区别"
-          ],
-          "selfTest": [
-            "增加循环深度时参数量会变吗？为什么？",
-            "LoopCD 声称能把循环数减半，代价是什么？",
-            "为什么『早期回路更弱』这一前提对方法成立很关键？"
-          ],
-          "formula": "h_{t+1} = B(h_t),\\quad \\hat{y} = \\mathrm{softmax}(W h_T)"
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-loopcd-logit-contrast",
-          "name": "LoopCD 对数几率对比打分（Logit-Space Contrastive Score）",
-          "category": "engineering",
-          "latex": "s(x) = \\log p_{N}(x\\mid c) - \\alpha \\log p_{k}(x\\mid c),\\quad k < N,\\ \\alpha \\ge 0",
-          "symbols": [
-            [
-              "p_N",
-              "最终（第 N 次）回路输出的下一 token 概率分布"
-            ],
-            [
-              "p_k",
-              "第 k 次早期回路输出的概率分布（弱预测）"
-            ],
-            [
-              "\\alpha",
-              "对比强度系数，摘要未给具体取值"
-            ],
-            [
-              "s(x)",
-              "token x 的对比打分，取 argmax 作为解码结果"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：动机——循环 Transformer 每次回路都在同一位置输出一个 next token 分布，标准解码只保留最后一次。",
-            "第 2 步：把早期回路输出当作现成可得的『弱模型』分布，无需外挂模型或再训练。",
-            "第 3 步：在 logit 空间做差，用 p_N 减去 α·p_k，抑制两次都强的通用/重复倾向。",
-            "第 4 步：对 s(x) 取 argmax 解码；代价是多跑一次输出头前向（LoopCD-Logits）。"
-          ],
-          "analogy": "两人分别押注：只有『老手比新手更看好』的那个选项才加注，两人都看好的平庸选项被抵消掉。",
-          "pitfalls": [
-            "把 α 当固定最优值——摘要未给取值，实际需按模型调；α=0 就退化为普通解码。",
-            "误以为需要外部弱模型；弱预测来自同一次前向里的早期回路。",
-            "在 logit 上做差与在概率上做差不等价，需明确是否先做 log-softmax。"
-          ],
-          "code": "import torch, torch.nn.functional as F\n\ndef loopcd_logits(logits_final, logits_early, alpha=1.0):\n    lp_f = F.log_softmax(logits_final, dim=-1)\n    lp_e = F.log_softmax(logits_early, dim=-1)\n    return lp_f - alpha * lp_e      # 对比打分\n\n# 解码：torch.argmax(loopcd_logits(zN, zk), dim=-1)",
-          "sources": [
-            {
-              "title": "Decoding Looped Transformers Better for (Almost) Free",
-              "url": "https://huggingface.co/papers/2610.02185"
-            }
-          ]
-        },
-        {
-          "id": "f-loopcd-hidden-contrast",
-          "name": "隐状态空间对比引导（Hidden-Space Contrastive Guidance）",
-          "category": "engineering",
-          "latex": "g = h_{N} - h_{k},\\qquad \\tilde{h}_{N} = h_{N} + \\beta\\,g = (1+\\beta)\\,h_{N} - \\beta\\,h_{k}",
-          "symbols": [
-            [
-              "h_N",
-              "最终回路最后一层的隐状态"
-            ],
-            [
-              "h_k",
-              "第 k 次早期回路的隐状态"
-            ],
-            [
-              "\\beta",
-              "隐状态引导强度，摘要未给具体取值"
-            ],
-            [
-              "\\tilde{h}_N",
-              "引导后的隐状态，交给输出头，且不额外增加输出前向"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：Logits 版要在整个词表上多算一次输出头，词表大时开销可观。",
-            "第 2 步：改为直接在最后一层残差流隐状态上取差 h_N − h_k，得到『最终回路相对早期回路新增的表征』。",
-            "第 3 步：把该方向按系数 β 加回 h_N，放大最终回路独有的成分。",
-            "第 4 步：只过一次输出头即得结果，因此摘要称其零额外输出开销（LoopCD-Hidden）。"
-          ],
-          "analogy": "修图时把原始照片与粗修版本相减得到『精修增量』，再把增量叠回去放大细节，而不必重新导出一份大图。",
-          "pitfalls": [
-            "隐状态差未归一化，范数差异可能主导引导项，通常需要缩放或归一化。",
-            "h_N 与 h_k 必须对齐到同一层与同一 token 位置，否则差值方向无意义。",
-            "『零额外输出开销』指不额外过输出头，不代表总计算量完全不增加。"
-          ],
-          "code": "import torch\n\ndef loopcd_hidden(h_final, h_early, beta=0.5):\n    g = h_final - h_early        # 最终回路相对早期回路新增的表征\n    return h_final + beta * g    # 引导后的隐状态，再过输出头",
-          "sources": [
-            {
-              "title": "Decoding Looped Transformers Better for (Almost) Free",
-              "url": "https://huggingface.co/papers/2610.02185"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "循环 Transformer 靠重复执行共享块获得参数效率，每次回路都产出可解码同一 next token 的中间表示",
-          "标准解码会丢弃更早的回路状态；早期回路计算更少，因此天然提供对齐的弱-强预测对，无需辅助模型或外部训练",
-          "LoopCD 是免训练的对比解码框架，用最终预测与更早一次回路预测对比来引导 token 选择",
-          "LoopCD-Logits 在 logit 空间操作、多一次输出前向；LoopCD-Hidden 在隐状态空间操作、零额外输出开销",
-          "四个循环 Transformer 家族上都取得一致增益：Ouro-2.6B-Thinking 的 AIME 2024 pass@1 从 61.88% 升到 73.33%，Huginn 的 HumanEval pass@1 从 22.56% 升到 31.71%",
-          "性能提升允许把回路数减半，仍匹配或超过全深度无引导基线，前向 FLOPs 降低 22.5% 到 48.2%"
-        ],
-        "uncertain": [
-          "对比打分与隐状态引导的确切公式及 α、β 取值摘要未给，本文按对比解码通用形式重建，需核对原文",
-          "『四个循环 Transformer 家族』除 Ouro-2.6B-Thinking 与 Huginn 外还有哪两个，摘要未列",
-          "FLOPs 降低 22.5%–48.2% 的测量口径（是否计入 LoopCD-Logits 的额外输出前向）未说明",
-          "『减半回路数仍追平』是与哪个基线、在哪些任务上验证的，摘要只给了两个模型的两个基准"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "循环 Transformer 每次回路都猜了下一个词，早猜到的那次可以拿来给最终答案当对照。"
-          },
-          {
-            "level": "入门",
-            "text": "循环 Transformer 用同一个块反复算好几遍，每一遍其实都能给出下一 token 的预测。LoopCD 把最后一次的预测和更早一次的预测做对比：只有最终预测明显更看好的词才被选中。不用训练、不用额外模型，就能提点，甚至少跑一半回路。"
-          },
-          {
-            "level": "进阶",
-            "text": "以往中间回路的状态在解码时被丢弃。LoopCD 注意到早期回路计算更少、预测更弱，却与最终预测天然对齐，于是把它当作免费弱模型：Logits 版在词表上做对数概率差，多一次输出头前向；Hidden 版直接在残差流隐状态上取差再回加，零额外输出开销。两者都免训练，在四个循环模型家族上一致提点，并可把回路数减半仍追平原全深度基线。"
-          },
-          {
-            "level": "专家",
-            "text": "LoopCD 属于对比解码家族，但与依赖层间或跨上下文差异的做法不同，它利用的是同一共享块在不同循环深度上的输出差，因此不需要外挂小模型，也不引入外部训练信号。代价是 Logits 版多一次输出头前向、Hidden 版引入隐状态尺度超参；适用边界是模型必须真是循环/权重共享结构，且早期回路确实更弱。摘要称性能提升允许回路数减半、前向 FLOPs 降 22.5%–48.2%，说明收益主要落在推理账本而非训练。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "如果不保留早期回路的输出会怎样？",
-            "a": "就退化成标准解码：中间状态被丢弃，提点与省算力的机会都没了，只能用完整回路深度换质量。"
-          },
-          {
-            "q": "换成专门训练一个弱模型来做对比，为什么不够好？",
-            "a": "需要额外训练与部署成本，弱模型分布也未必与目标模型对齐；循环模型自带对齐的弱预测，几乎免费。"
-          },
-          {
-            "q": "为什么必须用更早的回路，而不是同一回路算两遍？",
-            "a": "更早回路计算更少才构成『弱-强』差；深度相同的两次预测几乎一致，相减得不到有效信号。"
-          }
-        ],
-        "mechanism": "循环架构里深度是共享权重的重复执行，早期回路必然计算更少、token 分布更平，而它与最终回路共享上下文与词表，误差方向相关。把它当参照做差，等于在不训练的前提下做了一次『去通用倾向』滤波：两次都高的通用或重复 token 被抵消，只有最终回路才显著抬升的 token 保留下来。这正是方法能免训练、免辅助模型的原因。",
-        "boundary": "只对循环/权重共享且中间状态可解码的模型成立；非循环 Transformer 没有这种免费弱预测。模型太浅、早期与最终回路差别极小时对比信号会退化；α、β 需按模型调，过大反而破坏正常解码。摘要未给失效案例。",
-        "analogyBoundary": "草稿-定稿类比假设两次判断相互独立，而这里两次预测共享权重与上下文，错误高度相关；遇到系统性错误时相减不会纠错，只会一起错。",
-        "misconceptions": [
-          "以为 LoopCD 要训练一个弱模型或改模型结构——它是 training-free 的纯解码方法。",
-          "以为中间回路的 logits 是无用噪声——摘要明确说每个回路都可解码同一 next token。",
-          "以为省算力必然掉质量——摘要称回路数减半仍追平或超过全深度无引导基线。"
-        ],
-        "ownAnalysis": "把『中间状态可当弱监督』从训练搬到解码，是推理期算力反向利用的典型思路：别人往深了算，这里把省下的深度换成质量（推断）。它与 speculative decoding 同属『免费午餐』家族，但依赖循环架构，通用性更弱（推断）。可疑处：增益是否只是对比解码的超参收益、换基线重新调参后是否仍成立，摘要未给对照实验；FLOPs 口径也需核实（推断）。",
-        "officialNotes": [
-          {
-            "position": "标准解码丢弃早期回路状态；LoopCD 免训练，在四个循环 Transformer 家族上一致提点，并允许回路数减半以省 22.5%–48.2% 前向 FLOPs",
-            "source": "https://huggingface.co/papers/2610.02185"
-          }
-        ],
-        "interviewAnswer": "循环 Transformer 每次回路都能解码出同一个 next token 的中间预测，但标准解码只用最后一次。LoopCD 把更早一次回路的弱预测当免费参照：logit 版做对数概率相减、多一次输出头；hidden 版在残差流上取差回加、零额外输出开销。它免训练、免辅助模型，在四个循环模型家族上提点，Ouro-2.6B-Thinking 的 AIME 2024 从 61.88% 升到 73.33%，并且能把回路数减半，省 22.5%–48.2% 前向 FLOPs。",
-        "studyPath": {
-          "prerequisites": [
-            "Transformer 解码与采样",
-            "对比解码（如 DoLa）的基本思路",
-            "循环/权重共享结构"
-          ],
-          "nextSteps": [
-            "读原论文核对 α、β 与实验设置",
-            "在开源循环模型（如 Huginn）上复现 Hidden 版",
-            "与 speculative decoding 对比收益和成本"
-          ]
-        }
-      }
-    },
-    {
-      "id": "622683b4a1f31b43",
-      "tldr": "用 C++ 与 CUDA 从零手写精简版 vLLM 的推理引擎教学项目，1137 stars。",
-      "keyPoints": [
-        "仓库定位：vLLM 的缩小版，用 C++/CUDA 手写高性能 LLM 推理引擎",
-        "标签覆盖 attention、batching、HPC、inference、CUDA、C++",
-        "面向学习：从零搭推理引擎，而不是直接调用现成库",
-        "元数据：1137 stars、94 forks，标记为附带开源实现"
-      ],
-      "why": "面试常问 PagedAttention、连续批处理到底怎么实现，有一个可读的 C++/CUDA 小实现，比背概念更能证明系统侧工程能力。",
-      "difficulty": "medium",
-      "tags": [
-        "inference",
-        "vllm",
-        "cuda",
-        "cpp",
-        "batching"
-      ],
-      "entities": [
-        "jmaczan",
-        "tiny-vllm",
-        "vLLM",
-        "C++",
-        "CUDA"
+        "VLA",
+        "Flow Matching",
+        "π0.5",
+        "Legato",
+        "Temporal Smoothing"
       ],
       "diagram": {
         "kind": "architecture",
-        "title": "精简推理引擎结构",
-        "caption": "一个请求从入队到出 token，要经过调度、分页显存与 CUDA 计算四层",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='精简推理引擎结构：请求队列、调度与连续批处理、分页 KV cache、CUDA kernel 与采样'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>请求队列</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>并发用户输入</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>调度与批处理</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>每步重排 batch</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>分页 KV cache</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>块级显存管理</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>CUDA kernel</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>注意力与采样</text></svg>",
-        "alt": "竖排结构图：请求队列进入调度与连续批处理，再经分页 KV cache 的块级显存管理，最后交给 CUDA kernel 做注意力计算与采样输出。"
+        "title": "VLA 实时化两阶段去噪",
+        "caption": "记住两件事：去噪步数从 10 压到 2 省的是模型侧，机器人侧还有感知、通信与物理响应三笔账。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='VLA 实时框架：观测采集、模型推理、动作发布、机器人控制四段解耦'><rect x='46' y='16' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>观测采集</text><text x='418' y='40' font-size='13' text-anchor='end' fill='currentColor'>模块化按需抓取</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='46' y='70' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>VLA 推理</text><text x='418' y='94' font-size='13' text-anchor='end' fill='currentColor'>去噪 10 步到 2 步</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='46' y='124' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>动作发布</text><text x='418' y='148' font-size='13' text-anchor='end' fill='currentColor'>独立发布频率</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='46' y='178' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>机器人控制</text><text x='418' y='202' font-size='13' text-anchor='end' fill='currentColor'>独立频率与物理响应</text></svg>",
+        "alt": "竖向四层流程：观测采集到 VLA 推理（去噪步数 10 降到 2），再到动作发布，最后到机器人控制，四段各自独立速率。"
       },
       "concepts": [
         {
-          "name": "Paged Attention / 分页 KV Cache",
-          "readable": "把每个序列的 KV cache 切成固定大小的 block 存进显存池，用块表按需拼装，避免为最长可能长度预留一整段连续显存。",
-          "analogy": "图书馆不给你一整排连续书架，而是按需分配编号书格，借书证（块表）记录你的书散落在哪几格。",
-          "analogyBreaksDown": "书格内容放进去就不变，而 KV block 会随生成持续追加，还要在 attention kernel 里按块表跳着读，访存模式复杂得多。",
-          "mechanism": "以 block 为粒度分配与回收显存，让不同序列共享同一显存池并动态增长，把内部碎片从『整段预留』压到最多浪费一个块。",
-          "visual": "画一行显存池方格，每 4 格一组 block；三条不同长度的序列用不同颜色箭头指向各自的 block 编号，体现非连续存放。",
+          "name": "Stage-Aware Non-Uniform Denoising（阶段感知非均匀去噪）",
+          "readable": "流匹配去噪本来要均匀走 10 步；作者发现前几步速度方向已稳定，就把积分预算重新分配，全程只调用 2 次速度场。",
+          "analogy": "像开车出城：高速段方向明确就一路直行不频繁修正，进了老城区路口密集才反复微调方向。",
+          "analogyBreaksDown": "开车能实时看到走错并立刻纠正；两次积分没有回看机会，如果前期速度场方向本就偏，误差会一路带到终点。",
+          "mechanism": "先分析速度场幅度与方向随积分步的变化，把有限的函数评估按阶段异质性分配：前期大步长省算力，末端小步长保方向修正精度。",
+          "visual": "横轴为积分时间从 1 到 0，纵轴为速度场方向变化率；曲线前期贴近零、末端翘起，用两段直线近似展示大步长与小步长的分配。",
           "prerequisites": [
-            "自注意力与 KV cache 概念",
-            "显存分配与碎片的基本认知"
+            "流匹配/扩散采样与 ODE 数值积分",
+            "VLA 动作头的推理流程"
           ],
           "selfTest": [
-            "分页 KV cache 相比预分配连续显存省在哪里？",
-            "block table 在 attention 计算中起什么作用？",
-            "block 太小或太大分别有什么代价？"
+            "两阶段非均匀去噪与直接把均匀采样步数改成 2，差别在哪？",
+            "如果速度场前期就剧烈换向，这套划分会怎样失效？",
+            "从 10 步到 2 步主要省下的是哪部分耗时？"
           ],
-          "formula": "M = 2 \\cdot L \\cdot n_{kv} \\cdot d_h \\cdot b \\cdot s"
+          "formula": "x_{t_{k+1}} = x_{t_k} - (t_k - t_{k+1})\\, v_\\theta(x_{t_k}, t_k)"
         },
         {
-          "name": "Continuous Batching（连续批处理）",
-          "readable": "调度器每个解码步都重新组批：谁生成完就退出、新请求立即补位，而不是等整批所有请求都结束。",
-          "analogy": "食堂不按『整桌人吃完才翻台』，而是有人吃完立刻让排队的人坐下，桌子（算力）几乎不空转。",
-          "analogyBreaksDown": "拼桌只影响体验，而这里 batch 组成每步都在变，会改变 kernel 形状与注意力掩码，必须专门支持变长批的 kernel。",
-          "mechanism": "迭代级调度把解码阶段的算力利用率从请求长度方差中解放出来，吞吐提升来自减少空转，而不是减少总计算量。",
-          "visual": "横轴为时间步：静态批处理画出三个请求并排、短的先结束后留下空白；连续批处理在空白处填入新请求色块。",
+          "name": "End-to-End VLA Latency Budget（VLA 端到端时延预算）",
+          "readable": "把从看到画面到机器人动起来拆成推理、通信、执行几笔可测的账，据此判断瓶颈在模型还是在机器人。",
+          "analogy": "像算外卖总时长：出餐、骑手到店、路上、上楼，哪一段堵住都吃不上热的。",
+          "analogyBreaksDown": "外卖各段可以各自优化；机器人里段与段耦合，推理加速可能让动作更抖，反而拖长物理执行时间。",
+          "mechanism": "让推理、动作发布、机器人控制跑在互相独立的频率上，并用动作来源日志把延迟与异常归因到具体环节。",
+          "visual": "横向堆叠条形图，每行一个执行方法，色块依次表示感知采集、模型推理、通信调度、物理响应四段耗时。",
           "prerequisites": [
-            "自回归解码流程",
-            "吞吐与延迟的基本权衡"
+            "实时系统基础概念",
+            "机器人控制回路与频率"
           ],
           "selfTest": [
-            "静态批处理在什么负载下浪费最严重？",
-            "连续批处理对单请求延迟有什么影响？",
-            "为什么它需要变长序列的注意力 kernel？"
+            "端到端时延里哪些段由模型直接决定？",
+            "为什么只优化推理可能看不到端到端收益？",
+            "动作来源日志解决的是什么问题？"
           ],
-          "formula": "\\text{Throughput} = \\frac{\\sum_i L_i}{T_{total}}"
+          "formula": "T_{e2e} = T_{percept} + T_{infer}(N) + T_{comm} + T_{exec}"
         }
       ],
       "formulas": [
         {
-          "id": "f-paged-kv-block-memory",
-          "name": "分页 KV Cache 显存占用（Paged KV-Cache Footprint）",
-          "category": "engineering",
-          "latex": "M = 2 \\cdot L \\cdot n_{kv} \\cdot d_h \\cdot b \\cdot \\lceil s/B \\rceil \\cdot B",
+          "id": "f-vla-two-stage-denoising",
+          "name": "两阶段非均匀去噪更新（Stage-Aware Two-Step Denoising Update）",
+          "category": "worldmodel",
+          "latex": "x_{t_{k+1}} = x_{t_k} - (t_k - t_{k+1})\\, v_\\theta(x_{t_k}, t_k),\\quad k \\in \\{0, 1\\}",
           "symbols": [
             [
-              "2",
-              "K 与 V 两份张量"
+              "x_{t_k}",
+              "第 k 步的带噪动作/状态样本"
             ],
             [
-              "L",
-              "层数"
+              "v_\\theta",
+              "速度场网络，即 VLA 的动作头"
             ],
             [
-              "n_{kv}",
-              "KV 头数（GQA/MQA 时小于注意力头数）"
+              "t_k",
+              "第 k 步的积分时刻，t_0 为纯噪声端"
             ],
             [
-              "d_h",
-              "每个头的维度"
-            ],
-            [
-              "b",
-              "每元素字节数（fp16 为 2）"
-            ],
-            [
-              "s",
-              "序列长度"
-            ],
-            [
-              "B",
-              "分页 block 的 token 数"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：每层每个 token 需要保存 K、V 两组向量，故系数为 2。",
-            "第 2 步：单 token 单层的元素数为 2·n_kv·d_h。",
-            "第 3 步：乘层数 L 与序列长度 s，得到单序列 KV cache 总量。",
-            "第 4 步：分页后按 block 向上取整分配，碎片由 O(s) 降到 O(B)。"
-          ],
-          "analogy": "像订酒店房间：不按最大可能入住天数包下整层，而是按天按需开房，退房即刻回收。",
-          "pitfalls": [
-            "把 n_kv 当成注意力头数：GQA/MQA 下 KV 头更少，估算会差数倍。",
-            "忽略分页向上取整的开销：block 越小碎片越少但块表越大。",
-            "忘记乘每元素字节数，把『元素数』当成『显存字节数』。"
-          ],
-          "code": "def kv_bytes(L, n_kv, d_h, seq, block=16, dtype=2):\n    blocks = -(-seq // block)          # 向上取整\n    return 2 * L * n_kv * d_h * blocks * block * dtype\n\nprint(kv_bytes(32, 8, 128, 4096))      # 单序列 KV cache 字节数",
-          "sources": [
-            {
-              "title": "jmaczan/tiny-vllm",
-              "url": "https://github.com/jmaczan/tiny-vllm"
-            }
-          ]
-        },
-        {
-          "id": "f-continuous-batching-throughput",
-          "name": "连续批处理吞吐与有效吞吐（Continuous Batching Throughput）",
-          "category": "engineering",
-          "latex": "\\text{Throughput} = \\frac{\\sum_{i=1}^{N} L_i}{T_{\\text{total}}},\\qquad \\text{Goodput} = \\frac{\\#\\{\\text{满足延迟目标的请求}\\}}{T_{\\text{total}}}",
-          "symbols": [
-            [
-              "L_i",
-              "第 i 个请求生成的 token 数"
-            ],
-            [
-              "N",
-              "统计窗口内完成的请求数"
-            ],
-            [
-              "T_total",
-              "窗口总时长（含 GPU 空转时间）"
-            ],
-            [
-              "Goodput",
-              "满足延迟 SLO 的完成速率"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：静态批处理下整批耗时由最长序列决定，短序列算完即空转。",
-            "第 2 步：改为每步重排 batch，完成的序列立即退出、等待队列立即补位。",
-            "第 3 步：总生成 token 数不变而 T_total 缩短，吞吐随之上升。",
-            "第 4 步：延迟敏感场景要看 SLO 内的 Goodput，而非裸吞吐。"
-          ],
-          "analogy": "自助餐收盘子：服务员不等一桌吃完才收，而是见空盘就收、见空位就带位，翻台率自然上去。",
-          "pitfalls": [
-            "把吞吐提升说成『计算量减少』——实际是空转减少、利用率提升。",
-            "忽略延迟代价：连续批处理会拉长个别请求的排队等待。",
-            "把 throughput 与 latency 混为一谈，两者常常互相牺牲。"
-          ],
-          "code": "def throughput(token_lengths, total_seconds):\n    return sum(token_lengths) / total_seconds\n\nprint(throughput([50, 200, 500], 3.0))   # tokens/s",
-          "sources": [
-            {
-              "title": "jmaczan/tiny-vllm",
-              "url": "https://github.com/jmaczan/tiny-vllm"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "仓库自述：用 C++ 和 CUDA 构建高性能 LLM 推理引擎，是 vLLM 的精简版（来自 title/summary）",
-          "标签包含 inference、vllm、cuda、batching、attention、cpp、hpc，说明主题是 C++/CUDA 推理系统",
-          "元数据：1137 stars、94 forks、codeAvailable=true"
-        ],
-        "uncertain": [
-          "summary 只有一句话，未给任何实现细节；本条两个公式是按 vLLM 公开通用形式重建的教学式子，需核对仓库实际实现",
-          "仓库是否真的实现了 PagedAttention 与连续批处理、支持哪些模型/量化格式，摘要未说明",
-          "stars 与 forks 是采集时点快照，会随时间变化"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "一个用 C++ 和 CUDA 手写『小号 vLLM』的教学项目。"
-          },
-          {
-            "level": "入门",
-            "text": "vLLM 是主流 LLM 推理引擎，这个仓库把它的核心做法拆小，用 C++/CUDA 从零实现一遍，方便看清注意力计算、批处理和显存管理到底是怎么落地的。"
-          },
-          {
-            "level": "进阶",
-            "text": "读这类项目重点看三件事：KV cache 如何分页管理，避免为最长序列预留连续显存；调度器如何做迭代级连续批处理，让完成序列退出、新请求补位；注意力与采样 kernel 如何用 CUDA 写出并保持显存带宽友好。仓库定位是 vLLM 的缩小复刻，适合当作系统方向的作品集与面试素材。"
-          },
-          {
-            "level": "专家",
-            "text": "从工程面试角度，这条卡片的证据价值在于『可读的完整实现』而非新方法：把 PagedAttention 的块表寻址、变长 batch 的 kernel 形状、以及 block 粒度显存分配串成一条链，是区分『会调库』和『懂系统』的分界线。注意 summary 只有一句话，具体支持哪些模型、是否真做分页与连续批处理需看源码；与 TensorRT-LLM、SGLang 相比，它的取舍在教学可读性而非极致性能（推断）。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "不做分页 KV cache，直接分配连续显存会怎样？",
-            "a": "必须按最大可能长度预留，内部碎片严重，并发序列数被显存卡死，长尾长度分布下浪费尤其大。"
-          },
-          {
-            "q": "为什么不能只靠加大 batch 来提升吞吐？",
-            "a": "整批耗时由最长序列决定，短序列算完就空转；加大 batch 只会把空转放大，延迟也更差。"
-          },
-          {
-            "q": "为什么用 CUDA 手写，而不是直接调 cuBLAS 或 FlashAttention？",
-            "a": "教学目标就是看清 kernel 层的数据布局与显存带宽瓶颈；用现成库会跳过这些关键工程决策。"
-          }
-        ],
-        "mechanism": "LLM 解码是逐 token、显存带宽受限的过程，瓶颈常在 KV cache 的显存管理与批组成，而不在算力峰值。迭代级批处理把请求长度方差从算力利用率里剥离，分页 KV 把连续显存预留换成块级按需分配；两者共同把 GPU 从空转和碎片中解放出来，这是 vLLM 类引擎吞吐优势的机制来源。",
-        "boundary": "教学精简版不适合直接上生产：模型格式单一，缺少分布式并行、量化、前缀缓存等能力；分页与小 block 会带来块表开销与 kernel 复杂度，序列很短时收益有限。summary 未说明能力边界，需以仓库实际代码为准。",
-        "analogyBoundary": "图书馆书格类比忽略了『块会持续写入并被 kernel 随机跳读』这一点，因此分页在真实实现里不只是索引问题，还牵涉访存合并与 kernel 设计。",
-        "misconceptions": [
-          "以为 tiny-vllm 是 vLLM 的正式分支或可直接替代——它是教学向的精简复刻。",
-          "以为分页 KV cache 减少的是计算量——它减少的是显存碎片与浪费。",
-          "以为连续批处理只是把 batch 调大——关键是每个解码步重排批组成。"
-        ],
-        "ownAnalysis": "这条卡片本身信息量极小（一句话 summary），价值在于工程练习与面试话术锚点：能把 PagedAttention 的块表、连续批处理调度、CUDA kernel 三件事讲清楚，就覆盖了推理系统岗的高频考点。可疑处：summary 未证明仓库真的实现了分页注意力（推断），也可能只做了连续批处理加朴素 attention；引用时不宜把 vLLM 的具体指标安到它头上。",
-        "officialNotes": [
-          {
-            "position": "仓库自述定位：用 C++ 与 CUDA 构建高性能 LLM 推理引擎，是 vLLM 的精简版",
-            "source": "https://github.com/jmaczan/tiny-vllm"
-          }
-        ],
-        "interviewAnswer": "tiny-vllm 是用 C++/CUDA 手写的小号 vLLM，我拿它当推理系统的实操样本。核心看三点：KV cache 分页管理，把连续显存预留换成块级按需分配，内部碎片最多浪费一个块；迭代级连续批处理，每个解码步让完成序列退出、新请求补位，把长度方差从利用率中剥离；以及注意力与采样 kernel 的显存带宽取舍。它的价值是教学可读性，不是生产性能。",
-        "studyPath": {
-          "prerequisites": [
-            "Transformer 自注意力与 KV cache",
-            "CUDA 编程基础",
-            "显存层级与带宽概念"
-          ],
-          "nextSteps": [
-            "对照 vLLM 论文核对 PagedAttention 的块表设计",
-            "读源码确认调度与 kernel 实现范围",
-            "用不同并发/长度分布压测吞吐与延迟"
-          ]
-        }
-      }
-    },
-    {
-      "id": "527f4b1f6ad840c7",
-      "tldr": "比较六个预训练模型的中间残差状态与各自终点，发现推理中几何特异性增强而欧氏距离几乎不变。",
-      "keyPoints": [
-        "把中间残差状态与自身终态、以及其它上下文的终态库对比",
-        "自身终点很早就优于平均替代终点，但许多个体终点仍更近",
-        "竞争者集合随深度缩小，成员会变、存活终点未必更相似",
-        "证明直线走向自身终点不会引入新竞争者，观测到的进入即偏离直线",
-        "低排名输出 token 的终点余弦距离更远，残差几何与输出组织相关"
-      ],
-      "why": "理解残差流如何逐步锁定答案，是解释表征可解释性、探针与幻觉的底层视角，面试讲『模型内部怎么定下这个 token』时很有用。",
-      "difficulty": "hard",
-      "tags": [
-        "interpretability",
-        "residual-stream",
-        "representation-geometry",
-        "inference",
-        "foundation"
-      ],
-      "entities": [
-        "residual stream",
-        "six pretrained language models",
-        "Euclidean distance",
-        "cosine distance",
-        "endpoint bank"
-      ],
-      "diagram": {
-        "kind": "flow",
-        "title": "几何特异性分析流程",
-        "caption": "不问『离终点多远』，而问『还有多少别家终点更近』",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='残差几何分析流程：中间残差状态分别与自身终点和外部终点库比较，得到竞争者集合与特异性'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>中间残差状态</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>逐层取 h_t</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>对比自身终点</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>距离与排名</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>对比外部终点库</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>竞争者集合</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>特异性随深度增强</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>距离未必变小</text></svg>",
-        "alt": "竖排流程：取中间残差状态 h_t，分别与自身终点、外部终点库比较，得到竞争者集合，观察到特异性随深度增强但欧氏距离可能几乎不变。"
-      },
-      "concepts": [
-        {
-          "name": "Residual Stream（残差流）",
-          "readable": "Transformer 每层只对隐藏向量做增量更新并累加回主干，这条不断被加法的向量通道就是残差流，最终答案由它的末态决定。",
-          "analogy": "一条传送带，每道工序都往上放一点零件，最后的成品由整条带子上累积的零件共同决定。",
-          "analogyBreaksDown": "传送带上零件只增不减，而残差更新可以是负方向、能互相抵消，且读出时往往只用到部分方向的投影。",
-          "mechanism": "把深度写成累加而非替换，使每层只需学小增量，训练更稳；也让『中间状态与终态的距离』成为可量化的收敛指标。",
-          "visual": "横轴为层深，纵轴为残差流范数或某一维取值，画一条逐步上升的折线表示累计更新。",
-          "prerequisites": [
-            "Transformer 残差连接",
-            "向量距离与余弦相似度"
-          ],
-          "selfTest": [
-            "残差流与单层输出的区别是什么？",
-            "为什么中间状态可以被解码成 token 预测？",
-            "残差流范式对可解释性研究意味着什么？"
-          ],
-          "formula": "h_{l+1} = h_l + F_l(h_l)"
-        },
-        {
-          "name": "Endpoint Competition（终点竞争与几何特异性）",
-          "readable": "把中间状态与『每个上下文自己的最终状态』比较，比自身终点更近的其它终点就是竞争者；竞争者越少，说明表征越锁定到自己的答案。",
-          "analogy": "选秀现场：选手（中间状态）逐渐靠近自己的支持者，但周围还站着别家粉丝，只有人群散开才算真正锁定。",
-          "analogyBreaksDown": "粉丝位置固定，而终点库是从其它上下文经验采样得到的有限集合，竞争者数量依赖采样规模与所用距离度量。",
-          "mechanism": "用自身终点与其它终点的相对排序替代绝对距离，才能解释『欧氏距离几乎不变但判别性变好』：方向对齐起主导，范数变化被抵消。",
-          "visual": "横轴为层深，纵轴为竞争者数量（比自身终点更近的其它终点个数）画递减曲线，叠加自身终点排名上升的曲线。",
-          "prerequisites": [
-            "最近邻与距离度量",
-            "语言模型 logits 与输出 token 排序"
-          ],
-          "selfTest": [
-            "为什么欧氏距离变小不是特异性增强的必要条件？",
-            "竞争者集合缩小是否意味着存活终点彼此更相似？",
-            "为什么低排名 token 的终点距离更远？"
-          ],
-          "formula": "C_t = \\#\\{\\, j \\neq \\text{own} : d(h_t, e_j) < d(h_t, e_{\\text{own}}) \\,\\}"
-        },
-        {
-          "name": "Straight-Line Convergence（直线收敛假设）",
-          "readable": "假设中间状态沿一条直线靠近自己的终点。作者证明这种直线路径不会引入新的竞争者，因此一旦观察到新竞争者出现，就说明实际路径偏离了直线。",
-          "analogy": "沿直线走回家，路过的邻居只会越来越远，不会突然冒出新邻居；若真冒出来了，说明你其实绕了路。",
-          "analogyBreaksDown": "该证明只说明欧氏与余弦距离下竞争者集合不扩张，既不保证路径是直线，也不保证直线路径是最优或最快的。",
-          "mechanism": "把几何直觉变成可检验命题：直线路径下竞争者集合单调收缩，于是观测到的『进入』事件就成了偏离直线的证据。",
-          "visual": "同一坐标系画两条轨迹：一条直线指向终点、竞争者数量单调下降；一条弯曲轨迹上标出竞争者数量反弹的点。",
-          "prerequisites": [
-            "向量投影与凸性",
-            "余弦相似度的几何含义"
-          ],
-          "selfTest": [
-            "直线路径下竞争者集合为什么不会扩张？",
-            "观察到的进入事件反驳了什么假设？",
-            "范数变化会如何影响这个结论？"
-          ],
-          "formula": "2(1-\\alpha)\\,u\\cdot v > \\|v\\|^2,\\quad u=h_0-e_{\\text{own}},\\ v=e_j-e_{\\text{own}}"
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-residual-competitor-count",
-          "name": "终点竞争者计数（Endpoint Competitor Count）",
-          "category": "foundation",
-          "latex": "C_t = \\Big|\\{\\, e_j \\in \\mathcal{E},\\ j \\neq \\text{own} \\;:\\; d(h_t, e_j) < d(h_t, e_{\\text{own}}) \\,\\}\\Big|",
-          "symbols": [
-            [
-              "h_t",
-              "第 t 层（或第 t 步）的中间残差状态"
-            ],
-            [
-              "e_own",
-              "当前上下文自身的最终残差状态"
-            ],
-            [
-              "\\mathcal{E}",
-              "其它上下文终态组成的经验终点库"
-            ],
-            [
-              "d",
-              "欧氏距离或余弦距离"
-            ],
-            [
-              "C_t",
-              "竞争者数量，越小表示表征越锁定到自身终点"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：中间状态最终要变成某个具体输出，于是用『离谁更近』衡量它的判别性。",
-            "第 2 步：把自身终态与其它上下文的终态库放在同一距离尺度下比较。",
-            "第 3 步：统计比自身终点更近的其它终点个数，得到竞争者集合大小。",
-            "第 4 步：随深度观察 C_t 与自身终点排名的变化，从而把『距离变小』与『判别性变好』分开讨论。"
-          ],
-          "analogy": "在人群里牵着同伴走路：不看你走了多远，而看有多少陌生人比你的同伴离你更近。",
-          "pitfalls": [
-            "把欧氏距离变小当成特异性增强的必要条件——摘要明确指出两者可以脱钩。",
-            "忽略终点库是经验采样：库越大、竞争者越容易多。",
-            "混用欧氏与余弦距离的结论，两者对范数的敏感度不同。"
-          ],
-          "code": "import torch\n\ndef competitor_count(h, e_own, bank):        # bank: [N, D]\n    d_own = torch.norm(h - e_own, dim=-1)\n    d_j   = torch.norm(bank - h, dim=-1)\n    return int((d_j < d_own).sum())",
-          "sources": [
-            {
-              "title": "The Geometry of Inference in Transformer Residual Streams",
-              "url": "https://huggingface.co/papers/2609.37824"
-            }
-          ]
-        },
-        {
-          "id": "f-straight-path-competitor-lemma",
-          "name": "直线路径不引入新竞争者（Straight-Path No-New-Competitor Lemma）",
-          "category": "foundation",
-          "latex": "h(\\alpha)=h_0+\\alpha\\,(e_{\\text{own}}-h_0),\\quad \\|h(\\alpha)-e_j\\| < \\|h(\\alpha)-e_{\\text{own}}\\| \\iff 2(1-\\alpha)\\,u\\cdot v > \\|v\\|^2",
-          "symbols": [
-            [
-              "h_0",
-              "起点中间状态"
-            ],
-            [
-              "e_own",
-              "自身最终终点"
-            ],
-            [
-              "e_j",
-              "某个竞争终点"
-            ],
-            [
-              "\\alpha",
-              "沿直线前进的比例，α∈[0,1]"
-            ],
-            [
-              "u",
-              "h_0 − e_own"
-            ],
-            [
-              "v",
-              "e_j − e_own"
-            ],
-            [
-              "u·v",
-              "起点方向与竞争方向的内积"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：设状态沿起点到自身终点的直线移动，则 h(α) − e_own = (1−α)u。",
-            "第 2 步：写出 e_j 比 e_own 更近的不等式，两边平方后展开。",
-            "第 3 步：化简得 2(1−α)u·v > ‖v‖²，右端与 α 无关。",
-            "第 4 步：左端随 α 单调不增，所以若 e_j 在 α=0 时不是竞争者，之后也不会成为竞争者；反之观测到的『进入』事件就证明路径偏离直线。"
-          ],
-          "analogy": "沿直线走向自己家门，路边邻居只会越来越远，不会突然冒出新的更近邻居；若冒出来了，说明你绕路了。",
-          "pitfalls": [
-            "该结论对欧氏距离成立，摘要称余弦距离下亦有类似证明，换成别的度量不一定成立。",
-            "『不引入新竞争者』不等于竞争者一定减少，也不等于直线路径最优。",
-            "范数变化不被这个直线假设覆盖，需要单独分析。"
-          ],
-          "code": "import torch\n\ndef is_competitor(h, e_own, e_j):\n    return torch.norm(h - e_j) < torch.norm(h - e_own)\n\nfor a in torch.linspace(0, 1, 11):        # 沿直线扫描 alpha\n    h = h0 + a * (e_own - h0)\n    assert not (is_competitor(h, e_own, e_j) and not is_competitor(h0, e_own, e_j))",
-          "sources": [
-            {
-              "title": "The Geometry of Inference in Transformer Residual Streams",
-              "url": "https://huggingface.co/papers/2609.37824"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "研究比较中间残差状态与自身终态，以及其它上下文终态构成的经验终点库，覆盖六个预训练语言模型",
-          "自身终点很早就优于『平均替代终点』，但仍有许多个体终点比它更近",
-          "竞争终点集合通常随深度缩小，但成员会变化，存活下来的终点之间未必变得更相似",
-          "方向对齐与终点排名可以改善，而到最终状态的欧氏距离几乎不变",
-          "作者提出一个简单的高维模型，分离范数、对齐与终点几何的作用，说明渐变的方向变化如何造成竞争的急剧下降",
-          "作者证明在欧氏或余弦距离下，直线走向自身终点不会引入新竞争者，因此观测到的进入事件意味着偏离直线收敛",
-          "在所有被研究模型中，与较低排名输出 token 关联的终点，其余弦距离倾向更远"
-        ],
-        "uncertain": [
-          "摘要未给任何具体公式与阈值，本条两个公式是按摘要描述重建的通用形式，需核对原文",
-          "『六个预训练语言模型』的具体名称与规模摘要未列",
-          "『早』与『深度』的具体量化定义（层数还是相对深度）摘要未说明",
-          "余弦距离下直线路径结论的确切形式（是否需额外假设）摘要仅一句带过"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "模型逐层想清楚答案时，方向在对齐，但离终点并不一定更近。"
-          },
-          {
-            "level": "入门",
-            "text": "残差流是 Transformer 里不断累加更新的向量通道。研究者把中间状态同时与『这个上下文自己的最终状态』和『其它上下文的最终状态库』比较，发现越到后面，比自身终点更近的竞争者越少，表征越来越锁定到自己的答案。"
-          },
-          {
-            "level": "进阶",
-            "text": "关键洞察是距离与判别性可以脱钩：欧氏距离到自身终点几乎不变，但方向对齐在改善，于是竞争终点不断退出。竞争者集合随深度缩小，但其成员会更换，存活终点之间也不必然更相似。作者还用高维玩具模型把范数、对齐、终点几何三者的作用分开，并证明直线收敛路径不会引入新竞争者，从而把观测到的『进入』事件当作偏离直线的证据。"
-          },
-          {
-            "level": "专家",
-            "text": "这项工作的价值在于把『收敛』拆成三个可分别度量的量：到终点的距离、方向对齐、以及竞争者集合的规模与集中度。作者证明直线路径下竞争者集合单调收缩（欧氏与余弦距离），因此进入事件成为偏离直线的判据；同时发现低排名输出 token 的终点在余弦距离上更远，把残差几何与输出分布组织联系起来。局限是结论基于六个预训练模型与经验终点库，距离度量与库规模都会影响竞争者计数，因果解释仍待验证。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "如果不引入外部终点库，只看与自身终点的距离会怎样？",
-            "a": "就无法区分『距离变小』和『判别性变好』；距离几乎不变时会被误判为没有进展。"
-          },
-          {
-            "q": "为什么不能简单认为『越深越靠近终点』？",
-            "a": "摘要显示欧氏距离变化很小，改善主要体现在方向对齐与竞争者退出，直线收敛假设也被观测到的进入事件打破。"
-          },
-          {
-            "q": "为什么低排名 token 与终点距离的关系值得单独看？",
-            "a": "它把内部几何与输出组织挂钩：越不可能的 token，其终点在余弦距离上越远，说明几何结构与词表排序相关。"
-          }
-        ],
-        "mechanism": "语言模型的每一步都在残差流上叠加更新。若只看绝对距离，范数增长会掩盖方向变化；改成看『有多少别的终点比自己的终点更近』，就把判别性问题变成了集合竞争问题。方向逐步对齐使竞争者一个个退出，即使距离几乎不动，表征也已在语义上锁定答案——这就是几何特异性增强的机制。",
-        "boundary": "结论建立在六个预训练模型与经验采样的终点库上：库规模、距离度量（欧氏 vs 余弦）与是否归一化都会改变竞争者计数；高维玩具模型只能解释定性趋势，不构成因果证明。对非自回归或非常规架构是否成立，摘要未涉及。",
-        "analogyBoundary": "选秀人群类比把『终点』当成固定坐标，而这里的终点是从其它上下文采样得到的估计量，且同一状态在不同度量下排序可能不同，因此『人群散开』的图像只对固定度量与固定库成立。",
-        "misconceptions": [
-          "以为表征收敛就等于欧氏距离持续下降——摘要明确说距离可以几乎不变。",
-          "以为竞争者减少说明存活终点彼此更相似——摘要说未必更相似。",
-          "以为几何分析直接给出因果解释——它刻画的是相关几何现象，机制仍有待验证。"
-        ],
-        "ownAnalysis": "把『离目标近不近』换成『有多少对手比目标更近』，思路与对比学习、最近邻分类的判别性度量一脉相承，也与探针研究关心的问题重合（推断）。可疑处：终点库取自其它上下文，库的构成会显著影响竞争者计数，摘要未给库规模敏感性分析；『直线路径不引入新竞争者』是数学命题，但真实模型偏离直线未必意味着存在专门的优化机制（推断）。",
-        "officialNotes": [
-          {
-            "position": "在六个预训练模型上，自身终点较早优于平均替代终点，竞争者集合随深度缩小而成员变化；欧氏距离几乎不变时方向对齐与排名仍可改善；并证明直线路径在欧氏/余弦距离下不会引入新竞争者",
-            "source": "https://huggingface.co/papers/2609.37824"
-          }
-        ],
-        "interviewAnswer": "这篇工作在循环残差流上问了一个更细的问题：中间状态是不是越来越像自己的最终状态。答案是不一定在距离上，但在方向上。自身终点很早就能胜过平均替代终点，但很多个体终点仍然更近；随深度竞争者集合缩小，成员还会换，存活终点也不必然更相似。作者还证明直线收敛不会引入新竞争者，所以观察到的进入就说明偏离直线；低排名 token 的终点余弦距离更远，把几何和输出组织连了起来。",
-        "studyPath": {
-          "prerequisites": [
-            "Transformer 残差连接与逐层表征",
-            "向量距离、余弦相似度与高维几何",
-            "语言模型 logits 与 token 排名"
-          ],
-          "nextSteps": [
-            "读原文核对高维玩具模型与证明细节",
-            "复现竞争者计数并测试库规模敏感性",
-            "与探针/可解释性方法对照，看几何指标能否预测错误"
-          ]
-        }
-      }
-    },
-    {
-      "id": "8be496c85ad5ec3b",
-      "tldr": "JetBrains 开源的 JVM Agent 框架，主打可预测与容错的跨平台智能体，4598 stars。",
-      "keyPoints": [
-        "JVM 上的 Agent 框架，Java 与 Kotlin 都能写",
-        "覆盖后端服务到 Android/iOS、JVM，甚至浏览器环境",
-        "主打可预测、容错与 enterprise-ready，源自 JetBrains 内部 AI 产品经验",
-        "元数据：4598 stars、483 forks，标记为附带开源实现"
-      ],
-      "why": "Agent 岗常考工程化落地：JVM/Android 生态的框架能说明跨端部署、可预测编排与容错设计的真实取舍。",
-      "difficulty": "easy",
-      "tags": [
-        "agent",
-        "framework",
-        "kotlin",
-        "jvm",
-        "fault-tolerance"
-      ],
-      "entities": [
-        "JetBrains",
-        "Koog",
-        "JVM",
-        "Java",
-        "Kotlin",
-        "Android",
-        "iOS"
-      ],
-      "diagram": {
-        "kind": "architecture",
-        "title": "JVM 智能体框架分层",
-        "caption": "从应用代码到工具调用再到容错恢复，每一层都为『可预测』服务",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Koog 分层结构：Kotlin 或 Java 应用调用框架，经工作流与策略编排，执行 LLM 与工具调用，并有容错与状态恢复'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>Java / Kotlin 应用</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>调用 Koog API</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>工作流与策略编排</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>可预测执行图</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>LLM 与工具调用</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>多步推理执行</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>容错与状态恢复</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>失败可重试</text></svg>",
-        "alt": "竖排分层图：Java/Kotlin 应用调用 Koog API，经工作流与策略编排进入 LLM 与工具调用，底层提供容错与状态恢复。"
-      },
-      "concepts": [
-        {
-          "name": "Agent Framework（智能体应用框架）",
-          "readable": "把『调模型、调工具、按步骤编排、出错重试』这些重复工作封装成库，让开发者用熟悉的语言写智能体，而不必从零搭胶水代码。",
-          "analogy": "做菜不用自己造灶台和切菜机：框架就是一套厨房设备，你只写菜谱（业务逻辑），火候与清洗交给设备。",
-          "analogyBreaksDown": "厨房设备行为确定，而 Agent 的核心组件是概率性的 LLM，框架无法保证输出正确，只能约束流程与失败处理。",
-          "mechanism": "用统一抽象（工作流、工具、模型客户端）把不确定的模型调用包进确定的执行结构，从而获得可测试、可观测、可回滚的工程属性。",
-          "visual": "画一个三层栈：最上层是业务逻辑，中层是框架编排与工具注册，底层是模型与运行时；标注每层暴露的抽象。",
-          "prerequisites": [
-            "LLM 调用与 prompt 基础",
-            "工具调用/函数调用（function calling）概念",
-            "至少一种后端语言的工程经验"
-          ],
-          "selfTest": [
-            "框架相比自己写胶水代码多买了什么？",
-            "为什么 Agent 框架要强调查错与重试？",
-            "跨平台（后端与移动端）支持会带来什么约束？"
-          ],
-          "formula": ""
-        },
-        {
-          "name": "Fault-Tolerant Agent Execution（容错执行）",
-          "readable": "Agent 的一步可能因网络、工具超时或模型输出不合法而失败；容错执行指记录状态、限定重试、必要时降级，让整个任务不至于全盘重来。",
-          "analogy": "打游戏存档：在一个关卡内挂了就从最近的存档点重来，而不是从第一关重开。",
-          "analogyBreaksDown": "游戏存档是完美快照，而 Agent 的状态散落在对话历史、外部工具副作用与内存里，未必能干净回滚。",
-          "mechanism": "把多步执行变成带检查点的状态机，并对每步失败分类处理（可重试/不可重试/需降级），避免重复副作用与无限重试。",
-          "visual": "画一条步骤链，每个节点旁标注失败概率与重试箭头；链尾画一个『检查点/存档』图标表示可恢复点。",
-          "prerequisites": [
-            "状态机与幂等性概念",
-            "超时、重试与退避策略",
-            "分布式系统中的副作用问题"
-          ],
-          "selfTest": [
-            "为什么 Agent 的重试比普通 HTTP 重试更危险？",
-            "什么情况下重试一定会失败？",
-            "检查点粒度如何影响恢复成本？"
-          ],
-          "formula": "P_{\\text{succ}}(n) = 1-(1-p)^{n}"
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-agent-retry-success",
-          "name": "智能体重试成功率与期望调用次数（Retry Success Probability）",
-          "category": "agent",
-          "latex": "P_{\\text{succ}}(n) = 1-(1-p)^{n},\\qquad \\mathbb{E}[\\text{calls}] = \\sum_{k=1}^{n} k\\,p\\,(1-p)^{k-1}",
-          "symbols": [
-            [
-              "p",
-              "单次尝试的成功概率"
-            ],
-            [
-              "n",
-              "最大重试或重启次数"
-            ],
-            [
-              "P_succ",
-              "至少成功一次的概率"
-            ],
-            [
-              "E[calls]",
-              "成功前的期望调用次数"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：企业级 Agent 面对网络抖动、工具超时、模型输出不合法等瞬时失败，重试是最基本的容错手段。",
-            "第 2 步：若各次尝试独立，n 次全部失败的概率为 (1−p)^n。",
-            "第 3 步：至少成功一次的概率即 1−(1−p)^n，随 n 上升但边际收益递减。",
-            "第 4 步：把期望调用次数乘上单次 token 与时间成本，才能判断重试几次划算；框架必须能中断并恢复到某个状态，重试才有意义。"
-          ],
-          "analogy": "电话总掉线就多拨几次：多拨能提高接通概率，但每次都算话费；如果是线路本身坏了，多拨也没用。",
-          "pitfalls": [
-            "假设失败独立——LLM 与工具失败常是系统性错误，同一 prompt 重试可能一直失败，需要换策略或降级。",
-            "只堆重试次数、不看成本与超时预算，会拖垮端到端延迟。",
-            "把重试当成事务回滚：多步 Agent 需要状态与检查点支持，否则重跑会重复副作用。"
-          ],
-          "code": "def retry_success(p, n):\n    return 1 - (1 - p) ** n\n\ndef expected_calls(p, n):\n    return sum(k * p * (1 - p) ** (k - 1) for k in range(1, n + 1))\n\nprint(retry_success(0.6, 3), expected_calls(0.6, 3))",
-          "sources": [
-            {
-              "title": "JetBrains/koog",
-              "url": "https://github.com/JetBrains/koog"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "Koog 是面向 JVM（Java 与 Kotlin）的框架，用于构建可预测、容错、企业级的 AI 智能体",
-          "覆盖平台包括后端服务、Android 与 iOS、JVM，甚至浏览器环境",
-          "框架自称基于 JetBrains 的 AI 产品经验，针对复杂 LLM 与 AI 问题提供成熟方案",
-          "元数据：4598 stars、483 forks、codeAvailable=true，作者标注为 JetBrains"
-        ],
-        "uncertain": [
-          "summary 只有一句话，未给任何 API、架构或容错机制细节；本条公式是通用重试模型，不是 Koog 官方定义，需核对文档",
-          "『跨平台』具体覆盖到哪些目标（Kotlin Multiplatform/Wasm 等）摘要只列了后端、Android/iOS、JVM、浏览器",
-          "框架内部的编排、持久化与多智能体能力摘要未提及",
-          "stars 与 forks 为采集时点快照，会随时间变化"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "JetBrains 给 JVM 生态做的智能体框架，主打可预测和容错。"
-          },
-          {
-            "level": "入门",
-            "text": "写 AI 智能体通常要自己拼模型调用、工具调用和重试逻辑。Koog 把这些封装成 JVM 上的框架，用 Java 或 Kotlin 写，官方强调它可预测、能容错，并且能跑在后端、Android/iOS、JVM 甚至浏览器环境里。"
-          },
-          {
-            "level": "进阶",
-            "text": "Agent 框架的真正卖点不是『能调 LLM』，而是把概率性的模型调用包进确定性的执行结构里：工作流描述步骤与分支，工具注册统一输入输出，失败时按类型决定重试、降级还是终止，并保留状态以便从检查点恢复。Koog 由 JetBrains 出品，价值主张正是这套工程属性，以及一套代码跨服务端与移动端的能力。"
-          },
-          {
-            "level": "专家",
-            "text": "从面试角度，JVM Agent 框架的意义在于生态：多数 Agent 工具链是 Python 优先，Android/后端 Java 团队接入成本高。Koog 把编排、工具调用、容错与多平台交付放进同一套 Kotlin/Java 抽象里，对标的是把『能跑的 demo』变成『可运维的服务』。需要警惕的是：summary 未给任何技术细节与基准，实际可靠性要读文档与源码；框架层无法消除 LLM 的概率性错误，只能约束流程与失败处理（推断）。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "如果框架不做容错，只做简单调用会怎样？",
-            "a": "一次工具超时或输出不合法就整条任务失败，长流程重跑成本高，且可能重复副作用。"
-          },
-          {
-            "q": "为什么重试需要检查点，而不能只重跑整个流程？",
-            "a": "Agent 步骤多、耗 token 且有外部副作用，整体重跑既贵又可能重复下单、重复发消息。"
-          },
-          {
-            "q": "为什么 JVM 上的 Agent 框架值得单独存在？",
-            "a": "企业后端与 Android 大量使用 Java/Kotlin，直接复用现有工程体系（线程、依赖注入、监控）比引入 Python 服务更省集成成本。"
-          }
-        ],
-        "mechanism": "Agent 的不确定性来自两层：模型输出概率性和外部工具的瞬时故障。框架把二者分别关进确定的容器——用显式工作流约束步骤与分支，用重试/降级/检查点约束失败路径。这样业务逻辑可测试、可观测，任务也具备『失败可恢复』的性质，而不是每次都从零重跑。",
-        "boundary": "框架只能约束流程，不能保证模型输出正确，也不能修复系统性错误（例如工具权限配置错、prompt 本身有歧义）。跨平台支持意味着要对各平台可用的运行时与网络能力做取舍；重试与检查点会带来额外延迟和存储成本。摘要未给具体限制说明。",
-        "analogyBoundary": "游戏存档类比忽略了副作用：Agent 已发出的请求、已写入的数据不会随回滚消失，因此『读档重来』在真实系统里需要幂等设计来配合。",
-        "misconceptions": [
-          "以为用了框架智能体就变可靠——它约束的是流程，不修正模型错误。",
-          "以为重试次数越多越好——系统性失败下重试只是浪费预算与延迟。",
-          "以为 JVM 框架只服务 Android——摘要明确包含后端服务、iOS 与浏览器环境。"
-        ],
-        "ownAnalysis": "这条卡片的信号是生态位而非技术新颖性：JetBrains 把内部 AI 产品经验产品化成 Kotlin/Java 框架，正对上企业侧『Agent 要进现有工程体系』的诉求（推断）。可疑处：summary 完全没提编排模型、持久化方案与可观测性，也没给性能或可靠性数据；相比之下 Python 生态的同类框架有大量实践对比材料，选型时应重点看文档里关于失败语义（幂等、超时、恢复）的定义（推断）。",
-        "officialNotes": [
-          {
-            "position": "Koog 是 JVM（Java/Kotlin）上构建可预测、容错、企业级 AI 智能体的框架，覆盖后端服务、Android/iOS、JVM 与浏览器环境，基于 JetBrains 的 AI 产品经验",
-            "source": "https://github.com/JetBrains/koog"
-          }
-        ],
-        "interviewAnswer": "Koog 是 JetBrains 开源的 JVM Agent 框架，用 Java 或 Kotlin 写，主打可预测、容错和企业级，能跑在后端、Android/iOS、JVM 甚至浏览器里。我关注它是因为它把概率性的模型调用包进确定性结构：工作流约束步骤与分支，工具调用统一接口，失败按类型重试或降级，并保留状态便于恢复。它解决的是『Agent 如何进现有工程体系』的问题，而不是模型本身的能力问题。",
-        "studyPath": {
-          "prerequisites": [
-            "LLM 调用与 function calling",
-            "Kotlin 或 Java 工程基础",
-            "超时、重试与幂等性概念"
-          ],
-          "nextSteps": [
-            "读官方文档确认编排与状态持久化模型",
-            "用 Koog 写一个带重试与工具调用的最小 Agent",
-            "对比 Python 生态框架的失败语义与可观测性"
-          ]
-        }
-      }
-    },
-    {
-      "id": "6e9fe3c163df33a0",
-      "tldr": "Google 生产在用的开源 Agent 框架，支持 JavaScript、Go、Dart、Python。",
-      "keyPoints": [
-        "Google 构建并在生产中使用的开源 agentic app 框架",
-        "四种语言 SDK：JavaScript、Go、Dart、Python",
-        "标签覆盖 RAG、embedders、vector database、multimodal",
-        "元数据：6465 stars、855 forks，标记为附带开源实现"
-      ],
-      "why": "多语言、生产验证的 agent/RAG 框架，回答『怎么把检索、模型调用与工具编排做成产品』时可直接引用它的抽象与取舍。",
-      "difficulty": "easy",
-      "tags": [
-        "agent",
-        "rag",
-        "multimodal",
-        "framework",
-        "typescript"
-      ],
-      "entities": [
-        "Google",
-        "Genkit",
-        "JavaScript",
-        "Go",
-        "Dart",
-        "Python",
-        "RAG",
-        "vector database",
-        "embedders"
-      ],
-      "diagram": {
-        "kind": "architecture",
-        "title": "Genkit 应用分层",
-        "caption": "同一套编排抽象，跨四种语言把检索、模型与工具串成产品",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Genkit 分层结构：四种语言应用通过统一 API 进入 Flow 编排，调用检索与模型，最终部署到生产'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>四种语言应用</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>JS / Go / Dart / Python</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>Flow 编排</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>多步生成流程</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>检索与模型调用</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>RAG 与多模态</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>部署到生产</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>Google 生产验证</text></svg>",
-        "alt": "竖排分层图：JavaScript、Go、Dart、Python 应用通过 Genkit 统一 API 进入 Flow 编排，调用检索与模型能力，最后部署到生产。"
-      },
-      "concepts": [
-        {
-          "name": "Agentic App Framework（智能体应用框架）",
-          "readable": "把模型调用、工具注册、多步流程与部署打包成一套 SDK，让开发者用同一种写法构建带工具和检索的 AI 应用，并在多种语言间保持一致抽象。",
-          "analogy": "像一套标准化的乐高底板：模型、工具、检索器都是标准接口的积木，换个语言只是换底板材质，拼法不变。",
-          "analogyBreaksDown": "乐高积木形状固定，而模型与工具接口会随供应商频繁变化，抽象的稳定性需要框架持续跟进维护。",
-          "mechanism": "统一抽象让流程可测试、可观测、可部署（例如把多步生成封装成可调用的 Flow），多语言支持则降低不同技术栈团队的接入成本。",
-          "visual": "画四列语言标识（JS/Go/Dart/Python）汇聚到同一中间层方块，方块上标 Flow、Tools、Retrievers、Models 四个接口。",
-          "prerequisites": [
-            "LLM API 调用基础",
-            "工具/函数调用概念",
-            "至少一种后端或前端语言经验"
-          ],
-          "selfTest": [
-            "多语言 SDK 相比单语言框架的代价是什么？",
-            "Flow 这类编排抽象解决了什么工程问题？",
-            "为什么生产可用性对 Agent 框架很重要？"
-          ],
-          "formula": ""
-        },
-        {
-          "name": "RAG（Retrieval-Augmented Generation）",
-          "readable": "先从外部知识库里检索出与问题相关的片段，再把这些片段塞进 prompt 让模型作答，从而用到训练数据之外的事实。",
-          "analogy": "开卷考试：先按题目翻到相关几页，再结合那几页作答，而不是全靠记忆。",
-          "analogyBreaksDown": "翻书只要找对页码，而检索靠向量相似度近似匹配，找到的页可能相关但答非所问，且模型还可能忽略它们。",
-          "mechanism": "把『知识存储』从参数里移到外部索引：更新知识只需重建索引，检索质量与切块策略成为主要可控项。",
-          "visual": "画两条并行链路：查询→embedder→向量库 top-k；文档→embedder→向量库；两条在 prompt 拼装处汇合成一次生成。",
-          "prerequisites": [
-            "嵌入向量与余弦相似度",
-            "向量数据库与近似最近邻检索",
-            "prompt 拼接与上下文长度限制"
-          ],
-          "selfTest": [
-            "RAG 与微调在知识更新上的取舍是什么？",
-            "top-k 与切块大小如何影响效果？",
-            "为什么检索到内容后模型仍可能答错？"
-          ],
-          "formula": "s(q,d_i)=\\frac{\\langle \\phi(q),\\phi(d_i)\\rangle}{\\|\\phi(q)\\|\\,\\|\\phi(d_i)\\|}"
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-genkit-rag-topk",
-          "name": "RAG 检索打分与 Top-k 上下文拼装（Retrieval Scoring and Top-k Context Assembly）",
-          "category": "engineering",
-          "latex": "s(q,d_i)=\\frac{\\langle \\phi(q),\\ \\phi(d_i)\\rangle}{\\|\\phi(q)\\|\\,\\|\\phi(d_i)\\|},\\qquad \\mathcal{C}=\\operatorname{TopK}_{i}\\ s(q,d_i)",
-          "symbols": [
-            [
-              "q",
-              "用户查询"
-            ],
-            [
-              "d_i",
-              "第 i 个候选文档块"
-            ],
-            [
-              "\\phi",
-              "embedder 编码函数"
-            ],
-            [
-              "s",
-              "余弦相似度打分"
+              "t_k - t_{k+1}",
+              "非均匀步长，前段大、后段小"
             ],
             [
               "k",
-              "拼进 prompt 的上下文片段数"
-            ],
-            [
-              "\\mathcal{C}",
-              "最终拼入 prompt 的 top-k 上下文"
+              "函数评估次数，本文只取 2 次"
             ]
           ],
           "derivation": [
-            "第 1 步：把查询与文档块都编码到同一向量空间（框架中的 embedder 组件）。",
-            "第 2 步：用余弦相似度衡量相关性，除以模长以消除向量长度对排序的影响。",
-            "第 3 步：取分数最高的 k 个块作为上下文。",
-            "第 4 步：向量库负责在候选集上做近似最近邻搜索；k 与切块大小是主要调参项，直接影响 token 成本与答案质量。"
+            "第 1 步：流匹配把生成写成 ODE，dx/dt = v_θ(x, t)，采样就是对它做数值积分。",
+            "第 2 步：均匀 Euler 需要 N 次速度场前向；摘要指出重复去噪是推理开销的主要来源，N 为 10 时尤其明显。",
+            "第 3 步：摘要观察到速度场在积分前期幅度与方向较稳定、末端才出现更强方向修正，说明积分误差主要来自末端。",
+            "第 4 步：于是把积分预算非均匀分配，前段大步长、末端小步长，总函数评估数压到 2。",
+            "第 5 步：结果步数从 10 降到 2，模型推理时间 61.557 ms 降到 21.956 ms，任务性能小幅下降。"
           ],
-          "analogy": "考试开卷：先按关键词在书里找出最相关的几页，再带着这几页答题；找错页就会答错。",
+          "analogy": "像开车进城：高速段一路直踩（大步长），进老城区路口密集才频繁修方向（小步长）。",
           "pitfalls": [
-            "把余弦相似度当绝对相关度：它只在同一 embedder 的空间内可比，跨模型分数不可比。",
-            "以为 k 越大越好——噪声块会稀释上下文并抬高 token 成本。",
-            "忽略切块策略：块太大语义混杂、太小丢上下文，影响常大于换模型。"
+            "把非均匀步长当成免训练通用加速，划分依赖该速度场的统计特性，换模型或换任务都要重测。",
+            "把 61.557 到 21.956 ms 当成端到端加速比，忽略机器人侧时延。",
+            "以为两步是无损压缩，摘要明确说任务性能有小幅下降。"
           ],
-          "code": "import torch\n\ndef topk_context(q, docs, phi, k=3):\n    qv, dv = phi(q), phi(docs)                     # dv: [N, D]\n    s = torch.cosine_similarity(qv[None], dv, dim=-1)\n    idx = torch.topk(s, k).indices\n    return [docs[i] for i in idx]",
+          "code": "import torch\n\n@torch.no_grad()\ndef two_step_denoise(v_theta, x, t_hi=1.0, t_mid=0.6, t_lo=0.0):\n    # 前段大步长：速度场方向稳定，省评估次数\n    t = torch.full((x.shape[0],), t_hi, device=x.device)\n    x = x - (t_hi - t_mid) * v_theta(x, t)\n    # 末端小步长：保留一次精细的方向修正\n    t = torch.full((x.shape[0],), t_mid, device=x.device)\n    x = x - (t_mid - t_lo) * v_theta(x, t)\n    return x\n\n@torch.no_grad()\ndef uniform_denoise(v_theta, x, steps=10):\n    ts = torch.linspace(1.0, 0.0, steps + 1, device=x.device)\n    for a, b in zip(ts[:-1], ts[1:]):\n        t = a.expand(x.shape[0])\n        x = x - (a - b) * v_theta(x, t)\n    return x",
           "sources": [
             {
-              "title": "genkit-ai/genkit",
-              "url": "https://github.com/genkit-ai/genkit"
+              "title": "Toward Real-Time VLAs: Stage-Aware Two-Step Flow Denoising and System-Level Evaluation",
+              "url": "https://arxiv.org/abs/2609.39822v1"
+            }
+          ]
+        },
+        {
+          "id": "f-vla-latency-budget",
+          "name": "VLA 端到端时延预算（End-to-End VLA Latency Budget）",
+          "category": "engineering",
+          "latex": "T_{e2e} = T_{percept} + N\\, c_{fwd} + T_{comm} + T_{exec}",
+          "symbols": [
+            [
+              "T_{e2e}",
+              "从观测采集到动作生效的总时延"
+            ],
+            [
+              "T_{percept}",
+              "感知与观测采集耗时"
+            ],
+            [
+              "N",
+              "流匹配去噪的函数评估次数"
+            ],
+            [
+              "c_{fwd}",
+              "单次速度场前向耗时"
+            ],
+            [
+              "T_{comm}",
+              "通信与调度时延"
+            ],
+            [
+              "T_{exec}",
+              "机器人物理响应与执行时延"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：实时性要求总时延不超过控制周期，否则发出的动作已经过期。",
+            "第 2 步：按摘要的测量口径把链路拆成四段，感知采集、模型推理、通信调度、物理响应。",
+            "第 3 步：其中只有推理段随去噪步数线性增长，即 N 乘单次前向耗时，是模型侧可直接优化的部分。",
+            "第 4 步：所以降步数收益最直接，N 由 10 降到 2，实测推理段从 61.557 ms 降到 21.956 ms。",
+            "第 5 步：推理变快后瓶颈会转移到机器人侧，需要用独立速率与动作来源日志继续定位。"
+          ],
+          "analogy": "像算外卖总时长：出餐、骑手到店、路上、上楼，只有出餐是厨房能直接缩短的。",
+          "pitfalls": [
+            "只优化推理而忽略感知、通信与物理响应，端到端可能几乎不变。",
+            "把单次前向耗时当常数，batch、精度与硬件都会改变它。",
+            "用平均时延代替尾延迟，实时控制关心的是最坏情况。"
+          ],
+          "code": "import time\nimport torch\n\ndef latency_budget(v_theta, obs_fn, publish, x, steps=10):\n    t0 = time.perf_counter()\n    obs = obs_fn()                        # 感知采集\n    t1 = time.perf_counter()\n    ts = torch.linspace(1.0, 0.0, steps + 1)\n    for a, b in zip(ts[:-1], ts[1:]):\n        t = a.expand(x.shape[0])\n        x = x - (a - b) * v_theta(x, t)   # 模型推理，共 N 次前向\n    t2 = time.perf_counter()\n    publish(x)                            # 动作发布与通信\n    t3 = time.perf_counter()\n    return {\n        'percept_ms': (t1 - t0) * 1e3,\n        'infer_ms': (t2 - t1) * 1e3,\n        'comm_ms': (t3 - t2) * 1e3,\n        'obs': obs,\n    }",
+          "sources": [
+            {
+              "title": "Toward Real-Time VLAs: Stage-Aware Two-Step Flow Denoising and System-Level Evaluation",
+              "url": "https://arxiv.org/abs/2609.39822v1"
             }
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "Genkit 是 Google 构建并在生产中使用的开源框架，用于构建 agentic 应用（来自 title/summary）",
-          "官方支持 JavaScript、Go、Dart、Python 四种语言的 SDK",
-          "标签包含 agents、rag、embedders、vector-database、multimodal、llm，说明覆盖检索与多模态能力",
-          "元数据：6465 stars、855 forks、codeAvailable=true，作者标注为 genkit-ai"
+          "VLA 存在低推理率与高机器人执行率之间的时延缺口",
+          "重复的 Flow Matching 去噪对推理成本贡献显著",
+          "机器人侧延迟主要来自感知采集、通信调度与物理响应",
+          "速度场在积分早期幅度与方向较稳定，末端方向修正更强",
+          "两阶段非均匀去噪把步数从 10 降到 2，推理时间从 61.557 ms 降到 21.956 ms",
+          "以 π0.5 为基线在长时程叠衣任务上评测了六种实时执行方法",
+          "Legato 在训练类方法中最好，Temporal Smoothing 在免训练方法中最好",
+          "两步去噪与代表性执行方法组合可显著降低推理成本，代价是任务性能小幅下降"
         ],
         "uncertain": [
-          "summary 只有一句话，未给架构与 API 细节；本条的余弦 top-k 公式是 RAG 通用形式，不是 Genkit 官方定义，需核对文档",
-          "多语言 SDK 之间功能是否完全对齐（例如 Dart/Go 的插件生态）摘要未说明",
-          "具体支持的模型供应商、向量库与部署方式摘要未提及",
-          "stars 与 forks 为采集时点快照，会随时间变化"
+          "两阶段的分段点与各段步长取值摘要未给出，公式为按摘要重建的通用形式，需核对原文",
+          "任务性能下降的具体幅度未给出",
+          "分布式框架中推理、发布、控制各自的频率数值未给出",
+          "六种实时执行方法的完整清单摘要未列全"
         ]
       },
       "teaching": {
         "progressive": [
           {
             "level": "一句话",
-            "text": "Google 开源的多语言框架，用来搭带检索和工具的 AI 应用。"
+            "text": "VLA 少算几步去噪，机器人就能跑得更实时。"
           },
           {
             "level": "入门",
-            "text": "Genkit 是 Google 做的开源智能体应用框架，JavaScript、Go、Dart、Python 都能用，官方称已在生产中使用。它把模型调用、检索、工具和流程编排封装好，让你不必为每个语言各写一套胶水代码。"
+            "text": "VLA 模型推理慢、机器人执行快，中间有时延缺口。作者先量清端到端各段耗时，发现反复的流匹配去噪是推理大头，于是把去噪压成两步，并在 π0.5 上对比六种实时执行方法。"
           },
           {
             "level": "进阶",
-            "text": "这类框架的重点在三件事：统一抽象（Flow 编排、工具注册、模型与 embedder 接口）让流程可测试可观测；RAG 链路（查询与文档编码、向量库检索 top-k、拼进 prompt）把知识从参数里搬到索引里；多语言 SDK 让前端、移动端与后端团队共用同一套概念。Google 生产在用的背书主要解决『敢不敢上线』的信任问题。"
+            "text": "作者分析速度场，发现积分前期幅度与方向较稳定、末端才有更强的方向修正，于是把有限的函数评估非均匀分配：前段大步长、末端小步长，步数从 10 降到 2，推理时间由 61.557 ms 降到 21.956 ms。配套的分布式框架把推理、动作发布、机器人控制拆成独立频率，还能记录动作来源以便归因延迟。"
           },
           {
             "level": "专家",
-            "text": "从求职角度，Genkit 的差异化是语言覆盖与厂商背书：多数 Agent 框架以 Python 或 TypeScript 为主，而它同时提供 Dart 与 Go，对 Flutter 与 Go 微服务团队很友好（推断）。技术取舍上，多语言意味着抽象必须足够薄、插件生态要各语言重复维护，功能对齐往往是短板。要注意 summary 只有一句话，具体能力边界、可观测性与评估工具需查文档；RAG 的效果仍取决于切块、embedder 与 top-k 调参，框架替代不了这些决策。"
+            "text": "训练类方法里 Legato 综合最好，免训练方法里 Temporal Smoothing 最好，两者在任务成功率、完成时间、动作连续性与加速度平滑度上都表现强。把两步去噪与代表性执行方法组合，能明显降低推理成本，代价是任务性能小幅下降。这条工作的价值在于把模型推理效率与机器人系统时序放进同一个优化问题：只压推理，瓶颈会转移到感知采集、通信调度或物理响应；只调执行策略，模型侧的开销仍然存在。"
           }
         ],
         "socratic": [
           {
-            "q": "如果不用框架、自己拼检索和模型调用会怎样？",
-            "a": "每个语言各写一套胶水代码，重试、可观测、部署配置重复劳动，跨团队概念还难以对齐。"
+            "q": "为什么不干脆一步到位，只做 1 次去噪？",
+            "a": "摘要显示末端仍有较强方向修正，而这一步决定动作精度，单次积分无法体现，两步是省算力与保精度的折中。"
           },
           {
-            "q": "为什么 RAG 不能只靠把整篇文档塞进 prompt？",
-            "a": "上下文长度有限、成本随长度上升，无关内容还会稀释注意力，检索到相关片段比全塞更有效。"
+            "q": "推理变快了，机器人就一定更实时吗？",
+            "a": "不一定。摘要把感知采集、通信调度和物理响应也列为延迟来源，只压推理会把瓶颈转移到机器人侧。"
           },
           {
-            "q": "为什么多语言支持是有代价的选择？",
-            "a": "插件与特性需要在各语言重复实现，容易出现能力不对齐与文档滞后，维护成本显著高于单语言框架。"
+            "q": "为什么要记录动作来源？",
+            "a": "多个环节以不同频率并行时，出现异常动作需要归因到具体环节，日志是判断问题在模型还是在系统的依据。"
           }
         ],
-        "mechanism": "把 Agent 应用拆成可组合的标准件——模型客户端、embedder、检索器、工具、Flow——使同一业务逻辑能在不同语言和运行环境里复用，并让每一步可单独测试、观测与替换。生产验证的背书降低选型风险，而统一抽象是让检索、工具调用与多步编排规模化维护的前提。",
-        "boundary": "框架不解决检索质量与模型幻觉问题，RAG 效果仍依赖切块、embedder 与 top-k；多语言 SDK 可能出现功能不对齐；强依赖特定云生态时，跨云迁移成本会上升。summary 未给具体能力边界与限制。",
-        "analogyBoundary": "乐高底板类比假设积木接口长期稳定，但模型与向量库供应商的 API 变化频繁，抽象层需要持续跟进，否则『标准件』会退化成一堆适配代码。",
+        "mechanism": "流匹配采样的算力几乎全花在重复调用同一个速度场上，而模型侧是链路里最容易控制的一段。压缩步数靠的不是换小模型，而是按速度场的阶段异质性重分配积分预算：前期方向稳定，大步长不会累积明显误差；末端方向修正是精度关键，保留一次精细修正即可。又因为瓶颈会转移到机器人侧，框架必须把推理、发布、控制解耦成独立频率，否则单点加速换不来端到端实时。",
+        "boundary": "两阶段划分来自该速度场的统计观察，换模型、换本体、换动作空间都需要重新验证分段点；若前期速度方向不稳定，大步长会引入大误差。机器人侧时延占主导时，压推理步数对端到端实时帮助有限。摘要还报告任务性能有小幅下降，对精度敏感的任务要谨慎。",
+        "analogyBoundary": "开车类比隐含走错能立刻发现并修正，但两阶段积分没有回看机会：一旦早期大步长把样本带到错误区域，末端一次小步修正未必能救回。类比也没体现步长与网络评估次数的硬约束，真实系统里省下的每一步都要用精度换。",
         "misconceptions": [
-          "以为生产在用代表拿来即用——仍要自己做检索调参、评估与监控。",
-          "以为多语言支持就是同一份代码跑四个语言——各语言有独立 SDK，能力未必完全对齐。",
-          "以为 RAG 能消除幻觉——模型可能忽略或误读检索到的上下文。"
+          "以为去噪步数越少越好，忽略末端方向修正才是精度关键，一步会掉点。",
+          "把 61.557 到 21.956 ms 当成端到端加速比，忽略感知、通信与物理响应。",
+          "以为两阶段划分能直接迁移到别的 VLA，它依赖该速度场的统计特性。"
         ],
-        "ownAnalysis": "这条卡片的关键信号是『Google 生产在用 + 四语言 SDK』，属于生态与工程可信度，而非算法创新（推断）。对企业选型来说，它最实际的价值是把 Agent 的骨架（Flow、工具、检索、部署）标准化，减少每个团队的重复建设。可疑处：summary 未提评估（evals）、追踪与护栏能力，这些恰是 Agent 上线后最容易出问题的部分；四语言并行维护也让人担心 Dart/Go 侧的插件成熟度，需要看仓库实际更新情况（推断）。",
+        "ownAnalysis": "从方法脉络看，这属于免训练采样加速一类，与一致性模型、少步采样蒸馏目标一致，区别是它不训练也不加辅助模型，而是利用速度场随积分步的时间异质性。（推断）摘要未说明两阶段分段点如何选取，若取自离线统计，在线部署时速度场随微调漂移就可能失配。另一点值得注意的是，摘要把小幅性能下降当作可接受代价，这类取舍在真机长时程任务上通常方差很大，需要看原文的多种子结果。（待核实）",
         "officialNotes": [
           {
-            "position": "Genkit 是开源框架，用于以 JavaScript、Go、Dart、Python 构建 agentic 应用，由 Google 构建并在生产中使用",
-            "source": "https://github.com/genkit-ai/genkit"
+            "position": "两阶段非均匀去噪把去噪步数从 10 降到 2、模型推理时间从 61.557 ms 降到 21.956 ms，代价是任务性能小幅下降。",
+            "source": "arxiv"
           }
         ],
-        "interviewAnswer": "Genkit 是 Google 开源并已在生产使用的 agentic 应用框架，提供 JavaScript、Go、Dart、Python 四种 SDK。我关注三点：统一抽象把 Flow 编排、工具、模型与 embedder 接口标准化，流程可测试可观测；RAG 链路把知识搬到外部索引，更新知识不必重训模型；多语言覆盖让 Flutter 与 Go 团队也能复用同一套概念，代价是插件生态要分别维护。要注意框架不解决检索质量和幻觉，切块与 top-k 仍需自己调。",
+        "interviewAnswer": "我理解这篇的核心是把 VLA 的实时性当成系统问题来解。模型侧，他们发现流匹配去噪占推理开销大头，而速度场在前期方向稳定、末端才需要强修正，所以把步数从 10 压到 2，推理从 61.6 毫秒降到 22 毫秒；系统侧，他们把推理、动作发布和控制跑在独立频率上，并记录动作来源来归因延迟。在 π0.5 的叠衣任务上，训练类方法 Legato 和免训练方法 Temporal Smoothing 表现最好。结论是只优化一侧不够，要联合优化模型效率与系统时序。",
         "studyPath": {
           "prerequisites": [
-            "LLM API 与工具调用基础",
-            "嵌入向量与向量检索",
-            "一种后端或前端语言"
+            "流匹配/扩散采样与 ODE 数值积分",
+            "VLA 模型的动作头基本结构",
+            "机器人实时控制回路与频率概念"
           ],
           "nextSteps": [
-            "用任一语言 SDK 写一个 RAG Flow",
-            "对比四语言 SDK 的能力覆盖差异",
-            "补上评估与可观测性方案再谈上线"
+            "读一致性模型与少步采样蒸馏，对比训练式与免训练加速的取舍",
+            "自己测一遍推理各段耗时，画一张时延预算条形图",
+            "复现两步去噪，观察分段点变化对动作平滑度的影响"
+          ]
+        }
+      }
+    },
+    {
+      "id": "6970d2bfa1b76ac3",
+      "tldr": "免训练把声源位置写进 3D 世界状态：语义分层加几何锚定，渲染随听者移动的空间音频。",
+      "keyPoints": [
+        "现有 3D 世界生成常常只出画面、没有声音",
+        "文本或视频合成的音轨缺少声源位置信息",
+        "免训练框架用语义分层找出发声对象与背景",
+        "把干声锚定到重建几何上做几何声学传播",
+        "80 个生成场景上空间一致性优于三类基线"
+      ],
+      "why": "多模态与世界模型岗常问音视频联合建模；这条把空间音频讲成可落地的语义与几何对齐问题。",
+      "difficulty": "medium",
+      "tags": [
+        "multimodal",
+        "spatial-audio",
+        "world-model",
+        "3d-generation",
+        "training-free",
+        "audio-visual"
+      ],
+      "entities": [
+        "Audible World Models",
+        "panoramic 3D proxy",
+        "geometric acoustic propagation",
+        "VLM"
+      ],
+      "diagram": {
+        "kind": "architecture",
+        "title": "可听世界模型流水线",
+        "caption": "记住三段分工：语义决定响什么，几何决定在哪响，传播决定听者听到什么。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='可听世界模型四步流水线：文本提示、全景三维代理、声源锚定几何、几何声学渲染'><rect x='46' y='16' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>文本提示</text><text x='418' y='40' font-size='13' text-anchor='end' fill='currentColor'>场景描述</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='46' y='70' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>全景 3D 代理</text><text x='418' y='94' font-size='13' text-anchor='end' fill='currentColor'>语义分层</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='46' y='124' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>声源锚定几何</text><text x='418' y='148' font-size='13' text-anchor='end' fill='currentColor'>逐标签合成干声</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='46' y='178' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>几何声学渲染</text><text x='418' y='202' font-size='13' text-anchor='end' fill='currentColor'>听者相关空间音频</text></svg>",
+        "alt": "竖向四层流程：文本提示生成全景三维代理并做语义分层，再逐标签合成干声并锚定几何，最后由几何声学渲染出随听者变化的空间音频。"
+      },
+      "concepts": [
+        {
+          "name": "Audible World Model（可听世界模型）",
+          "readable": "把声音作为世界状态的一部分：不只生成画面，还为场景里的发声物体指定位置，并按听者位置渲染出会变的空间音频。",
+          "analogy": "像给游戏关卡配音：不是贴一条背景音乐，而是先在地图上摆好喇叭，再让引擎按玩家站位实时混音。",
+          "analogyBreaksDown": "游戏里的喇叭位置是美术手摆的、混音规则也是手调的；这里声源位置必须从生成的全景代理里推断，推断错了后面的传播渲染再准也白搭。",
+          "mechanism": "免训练地复用现成视觉生成与音频合成能力，用语义分层替代人工标注来找到发声对象，再把干声锚定到重建几何，交给几何声学做听者相关渲染。",
+          "visual": "俯视图：圆形代表听者，若干圆点代表声源，连线长度表示距离，线越粗代表衰减后增益越大；听者移动时只有连线变化，圆点不动。",
+          "prerequisites": [
+            "3D 场景与全景表示基础",
+            "音频合成与声学传播基本概念"
+          ],
+          "selfTest": [
+            "可听世界模型与给视频配背景音乐的本质区别是什么？",
+            "为什么说它是 training-free，复用了哪些现成模块？",
+            "声源位置与听者位置在渲染里各自扮演什么角色？"
+          ],
+          "formula": "y(t) = \\sum_i g_i\\, s_i\\!\\left(t - \\|p_i - l(t)\\| / c\\right)"
+        },
+        {
+          "name": "Listener-Dependent Spatial Audio（听者相关空间音频）",
+          "readable": "同一段干声，听者在不同位置、朝向、速度下听到的响度、声道差与先后都不同；渲染结果随听者状态变化。",
+          "analogy": "像站在街角听远处的洒水车：车没动，你往前走几步，声音就变大、还开始偏到一侧。",
+          "analogyBreaksDown": "街角听声是真实波场，包含墙面反射与衍射；几何声学渲染通常只近似直达声与简单遮挡，复杂房间里的混响与衍射并不保证还原。",
+          "mechanism": "把与位置无关的干声当作声源内容，把位置、衰减与传播时延当作几何函数，于是渲染随听者运动变化而声源在世界坐标中持久不动。",
+          "visual": "时间与响度曲线：同一声源在听者靠近时振幅包络变大、到达时刻提前；两条曲线分别对应两个听者位置，形状相同只是平移缩放。",
+          "prerequisites": [
+            "音频信号基础，如采样率与声道",
+            "3D 几何与听者/相机位姿"
+          ],
+          "selfTest": [
+            "为什么先把音频合成成干声再渲染，而不是直接生成音频？",
+            "听者朝向变化应该影响渲染里的哪些量？",
+            "声源位置持久不变在评测上意味着什么？"
+          ],
+          "formula": "\\tau_i(t) = \\|p_i - l(t)\\| / c,\\quad g_i(t) = G(\\|p_i - l(t)\\|)"
+        },
+        {
+          "name": "Geometric Acoustic Propagation（几何声学传播）",
+          "readable": "用几何关系近似声波怎么传：距离决定衰减与延迟，遮挡决定损失，不求解完整波动方程。",
+          "analogy": "像用手电筒的光照模型近似声音：离得越远越暗、被墙挡住就没了，简单但不算反射与干涉。",
+          "analogyBreaksDown": "光在大多数场景直线传播，声音会绕射、会被墙面反射形成混响；几何近似在低频与复杂房间里误差明显。",
+          "mechanism": "只用声源与听者的几何位置算增益和时延，把渲染复杂度控制在可随视点实时变化的水平。",
+          "visual": "以声源为圆心的等距同心圆，半径标注距离；同一听者位置落在不同圆上对应不同衰减增益，用灰度深浅表示。",
+          "prerequisites": [
+            "向量与几何基础",
+            "声音衰减与声速概念"
+          ],
+          "selfTest": [
+            "几何声学为什么适合随视点实时渲染？",
+            "它忽略了哪些真实声学现象？",
+            "传播时延与衰减分别由什么决定？"
+          ],
+          "formula": "g = 1 / \\max(\\|p - l\\|,\\, \\varepsilon)"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-spatial-audio-render",
+          "name": "听者相关空间音频渲染（Listener-Dependent Spatial Audio Rendering）",
+          "category": "multimodal",
+          "latex": "y(t) = \\sum_{i=1}^{K} g_i\\!\\big(\\|p_i - l(t)\\|\\big)\\, s_i\\!\\left(t - \\frac{\\|p_i - l(t)\\|}{c}\\right)",
+          "symbols": [
+            [
+              "y(t)",
+              "听者处渲染出的音频信号"
+            ],
+            [
+              "K",
+              "场景中发声源数量"
+            ],
+            [
+              "s_i",
+              "第 i 个声源的干声波形，与位置无关"
+            ],
+            [
+              "p_i",
+              "第 i 个声源在世界坐标中的位置"
+            ],
+            [
+              "l(t)",
+              "听者随时间变化的位置"
+            ],
+            [
+              "c",
+              "声速"
+            ],
+            [
+              "g_i",
+              "随距离变化的衰减增益"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：先为每个识别出的声音标签合成与位置无关的干声 s_i。",
+            "第 2 步：把干声锚定到重建几何上的位置 p_i，让声源在世界坐标中持久存在，不随视点漂移。",
+            "第 3 步：声波传播需要时间且有距离衰减，几何近似给出时延等于距离除以声速，以及增益 g_i。",
+            "第 4 步：按听者位置对全部声源求和，得到随视点与运动变化的空间音频。",
+            "第 5 步：因为 p_i 固定、l(t) 变化，同一场景在不同听者视角下声像位置保持一致。"
+          ],
+          "analogy": "像房间里摆好几个音箱：你走动时听到的响度与先后会变，但音箱本身没动。",
+          "pitfalls": [
+            "把干声直接当最终音轨，丢掉传播时延与衰减这两个空间线索。",
+            "以为声源位置随视点变化，位置是持久的，变的只是渲染。",
+            "把几何声学当完整声学场，它不保证衍射与混响的物理正确性。"
+          ],
+          "code": "import numpy as np\n\ndef render_spatial(sources, listener_pos, c=343.0, sr=16000):\n    # sources: 每项含 pos 三维坐标与 dry 干声波形\n    n = max(s['dry'].shape[-1] for s in sources) + sr\n    out = np.zeros(n, dtype=np.float32)\n    for s in sources:\n        dist = float(np.linalg.norm(s['pos'] - listener_pos))\n        gain = 1.0 / max(dist, 1e-3)          # 距离衰减\n        delay = int(dist / c * sr)            # 传播时延\n        dry = s['dry']\n        out[delay:delay + dry.shape[-1]] += gain * dry\n    return out",
+          "sources": [
+            {
+              "title": "Audible World Models: Spatially Aware Sound Generation for 3D Worlds",
+              "url": "https://arxiv.org/abs/2609.38444v1"
+            }
+          ]
+        },
+        {
+          "id": "f-geometric-acoustic-gain",
+          "name": "几何声学距离衰减（Geometric Acoustic Attenuation）",
+          "category": "multimodal",
+          "latex": "g_i(t) = \\frac{1}{\\max\\big(\\|p_i - l(t)\\|,\\, \\varepsilon\\big)},\\qquad \\tau_i(t) = \\frac{\\|p_i - l(t)\\|}{c}",
+          "symbols": [
+            [
+              "g_i(t)",
+              "第 i 个声源在听者处的瞬时增益"
+            ],
+            [
+              "p_i",
+              "声源在世界坐标中的位置"
+            ],
+            [
+              "l(t)",
+              "听者位置"
+            ],
+            [
+              "\\varepsilon",
+              "防止近距离除零的小常数"
+            ],
+            [
+              "\\tau_i(t)",
+              "传播时延"
+            ],
+            [
+              "c",
+              "声速，约 343 米每秒"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：点声源在自由场中能量按球面扩散，声压随距离成反比衰减。",
+            "第 2 步：因此把增益写成距离的倒数，并对极近距离做下限截断以避免除零。",
+            "第 3 步：同一声波到达听者需要有限时间，时延等于距离除以声速。",
+            "第 4 步：两个量都只是几何位置的函数，所以听者一移动，渲染就能立刻重算。"
+          ],
+          "analogy": "像夜里看远处的路灯：越远越暗，光到你眼睛也需要一点时间，只是光速太快感觉不到。",
+          "pitfalls": [
+            "把 1 除以距离的衰减当成完整声学模型，忽略空气吸收、方向性与遮挡。",
+            "忘记对近距离做截断，声源贴近听者时增益会爆炸。",
+            "把时延当成不重要的小量，几十米距离下先后差已可感知。"
+          ],
+          "code": "import numpy as np\n\ndef geometric_gain_delay(source_pos, listener_pos, c=343.0, eps=1e-3):\n    delta = np.asarray(source_pos, dtype=np.float64) - np.asarray(listener_pos, dtype=np.float64)\n    dist = float(np.linalg.norm(delta))\n    gain = 1.0 / max(dist, eps)   # 球面扩散近似\n    delay = dist / c              # 有限声速带来的先后差\n    return gain, delay\n\ng, tau = geometric_gain_delay([0.0, 0.0], [3.0, 4.0])\nassert abs(g - 0.2) < 1e-9 and tau > 0.0",
+          "sources": [
+            {
+              "title": "Audible World Models: Spatially Aware Sound Generation for 3D Worlds",
+              "url": "https://arxiv.org/abs/2609.38444v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "文本与图像条件的 3D 世界生成往往只出画面，或只用文本/渲染视频合成音轨",
+          "既有音轨缺少声源位置的显式表示，也无法随听者移动变化",
+          "该框架是 training-free，从文本提示出发构建全景 3D 代理",
+          "流程包含语义分层、识别发声前景物体与背景区域、逐标签合成干声",
+          "声源被锚定到重建几何，并用几何声学传播渲染听者相关的空间音频",
+          "框架显式连接语义、几何与声音传播，声源位置持久、渲染随视点与运动变化",
+          "在 80 个生成场景上空间一致性显著优于文本、视频、全景三类条件基线",
+          "VLM 评估与人工评价更偏好其视听一致性、空间合理性与随运动变化的听感"
+        ],
+        "uncertain": [
+          "几何声学传播的具体实现与是否包含遮挡/反射近似，摘要未说明",
+          "80 个场景的构成与基线条件设置未给出",
+          "逐标签干声合成所用音频生成器未给出",
+          "空间一致性指标的精确定义与数值未给出，公式为按摘要重建的通用形式，需核对原文"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "给生成出来的 3D 世界装上会随你走动变化的声音。"
+          },
+          {
+            "level": "入门",
+            "text": "现有 3D 世界生成大多只出画面，音轨由文本或视频单独合成，声音没有位置。这篇用免训练框架补上：先从文本建全景 3D 代理并做语义分层，找出发声前景物体与环境区域，为每个标签合成干声，再锚定到重建几何做几何声学渲染。"
+          },
+          {
+            "level": "进阶",
+            "text": "关键设计是显式连接语义、几何与传播：语义分层决定什么在响，几何锚定决定在哪里响，几何声学传播决定听者听到什么。因为声源位置被固定在世界坐标里，听者移动或转动时只改变渲染结果，声像保持持久一致。作者在 80 个生成场景上对比文本、视频、全景三类条件基线，空间一致性明显更好，语义对齐仍有竞争力；VLM 评估与人工评价也更偏好其视听一致性、空间合理性与随运动变化的听感。"
+          },
+          {
+            "level": "专家",
+            "text": "与只做文本到音频的生成模型相比，这里把音频生成拆成内容与位置两件事：内容是每个标签的干声，位置由几何决定，因此不需要为每个视点重新生成音频，也不会出现声源随视角漂移。代价是整条流水线依赖前置 3D 代理与语义分层的质量，且几何声学只近似传播，复杂房间的反射与衍射不保证物理正确。适用边界是几何相对可信的场景级空间音频；需要样本级真实录音或强混响保真度的场合并不合适。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么不能只把文本提示直接丢给音频生成模型？",
+            "a": "那样能得到该听到什么，但音频里没有声源的显式位置，听者移动时声像不会正确变化。"
+          },
+          {
+            "q": "为什么要区分前景发声物体和背景环境区域？",
+            "a": "前景对象需要锚定到具体几何位置以获得方向感，环境声更多是弥漫背景，两者渲染方式不同。"
+          },
+          {
+            "q": "免训练意味着没有代价吗？",
+            "a": "不是。成本转移到前置的 3D 代理构建、语义分层与逐标签干声合成，链路更长且误差会逐级传递。"
+          }
+        ],
+        "mechanism": "设计动机是让音频和视觉共享同一个世界状态，而不是事后配音。把声音拆成内容与位置：内容用现成音频合成器按标签生成干声，位置从重建几何里取，再用几何声学传播算出听者处的时延与衰减。这样声源在世界坐标中持久存在，视点变化只影响渲染，空间一致性因此可以跨视角保持。免训练的选择则让框架能直接搭在已有生成器上，不需要成对的空间音频监督数据。",
+        "boundary": "整条链路依赖前置全景 3D 代理与语义分层的质量，分层错了声源就会锚错位置。几何声学忽略衍射、混响与材质吸收，在封闭复杂空间里空间感会失真。此外摘要只报告 80 个生成场景的实验，真实房间、移动声源与多听者并存的场景是否成立需要核实。",
+        "analogyBoundary": "音箱类比默认声源是固定的点、房间是自由场；真实场景里声源会移动、房间会反射，而且发声物体本身是从图像语义推断的，推断错误时类比完全不成立。",
+        "misconceptions": [
+          "以为它训练了一个音频生成模型，摘要说是 training-free 框架。",
+          "以为声源位置会随听者视角变化，实际持久固定，变的是渲染。",
+          "把几何声学近似当成完整声学仿真，忽略衍射与混响。"
+        ],
+        "ownAnalysis": "这篇可以放进世界模型要同时建模多模态观测这条线里看：视觉世界模型已经能生成几何一致的环境，声音是廉价但信息量大的补充通道。（推断）它与视频生成里的音频分支的区别在于不重新生成波形，而是复用现成合成器加几何渲染，因此空间一致性更像工程正确性而非学习问题。可疑之处是评测：摘要说 VLM 评估与人工评价都偏好，但 80 个场景的规模与基线条件设置未给出细节，泛化性需要用未见过的场景类型验证。（待核实）",
+        "officialNotes": [
+          {
+            "position": "免训练框架把声音并入生成的世界状态，显式连接语义、几何与声传播，在 80 个生成场景上空间一致性优于文本、视频、全景三类条件基线，同时保持有竞争力的语义对齐。",
+            "source": "arxiv"
+          }
+        ],
+        "interviewAnswer": "我会把它讲成空间音频的世界状态化问题。现有 3D 生成只出画面，音轨要么没有、要么由文本或视频单独合成，只有响什么没有在哪响。这篇免训练框架先从文本建全景 3D 代理并做语义分层，找出发声的前景物体与环境区域，为每个标签合成干声，再把声源锚定到重建几何上，用几何声学算时延与衰减，渲染出随听者位置与运动变化的空间音频。80 个场景上空间一致性优于三类基线，边界是依赖前置几何与分层质量。",
+        "studyPath": {
+          "prerequisites": [
+            "3D 与全景场景表示、相机位姿",
+            "音频信号基础，如采样率、声道与声速",
+            "语义分割与分层的基本概念"
+          ],
+          "nextSteps": [
+            "学空间音频渲染与几何声学的入门方法，如镜像声源法与射线追踪",
+            "自己渲染一个移动听者的双耳音频，听距离与时延带来的变化",
+            "复现语义分层的声源标注流程，检查声源位置是否跨视角一致"
+          ]
+        }
+      }
+    },
+    {
+      "id": "579733cec8a05533",
+      "tldr": "把 LLM 裁判的分数换成保形校准奖励区间，GRPO 组内两两比区间而非点值。",
+      "keyPoints": [
+        "LLM-as-a-Judge 只给点分数，不表达奖励不确定性",
+        "用保形校准把伪奖励表示成有覆盖保证的区间",
+        "GRPO 的学习信号来自组内奖励的相对比较",
+        "新目标两两比较区间，不确定性影响信号方向与幅度",
+        "区间收缩为点时，理论恢复为 Dr.GRPO 优势"
+      ],
+      "why": "后训练与 RLHF 岗高频考点：奖励噪声与不确定性怎么进入 advantage，这里给出区间版答案。",
+      "difficulty": "hard",
+      "tags": [
+        "grpo",
+        "post-training",
+        "rlhf",
+        "uncertainty",
+        "reward-model",
+        "llm"
+      ],
+      "entities": [
+        "Range-GRPO",
+        "GRPO",
+        "Dr.GRPO",
+        "LLM-as-a-Judge",
+        "conformal calibration"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "Range-GRPO 训练流程",
+        "caption": "记住关键一步：奖励先在裁判处变成点分数，再被保形校准成区间，最后两两比较产生优势。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Range-GRPO 四步流程：组内采样、裁判打分、保形校准成区间、两两比较得优势'><rect x='46' y='16' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>组内采样</text><text x='418' y='40' font-size='13' text-anchor='end' fill='currentColor'>同一 prompt 的 G 条 rollout</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='46' y='70' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>LLM 裁判打分</text><text x='418' y='94' font-size='13' text-anchor='end' fill='currentColor'>点分数不含不确定性</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='46' y='124' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>保形校准成区间</text><text x='418' y='148' font-size='13' text-anchor='end' fill='currentColor'>每个响应一个区间</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='46' y='178' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>区间两两比较</text><text x='418' y='202' font-size='13' text-anchor='end' fill='currentColor'>得到优势信号</text></svg>",
+        "alt": "竖向四步流程：同一提示采样一组回答，LLM 裁判给点分数，保形校准成奖励区间，最后两两比较区间得到优势。"
+      },
+      "concepts": [
+        {
+          "name": "Conformally Calibrated Reward Range（保形校准奖励区间）",
+          "readable": "不给响应一个确定分数，而给一个有覆盖保证的区间，用来表达 LLM 裁判打分的不确定性。",
+          "analogy": "像天气预报不说明天 25 度，而说 20 到 27 度，区间宽度本身就告诉你预报有多不确定。",
+          "analogyBreaksDown": "天气预报的区间来自物理模型与历史误差；奖励区间来自保形校准，它保证平均覆盖率，却不保证对单个 prompt 的区间宽度有明确语义。",
+          "mechanism": "用保形校准把裁判的点分数转成有覆盖率保证的区间，让下游 RL 能区分分数高但没把握与分数高且确定这两种情况。",
+          "visual": "横轴为同组 rollout 排序，每个 rollout 画一条竖线段表示区间、一个点表示点分数，线段重叠代表裁判无法区分。",
+          "prerequisites": [
+            "GRPO 与策略梯度基础",
+            "保形预测的基本思想"
+          ],
+          "selfTest": [
+            "奖励区间与统计置信区间有什么本质区别？",
+            "区间宽度会在 GRPO 里影响什么？",
+            "为什么说保形校准对分布假设较弱？"
+          ],
+          "formula": "\\mathrm{Pr}\\big(r_{\\text{true}} \\in [l(x), u(x)]\\big) \\ge 1 - \\alpha"
+        },
+        {
+          "name": "Pairwise Interval Reward Comparison（区间两两比较）",
+          "readable": "GRPO 的优势来自组内相对比较；这里把每个 rollout 的奖励区间与其他区间两两比较，而不是先压成点值。",
+          "analogy": "像球赛不按绝对比分排名，而按两两胜负关系排名：比分接近的比赛贡献的信号自然更弱。",
+          "analogyBreaksDown": "球赛胜负是确定事件，而两个奖励区间重叠时谁更好本身就不确定，比较函数必须人为定义，不同定义会给出不同的学习信号。",
+          "mechanism": "把区间关系写成比较函数，使不确定性的方向与幅度都进入优势：区间重叠大则信号被削弱，区间分离则信号更强。",
+          "visual": "两个 rollout 的区间画在同一横轴上：完全分离时箭头明确指向一侧，大量重叠时箭头变淡，表示优势接近零。",
+          "prerequisites": [
+            "GRPO 组内归一化优势",
+            "区间算术与序关系"
+          ],
+          "selfTest": [
+            "为什么区间重叠会削弱优势？",
+            "当所有区间退化成点时，目标变成什么？",
+            "两两比较的次数与组内 rollout 数是什么关系？"
+          ],
+          "formula": "\\hat{A}_i = \\sum_{j \\neq i} \\phi\\big([l_i, u_i], [l_j, u_j]\\big)"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-range-grpo-interval-advantage",
+          "name": "区间奖励的组相对优势（Range-GRPO Interval Advantage）",
+          "category": "posttraining",
+          "latex": "\\hat{A}_i = \\frac{1}{G-1}\\sum_{j \\neq i} \\phi\\big([l_i, u_i], [l_j, u_j]\\big),\\qquad \\phi(a,b) = \\frac{\\mathrm{mid}(a) - \\mathrm{mid}(b)}{\\mathrm{spread}(a, b) + \\varepsilon}",
+          "symbols": [
+            [
+              "\\hat{A}_i",
+              "第 i 条 rollout 的区间感知优势"
+            ],
+            [
+              "G",
+              "同一 prompt 的 rollout 组大小"
+            ],
+            [
+              "[l_i, u_i]",
+              "第 i 条响应的保形校准奖励区间"
+            ],
+            [
+              "\\phi",
+              "区间两两比较函数"
+            ],
+            [
+              "\\mathrm{mid}",
+              "区间中点，点奖励的替身"
+            ],
+            [
+              "\\mathrm{spread}",
+              "两区间总跨度，衡量比较的不确定度"
+            ],
+            [
+              "\\varepsilon",
+              "数值稳定小量"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：GRPO 的学习信号来自同一 prompt 组内的相对奖励比较，而不是绝对分数。",
+            "第 2 步：点奖励丢掉了裁判的不确定性，两个看起来差一点的响应会被当成明确优劣。",
+            "第 3 步：把奖励表示成保形校准区间，先保留点比较的骨架，即用区间中点做差。",
+            "第 4 步：再用两个区间的总跨度做分母，重叠越多信号越弱，让不确定性直接调制优势幅度。",
+            "第 5 步：当所有区间收缩成点，该式退化为 Dr.GRPO 的组内中心化优势，摘要称此为理论性质。"
+          ],
+          "analogy": "像用两把刻度模糊的尺子量长度：尺子越模糊，量出来的差距越不该被当真，排名信号自然减弱。",
+          "pitfalls": [
+            "把区间中点差当成全部，丢掉分母的跨度项就退化成普通点奖励 GRPO。",
+            "以为区间越宽越好，区间过宽会让组内优势全部趋零，学不到信号。",
+            "忽略组内 rollout 数偏小时两两比较的方差，噪声会被放大。"
+          ],
+          "code": "import torch\n\ndef interval_advantage(lo, hi, eps=1e-6):\n    # lo/hi: [G] 同一 prompt 下各 rollout 的奖励区间端点\n    mid = 0.5 * (lo + hi)\n    span = (hi - lo).unsqueeze(0) + (hi - lo).unsqueeze(1)   # [G, G] 总跨度\n    pair = (mid.unsqueeze(0) - mid.unsqueeze(1)) / (span + eps)\n    pair.fill_diagonal_(0.0)\n    return pair.sum(dim=1) / (lo.shape[0] - 1)\n\ndef point_degenerate(lo, hi):\n    # 区间收缩为点时退化为组内中心化优势\n    r = 0.5 * (lo + hi)\n    return r - r.mean()",
+          "sources": [
+            {
+              "title": "Range-GRPO: Policy Optimization via Pairwise Relations among Reward Intervals",
+              "url": "https://arxiv.org/abs/2610.01548v1"
+            }
+          ]
+        },
+        {
+          "id": "f-drgrpo-centered-advantage",
+          "name": "点奖励退化：Dr.GRPO 中心化优势（Dr.GRPO Centered Advantage）",
+          "category": "posttraining",
+          "latex": "\\hat{A}_i^{\\text{Dr.GRPO}} = r_i - \\frac{1}{G}\\sum_{j=1}^{G} r_j",
+          "symbols": [
+            [
+              "\\hat{A}_i",
+              "第 i 条 rollout 的优势"
+            ],
+            [
+              "r_i",
+              "第 i 条响应的奖励"
+            ],
+            [
+              "G",
+              "组内 rollout 数"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：GRPO 用同一 prompt 的组内统计量做基线，减去组均值以降低方差。",
+            "第 2 步：按摘要的退化口径重建，Dr.GRPO 形式保留中心化而不再按组内标准差缩放。",
+            "第 3 步：Range-GRPO 的理论结论是，当所有奖励区间收缩成点，其区间比较目标恢复为这一形式。",
+            "第 4 步：因此区间版可以看作点版的推广，区间宽度为零时两者一致。"
+          ],
+          "analogy": "像考试排名：先减掉全班平均分看相对水平；如果再按全班分数标准差缩放，个体差异会被抹平，去掉这一步就是 Dr.GRPO 的做法。",
+          "pitfalls": [
+            "误以为 Dr.GRPO 只是多了个 clip，实际差别在归一化项。",
+            "把退化结论当成普遍等价，只有区间宽度为零时才严格一致。",
+            "忘记组均值基线依赖 G，G 太小时基线噪声大。"
+          ],
+          "code": "import torch\n\ndef grpo_advantage(rewards, use_std=True, eps=1e-6):\n    centered = rewards - rewards.mean()\n    if use_std:\n        return centered / (rewards.std(unbiased=False) + eps)\n    return centered                      # Dr.GRPO：只中心化，不除标准差\n\ndef collapse_ranges(lo, hi):\n    # 区间宽度为零时的点奖励\n    r = 0.5 * (lo + hi)\n    return r\n\nr = torch.tensor([0.2, 0.8, 0.5])\nprint(grpo_advantage(r, use_std=False))",
+          "sources": [
+            {
+              "title": "Range-GRPO: Policy Optimization via Pairwise Relations among Reward Intervals",
+              "url": "https://arxiv.org/abs/2610.01548v1"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "在没有参考答案或可执行验证器的领域，可靠监督的成本很高",
+          "LLM-as-a-Judge 提供可扩展的伪奖励，但单点分数不表达奖励不确定性",
+          "奖励被表示为保形校准的区间",
+          "GRPO 的学习信号依赖同一组 rollout 内的相对奖励比较",
+          "所提目标两两比较奖励区间，而不是把区间约简成点奖励",
+          "区间不确定性会影响学习信号的幅度与方向",
+          "理论分析表明当所有奖励区间收缩为点，目标恢复为 Dr.GRPO 优势",
+          "在半监督方法对比中取得最高的分布内与分布外平均表现，且训练资源更少"
+        ],
+        "uncertain": [
+          "比较函数与优势公式的具体形式摘要未给出，公式为按摘要重建的通用形式，需核对原文",
+          "更少训练资源的具体数值未给出",
+          "评测数据集、模型规模与半监督基线清单未给出",
+          "保形校准的实现细节与覆盖率目标未给出",
+          "Dr.GRPO 退化形式按通用写法重建，需核对原文定义"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "给 LLM 裁判的打分加上区间，让 GRPO 知道哪些比较不可靠。"
+          },
+          {
+            "level": "入门",
+            "text": "半监督后训练里很多 prompt 没有标准答案，只能用 LLM-as-a-Judge 打伪奖励，但单个分数不表达不确定性。Range-GRPO 用保形校准把分数变成奖励区间，再在 GRPO 的组内比较里两两比较区间，让不确定性同时影响优势的方向和幅度。"
+          },
+          {
+            "level": "进阶",
+            "text": "GRPO 的学习信号来自组内相对比较：优势大意味着这条 rollout 明显比同组好。点分数会把差一点当成确定优劣，区间则保留了对比较的置信度。Range-GRPO 的目标直接比较奖励区间而不是先取点值，理论分析表明当所有区间收缩为点时它恢复成 Dr.GRPO 的优势；实验上在半监督方法里取得最高的分布内与分布外平均表现，且训练资源更少。"
+          },
+          {
+            "level": "专家",
+            "text": "把区间塞进 RL 的关键是让不确定性有明确落点：比较函数的定义决定信号如何被削弱。区间重叠越多，优势越接近零，避免模型去拟合裁判噪声；区间分离则给出明确的更新方向。这条路线与奖励模型不确定度建模、带噪奖励下的 RLHF 一脉相承，但代价是每组要维护区间端点并做两两比较。适用边界是伪奖励确实有覆盖保证：若保形校准的分布假设被新数据破坏，区间宽度就不再可信，组内信号可能被系统性压平。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么不直接用点奖励的组内标准差归一化？",
+            "a": "点奖励抹掉了裁判不确定性，标准差只反映组内离散度，无法区分分数差得明确与差得含糊。"
+          },
+          {
+            "q": "区间越宽是不是越保守越安全？",
+            "a": "不是。区间过宽会让两两比较的信号普遍趋零，优势消失后策略几乎不更新，训练停滞。"
+          },
+          {
+            "q": "为什么理论上看重退化到 Dr.GRPO 这个性质？",
+            "a": "它说明新目标是点奖励目标的推广，区间宽度为零时行为一致，改动只来自不确定性建模。"
+          }
+        ],
+        "mechanism": "GRPO 的优势本质是组内相对排名，点奖励把不确定的比较压成确定胜负，模型会去拟合裁判噪声。Range-GRPO 把奖励表示成保形校准区间，并让比较函数以区间重叠程度为分母：重叠大则信号弱，分离则信号强。这样不确定性的方向与幅度都进入梯度，而中心化的总奖励不变，避免改动 GRPO 本身的基线结构。半监督设定下，带标签数据提供锚点，未标注 prompt 提供大量组内比较，区间负责决定哪些比较值得学。",
+        "boundary": "方法依赖保形校准给出的区间确实有覆盖保证；一旦测试分布明显偏离校准集，区间宽度会失真，优势可能被系统性压小或放大。它也只处理奖励不确定，不解决奖励本身有偏或可被 hack 的问题。若组内 rollout 数很少，两两比较的估计噪声会盖过收益。（待核实）",
+        "analogyBoundary": "尺子类比假设每把尺子的模糊程度固定且可比；实际区间宽度随 prompt 变化，跨组不可直接比较，而且两两比较函数的定义是人为选择，类比无法说明该选哪种序关系。",
+        "misconceptions": [
+          "以为只把奖励换成区间就行，忽略比较函数的设计才是信号强弱的来源。",
+          "把区间版当成与 GRPO 无关的新算法，它在区间退化为点时恢复 Dr.GRPO。",
+          "以为半监督配方只靠未标注数据，摘要强调是有限标注数据加未标注 prompt。"
+        ],
+        "ownAnalysis": "在奖励不确定建模这条线上，常见做法是给奖励模型加集成或贝叶斯头、或者做保守惩罚，Range-GRPO 的特别之处是把不确定性直接写进组内相对优势，而不是改奖励值本身。（推断）这与 DPO 系列里对偏好噪声做重加权是同一动机的两个位置：一个改优势，一个改损失权重。可疑点在于更少训练资源却有更高平均表现需要看清对比口径，半监督基线的标注预算是否对齐会显著影响结论；摘要未给出具体资源数字。（待核实）",
+        "officialNotes": [
+          {
+            "position": "理论分析表明当所有奖励区间收缩为点，所提目标恢复为 Dr.GRPO 优势；实验在评测的半监督方法中取得最高分布内与分布外平均表现，且训练资源更少。",
+            "source": "arxiv"
+          }
+        ],
+        "interviewAnswer": "我理解 Range-GRPO 解决的是伪奖励不可信的问题。半监督场景里很多 prompt 没有标准答案，只能靠 LLM-as-a-Judge 给分，而点分数不表达不确定性。他们先用保形校准把点分数变成有覆盖保证的奖励区间，再改 GRPO 的组内比较：不把区间压成点值，而是两两比较区间，让不确定性同时影响优势的方向与幅度。理论上当区间收缩成点，目标恢复为 Dr.GRPO 优势；实验在半监督方法里取得最高平均表现。",
+        "studyPath": {
+          "prerequisites": [
+            "GRPO 与组内归一化优势",
+            "策略梯度与 PPO 目标结构",
+            "保形预测基础"
+          ],
+          "nextSteps": [
+            "读 Dr.GRPO 等 GRPO 变体，弄清去标准差归一的动机",
+            "手写一个区间比较函数，观察组大小对优势方差的影响",
+            "在带噪奖励的玩具任务上对比点奖励与区间奖励的收敛"
+          ]
+        }
+      }
+    },
+    {
+      "id": "fd3bb0fd738612e2",
+      "tldr": "只改奖励模型线性头：SAE 式编码器找敏感属性，再按数据集选编辑方向与幅度。",
+      "keyPoints": [
+        "奖励模型偏爱长度、自信等表层属性",
+        "重训要数据算力，已有编辑法要预先指定偏差",
+        "SAE 式编码器学出奖励模型对哪些属性敏感",
+        "只编辑线性奖励头，并为新数据集选择相关编辑",
+        "五个奖励模型上三项基准平均提升 8.3、18.0、6.9 点"
+      ],
+      "why": "后训练岗必谈 reward hacking；这条给出不改主干、按数据集自适应去偏的工程化路线。",
+      "difficulty": "medium",
+      "tags": [
+        "reward-model",
+        "post-training",
+        "bias-mitigation",
+        "sparse-autoencoder",
+        "rlhf",
+        "model-editing"
+      ],
+      "entities": [
+        "BiasReducer",
+        "BiasReducer-M",
+        "SAE",
+        "reward head"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "BiasReducer 编辑流程",
+        "caption": "记住分工：编码器负责发现偏差属性，编辑只发生在最后那个线性奖励头上。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='BiasReducer 四步流程：奖励打分、稀疏编码器识别属性、学习编辑方向与幅度、按数据集选择编辑'><rect x='46' y='16' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>响应与奖励打分</text><text x='418' y='40' font-size='13' text-anchor='end' fill='currentColor'>现有奖励模型</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='46' y='70' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>SAE 式编码器</text><text x='418' y='94' font-size='13' text-anchor='end' fill='currentColor'>属性敏感性</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='46' y='124' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>学编辑方向与幅度</text><text x='418' y='148' font-size='13' text-anchor='end' fill='currentColor'>每个属性一份</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='46' y='178' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>按数据集选编辑</text><text x='418' y='202' font-size='13' text-anchor='end' fill='currentColor'>只改线性奖励头</text></svg>",
+        "alt": "竖向四步流程：响应经奖励模型打分，稀疏编码器识别敏感属性，学习每个属性的编辑方向与幅度，最后按新数据集选择相关编辑。"
+      },
+      "concepts": [
+        {
+          "name": "Reward Head Editing（奖励头编辑）",
+          "readable": "不动奖励模型主干，只改最后那个线性打分头：把某些属性方向的权重推一推，就削弱对应的偏好。",
+          "analogy": "像调音响的均衡器：不改音源，只把某几个频段旋钮拧低，低音轰头的毛病就没了。",
+          "analogyBreaksDown": "均衡器的频段近似正交、互不干扰；奖励模型里的属性方向彼此相关，调一个旋钮会顺带改变另一个属性的打分。",
+          "mechanism": "把可编辑空间限制在线性头，编辑量小、可解释、不需要重训；代价是只能修正能被线性头表达的偏好。",
+          "visual": "横轴为属性编号，纵轴为编辑幅度；每个属性一根竖条，被选中的用实色、未选中的用空心，中轴线表示原权重。",
+          "prerequisites": [
+            "奖励模型与偏好建模基础",
+            "线性探针与稀疏自编码器概念"
+          ],
+          "selfTest": [
+            "为什么编辑线性头比重训更省资源？",
+            "线性头编辑表达不了哪类偏差？",
+            "编辑幅度过大会发生什么？"
+          ],
+          "formula": "\\tilde{w} = w + \\alpha_k d_k"
+        },
+        {
+          "name": "Sparse Autoencoder Style Attribute Encoder（SAE 式属性编码器）",
+          "readable": "用类似稀疏自编码器的编码器，把奖励模型的隐藏表示映到一组稀疏属性方向，看它到底对长度、自信这些属性敏感。",
+          "analogy": "像给一道菜做成分检测：不问你整体好不好吃，而是把盐、糖、辣度分别测出来，才知道是哪种调料放多了。",
+          "analogyBreaksDown": "成分检测有客观化学方法，而这里的属性方向是从数据里学出来的，命名与语义都靠人解释，可能学到的是相关的伪属性。",
+          "mechanism": "把高维隐藏表示分解成稀疏属性通道，使对哪个属性敏感变成可量化的系数，从而支持后续按属性做定向编辑。",
+          "visual": "矩阵热力图：行是样本、列是属性通道，颜色深浅代表激活强度；横向看某属性被哪些样本激活，纵向看某样本偏重哪些属性。",
+          "prerequisites": [
+            "稀疏自编码器基本原理",
+            "线性代数中的方向与投影"
+          ],
+          "selfTest": [
+            "SAE 式编码器为什么强调稀疏性？",
+            "属性能被命名就意味着它一定因果影响打分吗？",
+            "如何用编码器系数判断某属性对当前数据集的重要度？"
+          ],
+          "formula": "z = \\mathrm{ReLU}(W_e h + b_e)"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-reward-head-adaptive-edit",
+          "name": "奖励头自适应编辑（Adaptive Reward-Head Edit）",
+          "category": "posttraining",
+          "latex": "\\tilde{w} = w + \\sum_{k \\in S} \\alpha_k\\, d_k,\\qquad S = \\mathrm{TopK}_k\\ \\mathrm{Infl}_k(D)",
+          "symbols": [
+            [
+              "w",
+              "奖励模型线性头的原始权重"
+            ],
+            [
+              "\\tilde{w}",
+              "编辑后的权重"
+            ],
+            [
+              "d_k",
+              "第 k 个属性对应的编辑方向"
+            ],
+            [
+              "\\alpha_k",
+              "第 k 个属性的编辑幅度"
+            ],
+            [
+              "S",
+              "按当前数据集影响力选出的属性子集"
+            ],
+            [
+              "\\mathrm{Infl}_k(D)",
+              "属性 k 在数据集 D 上对奖励分数的影响力"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：重训奖励模型需要额外数据与算力，已有编辑法又要事先指定要改的偏差，两者都不适合数据集频繁切换。",
+            "第 2 步：把编辑限制在线性奖励头，奖励可写成权重与隐藏表示的内积，改权重即等价于改奖励函数。",
+            "第 3 步：用 SAE 式编码器学出属性方向，并学出每个方向该往哪调、调多少。",
+            "第 4 步：面对新数据集，先按影响力排序属性，只取前若干组成子集 S，避免无关编辑损害其他能力。",
+            "第 5 步：最终只更新奖励头权重，得到按数据集自适应的去偏版本。"
+          ],
+          "analogy": "像给不同城市的自来水调过滤芯：先测水里哪种杂质超标，只装对应的滤芯，而不是整厂重建。",
+          "pitfalls": [
+            "以为编辑方向可以跨数据集通用，摘要强调要为每个新数据集重新选择编辑。",
+            "把 TopK 选属性当成没有超参，K 与编辑幅度都会影响去偏强度。",
+            "以为只改线性头就没有副作用，属性相关时仍可能损伤其他偏好维度。"
+          ],
+          "code": "import torch\n\ndef apply_head_edit(w, directions, alphas, topk=2):\n    # w: [D] 奖励头权重；directions: [K, D]；alphas: [K] 编辑幅度\n    score = alphas.abs()\n    idx = torch.topk(score, k=min(topk, score.numel())).indices\n    delta = torch.zeros_like(w)\n    for k in idx.tolist():\n        delta = delta + alphas[k] * directions[k]\n    return w + delta\n\ndef edited_score(h, w, directions, alphas, topk=2):\n    # h: [D] 奖励模型隐藏表示\n    return h @ apply_head_edit(w, directions, alphas, topk)",
+          "sources": [
+            {
+              "title": "BiasReducer: Adaptive Bias Mitigation for Reward Models",
+              "url": "https://huggingface.co/papers/2609.32720"
+            }
+          ]
+        },
+        {
+          "id": "f-attribute-influence-score",
+          "name": "属性影响力打分（Attribute Influence Score）",
+          "category": "posttraining",
+          "latex": "\\mathrm{Infl}_k(D) = \\mathbb{E}_{x \\sim D}\\big[\\,|\\,z_k(x)\\,|\\,\\big] \\cdot \\|d_k\\|",
+          "symbols": [
+            [
+              "\\mathrm{Infl}_k(D)",
+              "属性 k 在数据集 D 上对奖励分数的影响力"
+            ],
+            [
+              "z_k(x)",
+              "SAE 式编码器在样本 x 上第 k 个属性的激活"
+            ],
+            [
+              "d_k",
+              "第 k 个属性对应的奖励头编辑方向"
+            ],
+            [
+              "D",
+              "当前目标数据集"
+            ],
+            [
+              "\\mathbb{E}",
+              "在数据集上的平均"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：要对新数据集选择编辑，先得有一个衡量哪条属性更影响打分的度量。",
+            "第 2 步：编码器给出每条样本在各属性上的激活，取绝对值平均得到该属性在数据集上的活跃程度。",
+            "第 3 步：再乘上该属性对应编辑方向的范数，得到可比较的影响力分数。",
+            "第 4 步：按影响力排序并取前若干，即得到该数据集真正需要修正的属性集合。",
+            "第 5 步：摘要未给出影响力分数的精确形式，此处为按按影响力排序属性这一描述重建的通用写法。"
+          ],
+          "analogy": "像体检报告排序：先看哪项指标偏离正常值最多，再决定先治哪个。",
+          "pitfalls": [
+            "把激活强度直接等同于因果影响，相关属性可能被高估。",
+            "用全量数据集平均会掩盖只在部分子群上出现的偏差。",
+            "忽略方向范数项，不同属性方向的缩放会不可比。"
+          ],
+          "code": "import torch\n\ndef attribute_influence(z, directions):\n    # z: [N, K] 编码器激活；directions: [K, D] 属性编辑方向\n    activity = z.abs().mean(dim=0)                 # [K] 平均活跃度\n    scale = directions.flatten(1).norm(dim=1)      # [K] 方向范数\n    return activity * scale                        # [K] 影响力分数\n\ndef select_edits(z, directions, topk=2):\n    infl = attribute_influence(z, directions)\n    return torch.topk(infl, k=min(topk, infl.numel())).indices",
+          "sources": [
+            {
+              "title": "BiasReducer: Adaptive Bias Mitigation for Reward Models",
+              "url": "https://arxiv.org/abs/2609.32720"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "奖励模型会偏爱长度、自信等表层属性，使 LLM 产出分高但不更正确的回答",
+          "已有缓解方法要么重训奖励模型，要么对某个已知偏差施加固定修正",
+          "重训需要额外数据与算力，已有编辑法要预先指定目标偏差并使用固定编辑",
+          "BiasReducer 只编辑线性奖励头，并为每个新数据集选择相关编辑",
+          "第一步用 SAE 式编码器学习奖励模型对哪些属性敏感",
+          "第二步学习减少每个属性依赖的方向与幅度",
+          "第三步按属性对奖励分数的影响力排序、选相关的做编辑",
+          "五个奖励模型上 BiasReducer-M 平均提升三项基准 8.3、18.0、6.9 个百分点，优于两个训练式基线",
+          "增益可迁移到下游，减少不必要的啰嗦与谄媚，判断质量大致相当"
+        ],
+        "uncertain": [
+          "影响力排序的具体打分公式摘要未给出，公式为按描述重建的通用形式，需核对原文",
+          "三个基准的名称与各自口径未给出",
+          "轻量化的具体参数量与耗时未给出",
+          "编辑幅度的取值方式与 TopK 的 K 未给出",
+          "是否使用 HuggingFace 页面以外的评审信息无法确认"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "只调奖励模型的打分头，就能压掉它对长度和自信的偏爱。"
+          },
+          {
+            "level": "入门",
+            "text": "奖励模型常偏爱长度、自信这类表层属性，导致 LLM 学会写更长更会讨好而不是更正确。重训要数据算力，已有编辑法又要事先指定偏差。BiasReducer 用 SAE 式编码器找出奖励模型对哪些属性敏感，学出每个属性的调整方向与幅度，再针对新数据集挑选相关编辑，只改线性奖励头。"
+          },
+          {
+            "level": "进阶",
+            "text": "流程分三步：编码器学属性敏感性；为每个属性学往哪调、调多少；对新数据集按影响力排序、选相关属性再编辑。因为只动线性头，代价远低于重训，并且不需要预先知道要修哪种偏差。摘要报告在五个奖励模型上，BiasReducer-M 把三项基准平均提升 8.3、18.0、6.9 个百分点，超过两个训练式基线；下游还减少了不必要的啰嗦与谄媚，同时判断质量相当。"
+          },
+          {
+            "level": "专家",
+            "text": "与固定修正单一已知偏差的编辑法相比，这里的自适应体现在按数据集选属性，把编辑空间从手工指定扩展成可检索的属性集合；与重训相比，它的假设是偏差能被线性头方向近似表达。这一步假设也是它的边界：如果偏好纠缠在非线性交互里，或者属性方向之间高度相关，单头编辑会顾此失彼。摘要给出的收益是三个基准的平均点数提升，但未说明各基准的具体口径与方差，跨模型迁移性需要看原文。（待核实）"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么不直接重训奖励模型来去偏？",
+            "a": "重训需要额外数据与算力，且每次换数据集都要再来一遍；编辑线性头只改一小部分参数，代价低得多。"
+          },
+          {
+            "q": "为什么不能对所有属性一次性全调？",
+            "a": "无关编辑会损伤其他偏好维度；摘要的做法是先按影响力排序，只选当前数据集真正相关的属性。"
+          },
+          {
+            "q": "SAE 式编码器在这里的作用是什么？",
+            "a": "它把隐藏表示分解成稀疏可解释的属性方向，让对哪个属性敏感变成可量化、可排序的量。"
+          }
+        ],
+        "mechanism": "设计动机是让去偏变成检索加轻量编辑，而不是重训。奖励模型对表层属性的依赖最终体现在奖励分数对隐藏表示的线性组合上，所以只改线性头就足以改变偏好行为，参数改动小且可控。SAE 式编码器提供稀疏属性坐标系，使长度、自信这些维度可被单独测量；再用一个学到的编辑方向与幅度去抵消依赖。面对新数据集，按影响力排序选出相关属性，避免无关编辑损害其他偏好，把知道要改什么从人工先验变成数据驱动的选择。",
+        "boundary": "它假设奖励模型的偏差能被线性头方向近似抵消，属性纠缠强或非线性交互时编辑会失效或误伤。影响力排序依赖数据集统计，若新数据分布偏移或子群偏差被平均值掩盖，选出的属性可能不对。此外编辑只改奖励，不解决奖励本身的系统性错误与可被 hack 的问题。（待核实）",
+        "analogyBoundary": "均衡器类比假设各频段正交且听感线性可加；奖励属性之间高度相关，拧低长度的旋钮很可能同时改变信息量的打分，这是单旋钮类比无法表达的耦合。",
+        "misconceptions": [
+          "以为 BiasReducer 需要重训奖励模型，实际只编辑线性奖励头。",
+          "把编辑方向当成跨数据集通用，摘要强调要为每个新数据集重新选择。",
+          "以为 8.3、18.0、6.9 是单项最好结果，摘要说是五个奖励模型上的平均提升。"
+        ],
+        "ownAnalysis": "把 BiasReducer 放进 reward hacking 的谱系看：一条路是数据侧，做偏好数据去偏与对比增强；一条是训练侧，用正则、KL 或集成；这条属于模型编辑侧，只动打分头。（推断）它与用 SAE 定位并操控模型内部特征的可解释性研究是同一套工具搬到奖励模型上，工程上更轻。可疑点是评测基准：三个基准与偏差类型未在摘要里说明，而减少谄媚这类下游指标容易受提示词影响，需要看原文的评测协议。（待核实）",
+        "officialNotes": [
+          {
+            "position": "BiasReducer 只编辑线性奖励头并为每个新数据集选择相关编辑；五个奖励模型上 BiasReducer-M 平均提升三项基准 8.3、18.0、6.9 个百分点，优于两个训练式基线。",
+            "source": "hf_papers"
+          }
+        ],
+        "interviewAnswer": "我会这样讲：奖励模型爱看长度和自信这类表层属性，模型就会刷分而不是变正确。已有做法要么重训奖励模型，要么针对预先指定的偏差做固定修正。BiasReducer 只动线性奖励头：先用 SAE 式编码器学出它对哪些属性敏感，再为每个属性学调整方向与幅度；换新数据集时按影响力排序，只选相关的来编辑。摘要报告在五个奖励模型上平均提升三项基准 8.3、18.0、6.9 个百分点，超过两个训练式基线，下游还减少了啰嗦与谄媚。",
+        "studyPath": {
+          "prerequisites": [
+            "奖励模型与偏好数据的基本建模",
+            "RLHF 与 DPO 中奖励模型的作用",
+            "稀疏自编码器与线性探针"
+          ],
+          "nextSteps": [
+            "复现一个小规模的奖励模型长度与自信偏差检测实验",
+            "用稀疏自编码器在奖励模型隐藏层上学属性方向并可视化",
+            "对比只编辑奖励头与全量微调在多数据集上的迁移性"
+          ]
+        }
+      }
+    },
+    {
+      "id": "e6d52698eb6bc0d3",
+      "tldr": "CorrGRPO 把 GRPO 组内归一化的协方差换成皮尔逊相关，多奖励不再被大尺度项主导。",
+      "keyPoints": [
+        "GRPO 对多奖励求和后按组内标准差归一化",
+        "总奖励方差等于所有两两奖励协方差之和",
+        "聚合协方差越大，优势被压得越小",
+        "大尺度相关奖励会主导归一化并压制小奖励信号",
+        "CorrGRPO 改用皮尔逊相关，中心化总奖励不变"
+      ],
+      "why": "多奖励 RL 是后训练落地主线；这条把归一化为何被大尺度奖励带偏讲清楚，适合面试复述。",
+      "difficulty": "hard",
+      "tags": [
+        "grpo",
+        "multi-reward",
+        "post-training",
+        "rl",
+        "normalization",
+        "llm"
+      ],
+      "entities": [
+        "CorrGRPO",
+        "GRPO",
+        "Pearson correlation",
+        "HKUST-KnowComp"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "CorrGRPO 归一化对比",
+        "caption": "记住差别只在分母：协方差带尺度会被大奖励主导，换成相关系数后只保留相关结构。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='CorrGRPO 流程：组内多奖励求和、GRPO 用组内标准差归一化、大尺度协方差主导，CorrGRPO 改用皮尔逊相关'><rect x='46' y='16' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>组内多奖励</text><text x='418' y='40' font-size='13' text-anchor='end' fill='currentColor'>K 个奖励分量</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='46' y='70' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>GRPO 归一化</text><text x='418' y='94' font-size='13' text-anchor='end' fill='currentColor'>除以组内标准差</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='46' y='124' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>尺度主导的问题</text><text x='418' y='148' font-size='13' text-anchor='end' fill='currentColor'>大奖励压制小奖励信号</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='46' y='178' width='388' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='62' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>CorrGRPO</text><text x='418' y='202' font-size='13' text-anchor='end' fill='currentColor'>协方差归一为皮尔逊相关</text></svg>",
+        "alt": "竖向四层流程：组内多奖励求和，GRPO 除以组内标准差，大尺度协方差主导归一化并压制小奖励信号，CorrGRPO 改用皮尔逊相关系数。"
+      },
+      "concepts": [
+        {
+          "name": "Group-Relative Advantage Normalization（组内相对优势归一化）",
+          "readable": "GRPO 用同一 prompt 的一组 rollout 当基线：优势等于奖励减组均值，再按组内标准差缩放，让更新幅度与组内离散度匹配。",
+          "analogy": "像同一次考试里排名：先减掉全班平均分看相对水平，再按全班分数的离散程度决定这次排名的分差值不值钱。",
+          "analogyBreaksDown": "考试分数同质、聚合简单；多奖励场景里总分是几个异质分量的和，用总分标准差会掩盖单个分量的尺度与相关性。",
+          "mechanism": "中心化降低方差，除标准差让不同 prompt 的梯度尺度可比；代价是归一化项会被某些奖励分量的尺度与相关性主导。",
+          "visual": "横轴为 rollout 编号，纵轴为奖励；画出组均值水平线与正负一个标准差的带，优势就是点到均值的距离再除以带宽度。",
+          "prerequisites": [
+            "策略梯度与基线、方差缩减",
+            "PPO 与 GRPO 的目标结构"
+          ],
+          "selfTest": [
+            "为什么要减组均值而不是减一个训练好的价值函数？",
+            "除标准差带来什么好处、什么风险？",
+            "多奖励相加时组内方差如何展开？"
+          ],
+          "formula": "\\hat{A}_i = \\frac{r_i - \\bar{r}}{\\mathrm{std}(r)}"
+        },
+        {
+          "name": "Correlation-Normalized Covariance（相关归一化协方差）",
+          "readable": "把奖励分量之间的协方差除以各自标准差，得到皮尔逊相关系数；归一化项因此只反映相关结构，不被分量尺度带偏。",
+          "analogy": "像比较两支球队的配合度：先各自把比分标准化，再看它们同涨同跌的程度，而不是直接比原始分差。",
+          "analogyBreaksDown": "相关系数只刻画线性相关，两个奖励可能是非线性或条件相关；而且把协方差全换成相关，也丢掉了各分量的绝对尺度信息。",
+          "mechanism": "保留中心化总奖励不变，只把分母里的协方差换成尺度无关的相关项，避免大尺度奖励主导归一化。",
+          "visual": "K 乘 K 相关矩阵热力图：对角线为 1，非对角格子颜色深浅表示分量间相关强度，对比归一化前后同一矩阵的尺度差异。",
+          "prerequisites": [
+            "协方差与相关系数的定义",
+            "GRPO 的多奖励聚合方式"
+          ],
+          "selfTest": [
+            "协方差与相关系数在归一化里各自会带来什么偏差？",
+            "CorrGRPO 为什么不改中心化总奖励？",
+            "相关项为负时归一化会发生什么？"
+          ],
+          "formula": "\\rho_{mn} = \\frac{\\mathrm{Cov}(r_m, r_n)}{\\sigma_m \\sigma_n}"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-multi-reward-variance",
+          "name": "多奖励总方差分解（Variance of Summed Rewards）",
+          "category": "posttraining",
+          "latex": "\\mathrm{Var}\\!\\Big(\\sum_{k=1}^{K} r_k\\Big) = \\sum_{m=1}^{K}\\sum_{n=1}^{K} \\mathrm{Cov}(r_m, r_n)",
+          "symbols": [
+            [
+              "r_k",
+              "第 k 个奖励分量在组内的取值"
+            ],
+            [
+              "K",
+              "奖励分量个数"
+            ],
+            [
+              "\\mathrm{Cov}(r_m, r_n)",
+              "两奖励分量的协方差，m 等于 n 时为各自方差"
+            ],
+            [
+              "\\mathrm{Var}",
+              "组内方差"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：GRPO 在多奖励时把各分量求和得到总奖励，再用总奖励的组内标准差归一化。",
+            "第 2 步：和的方差等于各项两两协方差之和，这是方差的双线性性质。",
+            "第 3 步：所以分母实际上由所有分量的方差与协方差共同决定。",
+            "第 4 步：当某些分量尺度大且彼此相关时，它们的协方差项在总和中占主导，归一化尺度被它们支配。",
+            "第 5 步：这正是 CorrGRPO 要解决的问题，把协方差换成尺度无关的相关项。"
+          ],
+          "analogy": "像算一队人搬货的总波动：不只看每个人自己的波动，还要看他们是不是同时波动，一起波动时总量波动远大于各自相加。",
+          "pitfalls": [
+            "以为多奖励就是把各分量方差相加，忽略交叉协方差项。",
+            "把协方差大小直接当成相关性强度，忽略分量尺度差异。",
+            "忘记中心化后总奖励不变，归一化只影响优势的尺度。"
+          ],
+          "code": "import torch\n\ndef total_reward_variance(rewards):\n    # rewards: [G, K] 同一 prompt 下 G 条 rollout 的 K 个奖励分量\n    total = rewards.sum(dim=1)                         # [G] 总奖励\n    var_total = total.var(unbiased=False)              # 总奖励组内方差\n    centered = rewards - rewards.mean(dim=0, keepdim=True)\n    cov = centered.t() @ centered / rewards.shape[0]   # [K, K] 协方差\n    return var_total, cov.sum()                        # 后者为所有两两协方差之和\n\nr = torch.randn(16, 3)\na, b = total_reward_variance(r)\nassert torch.allclose(a, b, atol=1e-5)",
+          "sources": [
+            {
+              "title": "CorrGRPO: Correlation-Normalized GRPO for Multi-Reward Learning",
+              "url": "https://huggingface.co/papers/2609.36820"
+            }
+          ]
+        },
+        {
+          "id": "f-corrgrpo-advantage",
+          "name": "CorrGRPO 相关归一化优势（CorrGRPO Advantage）",
+          "category": "posttraining",
+          "latex": "\\hat{A}_i = \\frac{R_i - \\bar{R}}{\\sqrt{\\sum_{m,n} \\rho_{mn}} + \\varepsilon},\\qquad \\rho_{mn} = \\frac{\\mathrm{Cov}(r_m, r_n)}{\\sigma_m \\sigma_n}",
+          "symbols": [
+            [
+              "\\hat{A}_i",
+              "第 i 条 rollout 的优势"
+            ],
+            [
+              "R_i",
+              "第 i 条 rollout 的总奖励，即各分量之和"
+            ],
+            [
+              "\\bar{R}",
+              "组内总奖励均值"
+            ],
+            [
+              "\\rho_{mn}",
+              "奖励分量 m 与 n 的皮尔逊相关系数"
+            ],
+            [
+              "\\sigma_m",
+              "分量 m 的组内标准差"
+            ],
+            [
+              "\\varepsilon",
+              "数值稳定小量"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：GRPO 的分母是总奖励的组内标准差，由所有两两协方差之和的平方根给出。",
+            "第 2 步：协方差带分量尺度，大尺度奖励即使相关性一般，也会贡献很大的协方差项。",
+            "第 3 步：把每个协方差除以两个分量标准差，得到尺度无关的皮尔逊相关系数。",
+            "第 4 步：用相关项之和替换协方差之和作为归一化尺度，同时保持中心化总奖励不变。",
+            "第 5 步：于是优势幅度随奖励之间的相关结构自适应，不再被大尺度分量支配。"
+          ],
+          "analogy": "像评两个指标是否同向：先把各自分数标准化再比同步程度，否则基数大的指标会看起来永远更重要。",
+          "pitfalls": [
+            "把分母理解成仍带尺度，换成相关系数后归一化与分量量纲无关。",
+            "以为中心化总奖励也变了，摘要明确说保持不变。",
+            "忽略负相关，相关项可正可负，需要数值保护否则优势会爆炸或趋零。"
+          ],
+          "code": "import torch\n\ndef corrgrpo_advantage(rewards, eps=1e-6):\n    # rewards: [G, K] 组内 G 条 rollout 的 K 个奖励分量\n    total = rewards.sum(dim=1)                       # [G] 总奖励\n    centered = total - total.mean()                  # 中心化总奖励保持不变\n    comp = rewards - rewards.mean(dim=0, keepdim=True)\n    std = comp.std(dim=0, unbiased=False).clamp_min(eps)\n    cov = comp.t() @ comp / rewards.shape[0]         # [K, K] 协方差\n    rho = cov / (std.unsqueeze(0) * std.unsqueeze(1) + eps)   # 皮尔逊相关\n    norm = rho.sum().clamp_min(eps).sqrt()           # 尺度无关的归一化\n    return centered / norm, rho",
+          "sources": [
+            {
+              "title": "CorrGRPO: Correlation-Normalized GRPO for Multi-Reward Learning",
+              "url": "https://huggingface.co/papers/2609.36820"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "GRPO 对多奖励是把各分量求和，再按总奖励的组内标准差归一化",
+          "总奖励的组内方差等于所有两两奖励协方差之和",
+          "对固定的中心化奖励，聚合协方差越大优势越小，反之越大",
+          "这样更新幅度会随奖励依赖关系自适应",
+          "大尺度且相关的奖励会主导归一化并压制小尺度奖励的信号",
+          "CorrGRPO 把两两协方差归一成皮尔逊相关系数",
+          "CorrGRPO 保持中心化总奖励不变，平衡不同尺度奖励的影响",
+          "实验覆盖代码生成、工具调用与 agent 安全，模型规模 0.5B 到 8B",
+          "评测任务都涉及可共同提升或存在取舍的多奖励"
+        ],
+        "uncertain": [
+          "分母中相关项的具体聚合与开方形式摘要未给出，公式为按摘要重建的通用形式，需核对原文",
+          "各任务的具体提升幅度未给出",
+          "相关项为负或接近零时的数值处理未说明",
+          "0.5B 到 8B 之间评测了哪些具体模型未给出"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "多奖励 GRPO 的归一化会被大尺度奖励带偏，改成相关系数就平了。"
+          },
+          {
+            "level": "入门",
+            "text": "GRPO 在多奖励时把各分量加总，再按总奖励的组内标准差归一化。总和方差等于所有两两协方差之和，所以尺度大又彼此相关的奖励会主导分母，把小奖励的信号压掉。CorrGRPO 把两两协方差换成皮尔逊相关系数，中心化总奖励不变，让优势幅度跟着相关结构走。"
+          },
+          {
+            "level": "进阶",
+            "text": "关键观察是分母的构成：总奖励方差展开后是全部方差与协方差之和，协方差项带分量尺度。于是相关且尺度大的分量会同时放大分母、缩小优势，等效于抑制其他奖励的学习信号。CorrGRPO 只改归一化，用标准差把每个协方差归一成相关系数，去除尺度影响并保留相关结构。实验在代码生成、工具调用与 agent 安全三类任务、0.5B 到 8B 模型上都报告了提升。"
+          },
+          {
+            "level": "专家",
+            "text": "与 GRPO 的差别只在分母：分子仍是中心化的总奖励，因此没有改变基线结构，也不会引入额外的价值网络。与手工给每个奖励加权相比，它不要求预先知道哪个奖励重要，而是让相关结构自动决定归一化强度。代价是当相关项之和接近零或为负时归一化会不稳定，需要数值保护；同时它假定奖励分量在同一组内可估计相关系数，组太小时估计噪声大。适用边界是多奖励确实存在尺度差异与相关性，单奖励或相关性很弱时收益有限。（推断）"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "多奖励时为什么不能简单把各分量奖励相加就完事？",
+            "a": "相加后的组内标准差包含各分量尺度与协方差，大尺度相关分量会主导归一化，压制其他分量的信号。"
+          },
+          {
+            "q": "换成相关系数损失了什么信息？",
+            "a": "丢掉了各分量的绝对尺度，只保留线性相关强弱；如果任务真的需要按尺度加权，这个改写并不等价。"
+          },
+          {
+            "q": "为什么强调中心化总奖励不变？",
+            "a": "说明改动只发生在归一化尺度上，优势的符号与相对顺序仍由总奖励决定，便于和 GRPO 行为对照。"
+          }
+        ],
+        "mechanism": "GRPO 的更新幅度由组内标准差决定，多奖励下这变成一个耦合问题：总奖励方差是所有两两协方差之和，任一个尺度大的相关分量都会抬高分母，让所有 rollout 的优势一起变小，这不是某个奖励更重要，而是尺度造成的失真。CorrGRPO 把归一化对象从协方差换成皮尔逊相关系数，分母只反映相关结构、与量纲无关，同时保留中心化总奖励，因此优势方向不变，只有幅度随相关性自适应。取舍是接受归一化不稳定的风险，换取不同尺度奖励公平参与。",
+        "boundary": "它只改归一化尺度，不解决奖励本身定义错误、可被 hack 或相互冲突的问题。相关项之和接近零或为负时，开方前的数值保护会直接影响优势尺度，训练可能不稳。组内 rollout 数太少时相关系数估计噪声大，反而不如直接调奖励权重。单奖励或分量间相关性很弱时，收益预计有限。（推断）",
+        "analogyBoundary": "标准化比分的类比只覆盖线性相关，两个奖励可能是非线性或条件相关；而且把协方差全部换成相关系数也意味着不再区分分量量级，若任务确实需要按量级加权，这个类比会误导。",
+        "misconceptions": [
+          "以为 CorrGRPO 改了奖励函数或加了权重，实际只换了归一化尺度。",
+          "以为中心化总奖励也变了，摘要强调保持不变。",
+          "以为相关系数一定为正，负相关时相关项之和可能接近零，归一化要额外保护。"
+        ],
+        "ownAnalysis": "多奖励 RL 的常见争论是要不要手工调权重，CorrGRPO 给出的答案是让相关结构自动决定归一化强度，这与归一化决定优化动力学的观察一致。（推断）它与 Dr.GRPO 去掉标准差归一的动机方向相反：一个想减少归一化带来的偏置，一个想保留归一化但换更公平的尺度，对比着读很有价值。可疑点在于相关项求和后的开方语义：负相关会互相抵消，分母可能偏小导致优势被放大，摘要未说明如何处理。（待核实）",
+        "officialNotes": [
+          {
+            "position": "对多个奖励，GRPO 求和后按组内标准差归一化，其方差等于所有两两协方差之和；大尺度相关奖励会主导归一化并压制小尺度奖励信号。CorrGRPO 把两两协方差归一为皮尔逊相关系数，保持中心化总奖励不变。",
+            "source": "hf_papers"
+          }
+        ],
+        "interviewAnswer": "我理解 CorrGRPO 是在修 GRPO 多奖励场景下的归一化失真。GRPO 把各奖励分量加总，再按总奖励的组内标准差归一化；而总奖励方差等于所有两两协方差之和，带尺度的协方差会被大尺度、高相关分量主导，导致所有 rollout 的优势一起被压小，小尺度奖励的信号就没了。CorrGRPO 把每个协方差除以两个分量的标准差，换成尺度无关的皮尔逊相关系数，中心化总奖励保持不变，优势幅度只随相关结构变化。他们在代码生成、工具调用与 agent 安全上都报告了提升。",
+        "studyPath": {
+          "prerequisites": [
+            "GRPO 与 PPO 的目标和优势函数",
+            "方差、协方差与相关系数",
+            "多奖励 RL 的常见聚合方式"
+          ],
+          "nextSteps": [
+            "读 Dr.GRPO，对比去掉标准差归一的动机",
+            "在玩具多奖励任务上对比 GRPO 与 CorrGRPO 的优势尺度",
+            "对照公开仓库实现核对相关归一化的细节"
           ]
         }
       }

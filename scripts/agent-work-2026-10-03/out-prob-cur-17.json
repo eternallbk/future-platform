@@ -1,0 +1,168 @@
+{
+  "batchId": "prob-cur-17",
+  "entries": [
+    {
+      "id": "softmax-stable",
+      "itemId": "softmax-stable",
+      "tldr": "先减行内最大值再 exp 防上溢；log_softmax 走 log-sum-exp，不可用 log(softmax(x))。",
+      "restated": "输入 logits 张量 x，形状 [..., V]（V 为类别/词表维），归一化维默认 dim=-1、输出同形状。softmax：m=max(x) 沿 dim 且 keepdim，P=exp(x-m)/Σexp(x-m)，每行和为 1、非负。log_softmax 输出同形状的 log P，要求在概率下溢的区间仍为有限值。人工题面未给 V 与 batch 的具体取值，本文按通用约定实现；例题取 x=[1000,1001,1002]。",
+      "approach": [
+        {
+          "step": "朴素写法：直接 exp(x)/Σexp(x)，以及把 log_softmax 写成 log(softmax(x))",
+          "detail": "这是教科书定义，数学没错、浮点上全错。fp32 的 exp 在自变量约 88.7 以上就上溢为 inf，x=[1000,1001,1002] 时分子分母都是 inf，inf/inf 得到 nan；nan 一旦进入梯度就会污染整个网络。绕开它写成 log(softmax(x)) 同样不行：先算概率意味着先算一个必须落在 (0,1] 的中间量，fp16 下概率在 1e-8 量级就归零（最小非规格数约 6e-8），fp32 下 z 约小于 -104 也归零，log(0)=-inf，而真值只是一个普通负数（例如 -1000）。两个失败的病根是同一个：把「概率」当成了必须存在的中间结果。"
+        },
+        {
+          "step": "正确写法的关键设计一：沿归一化维取 max、keepdim 后先减再 exp",
+          "detail": "m = x.max(dim=dim, keepdim=True).values 的形状是 [..., 1]，正好能广播回 [..., V]；keepdim 不是美化，丢掉它维就被消掉（变成 [...]），相减时要么维对齐出错、要么直接报错——这是人工 pitfalls 第三条。减 m 之后行内最大值变成 0，所有 exp 落在 (0, 1]，和落在 [1, V]，分子分母都在安全区间；而 exp(x_j-m)/Σexp(x_k-m) = exp(x_j)/Σexp(x_k)（分子分母同乘 e^{-m}），数学结果分毫未变，所以「减 max」是等价变形而不是近似。取 max 而不取 0 或均值，是因为要保证最大项恰为 1、其余都小等于 1，这是 exp 不溢出的充分条件；减任何大等于 max 的常数都安全，max 是其中最小、也是唯一由数据本身决定的那个，x 与 m 同号且量级接近时 x-m 甚至没有舍入误差（Sterbenz 引理）。"
+        },
+        {
+          "step": "正确写法的关键设计二：log_softmax 用 log-sum-exp，直接跳过概率",
+          "detail": "log_softmax(x) = x - m - log(Σexp(x-m))：减完 max 后括号里的和在 [1, V] 内，log 出来是 [0, log V] 的有限数，所以对任意有限输入结果都有限，z_j=-1000 时输出就约是 -1000 这个普通数字，绝不可能是 -inf。它还有第二层好处：梯度更稳。log_softmax 对 logits 的 Jacobian 是 I - softmax(x)，只经过概率本身；而 log(softmax(x)) 的链式求导要除以 p_j，p_j 一旦下溢成 0 就是除以 0，前向 -inf 与反向 nan 同时出现。这也解释了人工 keyPoints 第三条：框架的 cross_entropy 内部就是 fused log_softmax + nll，省掉一次 exp/log 往返，也避开了中间概率的精度损失与溢出风险。"
+        },
+        {
+          "step": "防御性细节：分母的 1e-12，以及「谁才是稳定性真正来源」",
+          "detail": "人工 referenceSolution 在分母加了 1e-12（人工 keyPoints 第一条：分母加极小量防止下溢除零），本文保留该写法以与人工实现逐位一致。但要把它放在正确位置理解：减完 max 后和至少是 1，除零在数学上不会发生，这个 eps 是防御性保险——它挡的是上游传进来的 inf/nan，或者有人误用了「不减 max 的路径」。它的代价可忽略：fp32 下对 sum 大于等于 1 的归一化只带来约 1e-12 的相对扰动；fp16 下 1e-12 远小于 ulp(1) 约 1e-3，会被直接舍掉、等于没加。换句话说，真正解决问题的是「减 max」与「log-sum-exp」，1e-12 只是保险。"
+        }
+      ],
+      "complexity": {
+        "time": "O(N)，N = x.numel()；4 趟张量级算子（max、sub+exp、sum、div），算子个数与 V 无关",
+        "space": "O(N)：中间量 e（或 z 与 exp(z)）与输入同形状；若按行手写循环可降到 O(V) 的额外缓冲（对 [B,V] 即近似 O(1)），但会失去向量化",
+        "why": "两次沿 dim 的归约（求 max、求和）各 O(N)，再加一次 exp 与一次除法；每个元素至少要读一遍并参与一次 exp，O(N) 就是下界。"
+      },
+      "code": {
+        "language": "python",
+        "source": "\"\"\"数值稳定的 softmax 与 log_softmax（PyTorch 实现，CPU 可跑）。\n\n形状约定（与人工 referenceSolution 一致）：\n    x   : [..., V]  logits（V = 词表/类别维），任意前置维度都支持\n    dim : 归一化维，默认 -1（最后一维）\n    out : 与 x 同形状；softmax 沿 dim 每行和为 1，log_softmax 是它的逐元素 log\n\n依赖：torch（pip install torch）。直接运行本文件会执行 _self_test()，\n全部断言通过后打印 OK。\n\"\"\"\nimport torch\n\n\ndef _norm_dim(x, dim):\n    \"\"\"把负 dim 换算成正索引，并挡住 0 维/越界输入（否则 .max 抛的是难懂的 IndexError）。\"\"\"\n    if x.dim() == 0:\n        raise ValueError(\"输入至少要有一维：softmax 需要一条可归一化的轴\")\n    d = dim if dim >= 0 else dim + x.dim()\n    if not 0 <= d < x.dim():\n        raise ValueError(\"dim=%r 对 %d 维张量越界\" % (dim, x.dim()))\n    return d\n\n\ndef softmax_stable(x, dim=-1):\n    \"\"\"减 max 防 exp 上溢；再用同一维度的和归一化，分母加极小量防下溢除零。\"\"\"\n    if x.numel() == 0:                       # 空张量：归约维为空，max 会报错，提前返回\n        return x.clone()\n    if not x.is_floating_point():            # 整型 logits 会让 exp 静默截断\n        raise TypeError(\"softmax 需要浮点张量，得到 %s\" % x.dtype)\n    d = _norm_dim(x, dim)\n    m = x.max(dim=d, keepdim=True).values   # [..., 1]：keepdim 才能广播回 [..., V]\n    e = torch.exp(x - m)                     # 最大值处 exp(0)=1，所以每行和落在 [1, V]\n    return e / (e.sum(dim=d, keepdim=True) + 1e-12)\n\n\ndef log_softmax_stable(x, dim=-1):\n    \"\"\"log-sum-exp 技巧：x - m - log(sum(exp(x - m)))，全程不产生「概率」这个中间量。\"\"\"\n    if x.numel() == 0:\n        return x.clone()\n    if not x.is_floating_point():\n        raise TypeError(\"log_softmax 需要浮点张量，得到 %s\" % x.dtype)\n    d = _norm_dim(x, dim)\n    m = x.max(dim=d, keepdim=True).values\n    z = x - m                                # z <= 0，最大值处恰为 0\n    lse = torch.log(torch.exp(z).sum(dim=d, keepdim=True))   # 落在 [0, log V]，有限\n    return z - lse                           # 有限减有限，不会出现 -inf\n\n\ndef _self_test():\n    # ① 人工题面的例子：朴素写法直接 nan，稳定写法给出正常概率\n    x = torch.tensor([1000.0, 1001.0, 1002.0])\n    assert torch.isinf(torch.exp(x)).any(), \"exp(1000) 应当上溢成 inf\"\n    p = softmax_stable(x)\n    assert torch.allclose(p, torch.tensor([0.09003057, 0.24472847, 0.66524096]), atol=1e-6)\n    assert abs(p.sum().item() - 1.0) < 1e-6\n\n    # ② log_softmax 有限，log(softmax) 下溢成 -inf\n    tiny = torch.tensor([0.0, -1000.0])\n    assert torch.isfinite(log_softmax_stable(tiny)).all(), \"log_softmax 必须是有限值\"\n    assert torch.isinf(torch.log(softmax_stable(tiny))).any(), \"log(softmax) 应当 -inf\"\n\n    # ③ 与 torch 官方实现逐元素一致（含 dim=1 与形状保持）\n    g = torch.randn(4, 7)\n    assert torch.allclose(softmax_stable(g), torch.softmax(g, dim=-1), atol=1e-6)\n    assert torch.allclose(log_softmax_stable(g), torch.log_softmax(g, dim=-1), atol=1e-6)\n    assert torch.allclose(softmax_stable(g, dim=1), torch.softmax(g, dim=1), atol=1e-6)\n    assert softmax_stable(g).shape == g.shape == log_softmax_stable(g).shape\n\n    # ④ 平移不变性：整行加常数不改变概率（「减 max 合法」的本质，fp32 有 ~1e-5 舍入）\n    assert torch.allclose(softmax_stable(g + 100.0), softmax_stable(g), atol=1e-4)\n\n    # ⑤ 退化情形：全相同 logits 得均匀分布；V=1 得常数\n    assert torch.allclose(softmax_stable(torch.zeros(3)), torch.full((3,), 1 / 3), atol=1e-6)\n    assert torch.allclose(log_softmax_stable(torch.zeros(3)),\n                          torch.full((3,), -float(torch.log(torch.tensor(3.0)))), atol=1e-6)\n\n    # ⑥ -inf 掩码：被屏蔽位置概率恰为 0，等价于 mask\n    masked = torch.tensor([[1.0, -float(\"inf\"), 2.0]])\n    assert torch.allclose(softmax_stable(masked),\n                          torch.tensor([[0.26894142, 0.0, 0.73105858]]), atol=1e-6)\n\n    # ⑦ 梯度：float64 下与 torch.softmax 的梯度逐元素一致\n    w = torch.randn(3, 5, dtype=torch.float64)\n    a = torch.randn(3, 5, dtype=torch.float64, requires_grad=True)\n    b = a.detach().clone().requires_grad_(True)\n    (softmax_stable(a) * w).sum().backward()\n    (torch.softmax(b, dim=-1) * w).sum().backward()\n    assert torch.allclose(a.grad, b.grad, atol=1e-9)\n\n    # ⑧ 边界：空张量、0 维、dim 越界、整型输入\n    assert softmax_stable(torch.zeros(0)).shape == (0,)\n    for bad, exc in ((lambda: softmax_stable(torch.tensor(1.0)), ValueError),\n                     (lambda: softmax_stable(torch.ones(2, 3), dim=2), ValueError),\n                     (lambda: softmax_stable(torch.tensor([1, 2])), TypeError)):\n        try:\n            bad()\n        except exc:\n            continue\n        raise AssertionError(\"非法输入应当报 %s\" % exc.__name__)\n    return True\n\n\nif __name__ == \"__main__\":\n    assert _self_test()\n    print(\"OK\")\n",
+        "walkthrough": [
+          {
+            "note": "先看形状契约：x 是 [..., V]，dim 默认 -1，输出与输入同形状；max 与 sum 都必须在同一条轴上做、而且 keepdim=True，得到 [..., 1] 才能在 [..., V] 上广播。这类题的评分点有一部分就在形状上——面试时说不清在哪一维归一化、为什么必须 keepdim，后面的代码几乎一定写错。"
+          },
+          {
+            "note": "_norm_dim 把负 dim 统一换算成正索引，并挡住 0 维和越界：torch 自己在 0 维张量上做 max(dim=-1) 抛的是含糊的 IndexError，显式检查能把错误钉在调用方。dtype 检查放在两个函数入口，整型 logits 会让 exp 静默截断，这是「不报错但结果错」的典型。"
+          },
+          {
+            "note": "softmax_stable 的主线只有三行：m = x.max(dim=d, keepdim=True).values 拿行内最大值；e = torch.exp(x - m) 得到落在 (0,1] 的指数；e / (e.sum(...) + 1e-12) 归一化。三步顺序不能换：只要先 exp 就可能已经是 inf，事后再减 max 也救不回来（inf - inf = nan）。"
+          },
+          {
+            "note": "空张量单独前置：x.numel()==0 时归约维为空，max 会直接抛错，所以提前返回同形状空张量，这个约定在本文是自定义的（人工实现没有这个分支），写在 selfCheck.uncertain 里。"
+          },
+          {
+            "note": "log_softmax_stable 刻意不计算概率：z = x - m 之后 lse = log(Σexp(z)) 是 log-sum-exp，落在 [0, log V] 区间、必为有限数，返回 z - lse。这就是人工 keyPoints 第二条的技巧——z_j = -1000 时输出约 -1000 这个正常数字，而不是 log(0) 的 -inf。"
+          },
+          {
+            "note": "注意两个函数各自都做了一次 max：log_softmax 不能复用 softmax 的中间结果，因为「概率」一算出来精度就已经损失了（小概率下溢、相对大小被压缩），这正是框架把 log_softmax 做成独立 fused 算子的原因。"
+          },
+          {
+            "note": "_self_test 把上面每条设计落成断言：① x=[1000,1001,1002] 时朴素 exp 上溢，稳定写法给出 [0.0900,0.2447,0.6652] 且和为 1；② [0,-1000] 上 log_softmax 有限而 log(softmax) 出现 -inf；③ 与 torch.softmax / torch.log_softmax 在 randn(4,7) 上逐元素一致（含 dim=1）；④ 整行加 100 不改变输出（平移不变），fp32 残差在 1e-5 量级所以阈值取 1e-4；⑤ 全相同 logits 得均匀分布、V=1 退化为常数；⑥ -inf 掩码位置输出恰为 0；⑦ float64 下梯度与 torch.softmax 一致；⑧ 空张量、0 维、dim 越界、整型输入四类边界各自显式报错。依赖只有 torch，CPU 可跑，直接运行打印 OK。"
+          },
+          {
+            "note": "第 ④ 条自测顺带暴露一个工程事实：数学上减任何常数都不改变结果，但减 0 会把数值区间拉回危险区，减全局 max（而不是逐行 max）会破坏逐行归一化的语义，所以「沿归一化维减 max」是唯一既安全又保持形状语义的选法。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "x 为空张量（numel()==0）：x.max(dim=-1) 因归约维为空直接抛错，实现提前返回同形状空张量。",
+        "0 维标量输入：没有可归一化的轴，实现显式抛 ValueError，而不是让 max 抛出难懂的 IndexError。",
+        "dim 传负值或越界：dim=-1 等价于 dim=x.dim()-1；dim 小于 -x.dim() 或大等于 x.dim() 时显式报错。",
+        "整型 logits（如 tensor([[1,2],[3,4]])）：exp 被静默截断、概率退化成近似 one-hot，实现直接抛 TypeError。",
+        "V=1（行内只有一个元素）：softmax 恒为 1、log_softmax 恒为 0，归一化仍然成立。",
+        "一行内 logits 全相同：减 max 后整行全 0，概率均匀（1/V），log_softmax 恒为 -log V。",
+        "极端 logits（如 [0, -1000]）：朴素 exp 全部下溢、log(softmax) 得 -inf，稳定实现给出 [0, -1000] 的有限值。",
+        "x 含 +inf：max=inf，x-inf=nan，输出 nan——这是输入非法，不是算法问题，上游要做 finite 检查。",
+        "x 含 -inf（attention mask）：被屏蔽项减 max 后 exp(-inf)=0，正好等价于屏蔽；但整行全为 -inf 时 max=-inf、-inf-(-inf)=nan，整行输出 nan，必须保证每行至少一个有效位置或在 mask 后兜底。",
+        "fp16/bf16 输入：bf16 的指数位与 fp32 相同（8 位），减 max 后不会上溢，但尾数只有 8 位；fp16 指数只有 5 位（最大 65504），减 max 后 z 落在 [-11.09, 0] 之外仍有溢出/下溢风险，实践中常把 softmax 放在 fp32 里算再转回。",
+        "需要梯度时：实现全程用可微算子（sub/exp/sum/div），max 的梯度会回传到最大值元素，但整体数值与 exp(x)/Σexp(x) 的真梯度一致（自测用 float64 与 torch.softmax 对拍验证）。",
+        "超大 [B,V]（如 B=64、V=128k）：显存峰值由与输入同形状的中间量 e 决定，可考虑原地（in-place）写法省一份，但原地修改会破坏 autograd 与调用方后续对 logits 的使用（KL、top-k 采样）需谨慎。"
+      ],
+      "pitfalls": [
+        "直接 exp 大数导致 inf/inf = nan（人工）",
+        "log(softmax(x)) 在概率下溢到 0 时得到 -inf（人工）",
+        "忘记 keepdim 导致广播错误（人工）",
+        "减 max 用错轴：写成 x.max()（全局）而不是沿 dim 的 max，[B,V] 输入下会减掉整个 batch 的最大值，输出不再逐行归一化。",
+        "sum 忘了 keepdim=True：得到 [B] 而不是 [B,1]，[B,V]/[B] 在 B==V 时会静默广播出一个看起来很正常、其实完全错误的结果。",
+        "log_softmax 里把 log 的括号写成 exp(x) 而不是 exp(x-m)（或减完 m 又加回去）：数学等价但溢出重新回来，等于白减。",
+        "把 1e-12 当成稳定性的来源：eps 加错位置（加在分子上、加在 log 外面）会让输出不再严格归一化（和不再等于 1）。",
+        "对所有 logits 都是 -inf 的行做 softmax：max=-inf 相减得 nan，且会沿反向传播污染整批；掩码后必须保证每行至少一个有效位置。",
+        "in-place 修改输入（x -= m）：破坏 autograd，也毁掉调用方后面还要用的 logits（算 KL、做 top-k 采样）。",
+        "把已经 softmax 过的概率再喂给 CrossEntropyLoss（或自己再取一次 log）：等于算 log(softmax(softmax(x)))，损失偏小、梯度也错。",
+        "fp16 训练时在 fp16 里算 softmax：减 max 之后 z 仍可能超出 fp16 的 exp 安全范围，日志概率还容易下溢；正确做法是 logits 上溢保护或把归一化放到 fp32。",
+        "只用 torch.randn 这类小 logits 自测就宣布实现正确：随机小值根本触发不了上溢/下溢，必须专门用 [1000,1001,1002] 与 [0,-1000] 这类极端值测。"
+      ],
+      "followUps": [
+        "手写交叉熵：NLL(log_softmax(x), y) 与 -log p[y] 的等价性，为什么框架把两者 fuse 成一个算子？为什么 CrossEntropyLoss 不接受已经 softmax 过的概率？",
+        "在线（streaming）softmax：分块处理时如何用 running max 与 running sum 增量更新（m_new = max(m_old, block_max)，l_new = l_old·exp(m_old-m_new) + Σexp(block-m_new)）？FlashAttention 为什么要做这个 rescale？",
+        "softmax 的 Jacobian 是 diag(p) - ppᵀ，为什么它奇异（每行和为 0）、对反向传播意味着什么？log_softmax 的 Jacobian I - p 与它差在哪、为什么更稳？",
+        "温度 T 与 softmax(x/T)：T 很小时为什么等价于 argmax、也更容易上溢？采样时为什么通常先做 top-k/top-p 再 softmax？",
+        "大词表怎么省 O(V) 的归一化：sampled softmax、hierarchical softmax、负采样各自的偏差-方差取舍是什么？",
+        "Gumbel-Softmax 如何在保持可微的同时采样？为什么它需要温度退火而不是直接取 argmax？",
+        "fp16 训练下的 logits 上溢保护有哪几种常见手段（放大 logits 后减 max、强制 fp32 归一化）？bf16 为什么对第一种不敏感？",
+        "MoE 路由的 top-k 概率为什么要再归一化？不归一化会对专家负载与梯度尺度造成什么影响？",
+        "为什么多标签分类要用 sigmoid 而不是 softmax？二分类下 softmax 与 sigmoid 的等价关系怎么写出来？"
+      ],
+      "variations": [
+        "手写交叉熵 + label smoothing（软标签下的 log_softmax 写法）。",
+        "手写通用的 log-sum-exp（用于 ELBO、混合分布、对数域加法）。",
+        "手写 Gumbel-Softmax / 可微 argmax。",
+        "手写 sampled softmax（大词表训练的近似归一化，含重要性修正）。",
+        "手写在线 softmax（单趟流式，含 running max 重缩放）。",
+        "用 numpy 或纯 Python（math.fsum）复现 softmax 与 log_softmax，并与 torch 对拍。",
+        "手写 attention 里的 masked softmax（含全 mask 行的兜底）。",
+        "手写数值稳定的 sigmoid（log1p / expm1 技巧）并说明它与 softmax 的关系。",
+        "MoE 的 top-k 路由概率归一化。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "减 max 与 log-sum-exp",
+        "caption": "同一行 logits 走两条路：直接 exp 会 inf/inf=nan、概率下溢后 log 得 -inf；减掉行内最大值 m 后 exp 落在 (0,1]、和落在 [1,V]，log_softmax 直接用 z - log(sum) 跳过概率，全程有限。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' font-size='13'><text x='14' y='20' font-size='15' fill='currentColor'>softmax 的数值稳定路径</text><line x1='14' y1='30' x2='466' y2='30' stroke='var(--line-1)' stroke-width='1'/><line x1='240' y1='38' x2='240' y2='232' stroke='var(--line-1)' stroke-width='1'/><text x='14' y='50' fill='var(--accent)'>① 直接 exp：上溢与下溢</text><rect x='14' y='58' width='212' height='38' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='22' y='74' fill='currentColor'>x = [1000, 1001, 1002]</text><text x='22' y='90' fill='currentColor'>exp(x) = [inf, inf, inf]</text><path d='M120 97 V108' stroke='currentColor' stroke-width='1'/><path d='M116 104 L120 110 L124 104 Z' fill='currentColor'/><rect x='14' y='112' width='212' height='38' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='22' y='128' fill='currentColor'>sum = inf</text><text x='22' y='144' fill='currentColor'>inf / inf = nan</text><path d='M120 151 V162' stroke='currentColor' stroke-width='1'/><path d='M116 158 L120 164 L124 158 Z' fill='currentColor'/><rect x='14' y='166' width='212' height='38' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='22' y='182' fill='currentColor'>log(softmax)：概率下溢 0</text><text x='22' y='198' fill='currentColor'>log(0) = -inf</text><text x='14' y='222' fill='var(--fg-1)'>病根：exp 一旦溢出，</text><text x='14' y='236' fill='var(--fg-1)'>后面全是 inf / nan / -inf</text><text x='248' y='50' fill='var(--accent)'>② 减 m 再 exp：全程有限</text><rect x='248' y='58' width='218' height='38' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='256' y='74' fill='currentColor'>m = max(x) 沿 dim=-1 = 1002</text><text x='256' y='90' fill='currentColor'>z = x - m = [-2, -1, 0]</text><path d='M357 97 V108' stroke='currentColor' stroke-width='1'/><path d='M353 104 L357 110 L361 104 Z' fill='currentColor'/><rect x='248' y='112' width='218' height='38' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='256' y='128' fill='currentColor'>exp(z) = [.135, .368, 1]</text><text x='256' y='144' fill='currentColor'>sum = 1.503，恒不小于 1</text><path d='M357 151 V162' stroke='currentColor' stroke-width='1'/><path d='M353 158 L357 164 L361 158 Z' fill='currentColor'/><rect x='248' y='166' width='218' height='38' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='256' y='182' fill='currentColor'>p = [.090, .245, .665] 和=1</text><text x='256' y='198' fill='currentColor'>log_softmax = z - log(sum)</text><text x='248' y='222' fill='var(--fg-1)'>= [-2.41, -1.41, -0.41]</text><text x='248' y='236' fill='var(--fg-1)'>形状不变：[...,V] 全程有限</text></svg>",
+        "alt": "图解。左列是朴素路径：x=[1000,1001,1002] 直接 exp 得到 [inf,inf,inf]，求和仍是 inf，inf/inf 得 nan；换成 log(softmax(x)) 则概率下溢为 0，log(0) 得 -inf，病根都是先算出了必须落在 (0,1] 的概率。右列是稳定路径：先沿 dim=-1 求 m=max(x)=1002 并用 keepdim 广播回 [...,1]，z=x-m=[-2,-1,0]，exp(z)=[.135,.368,1]，和=1.503 恒大于等于 1 不溢出，归一化得 p=[.090,.245,.665]；log_softmax 直接算 z-log(sum)=[-2.41,-1.41,-0.41]，全程不出现概率 0，所以不会得到 -inf，输出形状始终是 [...,V]。"
+      },
+      "selfTest": [
+        "x = [1000, 1001, 1002]：不加 max 时哪一步先出问题、得到的是 inf 还是 nan？减 max 后三个中间概率分别是多少（保留三位小数）？",
+        "为什么 log_softmax 不能写成 log(softmax(x))？说出 fp32 与 fp16 下概率归零的大致 logits 区间，并解释为什么 log_softmax 的输出在同样的输入上仍是正常数字。",
+        "keepdim=False 时，[2,3] 的 logits 做 x - x.max(dim=-1).values 会发生什么？如果 B 恰好等于 V，这个 bug 会不会报错？",
+        "如果一行 logits 全是 -inf（整行被 mask），softmax 输出是什么？工程上有哪两种修法？",
+        "整行 logits 同时加 1000 再算 softmax，结果与原来相同吗？fp32 下的差异大概是什么量级，原因是什么？"
+      ],
+      "keyPoints": [
+        "先减 max 防止 exp 上溢；分母加极小量防止下溢除零",
+        "log_softmax 用 log-sum-exp 技巧：x - m - log(sum(exp(x-m)))，避免先算出极小概率再取 log 导致 -inf",
+        "很多框架的 cross_entropy 内部就是 fused log_softmax + nll，比自己写 softmax 再 log 更稳更快",
+        "fp16 下要特别小心 inf/nan"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（softmax-stable）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题面原文：实现数值稳定的 softmax 与 log_softmax，说明为什么必须先减最大值，以及 log_softmax 为什么不能写成 log(softmax(x))。本文题解完全沿用，未改写人工观点。",
+          "人工 keyPoints 四条（先减 max 防上溢/分母加极小量防下溢除零；log_softmax 用 log-sum-exp 技巧；框架 cross_entropy 是 fused log_softmax+nll；fp16 下小心 inf/nan）在本文 keyPoints 中逐字保留。",
+          "人工 pitfalls 三条（直接 exp 大数得 inf/inf=nan、log(softmax(x)) 概率下溢得 -inf、忘记 keepdim 导致广播错误）在本文 pitfalls 中逐字保留为前三条，其后为补充项。",
+          "人工 referenceSolution 的算法：softmax 先 x - x.max(dim,keepdim=True).values，再 e / (e.sum(dim,keepdim=True) + 1e-12)；log_softmax 令 z = x - max，返回 z - log(exp(z).sum(dim,keepdim=True))。本文实现与之算法一致，只额外增加了浮点/0 维/dim 越界/空张量四类前置检查，不改变任何合法输入的数值行为。",
+          "数学事实：exp(x_j-m)/Σ_k exp(x_k-m) = exp(x_j)/Σ_k exp(x_k)（分子分母同乘 e^{-m}），所以沿归一化维减最大值是等价变形，输出概率不变。",
+          "数学事实：减 max 后至少一个元素为 0，故 Σexp 落在 [1, V] 内，概率落在 (0, 1] 且每行和恰为 1；log(Σexp) 落在 [0, log V] 内，是有限数，因此 log_softmax 的输出恒有限（输入有限时）。",
+          "数值事实：fp32 下 exp 在自变量约大于 88.7 时上溢为 inf；exp 的指数结果约小于 -87 进入非规格数区间、约小于 -104 归零（float32 最小非规格数约 1.4e-45）。",
+          "数值事实：fp16 的最大有限值为 65504（对应 exp 上溢阈值约 11.09），最小非规格数约 6e-8，所以 fp16 下很小的概率会直接变成 0，log 后得到 -inf。",
+          "数学事实：log_softmax 对 logits 的 Jacobian 是 I - softmax(x)（元素形式 δ_ij - p_j）；用 log(softmax(x)) 的链式求导计算同一梯度需要除以 p_j，p_j=0 时前向 -inf、反向 nan。",
+          "自测事实：代码用 torch.randn(4,7) 与 torch.softmax/torch.log_softmax 在 atol=1e-6 下逐元素一致；float64 下与 torch.softmax 的梯度在 atol=1e-9 下一致；x=[1000,1001,1002] 时稳定 softmax 输出 [0.09003057, 0.24472847, 0.66524096] 且和为 1，而 torch.exp(x) 为 inf。",
+          "自测事实：x=[0,-1000] 时 log_softmax_stable 输出有限（[0,-1000]），而 torch.log(softmax_stable(x)) 含 -inf；-inf 掩码位置的概率恰为 0。",
+          "复杂度事实：实现由 max、sub+exp、sum、div 四趟张量级算子组成，每趟 O(N)，空间 O(N)（中间量与输入同形状）。",
+          "可运行性：代码只 import torch，CPU float32/float64 均可运行，文件末尾 if __name__ == '__main__' 会执行 _self_test() 并打印 OK。",
+          "无外部链接：本题人工题面不含任何 URL，sources 按任务要求只写人工题库来源且 url 留空，未编造任何链接。"
+        ],
+        "uncertain": [
+          "人工题面未给 x 的具体形状与 V 的取值，本文按通用约定实现为 [..., V]、dim=-1；例题 x=[1000,1001,1002] 是本文为演示上溢自选的，来自人工 referenceSolution 未给出的场景。",
+          "人工 keyPoints 第一条说「分母加极小量防止下溢除零」。按 log-sum-exp 推导，减 max 后至少一项 exp(0)=1、和必大等于 1，除零在数学上不会发生，该 1e-12 是防御性写法；本文按要求保留它与人工实现逐位一致，并在 approach 里按「保险」解释，未改写人工表述。",
+          "1e-12 的实际效果依赖 dtype：fp32 下相对扰动约 1e-12（可忽略），fp16 下远小于 ulp(1) 会被舍掉。人工实现未说明目标 dtype，本文按 fp32 陈述。",
+          "人工 referenceSolution 没有空张量、dtype、0 维与 dim 越界分支；本文新增的四类前置检查（TypeError/ValueError、空张量返回空）是自行约定的行为，对合法输入无数值影响，但逐行对照人工代码会看到这些差异。",
+          "「log(softmax(x)) 在概率下溢到 0 时得到 -inf」的精确阈值依赖 dtype 与是否保留非规格数（fp32 约 -104 归零、约 -87 起精度骤降；fp16 约 -17 量级），不同硬件/后端（FTZ/DAZ 设置）可能不同；本文示例用 -1000 以保证必然下溢，未给出精确阈值。",
+          "题面未说明是否要求支持 fp16/bf16 混合精度、是否要求 in-place、是否要求与框架逐位一致；本文只做数值等价（1e-6 级）与有限性保证，未声称逐位复现 torch 的 kernel 结果。",
+          "本文的在线 softmax / FlashAttention 重缩放、Gumbel-Softmax、sampled softmax 等内容只出现在 followUps 与 variations，未实现、未验证。",
+          "「形状 [..., V] 且归一化在最后一维」是本文采用的通用约定；若实际题面要求 [B, C] 沿 dim=1 归一化，实现只需传 dim=1（自测已覆盖 dim=1 与 dim=-1 的等价性），但题面本身没有明确这一层。"
+        ]
+      }
+    }
+  ]
+}

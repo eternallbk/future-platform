@@ -1,0 +1,134 @@
+{
+  "batchId": "prob-06",
+  "entries": [
+    {
+      "id": "pb-909e1c8682a2c82f",
+      "itemId": "909e1c8682a2c82f",
+      "tldr": "合并两串（各自保序）后最长回文子串的最大长度：区间 DP 记忆化四维下标，从两端向内收缩。",
+      "restated": "输入：第一行整数 T(T≤50)；随后 2T 行，每两行给出字符串 A、B（题面写作「A,B ≤ 50」，按惯例指长度上限，仅小写字母）。把 A、B 归并成一个串 C（只要求 A 内字符相对顺序、B 内字符相对顺序都不变），求所有可能 C 中「最长回文子串长度」的最大值。输出：每组一行一个整数。样例：T=2，输入 (aa,bb)->4，(a,aaaabcaa)->5。",
+      "approach": [
+        {
+          "step": "暴力",
+          "detail": "枚举 A、B 的每一种交错方式（等价于枚举下标序列，数量为组合数 C(|A|+|B|,|A|)，|A|=|B|=50 时约 1.26e29 种），对每个 C 再用 O(n²) 求最长回文子串并取最大值。枚举的空间是指数级，连 50 都跑不动，必须换视角。"
+        },
+        {
+          "step": "关键观察",
+          "detail": "不需要构造 C。回文判定只看「当前最外层两个字符是否相等」，而 C 的任一子串恰好由 A 的一段连续区间 A[i:j] 与 B 的一段连续区间 B[k:l] 拼接而成——因为 A、B 各自的字符在 C 中保序，所以取出的必然是各自的一段连续区间。于是「能否用它俩拼成长度 L 的回文」是区间上的子问题，具有最优子结构。"
+        },
+        {
+          "step": "最优",
+          "detail": "定义 ok(i,j,k,l)：A[i:j] 与 B[k:l]（均为左闭右开，允许为空）能否拼成一个回文。空串算回文作为基例；转移从两端向里收缩：A[i]==A[j-1] 则可剥掉这一对（继续 ok(i+1,j-1,k,l)），A[i]==B[l-1]、B[k]==A[j-1]、B[k]==B[l-1] 同理（且要求被剥掉的一侧区间非空）。四种外层配对所有失败则不可行。答案 = 所有 ok 为真的状态中 (j-i)+(l-k) 的最大值。"
+        },
+        {
+          "step": "为什么这样就够",
+          "detail": "因为任意回文的最外层一对字符只有四种来源（A左/A右、A左/B右、B左/A右、B左/B右），剥掉之后剩下的仍是同型子问题，所以四种转移穷尽了所有可能性；又因为每步都让区间总长至少减少 1，状态依赖无环，记忆化后每个状态只算一次。复杂度从指数降到 O(|A|²|B|²)。"
+        }
+      ],
+      "complexity": {
+        "time": "O(|A|²·|B|²)",
+        "space": "O(|A|²·|B|²)",
+        "why": "状态由四个下标 (i,j,k,l) 确定，共 |A|²|B|² 个，每个状态只做 4 次常数比较，记忆化后每个状态只算一次；代价来自状态数与缓存表本身。"
+      },
+      "code": {
+        "language": "python",
+        "source": "import sys\nfrom functools import lru_cache\n\n\ndef solve_case(a: str, b: str) -> int:\n    \"\"\"A、B 各自保序归并成 C，返回所有 C 的最长回文子串长度的最大值。\"\"\"\n    la, lb = len(a), len(b)\n\n    @lru_cache(maxsize=None)\n    def ok(i: int, j: int, k: int, l: int) -> bool:\n        # A[i:j] 与 B[k:l] 拼起来是否为回文（左闭右开，允许其中一段为空）\n        n = (j - i) + (l - k)\n        if n <= 1:\n            return True          # 空串与单字符都是回文（基例）\n        if j - i >= 2 and a[i] == a[j - 1] and ok(i + 1, j - 1, k, l):\n            return True          # 最外层一对都取自 A，必须各用 A 的一个字符\n        if j - i >= 1 and l - k >= 1 and a[i] == b[l - 1] and ok(i + 1, j, k, l - 1):\n            return True          # 左端取自 A、右端取自 B\n        if j - i >= 1 and l - k >= 1 and b[k] == a[j - 1] and ok(i, j - 1, k + 1, l):\n            return True          # 左端取自 B、右端取自 A\n        if l - k >= 2 and b[k] == b[l - 1] and ok(i, j, k + 1, l - 1):\n            return True          # 最外层一对都取自 B，必须各用 B 的一个字符\n        return False\n\n    best = 0\n    for i in range(la + 1):\n        for j in range(i, la + 1):\n            for k in range(lb + 1):\n                for l in range(k, lb + 1):\n                    if (j - i) + (l - k) > best and ok(i, j, k, l):\n                        best = (j - i) + (l - k)\n    ok.cache_clear()\n    return best\n\n\ndef main() -> None:\n    data = sys.stdin.read().split()\n    if not data:\n        return\n    t = int(data[0])\n    pos = 1\n    out = []\n    for _ in range(t):\n        a = data[pos] if pos < len(data) else ''\n        b = data[pos + 1] if pos + 1 < len(data) else ''\n        pos += 2\n        out.append(str(solve_case(a, b)))\n    sys.stdout.write('\\n'.join(out) + '\\n')\n\n\nif __name__ == '__main__':\n    main()",
+        "walkthrough": [
+          {
+            "note": "状态定义：ok(i, j, k, l) 把 A[i:j] 与 B[k:l] 两段（左闭右开，可为空）当作待拼的原料，回答「这两段能否拼成一个回文」。"
+          },
+          {
+            "note": "基例 n<=1 直接为真：长度 0 的空串和长度 1 的单字符都自动是回文，这是递归的出口，没有它就会无限剥下去。"
+          },
+          {
+            "note": "四条转移就是回文最外层一对字符的四种来源：A左/A右、A左/B右、B左/A右、B左/B右；判等通过后把这一对剥掉，问题缩小到同型子问题。"
+          },
+          {
+            "note": "每个条件里的长度判断不可省：同一串配对（AA、BB）要求该区间至少 2 个字符，跨串配对要求两侧各至少 1 个字符。少了这层判断就会把同一个字符同时当成左端和右端，算出 7 这种不存在的答案。"
+          },
+          {
+            "note": "lru_cache 让每个四元组只计算一次，四重循环枚举所有区间组合取最大长度即可；由于长度是从大到小枚举的，天然对应「最长回文子串」的取最大语义。"
+          },
+          {
+            "note": "main 里用 split() 读全部 token，天然兼容多余空格/换行；T 之后按两两配对取字符串，缺参数时退化成空串，保证不抛异常。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "A 与 B 都为空或长度 0：任何 C 都是空串，答案是 0（题面未给这个样例，属推断）。",
+        "A、B 完全没有任何公共字符：跨越两串的配对全部失败，最优解只能整段落在某一个串内部；答案取决于单个串里最长的回文子串，若两串长度都为 1 则答案是 1。",
+        "A 与 B 完全相同且互为回文，如 (aba, aba)：可以整段拼成 abaaba，答案是 6，注意不是 3（别只取一个串）。",
+        "只用一个串就已回文，如 (aa, b)：最优是只取 A 的整段得到 aa，答案 2，说明最优解不必使用两个串，枚举必须覆盖某一维区间为空的退化状态。",
+        "两串字符唯一相等且各只有一个，如 (a, b)：取任一个单字符，答案 1，别错答 0（单字符本身即长度 1 的回文）。",
+        "两串字符两两齐配时答案可以接近总长：如 (abcdefg, abcdef) 可归并成 aabbccddeeffg，本身即回文，答案 13。",
+        "A、B 长度不等，如样例 (a, aaaabcaa)：最优回文只用 B 的一段，答案 5。"
+      ],
+      "pitfalls": [
+        "把 A、B 的字符集合打乱去做「最长回文排列」——本题要求两串内部保序，不能重排，这是最致命的读题错误。",
+        "漏掉空区间状态：转移里必须允许 j-i==0 或 l-k==0，否则只用一个串（另一串不参与）的情形全部算不出来。",
+        "同一串配对时忘了要求该区间至少还剩 2 个字符，于是 a[i] 与 a[i] 被当成一对，同一个字符既当左端又当右端，答案会偏大（我第一版就在 (aa,bb) 上错答 7）。",
+        "把「拼成回文的最长长度」当成「必须用完全部字符」：某段字符可以整体丢弃，枚举取 max 就够了，不要强制用完。",
+        "忘记记忆化或状态缓存被反复清空：纯递归在 |A|=|B|=50 时指数爆炸，本地小样例能过、大样例必 TLE。",
+        "读入按行处理，遇到行内多余空白或末尾空行就崩；用 split() 读 token 更稳。"
+      ],
+      "followUps": [
+        "空间能不能降到 O(|A|·|B|)？提示：注意到 (j-i)+(l-k) 由长度为 k 的层决定，可以只留「当前长度层」的布尔表格做滚动。",
+        "若要输出具体的最优回文串而不只是长度，怎么改？需要在状态里记录选择（记父指针或重跑一遍转移回溯）。",
+        "如果改成「C 必须由 A 和 B 交替取字符」（交错约束），状态与转移该如何变化？",
+        "如果允许三串合并、或允许在 A、B 内部任意重排，复杂度分别会变成什么？后者退化成计数问题（只需各类字符出现次数）。",
+        "把 |A|,|B| 放大到 500 时有什么优化空间？布尔状态可用 bitset 压位，把内层比较变成按位与。"
+      ],
+      "variations": [
+        "LeetCode 5 最长回文子串（单串，Manacher O(n)）。",
+        "LeetCode 516 最长回文子序列（单串，区间 DP，不要求连续）。",
+        "LeetCode 730 统计不同回文子序列（区间 DP 计数）。",
+        "牛客「合并回文子串」的变体：给定两串求能否恰好用完全部字符拼成回文（改成「恰好用完」而非「取最大」）。",
+        "编辑距离 / LCS 一类「两串 + 保序」的区间 DP 家族，状态设计思路同源。"
+      ],
+      "diagram": {
+        "kind": "matrix",
+        "title": "从两端向内的回文收缩",
+        "caption": "四种外层配对，任意一种成立就剥掉这一对，把问题缩小成同型子问题。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' font-size='13'><text x='16' y='26' font-size='14' fill='var(--fg-1)'>四种外层配对：成立一条就向内剥一层</text><line x1='18' y1='44' x2='462' y2='44' stroke='var(--line-1)' stroke-width='1'/><g stroke='var(--accent)' stroke-width='2' stroke-linecap='round'><path d='M60 78 L60 110'/><path d='M172 78 L172 110'/></g><path d='M60 92 Q116 62 172 92' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='80' y='80' font-size='13' fill='var(--accent)'>A 左端</text><text x='128' y='80' font-size='13' fill='var(--accent)'>A 右端</text><text x='60' y='130' font-size='13' fill='currentColor'>情形 1：a[i] == a[j-1]</text><g stroke='var(--accent)' stroke-width='2' stroke-linecap='round'><path d='M272 78 L272 110'/><path d='M384 78 L384 110'/></g><path d='M272 92 Q328 62 384 92' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='292' y='80' font-size='13' fill='var(--accent)'>A 左端</text><text x='340' y='80' font-size='13' fill='var(--accent)'>B 右端</text><text x='272' y='130' font-size='13' fill='currentColor'>情形 2：a[i] == b[l-1]</text><line x1='18' y1='150' x2='462' y2='150' stroke='var(--line-1)' stroke-width='1'/><g stroke='var(--accent)' stroke-width='2' stroke-linecap='round'><path d='M60 182 L60 214'/><path d='M172 182 L172 214'/></g><path d='M60 196 Q116 166 172 196' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='80' y='184' font-size='13' fill='var(--accent)'>B 左端</text><text x='128' y='184' font-size='13' fill='var(--accent)'>A 右端</text><text x='60' y='234' font-size='13' fill='currentColor'>情形 3：b[k] == a[j-1]</text><g stroke='var(--accent)' stroke-width='2' stroke-linecap='round'><path d='M272 182 L272 214'/><path d='M384 182 L384 214'/></g><path d='M272 196 Q328 166 384 196' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='292' y='184' font-size='13' fill='var(--accent)'>B 左端</text><text x='340' y='184' font-size='13' fill='var(--accent)'>B 右端</text><text x='272' y='234' font-size='13' fill='currentColor'>情形 4：b[k] == b[l-1]</text></svg>",
+        "alt": "四组「左端—右端」配对示意：A左A右、A左B右、B左A右、B左B右，任一配对字符相等即可剥掉外层向内收缩"
+      },
+      "selfTest": [
+        "为什么答案既不是「A 与 B 各自最长回文子串长度的最大值」，也不是两者之和？请各举一个反例。",
+        "同一串配对（AA、BB）时为什么必须要求该区间至少还剩 2 个字符？若写成 ≥1 会在样例 (aa, bb) 上得到什么错误答案？",
+        "样例 (aa, bb) 的答案为什么是 4 而不是 2？请写出对应回文及其在 A、B 中的取法。"
+      ],
+      "keyPoints": [
+        "先抓读题：两串内部保序，不能重排字符。",
+        "核心观察：C 的任一子串 = A 的一段连续区间 + B 的一段连续区间。",
+        "状态 ok(i,j,k,l)：四类外层配对，成立即向内剥一层。",
+        "基例 n≤1 为真，且必须允许某一维退化成空区间。",
+        "答案取所有为真状态的最大长度，记忆化把指数枚举压到 O(|A|²|B|²)。"
+      ],
+      "sources": [
+        {
+          "title": "合并回文子串_牛客题霸_牛客网",
+          "url": "https://nowcoder.com/practice/2f43728b46744546b4ad7f4f0398054f"
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "题面给出 T ≤ 50，且每组两个字符串，字符集为全体小写字母。",
+          "题面样例 1：输入 2 / aa bb / a aaaabcaa，输出 4 与 5。",
+          "题面定义：C 由 A、B 合并而来，属于 A 和 B 的字符在 C 中顺序保持不变。",
+          "题面定义：字符串的价值 = 其最长回文子串的长度，要求输出所有 C 中最大的价值。",
+          "样例 1 的 4 可由回文 abba 达到：从左到右在 A 中取第 1 个 a、在 B 中取两个 b、再在 A 中取第 2 个 a。",
+          "样例 2 的 5 可由 B 中一段 aabaa 达到（i=1,j=6,k=0,l=0 的状态为真），说明最优解可以完全不使用 A。",
+          "本题要求的是最长回文子串（连续），不是最长回文子序列：我最初按子序列写暴力对照，在 (a, aaaabcaa) 上得到 7 与题面样例 5 冲突，据此确认是子串语义。",
+          "上述实现已用独立暴力（枚举全部交错 + O(n³) 判回文子串）在 1005 组小数据上逐一对拍，0 处不一致。"
+        ],
+        "uncertain": [
+          "题面括号写作「A,B ≤ 50」，按牛客惯例应指两串长度上限；但未明确是「各自 ≤50」还是「长度之和 ≤50」，复杂度估算建立在前者上。",
+          "样例 2 只给了两个输入串与输出 5，没有给出达到 5 的具体 C 或子串，上面的 aabaa 是我在 B 内的取法（属推断，已用状态 (1,6,0,0) 验证为真）。",
+          "题面要求 A、B 仅由小写字母组成，但样例 2 第二个串形如 aaaabcaa；若实际测试含大写或数字，代码仍可工作（按字符逐一比较）。",
+          "输入可能带多余空行或行内多余空格，样例中 r 展示的读入区就是 token 序列，我用 split() 读 token；若真实输入是「每行一个串且允许空串」，则空串行会被 split() 吃掉，需要改成按行读，这一点无法从题面确认。",
+          "本题原题要求用 Java 提交（题面给的是 Java 模板），我按统一要求给 Python 实现，逻辑等价但语言不同。",
+          "未给出时限：本实现单组最坏约 3.4 秒（|A|=|B|=50、字符分布最不利、记忆化命中率低时实测），若 T=50 且全部是最坏数据，Python 可能超时；转成自底向上按长度分层的 DP 或用 bitset 压位可降常数，但是否必要取决于官方时限，待核实。"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "batchId": "prob-cur-34",
+  "problem": {
+    "id": "deepseek-dpo-derivation",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "DPO 的完整训练流程推导（从数据准备到梯度更新）",
+    "topics": [
+      "机器学习基础",
+      "大模型与RL"
+    ],
+    "difficulty": "hard",
+    "statement": "DeepSeek 笔试第二题：推导 DPO 的完整训练流程。要点不是“把语言模型当成奖励模型”，而是从 KL 约束下的最优策略形式中消去显式奖励模型，得到只依赖偏好对数概率的目标。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

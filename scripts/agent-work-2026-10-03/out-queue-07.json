@@ -2,1206 +2,1292 @@
   "batchId": "queue-07",
   "entries": [
     {
-      "id": "249413542592e5b7",
-      "tldr": "把音视频证据获取做成多轮工具调用：Omni-LLM 自己决定看哪里、听哪段，用170K 轨迹冷启动再做两阶段 RLVR。",
+      "id": "891fdc7983aeb96a",
+      "tldr": "R1 之后 LLM 强化学习的精选索引：GRPO/DAPO/DPO/PPO 等主题都配深读博客与论文互链。",
       "keyPoints": [
-        "不再单次前向吃完整段音视频，改为多轮迭代获取证据",
-        "检索到的原始音频/视觉片段回填上下文，支撑后续推理",
-        "数据引擎合成 OmniTraj-170K 多跳音视频交错思维链轨迹",
-        "先监督学习注入工具使用行为，再两阶段可验证奖励强化学习",
-        "Audio-Visual Necessity 目标奖励真正依赖双模态的成功轨迹"
+        "带主观取舍的 post-R1 LLM×RL 索引",
+        "覆盖 GRPO、DAPO、DPO、PPO、GSPO、CISPO、VAPO 等方法",
+        "含奖励建模、MoE RL 稳定性、Verifier-Free RL",
+        "还有 Training-Free RL、Agentic RL 与 R1 复现",
+        "博客与论文互相交叉链接，可顺着一条线读"
       ],
-      "why": "多模态 agent 加 RLVR 是当前最热的交叉点：长上下文下主动取证、工具调用与双模态奖励设计，可直接迁移到视频/音频问答与 omni 模型后训练岗位。",
-      "difficulty": "hard",
-      "tags": [
-        "multimodal",
-        "audio-visual",
-        "tool-use",
-        "agent",
-        "rlvr"
-      ],
-      "entities": [
-        "OmniSeek",
-        "Omni-LLM",
-        "OmniTraj-170K",
-        "Audio-Visual Necessity"
-      ],
-      "diagram": {
-        "kind": "architecture",
-        "title": "OmniSeek 多轮取证闭环",
-        "caption": "推理决定看或听、工具取回片段、回填上下文再推理；训练分轨迹冷启动与两阶段 RLVR。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='OmniSeek 多轮取证流程'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>长音视频上下文</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>证据稀疏，一次前向吃不透</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>决策：看还是听</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>选模态与时间窗</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>工具取回原始片段</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>audio / visual 片段</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>回填上下文继续推理</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>多轮迭代后作答</text>\n<text x='56' y='234' font-size='13' text-anchor='start' fill='currentColor'>训练：OmniTraj-170K 冷启动 → 两阶段 RLVR</text>\n</svg>",
-        "alt": "OmniSeek 流程图：Omni-LLM 在多轮对话中决定看或听，工具返回原始音视频片段并回填上下文，训练先做 OmniTraj-170K 冷启动再做两阶段可验证奖励强化学习。"
-      },
-      "concepts": [
-        {
-          "name": "Native Tool Use for Omni-LLM",
-          "readable": "让本来就能同时读音频和图像的 omni 模型，把「再听一段」「再看一帧」当成可调用的动作，在推理过程中反复取证据，而不是一次性把整段素材塞进上下文。",
-          "analogy": "像侦探办案：不是把整箱卷宗一次读完，而是先想清楚要查什么，再让助手调出特定时间段的监控和录音，看完再决定下一步查哪。",
-          "analogyBreaksDown": "侦探知道自己要找什么，模型最初并不知道哪段有证据；它只能靠试错与奖励学会「何时该看、该听」，而且工具返回的是原始像素与波形，不是已整理好的线索摘要。",
-          "mechanism": "把「选模态 + 选时间窗」显式建模成动作，工具返回的原始片段拼回上下文，使证据获取进入策略空间；于是上下文长度由取回的证据量决定，而不是由素材总时长决定。",
-          "visual": "横轴画一条从 0 到数小时的时间轴，轴上方用竖条标出被取回的音频窗口、下方标出视觉窗口，颜色深浅表示取回顺序，箭头从每个窗口连回中央的推理回合。",
-          "prerequisites": [
-            "多模态大模型的基本结构（视觉/音频编码器接 LLM）",
-            "工具调用与 agent 循环的基本概念",
-            "强化学习中策略与奖励的基本记法"
-          ],
-          "selfTest": [
-            "为什么「一次性读完」在小时级素材上会失效？",
-            "工具返回原始片段而不是文本摘要，代价与收益各是什么？",
-            "模型如何学到「该看还是该听」，监督与强化学习各起什么作用？"
-          ],
-          "formula": "a_t \\sim \\pi_\\theta(\\cdot \\mid c_t),\\quad c_{t+1} = c_t \\oplus \\mathrm{Tool}(a_t)"
-        },
-        {
-          "name": "Audio-Visual Necessity Reward",
-          "readable": "一个额外的奖励判据：只有当答对、并且推理确实同时用到音频和视觉证据时才给满分，用来防止模型只靠一种模态走捷径。",
-          "analogy": "像驾照路考：只看后视镜就过弯不算过，必须同时用后视镜和转头观察，考官才认这是真的会开车。",
-          "analogyBreaksDown": "路考里「有没有转头」人眼可见，而「推理是否真的依赖某模态」无法直接观测，只能用删模态、扰动证据等代理方式近似判断，判错就会误伤本来正确的行为。",
-          "mechanism": "在可验证的对错奖励之上再叠加双模态必要性判据，抑制单模态捷径；代价是需要额外的反事实评估，判据本身的噪声也会传导进策略优化。",
-          "visual": "画一个 2×2 表格：横轴是「单模态可解 vs 必须双模态」，纵轴是「答对 vs 答错」，只给右上角格子最高奖励，单模态可解的那一格给负奖励。",
-          "prerequisites": [
-            "RLVR（可验证奖励强化学习）的基本流程",
-            "模态消融与反事实评估的概念"
-          ],
-          "selfTest": [
-            "为什么只奖励「答对」会诱导单模态捷径？",
-            "怎样近似判断一条轨迹是否真的依赖双模态？",
-            "这个目标可能带来什么副作用？"
-          ],
-          "formula": "R = \\mathbb{1}[\\text{correct}] \\cdot \\mathbb{1}[\\text{both modalities necessary}]"
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-av-necessity-reward",
-          "name": "音视频必要性奖励（Audio-Visual Necessity Objective）",
-          "category": "rl",
-          "latex": "R(\\tau) = \\mathbb{1}[\\text{correct}(\\tau)] \\cdot \\mathbb{1}[\\text{both } a, v \\text{ necessary}] - \\lambda \\, \\mathbb{1}[\\text{single-modality shortcut}]",
-          "symbols": [
-            [
-              "\\tau",
-              "一条多轮工具调用的推理轨迹"
-            ],
-            [
-              "\\mathbb{1}[\\cdot]",
-              "指示函数，条件成立取 1，否则取 0"
-            ],
-            [
-              "a, v",
-              "音频与视觉两种证据模态"
-            ],
-            [
-              "\\lambda",
-              "单模态捷径的惩罚权重"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：动机——只用对错奖励时，模型可能靠单一模态（例如只看画面里的文字）答对，双模态能力并未被真正训练。",
-            "第 2 步：把「必要性」写成指示函数，要求删掉任一模态后轨迹不再成功，才认为两个模态都被用到。",
-            "第 3 步：把必要性判据与正确性相乘，只有又答对、又确实依赖双模态才拿正奖励。",
-            "第 4 步：再减去一个捷径惩罚项 \\lambda，把单模态即可解决的样本压低，逼模型寻找跨模态证据。"
-          ],
-          "analogy": "像训练双人划艇：只看谁先到终点不够，还要确认两支桨都真的在划，否则一个人猛划也能赢，队伍其实没学会配合。",
-          "pitfalls": [
-            "把「两个模态都输入了」误当成「两个模态都被依赖了」",
-            "忽略必要性判据自身的噪声，误伤正确但不依赖某模态的样本",
-            "惩罚系数 \\lambda 过大时，模型会学会回避任何单模态信息"
-          ],
-          "code": "def av_necessity_reward(correct, audio_only_ok, video_only_ok, lam=0.5):\n    # audio_only_ok / video_only_ok：删掉另一模态后是否仍能答对\n    both_needed = (not audio_only_ok) and (not video_only_ok)\n    shortcut = audio_only_ok or video_only_ok\n    return (1.0 if (correct and both_needed) else 0.0) - lam * float(shortcut)",
-          "sources": [
-            {
-              "title": "OmniSeek: Native Tool Integration for Multi-turn Audio-Visual Reasoning",
-              "url": "https://huggingface.co/papers/2610.02181"
-            }
-          ]
-        },
-        {
-          "id": "f-multiturn-tool-rlvr",
-          "name": "两阶段工具调用 RLVR 目标（Two-stage Tool-use RLVR）",
-          "category": "rl",
-          "latex": "\\mathcal{L}(\\theta) = \\mathcal{L}_{\\mathrm{SFT}}(\\mathcal{D}_{\\mathrm{traj}}) + \\alpha \\, \\mathbb{E}_{\\tau \\sim \\pi_\\theta}\\big[ R(\\tau) \\big]",
-          "symbols": [
-            [
-              "\\mathcal{L}_{\\mathrm{SFT}}",
-              "在 OmniTraj-170K 轨迹上的监督损失"
-            ],
-            [
-              "\\mathcal{D}_{\\mathrm{traj}}",
-              "合成的多跳音视频交错思维链轨迹语料"
-            ],
-            [
-              "\\alpha",
-              "监督阶段与强化阶段的权重或调度系数"
-            ],
-            [
-              "R(\\tau)",
-              "可验证奖励，含音视频必要性目标"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：多轮工具调用是格式性技能，直接做 RL 时模型几乎采样不出合法的工具调用序列。",
-            "第 2 步：先用监督学习在合成轨迹上模仿「决策—调用—回填」的格式，把行为先验注入策略。",
-            "第 3 步：再用可验证奖励做强化学习，让策略从「会写格式」走向「会选证据」。",
-            "第 4 步：摘要称强化阶段分两段进行，但未说明分段依据，因此这里只写通用的加权总目标。"
-          ],
-          "analogy": "先看教练的示范录像把基本动作学像，再上场按胜负奖励打磨临场决策；只上场不看示范，动作架子都摆不出来。",
-          "pitfalls": [
-            "监督阶段过长会锁死探索，后续强化提升有限",
-            "奖励可验证但稀疏时，多轮轨迹的信用分配非常困难",
-            "只做强化不做冷启动，多轮工具调用格式几乎学不出来"
-          ],
-          "code": "loss = sft_loss(batch) + alpha * (-reward.mean())\n# 先由策略采样多轮轨迹 tau，再交给 verifier 打 R(tau)\nloss.backward()",
-          "sources": [
-            {
-              "title": "OmniSeek: Native Tool Integration for Multi-turn Audio-Visual Reasoning",
-              "url": "https://huggingface.co/papers/2610.02181"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "OmniSeek 把 Omni-LLM 变为可原生使用工具的多轮推理 agent",
-          "它动态决定看还是听、以及覆盖哪个时间窗，把证据获取纳入推理过程",
-          "取回的原始音频或视觉片段会被追加回上下文以支撑后续推理",
-          "构建数据引擎合成了 OmniTraj-170K 多跳思维链轨迹语料",
-          "先用轨迹做监督，再用带可验证奖励的两阶段强化学习优化策略",
-          "提出 Audio-Visual Necessity 目标以抑制单模态捷径",
-          "在广泛基准上表现出一致的音视频推理提升"
-        ],
-        "uncertain": [
-          "两阶段 RL 具体按什么划分（摘要只说「两阶段」）——待核实",
-          "Audio-Visual Necessity 目标的精确数学形式摘要未给出，公式为按摘要重建的通用形式，需核对原文",
-          "摘要未给出任何基准数值，实际提升幅度待核实",
-          "OmniTraj-170K 的内部构成（模态比例、跳数分布）摘要未说明"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "让既能看又能听的模型学会自己决定再看一眼或再听一段。"
-          },
-          {
-            "level": "入门",
-            "text": "过去的做法是把整段音视频一次性喂进模型。OmniSeek 改成多轮循环：模型先判断缺什么证据，调用工具取回一小段原始音频或画面，拼回上下文后继续推理，直到能回答。训练上先模仿约十七万条合成轨迹，再用答对与否的奖励做强化学习。"
-          },
-          {
-            "level": "进阶",
-            "text": "关键设计有三点。一是把「选模态 + 选时间窗」显式建模为动作，证据获取因此进入策略空间，上下文长度由取回的证据量决定而非素材总时长。二是用数据引擎合成 OmniTraj-170K 多跳交错轨迹做冷启动，解决多轮工具格式无法从零探索的问题。三是在可验证奖励上加 Audio-Visual Necessity 项，抑制只看字幕之类的单模态捷径。代价是迭代轮数带来延迟，必要性判据本身也需要额外评估。"
-          },
-          {
-            "level": "专家",
-            "text": "与「长上下文硬塞」和「均匀降采样压缩」两条路线对比：前者受上下文上限约束，后者会稀释稀疏证据。OmniSeek 属于主动取证路线，与 LEAP 的块级定位互补——LEAP 用两阶段 LoRA 把定位与作答解耦，OmniSeek 把定位直接交给策略并用 RL 优化。适用边界是证据确实稀疏且可定位到短窗口；若关键信息散布全片（整体基调、全局节拍），取回式方法反而不如稠密编码。两阶段 RL 的切分方式与奖励计算细节需读原文核实。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "如果不做多轮工具调用，直接把整段音视频喂进去会怎样？",
-            "a": "上下文很快被长素材占满，稀疏但关键的证据被淹没，需要细节的问题答不出；推理成本还随素材时长线性增长。"
-          },
-          {
-            "q": "换成更简单的做法——固定抽帧或均匀降采样，为什么不够？",
-            "a": "均匀压缩在取证之前就丢了信息，会稀释短时声学事件和瞬时画面证据；而且压缩策略与问题无关，无法按查询自适应分配预算。"
-          }
-        ],
-        "mechanism": "必须这样设计，是因为上下文预算与证据稀疏性之间存在矛盾：素材总时长可以到小时级，但真正决定答案的证据往往只有几秒。把「看/听哪一段」做成动作，等于让策略自己分配上下文预算，使输入长度与素材时长解耦。先冷启动再强化的顺序也有原因：多轮工具协议是格式性技能，监督学得快；而取证策略是决策问题，需要奖励信号来塑形。",
-        "boundary": "当关键信息无法定位到短窗口时（全局情绪、音乐风格、贯穿全片的情节线索），取回式流程会失效。工具调用带来的额外轮次会推高延迟，实时场景需要额外的预算控制。若必要性判据依赖模态消融，评估成本也可能抵消省下的上下文开销。",
-        "analogyBoundary": "侦探类比在「模型事先并不知道线索在哪」这一点上失效；侦探还能凭常识判断哪段卷宗有用，模型只能依赖训练分布内的经验，遇到分布外素材时取证决策会明显退化。",
-        "misconceptions": [
-          "以为它只是把长视频切段做检索，忽略了训练出的「何时取、取哪段」决策能力",
-          "把 Audio-Visual Necessity 理解成简单的双模态输入约束，而非对依赖关系的奖励",
-          "以为两阶段 RL 是两种不同奖励函数的强化学习，而摘要只说「两阶段」"
-        ],
-        "ownAnalysis": "放进已知脉络看：这是把 agentic retrieval（工具调用式取证）从纯文本、图像搬到 omni 音视频，并用 RLVR 训练策略，属于多模态 agent 的主流配方（推断）。可疑之处有二：一是开放式音视频推理上的「可验证奖励」如何构造 verifier，摘要未交代；二是必要性判据与正确性相乘后奖励会非常稀疏，第二阶段可能依赖大量采样。若能先用块级定位给出候选先验再做策略式取证，可能是更省算力的组合（推断）。",
-        "officialNotes": [
-          {
-            "position": "摘要称 OmniSeek 在广泛基准上学到自适应跨模态取证，并一致提升音视频推理表现",
-            "source": "https://huggingface.co/papers/2610.02181"
-          }
-        ],
-        "interviewAnswer": "OmniSeek 解决的是小时级音视频里证据稀疏、一次前向吃不下的问题。它把 Omni-LLM 变成会调工具的多轮 agent：自己决定看还是听、覆盖哪个时间窗，取回的原始片段拼回上下文继续推理。训练分两步，先用数据引擎合成的十七万条多跳交错思维链轨迹做冷启动，再用可验证奖励做两阶段强化学习，并额外加了 Audio-Visual Necessity 目标，要求答对的轨迹真的依赖两个模态，避免单模态捷径。给我的启发是上下文预算应由策略分配，而不是由素材时长决定。",
-        "studyPath": {
-          "prerequisites": [
-            "多模态 LLM 的编码器到 LLM 接口",
-            "工具调用与 agent 循环",
-            "RLVR 与 GRPO 类算法"
-          ],
-          "nextSteps": [
-            "读原文核实两阶段 RL 与必要性奖励的形式",
-            "对比 LEAP 的块级定位与有界作答",
-            "在视频问答数据上实现最小版多轮取证循环"
-          ]
-        }
-      }
-    },
-    {
-      "id": "03cc95f58cdf7d9d",
-      "tldr": "统一具身模型以非对称联合注意力让 action token 每层读语义、视觉与预测未来，涌现语义到动作的分工。",
-      "keyPoints": [
-        "动作 token 每层通过非对称联合注意力读语义、当前视觉、预测未来与动作",
-        "感知专家保持各自角色，动作计算不集中在单一专家上",
-        "无逐层监督也涌现深度分工：浅层视觉语言、中层预测帧、深层动作",
-        "分工跨任务复现且跨去噪步稳定，因果干预显示动作生成依赖它",
-        "仿真与真机超过 VLA、WAM 与混合基线，第一视角数据提升真机鲁棒性"
-      ],
-      "why": "世界模型与 VLA 的融合是具身智能招聘的核心问题；「统一模型内部自发分层」提示不必显式搭模块，也能得到语义—预见—动作的秩序化表征。",
-      "difficulty": "hard",
-      "tags": [
-        "worldmodel",
-        "vla",
-        "embodied",
-        "attention",
-        "robot-learning"
-      ],
-      "entities": [
-        "EWAM",
-        "VLA",
-        "WAM",
-        "asymmetric joint attention",
-        "human egocentric video"
-      ],
-      "diagram": {
-        "kind": "architecture",
-        "title": "EWAM 的深度分工",
-        "caption": "四路 token 一起进注意力，动作 query 逐层从语义与当前视觉，转向预测未来，最后转向动作自身。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='EWAM 深度分工示意图'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>四路 token 输入</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>语义 / 当前视觉 / 预测未来 / 动作</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>非对称联合注意力</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>动作可读全部，感知专家各守其职</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>涌现的深度分工</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>浅层语义 → 中层预见 → 深层动作</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>动作输出</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>仿真与真机超过 VLA / WAM 基线</text>\n</svg>",
-        "alt": "EWAM 架构图：语义、当前视觉、预测未来与动作四路 token 进入非对称联合注意力，动作 token 的注意力随层深从视觉语言转向预测帧再转向动作，最终输出动作。"
-      },
-      "concepts": [
-        {
-          "name": "Asymmetric Joint Attention",
-          "readable": "四路 token 放在同一个注意力里，但只有动作 token 能读所有流，感知 token 读不到动作；这样动作能看到全局，感知专家又不会被动作信号污染。",
-          "analogy": "像手术室里的主刀与助手：主刀可以随时看监护仪、看术前影像、也听助手汇报，但助手之间不会互相下指令，各自的专长因此保得住。",
-          "analogyBreaksDown": "手术室里权限由制度明文规定，而这里的非对称是写死在注意力掩码里的硬约束；它不允许模型自行协商「谁该看谁」，一旦某些任务需要反向的信息流，这个约束就变成瓶颈。",
-          "mechanism": "用一张非对称掩码同时保留专家的独立性与动作的全局可见性：动作 query 可读语义、当前视觉、预测未来与动作四类 key，感知 token 之间可互相读但不读动作，从而避免动作计算全压在单一专家上。",
-          "visual": "画一个方形注意力矩阵，行是 query、列是 key，四个块按流分块：动作行全亮，感知行在动作列上留黑，其余为亮，黑色块直观表示被掩掉的信息流。",
-          "prerequisites": [
-            "Transformer 自注意力与掩码机制",
-            "VLA / 世界模型的基本输入输出结构"
-          ],
-          "selfTest": [
-            "为什么要禁止感知 token 读动作 token？",
-            "非对称带来的额外表达力体现在哪一层？",
-            "如果掩码改成完全对称会失去什么？"
-          ],
-          "formula": "A^{(l)} = \\mathrm{softmax}\\!\\left(\\frac{Q^{(l)} K^{(l)\\top}}{\\sqrt{d}}\\right) \\odot M"
-        },
-        {
-          "name": "Emergent Depth-Wise Specialization",
-          "readable": "没有人工规定每一层该看什么，模型自己学会了分层：浅层主要看视觉语言特征，中间层主要看预测出来的未来帧，深层主要看动作 token。",
-          "analogy": "像熟练厨师做菜：先看菜谱和食材（浅层），再设想成品该是什么样（中层），最后才动手下刀调味（深层）——整套顺序没人教，是练出来的。",
-          "analogyBreaksDown": "厨师每一步都有明确的意识与可复述的理由，而这里的分工只是注意力质量的统计规律，模型并没有「先设想再动手」的显式意图；把它讲成有意为之的流程会过度拟人化。",
-          "mechanism": "关键设计是让动作 query 在每一层都能访问全部信息来源，谁的信息更有用就由训练自行决定权重；由于预测未来分支只在中间层最有用、动作自回归只在深层需要，梯度压力自然把不同层推向不同偏好。",
-          "visual": "画一张热力图，横轴是层深从浅到深，纵轴是四类信息来源，格子颜色深浅表示动作 query 分到该来源的注意力比例，预期呈现从左上到右下倾斜的条带。",
-          "prerequisites": [
-            "多头注意力的层间行为分析",
-            "因果干预/消融实验的基本思路"
-          ],
-          "selfTest": [
-            "为什么说这个分工是「涌现」而不是被监督出来的？",
-            "作者用哪两类证据说明分工是必需的？",
-            "分工稳定在去噪步之间意味着什么？"
-          ],
-          "formula": "s^{(l)}_{a \\to k} = \\frac{\\sum_{i \\in \\mathcal{A}} \\sum_{j \\in \\mathcal{S}_k} A^{(l)}_{ij}}{\\sum_{i \\in \\mathcal{A}} \\sum_{j} A^{(l)}_{ij}}"
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-asymmetric-joint-attention",
-          "name": "非对称联合注意力（Asymmetric Joint Attention）",
-          "category": "worldmodel",
-          "latex": "\\mathrm{Attn}^{(l)} = \\mathrm{softmax}\\!\\left(\\frac{Q^{(l)} K^{(l)\\top}}{\\sqrt{d}}\\right) \\odot M, \\quad M_{ij} = \\begin{cases} 0 & i \\in \\text{感知},\\ j \\in \\text{动作} \\\\ 1 & \\text{其它} \\end{cases}",
-          "symbols": [
-            [
-              "Q^{(l)}, K^{(l)}",
-              "第 l 层四路 token 拼起来的 query 与 key"
-            ],
-            [
-              "d",
-              "注意力头维度，用于缩放"
-            ],
-            [
-              "M",
-              "非对称掩码矩阵，0 表示禁止该信息流"
-            ],
-            [
-              "\\odot",
-              "逐元素相乘"
-            ],
-            [
-              "i \\in \\text{感知}",
-              "query 来自语义/视觉/预测等感知 token"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：把语义、当前视觉、预测未来、动作四类 token 拼成一个序列，让它们共享同一套注意力参数。",
-            "第 2 步：若用标准全连接注意力，感知 token 也会读到动作，动作信号会反向污染感知专家的表征。",
-            "第 3 步：因此引入掩码 M，在「感知作 query、动作作 key」的位置置 0，其余置 1。",
-            "第 4 步：动作 token 仍可读全部四路信息，于是动作拥有全局视野，而各感知专家保持原有分工。"
-          ],
-          "analogy": "像公司里的项目组：负责人可以调阅所有部门的资料，但各部门之间不互相下达指令，专业分工因此不会被指挥链搅乱。",
-          "pitfalls": [
-            "以为非对称只是省算力的稀疏注意力，忽略了它承担着保护专家分工的作用",
-            "把掩码当成可学习参数；这里它是结构先验",
-            "忘记缩放因子 \\sqrt{d}，在多头设置下注意力会过度尖锐"
-          ],
-          "code": "import torch\n# q,k: (B, H, N, D)，action_idx: 动作 token 的位置\natt = (q @ k.transpose(-1, -2)) / (q.size(-1) ** 0.5)\nmask = torch.ones_like(att)\nmask[..., perception_idx, action_idx] = 0.0   # 感知 query 不许读动作 key\natt = att.masked_fill(mask == 0, float('-inf')).softmax(-1)",
-          "sources": [
-            {
-              "title": "EWAM: Emergent Depth-Wise Specialization in a Unified Embodied Model -- From Semantic Understanding through Visual Foresight to Action",
-              "url": "https://arxiv.org/abs/2609.39973v1"
-            }
-          ]
-        },
-        {
-          "id": "f-depthwise-attention-handoff",
-          "name": "逐层注意力交接度量（Depth-Wise Attention Handoff）",
-          "category": "worldmodel",
-          "latex": "s^{(l)}_{a \\to k} = \\frac{1}{|\\mathcal{A}|}\\sum_{i \\in \\mathcal{A}} \\frac{\\sum_{j \\in \\mathcal{S}_k} A^{(l)}_{ij}}{\\sum_{j} A^{(l)}_{ij}}, \\qquad s^{(1)}_{a \\to \\mathrm{VL}} > s^{(1)}_{a \\to \\mathrm{fut}} > s^{(1)}_{a \\to a},\\ \\text{深层反转}",
-          "symbols": [
-            [
-              "\\mathcal{A}",
-              "动作 token 的位置集合"
-            ],
-            [
-              "\\mathcal{S}_k",
-              "第 k 类信息来源（视觉语言、预测未来、动作等）的 token 集合"
-            ],
-            [
-              "A^{(l)}_{ij}",
-              "第 l 层注意力权重"
-            ],
-            [
-              "s^{(l)}_{a \\to k}",
-              "第 l 层动作 query 分给第 k 类来源的平均注意力比例"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：要看分工，就把注意力权重按信息来源分组求和，再按动作 token 数取平均，得到每层每类来源的占比。",
-            "第 2 步：统计各层这个占比，发现浅层视觉语言占比最高。",
-            "第 3 步：中间层预测未来帧的占比上升并超过其它来源。",
-            "第 4 步：深层动作自身的占比反过来最高，形成「语义—预见—动作」的交接；跨去噪步统计说明该模式稳定。"
-          ],
-          "analogy": "像接力赛交棒：第一棒拿着地图（语义），第二棒抬头看前方路况（预测未来），最后一棒只管自己的步频（动作），每一棒关注的东西不同但目标一致。",
-          "pitfalls": [
-            "把注意力占比高直接等同于因果必要；占比只是相关性，还需消融或干预验证",
-            "在多层多头上平均时忘记按 token 数归一，导致长序列来源被系统性高估",
-            "只在单次前向里看一层就下结论，忽略跨去噪步的稳定性检验"
-          ],
-          "code": "import torch\n# attn: (L, N, N) 每层注意力；act: 动作 token 索引；src: 每类来源的索引\nfor l in range(attn.shape[0]):\n    a = attn[l][act]                       # (Na, N)\n    for name, idx in src.items():\n        share = a[:, idx].sum(-1) / a.sum(-1)\n        print(l, name, float(share.mean()))",
-          "sources": [
-            {
-              "title": "EWAM: Emergent Depth-Wise Specialization in a Unified Embodied Model -- From Semantic Understanding through Visual Foresight to Action",
-              "url": "https://arxiv.org/abs/2609.39973v1"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "EWAM 是一个以动作为中心的统一具身模型",
-          "它的非对称联合注意力让动作 token 每层都能读取语义、当前视觉、预测未来与动作信息",
-          "感知专家在模型内保持各自不同的角色",
-          "在没有逐层监督的情况下出现深度分工：浅层偏视觉语言、中层偏预测未来帧、深层偏动作 token",
-          "该交接跨任务复现，并在去噪步之间保持稳定",
-          "通过检查点追踪与因果干预，作者称这一分工是学到的、且动作生成依赖它",
-          "预训练分两套体制：跨具身机器人轨迹与人类第一视角视频",
-          "仿真与真机实验中超过 VLA、WAM 与混合基线",
-          "人类第一视角数据提升跨具身迁移与真机鲁棒性，子任务阶段监督改善长程任务完成"
-        ],
-        "uncertain": [
-          "摘要未给出任何具体基准、任务名与数值，性能差距幅度待核实",
-          "非对称联合注意力的精确掩码形式与公式为按摘要重建的通用形式，需核对原文",
-          "「两套预训练体制」的数据规模与混合比例摘要未说明",
-          "去噪步的具体数量与动作生成范式（扩散/流匹配）摘要未交代"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "把语义、看画面、想未来、做动作放进一个模型，它会自己学会按层分工。"
-          },
-          {
-            "level": "入门",
-            "text": "机器人策略有两种思路：一种靠语义理解，一种靠预测环境未来。EWAM 把两者放进同一个模型，让动作 token 在每一层都能读语义、当前画面、预测出来的未来帧和动作自身。没人告诉它哪层该看什么，训练后它自己形成了顺序：浅层看语义和画面，中层看预测未来，深层看动作。"
-          },
-          {
-            "level": "进阶",
-            "text": "实现关键是非对称联合注意力：四路 token 共享注意力，但感知 token 不许读动作 token，动作 token 却可以读全部。好处是动作获得全局视野，同时视觉语言等感知专家不会被动作信号污染，动作计算也不会挤在单一专家上。作者用检查点追踪与因果干预说明这个分工是训练学到的、且动作生成依赖它。预训练用了跨具身机器人轨迹和人类第一视角视频两套数据，后者还提升了迁移与真机鲁棒性。"
-          },
-          {
-            "level": "专家",
-            "text": "对比路线：纯 VLA 强调语义但缺少动力学预见，WAM 学动力学预测却难直接出动作，已有的混合系统常把动作计算压在单一专家上。EWAM 的贡献是证明「统一 + 非对称可见性」足以在没有逐层监督时自发产生有序内部流程，且该顺序跨任务、跨去噪步稳定。适用边界在于硬掩码固定了信息流方向，若任务需要感知侧反向利用动作信息，结构就成了瓶颈；此外「深度分工导致性能提升」的因果链条仍需更细的干预证据。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "如果去掉非对称约束、让所有 token 互相可见，会怎样？",
-            "a": "动作信号会反向流入感知专家，各专家的表征被同质化，摘要所说的「保持各自角色」不再成立，动作计算也容易集中到单一专家。"
-          },
-          {
-            "q": "既然要预测未来，为什么不干脆单独训一个视频预测模型再串策略？",
-            "a": "串联会引入接口损失与误差累积，预测目标容易偏离动作需求；统一训练能让预见只在动作真正需要的层和步被调用。"
-          }
-        ],
-        "mechanism": "必须这样设计，是因为语义理解与动力学预见对表征的需求相反：语义特征稳定但滞后，预测未来帧富含时序但噪声大。若强行让一个专家同时承担两者，梯度会互相拉扯。让动作 query 在每层都能访问所有来源，等于把「用哪种信息」交给训练决定；非对称掩码保证感知侧各自专精，于是梯度压力自然按层分工。",
-        "boundary": "掩码是硬结构先验，遇到需要感知侧根据动作意图反向调制的任务（例如按即将执行的动作主动注视）时会被限制。深度分工是统计规律，分布外任务上这种交接是否仍然成立，摘要没有给出证据；长程任务仍需子任务阶段监督来改善完成度。",
-        "analogyBoundary": "厨房类比对「顺序是训练涌现、而非设计者规定」这一点失效；另外厨师可以随时改变流程，而这里的层间偏好由结构与数据共同决定，部署后无法按任务临时切换。",
-        "misconceptions": [
-          "以为 EWAM 是把 VLA 和 WAM 两个模型简单拼在一起，而摘要强调它是单一统一模型",
-          "把深度分工当成作者显式加的逐层监督，摘要明确说没有 layer-wise supervision",
-          "认为动作 token 与感知 token 完全对称共享注意力，忽略了非对称掩码"
-        ],
-        "ownAnalysis": "把摘要与已知工作联系：这条路线接近「统一 backbone + 结构化可见性」的思路，用注意力掩码代替多个独立模块，好处是省参数并让分工可被度量（推断）。可疑点在于因果证据的强度：检查点追踪与干预能说明相关性随时间建立，但「分工是性能来源」需要逐层打乱注意力目标的对照实验。另一个疑点是掩码方向单一——若允许动作 token 的信息在深层回传感知侧，可能对长程任务更有利，摘要未讨论（推断）。",
-        "officialNotes": [
-          {
-            "position": "摘要称结果提示统一具身学习可以诱导出从语义理解、经视觉预见、到动作形成的有序内部进程",
-            "source": "https://arxiv.org/abs/2609.39973v1"
-          }
-        ],
-        "interviewAnswer": "EWAM 想解决的是 VLA 偏语义、WAM 偏动力学、两者混合时动作计算又挤在单一专家的问题。做法是一个以动作为中心的统一模型：四路 token 语义、当前视觉、预测未来、动作共享注意力，但掩码是非对称的——动作能读全部，感知之间可以互读却不读动作，所以专家分工保得住。没有人做逐层监督，训练后动作 query 自发形成浅层看视觉语言、中层看预测未来、深层看动作的接力，而且跨任务复现、跨去噪步稳定。预训练用跨具身机器人轨迹和人类第一视角视频，仿真和真机都超过了 VLA、WAM 与混合基线。",
-        "studyPath": {
-          "prerequisites": [
-            "Transformer 注意力与掩码",
-            "VLA 与世界模型（WAM）的基本范式",
-            "扩散/流匹配式动作生成的基础"
-          ],
-          "nextSteps": [
-            "读原文确认非对称掩码的确切定义",
-            "复现注意力占比的逐层统计做小规模验证",
-            "对比显式双塔与统一模型的参数效率"
-          ]
-        }
-      }
-    },
-    {
-      "id": "3192f3e121d782ee",
-      "tldr": "小时级音视频问答拆成块级轻量定位加单次有界作答：作答输入与峰值上下文不再随录像时长增长。",
-      "keyPoints": [
-        "小时级 AVQA 两难：全量编码爆上下文，均匀压缩稀释细粒度证据",
-        "把录像切成定长块，每块做轻量定位打分，选出短候选窗口",
-        "最高分窗口池化后在单次有界作答中重编码",
-        "定位与推理解耦，可只在预计算文本上定位，作答再走原始音视频流",
-        "两阶段 LoRA 分别训练定位与作答；块网格原生支持因果查询与流式推理"
-      ],
-      "why": "长音视频理解是多模态岗位的必考题；这套「定位—作答」解耦 + 有界上下文的工程设计，可以直接迁移到视频检索、会议理解与流式多模态服务。",
+      "why": "后训练岗常被追问 GRPO/DPO/PPO 的差别，这份索引把散落的博客与论文串成可顺着读的补盲路线。",
       "difficulty": "medium",
-      "tags": [
-        "multimodal",
-        "audio-visual",
-        "long-context",
-        "retrieval",
-        "video-qa"
-      ],
-      "entities": [
-        "LEAP",
-        "Qwen3-Omni-30B-A3B",
-        "MiniCPM-o 4.5",
-        "LoRA",
-        "AVQA"
-      ],
-      "diagram": {
-        "kind": "flow",
-        "title": "LEAP 定位与作答两段",
-        "caption": "先廉价地给定长块打分为候选窗口，再把少量高分窗口拼成一次有界作答，上下文不随时长膨胀。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='LEAP 两阶段流程图'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>小时级录像切定长块</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>块网格，时长再长也分块</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>轻量定位打分</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>每块给短候选窗口打分</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>高分窗口池化</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>候选窗口数量有上限</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>单次有界作答</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>在原始音视频流上重编码</text>\n<text x='56' y='234' font-size='13' text-anchor='start' fill='currentColor'>定位 LoRA 与作答 LoRA 分别训练</text>\n</svg>",
-        "alt": "LEAP 流程图：把小时级录像切成定长块，对每块做轻量定位打分，取高分窗口池化后送入单次有界作答，并在原始音视频流上重编码。"
-      },
-      "concepts": [
-        {
-          "name": "Block-wise Evidence Localization",
-          "readable": "把长录像切成固定时长的块，用一个便宜的小模型给每块里的短窗口打分，只把排名最高的窗口交给后面的推理，从而不必先编码整段素材。",
-          "analogy": "像在几小时的监控里找一辆车：先快进扫一遍，用肉眼在时间条上标出可疑的几个片段，再只对这几段做逐帧放大查看。",
-          "analogyBreaksDown": "快进扫带时人知道要找什么，而定位模型是靠训练学出的打分函数，它可能漏掉与训练分布不符的罕见事件；而且块边界会切断跨块的事件，扫读式定位无法像人那样凭上下文推断。",
-          "mechanism": "把证据定位与答案推理拆成两个可分别训练的阶段：定位阶段只需轻量编码甚至只读预计算文本，成本与录像时长近似线性但常数很小；因为候选窗口数与总时长无关，后一阶段的输入有硬上限。",
-          "visual": "画一条长横轴代表小时级录像并被竖线切成等长的块，每块上方标一个分数柱，只有几根柱子被涂成实心表示入选窗口，其余为空心。",
-          "prerequisites": [
-            "多模态检索与召回-重排范式",
-            "LoRA 微调的基本原理",
-            "注意力上下文预算的概念"
-          ],
-          "selfTest": [
-            "定位阶段为什么可以只看文本而不解码画面？",
-            "块长设得太大或太小分别会出什么问题？",
-            "定位与作答分开训练，为什么不会互相拖累？"
-          ],
-          "formula": "s_{b,w} = f_{\\phi}\\big(\\mathrm{Enc}(x_{b,w}), q\\big)"
-        },
-        {
-          "name": "Duration-Independent Peak Context",
-          "readable": "因为只把固定数量的高分窗口送进作答阶段，所以无论录像是十分钟还是一小时，解码时的上下文长度和峰值显存都基本不变。",
-          "analogy": "像考试允许带一张 A4 小抄：资料再多，你带进考场的信息量是固定的，成绩取决于你抄得准不准，而不是资料总量。",
-          "analogyBreaksDown": "小抄是人工挑选的，可能漏掉关键点且后果只影响一次考试；而定位是模型打分，漏检会系统性伤害所有该类问题，并且固定窗口数在证据确实分散时无法通过多带小抄来补救。",
-          "mechanism": "把总时长这一维从作答阶段的输入中彻底移除：窗口数 K 与窗口长度 L 都是超参，作答上下文上界为 K×L；代价是定位误差不可逆，漏掉的窗口再也看不到。",
-          "visual": "画两条曲线，横轴是录像时长、纵轴是峰值上下文长度：一条水平直线代表 LEAP，一条斜向上直线代表全量编码，交点后 LEAP 优势越来越大。",
-          "prerequisites": [
-            "上下文长度与显存的换算关系",
-            "Top-K 检索的召回率-成本权衡"
-          ],
-          "selfTest": [
-            "为什么说峰值上下文与时长无关，而不是复杂度与时长无关？",
-            "K 选小了会怎样，选大了又损失什么？",
-            "如果关键证据出现在 3 个不连续的块里，这个设计还成立吗？"
-          ],
-          "formula": "|C_{\\mathrm{ans}}| = K \\cdot L_{\\mathrm{win}} = O(1)\\ \\text{w.r.t.}\\ T"
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-leap-block-localization-score",
-          "name": "块级窗口定位打分（Block-wise Window Scoring）",
-          "category": "multimodal",
-          "latex": "s_{b,w} = f_{\\phi}\\big(\\mathrm{Enc}(x_{b,w}),\\, q\\big), \\qquad \\mathcal{W}^\\star = \\mathrm{TopK}_{(b,w)}\\ s_{b,w}",
-          "symbols": [
-            [
-              "b",
-              "第 b 个定长块"
-            ],
-            [
-              "w",
-              "块内第 w 个短候选窗口"
-            ],
-            [
-              "x_{b,w}",
-              "该窗口的音频或视觉片段（或对应预计算文本）"
-            ],
-            [
-              "q",
-              "用户问题"
-            ],
-            [
-              "f_{\\phi}",
-              "定位 LoRA 微调后的打分函数"
-            ],
-            [
-              "\\mathcal{W}^\\star",
-              "入选的高分窗口集合"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：动机——整段编码的代价随时长增长，需要先把可搜索空间切小。",
-            "第 2 步：把录音切成定长块，块内再枚举短候选窗口，得到有限的候选集合。",
-            "第 3 步：用轻量定位模型对每个候选用问题算相关性分数，可用预计算文本代替解码媒体，进一步降低成本。",
-            "第 4 步：取分数最高的 K 个窗口作为证据，交给作答阶段。"
-          ],
-          "analogy": "像在图书馆找资料：先按书架和层位缩小范围，只在少数几个格子里细看，而不是把整馆的书都搬出来逐页翻。",
-          "pitfalls": [
-            "把候选窗口的分数当成最终答案置信度",
-            "块长固定导致跨块事件被切断，定位阶段无法恢复",
-            "TopK 的 K 不变，遇到证据分散的问题会漏检，需要额外机制兜底"
-          ],
-          "code": "import torch, torch.nn.functional as F\n# win_feat: (B, W, D) 候选窗口特征；q_feat: (B, D)\nscore = (F.normalize(win_feat, dim=-1) @ F.normalize(q_feat, dim=-1).unsqueeze(-1)).squeeze(-1)\nidx = torch.topk(score, k=4, dim=-1).indices   # 选出 K 个高分窗口\nassert idx.shape[-1] == 4",
-          "sources": [
-            {
-              "title": "LEAP: Learned Block-wise Evidence Retrieval for Long Audio-Video Perception",
-              "url": "https://huggingface.co/papers/2609.39938"
-            }
-          ]
-        },
-        {
-          "id": "f-leap-bounded-answer-context",
-          "name": "有界作答上下文（Bounded Answer Context）",
-          "category": "engineering",
-          "latex": "|C_{\\mathrm{ans}}| = K \\cdot L_{\\mathrm{win}} \\ll T, \\qquad \\text{peak context} = O(K L_{\\mathrm{win}})",
-          "symbols": [
-            [
-              "K",
-              "入选窗口数，超参，与录像时长无关"
-            ],
-            [
-              "L_{\\mathrm{win}}",
-              "单个窗口编码后的 token 长度"
-            ],
-            [
-              "T",
-              "整段录像编码后的 token 数"
-            ],
-            [
-              "C_{\\mathrm{ans}}",
-              "作答阶段实际放入的上下文"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：全量编码时上下文长度为 |C| = T，随录像时长线性增长，很快撞上模型上限。",
-            "第 2 步：定位阶段输出固定数量的高分窗口，因此送入作答的片段数被钉死在 K。",
-            "第 3 步：每个窗口编码后长度约 L_win，总上下文上界为 K·L_win，与 T 无关。",
-            "第 4 步：于是峰值上下文和作答成本只由超参决定，长录像不再放大单次推理开销。"
-          ],
-          "analogy": "像去医院看病先做筛查再进诊室：诊室里医生一次只看固定几份关键报告，队伍再长也不影响单次问诊时间。",
-          "pitfalls": [
-            "把 O(K·L_win) 上界理解成整体复杂度，定位阶段仍需扫过全部块，总成本仍随时长线性增长",
-            "忽略定位漏检是不可逆的，固定 K 无法像稠密编码那样兜底",
-            "以为 K 越大越好，K 增大会线性推高作答成本并可能引入干扰窗口"
-          ],
-          "code": "K, L_win = 8, 64\nbounded_ctx = K * L_win\nfor T in [64, 640, 6400]:          # 录像越长，全量编码越爆\n    full_ctx = T\n    print(T, 'full', full_ctx, 'leap', bounded_ctx)",
-          "sources": [
-            {
-              "title": "LEAP: Learned Block-wise Evidence Retrieval for Long Audio-Video Perception",
-              "url": "https://huggingface.co/papers/2609.39938"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "小时级音视频问答受困于上下文两难：全量编码迅速耗尽上下文，均匀时间压缩严重稀释细粒度证据",
-          "LEAP 让模型自己检索证据，而不把整段录像放进一个上下文",
-          "它把录像分成定长块，对每块做轻量定位并给短候选窗口打分",
-          "最高分窗口被池化并在单次有界作答中重编码",
-          "作答输入与峰值上下文不随录像时长变化",
-          "定位可在预计算文本上完成、无需解码媒体帧，作答阶段则走原始音视频流以保留细粒度视觉与非语音证据",
-          "两阶段均被训练：定位 LoRA 改善选窗，作答 LoRA 改善从同一批窗口读出的答案",
-          "块网格原生支持因果查询，因此无需流式专项训练即可支持流式推理",
-          "在多个 AVQA 基准上比 Qwen3-Omni-30B-A3B 基线提升 4.5-16.8%，并在 MiniCPM-o 4.5 上超过其已发表结果 3.1-13.0%"
-        ],
-        "uncertain": [
-          "块长、窗口长与 TopK 的具体取值摘要未给出",
-          "「轻量定位 pass」的具体模型与参数量摘要未说明",
-          "流式推理的延迟指标摘要未给出",
-          "两个数值区间覆盖哪些具体基准、怎样聚合（平均还是逐项）未说明"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "先廉价地在长录像里选出几段关键片段，再只读这几段来答题。"
-          },
-          {
-            "level": "入门",
-            "text": "一小时的音视频如果整段塞进模型，上下文直接爆掉；可如果均匀压缩，短促的声响或一闪而过的画面又会被抹平。LEAP 的做法是两段式：先把录像切成固定长度的块，用一个便宜的打分器给每块里的短窗口打分，挑出最高分的几段；然后只把这几段送进一次有界的作答过程，所以无论录像是十分钟还是一小时，答题时的上下文大小都差不多。"
-          },
-          {
-            "level": "进阶",
-            "text": "两个设计选择值得记：第一，定位与推理彻底解耦，定位甚至可以只在预计算的转写文本上做而不解码画面，只有在最终作答时才回到原始音视频流，从而保住细粒度视觉与非语音证据。第二，两段分别用 LoRA 训练，定位 LoRA 改的是选窗质量、作答 LoRA 改的是读窗口给出答案的质量，互不干扰。副作用是定位漏检不可逆：窗口数固定，证据如果分散在多个不连续片段里就会被截断。"
-          },
-          {
-            "level": "专家",
-            "text": "这条路线与 OmniSeek 的主动取证互补：OmniSeek 让策略在多轮里自己决定取哪段原始片段并用 RL 优化，LEAP 则用一次廉价的块级扫描加单次有界作答，工程上更可控、推理时延更稳定，也不需要多轮工具协议。与均匀降采样或 token 压缩相比，LEAP 保留了查询自适应：压缩比例不随问题变化，而选窗随问题变化。适用边界是证据确实稀疏且可定位；如果需要全局证据（整片情绪、整体叙事结构），有界窗口就不够用，得靠全局摘要分支兜底。块网格支持因果查询这一点还意味着流式场景零改造成本。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "如果去掉定位阶段、直接把整段录像编码进上下文会怎样？",
-            "a": "上下文随时长线性膨胀并很快超限，会话无法处理小时级素材；即使塞得下，稀疏的关键证据也会被大量无关内容稀释掉注意力。"
-          },
-          {
-            "q": "用均匀降采样压缩代替学习式定位，为什么不够？",
-            "a": "均匀压缩与问题无关，会按固定比例丢掉短时声学事件与瞬时画面；而关键证据往往只占几秒，压完正好把它抹掉。"
-          }
-        ],
-        "mechanism": "必须这样设计，是因为「找证据」和「用证据回答」对资源的需求完全不同：找证据需要覆盖全部时间但每处只需粗略判断，用证据回答只需少量片段但要求高保真。把两者拆开，就能让第一阶段用便宜的表征（甚至只读文本）扫全片，第二阶段用昂贵的高保真编码只看几段，把总成本压到与时长近似线性而单次推理与时长无关。",
-        "boundary": "当证据无法被局部窗口承载时（全局基调、整片叙事、需要跨多个远距离片段拼合的问题）会失效；块边界还会切断跨块事件。定位漏检不可逆，且固定 K 无法像稠密编码那样在算力富余时用更多上下文兜底。",
-        "analogyBoundary": "监控快进与图书馆找书这两类类比都假设「扫描阶段不会误判」，而学习式定位会漏检且漏检无法补救；类比也掩盖了块边界这一人为切分带来的信息损失。",
-        "misconceptions": [
-          "以为 LEAP 把整体复杂度降成了常数，它只是让作答上下文与峰值显存与时长无关",
-          "以为定位阶段必须先解码全部音视频，摘要明确说可在预计算文本上定位",
-          "把两阶段 LoRA 理解成一个模型两个头联合训练，实际是分别训练定位与作答"
-        ],
-        "ownAnalysis": "把摘要与已知方法联系：这是典型的「召回—重排」思想搬到 omni 长音视频，用块网格替代注意力稀疏化，工程上比改注意力结构更容易落地（推断）。可疑点有三：一是定位器本身的训练监督从哪来，摘要只说 LEAP trains both stages，没交代标签构造；二是固定 K 的漏检风险在「证据分散」类问题上会有多大退化，摘要未给分组结果；三是块网格宣称天生支持流式推理，但流式写回的窗口如何与已经作答的上下文一致，摘要未说明（推断）。",
-        "officialNotes": [
-          {
-            "position": "摘要称在各 AVQA 基准上比 Qwen3-Omni-30B-A3B 基线提升 4.5-16.8%，并迁移到 MiniCPM-o 4.5 后超过其已发表结果 3.1-13.0%",
-            "source": "https://huggingface.co/papers/2609.39938"
-          }
-        ],
-        "interviewAnswer": "LEAP 处理的是小时级音视频问答的两难：整段编码上下文会爆，均匀压缩又会稀释细粒度证据。它把流程拆成两段。第一段把录像切成定长块，用轻量定位给块内短窗口打分，可以只在预计算转写上做，不需要解码媒体。第二段把最高分窗口池化，放进一次有界的作答过程，在原始音视频流上重编码，所以作答上下文与峰值显存不随录像时长增长。两段分别用 LoRA 训练，定位 LoRA 改选窗、作答 LoRA 改答案。它比基线 Qwen3-Omni-30B-A3B 高 4.5 到 16.8 个点，也在 MiniCPM-o 4.5 上超过了已发表结果。块网格天然支持因果查询，所以流式推理不需要额外训练。",
-        "studyPath": {
-          "prerequisites": [
-            "多模态检索的召回-重排范式",
-            "LoRA 微调",
-            "上下文长度与显存的关系"
-          ],
-          "nextSteps": [
-            "读原文确认块长/窗口长/TopK 与定位监督构造",
-            "与 OmniSeek 的策略式取证做延迟与精度对比",
-            "在自有长视频问答集上复现两阶段流程"
-          ]
-        }
-      }
-    },
-    {
-      "id": "9e285061cb75920c",
-      "tldr": "偏好蒸馏的 rejects 不必来自学生自己或更大模型：更小的冻结模型生成负例更省算力，训出的学生反而更强。",
-      "keyPoints": [
-        "常规偏好蒸馏把教师回答当 chosen、学生自己的回答当 rejected",
-        "该假设不成立：7B 到 72B 学生上，更小冻结模型的 rejects 效果更好",
-        "这一结论在序列级知识蒸馏前后都成立，覆盖代码生成与数学推理",
-        "用线性化特征模型推导 DPO 的有限时域效用上界，刻画有利的 reject 分布",
-        "三个干预：混入小模型 rejects、把 rejects 换到别的 prompt 或洗牌 code token、优先参考策略下似然更低者"
-      ],
-      "why": "偏好数据构造是后训练岗位的日常：这条结论直接改写「负例要更强模型来产」的直觉，能在同样预算下拿到更好的 DPO/蒸馏效果。",
-      "difficulty": "hard",
       "tags": [
         "posttraining",
-        "preference-optimization",
-        "distillation",
+        "rlhf",
+        "grpo",
         "dpo",
-        "data-selection"
+        "awesome-list"
       ],
       "entities": [
-        "Direct Preference Optimization",
-        "preference distillation",
-        "rejected",
-        "DPO"
+        "hscspring/rl-llm-nlp",
+        "GRPO",
+        "DAPO",
+        "DPO",
+        "PPO",
+        "RLHF",
+        "GSPO",
+        "CISPO",
+        "VAPO",
+        "DeepSeek-R1",
+        "MoE RL",
+        "Verifier-Free RL",
+        "Training-Free RL",
+        "Agentic RL"
       ],
       "diagram": {
         "kind": "flow",
-        "title": "低成本 reject 构造流程",
-        "caption": "用更小的冻结模型产负例、混合并重新指派到别的 prompt，再按参考策略似然挑更低的候选，最后做 DPO。",
-        "svg": "<svg viewBox='0 0 560 300' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='偏好蒸馏 reject 构造流程'>\n<rect x='56' y='16' width='448' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>提示词批次</text>\n<text x='488' y='40' font-size='13' text-anchor='end' fill='currentColor'>chosen 来自教师或学生正例</text>\n<line x1='280' y1='54' x2='280' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='280,70 276,62 284,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='448' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>更小的冻结模型生成 rejects</text>\n<text x='488' y='94' font-size='13' text-anchor='end' fill='currentColor'>推理更省，效果却更好</text>\n<line x1='280' y1='108' x2='280' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='280,124 276,116 284,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='448' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>混合与重新指派</text>\n<text x='488' y='148' font-size='13' text-anchor='end' fill='currentColor'>小模型占比越高越好；换到别的 prompt 仍有效</text>\n<line x1='280' y1='162' x2='280' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='280,178 276,170 284,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='448' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>按参考策略似然筛选</text>\n<text x='488' y='202' font-size='13' text-anchor='end' fill='currentColor'>更低似然的候选迁移更好</text>\n<line x1='280' y1='216' x2='280' y2='224' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='280,232 276,224 284,224' fill='var(--line-1)'/>\n<rect x='56' y='232' width='448' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='256' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>DPO 训练学生</text>\n<text x='488' y='256' font-size='13' text-anchor='end' fill='currentColor'>保留任务结构、减少与参考策略的耦合</text>\n</svg>",
-        "alt": "流程图：提示词批次配 chosen，更小的冻结模型生成 rejects 并混合、重新指派到其它提示，再按参考策略似然筛出更低似然的候选，最后用 DPO 训练学生。"
-      },
-      "concepts": [
-        {
-          "name": "Finite-Horizon DPO Utility Bound",
-          "readable": "作者在一个线性化的特征模型上，推导出 DPO 在有限步内能带来多少提升的上界；这个上界说明什么样的 reject 分布对学生最有利。",
-          "analogy": "像健身教练评估训练收益：能练出多少肌肉不只取决于你现在的水平，还取决于陪练给你的阻力是否合适——阻力太小没刺激，太大又练不动。",
-          "analogyBreaksDown": "健身里阻力大小可以连续调节且效果可即时观察；这里的上界是在线性化特征模型下推出来的解析结论，真实网络是非线性且优化非凸的，上界只是方向性指引而非可精确预测的收益。",
-          "mechanism": "用有限时域的分析代替渐近结论，把「reject 分布」显式写进收益表达式，于是可以比较不同来源负例的价值；这也解释了为什么低似然候选（与参考策略耦合更弱）反而更有用。",
-          "visual": "画一张二维示意图，横轴是 reject 在参考策略下的对数似然、纵轴是学生获得的净迁移，曲线先升后降，峰值落在偏低似然处，标出「太低无结构、太高无对比」两端。",
-          "prerequisites": [
-            "DPO 目标与参考策略的作用",
-            "偏好数据中 chosen/rejected 的构造方式",
-            "线性化/特征模型式的理论分析套路"
-          ],
-          "selfTest": [
-            "为什么说「学生自己的失败样本最有信息量」这个直觉不可靠？",
-            "有限时域和有无限时域在这个问题上的差别是什么？",
-            "低似然的 reject 为什么可能更有用？"
-          ],
-          "formula": "J_{\\mathrm{DPO}}(\\pi_\\theta) \\le \\frac{1}{1-\\gamma}\\Big(\\mathbb{E}_{(x,y^+,y^-)}\\big[\\log \\sigma\\big(\\beta \\Delta_\\theta\\big)\\big] - \\mathrm{const}\\Big)"
-        },
-        {
-          "name": "Reference-Policy Coupling of Rejects",
-          "readable": "拒绝样本与参考策略越「像」，它提供的对比信号越弱；参考策略下似然更低的候选反而能带来更大的净迁移，因为它把学生推得更远。",
-          "analogy": "像练口语找陪练：如果陪练的口音跟你几乎一样，练完没进步；找一个说得明显不同但仍在同一语言体系内的人，你才被迫修正自己的发音。",
-          "analogyBreaksDown": "陪练不同口音但仍是可理解的语言；而似然极低的 reject 可能已经偏离任务本身（变成乱码或错误语言），那时对比信号不再关于任务结构，训练收益反而下降。",
-          "mechanism": "用参考策略下的对数似然作为筛选分数，在候选池里优先取更低者；这在理论上是把耦合项压小、把对比项放大，但必须以「仍保留任务结构」为前提，所以要把 rejects 换到别的 prompt、洗牌 code token 这类保留结构的扰动与乱码区分开。",
-          "visual": "画一条横轴为参考策略似然、纵轴为收益的散点云，低似然一侧点更高但极左端开始下坠；右侧密集点的收益整体偏低。",
-          "prerequisites": [
-            "DPO 中参考策略 \\pi_{ref} 的角色",
-            "对数似然与序列概率的计算"
-          ],
-          "selfTest": [
-            "怎样用参考策略给候选 reject 排序？",
-            "为什么打乱 code token 的 rejects 仍优于等长乱码？",
-            "如果无脑取最低似然会有什么风险？"
-          ],
-          "formula": "y^- = \\arg\\min_{y \\in \\mathcal{C}(x)} \\log \\pi_{\\mathrm{ref}}(y \\mid x)"
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-dpo-reject-utility-bound",
-          "name": "DPO 有限时域效用上界（Finite-Horizon DPO Utility Bound）",
-          "category": "posttraining",
-          "latex": "J(\\pi_\\theta) \\le \\frac{1}{1-\\gamma}\\Big(\\mathbb{E}_{(x,y^+,y^-)\\sim \\mathcal{D}}\\big[\\log \\sigma\\big(\\beta\\,(\\log\\tfrac{\\pi_\\theta(y^+|x)}{\\pi_{\\mathrm{ref}}(y^+|x)} - \\log\\tfrac{\\pi_\\theta(y^-|x)}{\\pi_{\\mathrm{ref}}(y^-|x)})\\big)\\big] - C\\Big)",
-          "symbols": [
-            [
-              "\\pi_\\theta",
-              "正在训练的学生策略"
-            ],
-            [
-              "\\pi_{\\mathrm{ref}}",
-              "冻结的参考策略"
-            ],
-            [
-              "y^+, y^-",
-              "chosen 与 rejected 回答"
-            ],
-            [
-              "\\beta",
-              "DPO 的逆温度，控制偏离参考策略的程度"
-            ],
-            [
-              "\\gamma",
-              "有限时域的折扣/收缩因子"
-            ],
-            [
-              "\\mathcal{D}",
-              "构造出的偏好数据分布"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：标准 DPO 把偏好学习写成对 log σ(logit 差) 的最大化，其中 logit 差由策略与参考策略的对数似然比构成。",
-            "第 2 步：在有限时域设定下（线性化特征模型），把累积收益展开并做收缩（discount）求和，得到形如 1/(1-γ) 乘上单步期望的界。",
-            "第 3 步：该上界把数据分布 D 显式写进右侧，于是可以比较不同 reject 分布对应的可达收益。",
-            "第 4 步：由界可读出两个条件：reject 要与 chosen 形成足够大的对比，同时又要避免与参考策略过度耦合。"
-          ],
-          "analogy": "像给学员配陪练：能进步多少有上限，上限由陪练水平与你现有水平的差距分布决定，而不是由练习次数无限堆出来。",
-          "pitfalls": [
-            "把有限时域推出来的界当作真实网络的精确收益预测，忽略线性化与凸性假设",
-            "忘记参考策略 \\pi_{ref} 在 DPO 里是分母上的锚点，混淆它与教师模型",
-            "以为上界只跟数据量有关，忽略 reject 的分布形状才是关键变量"
-          ],
-          "code": "import torch, torch.nn.functional as F\n# logp_*: 学生策略对 chosen/rejected 的序列对数似然；logp_ref_*: 参考策略\nlogit = beta * ((logp_w - logp_ref_w) - (logp_l - logp_ref_l))\nloss = -F.logsigmoid(logit).mean()\nloss.backward()",
-          "sources": [
+        "title": "后训练 RL 阅读路线",
+        "caption": "先建方法地图再深读：从策略梯度族走到偏好优化，再补稳定性与前沿，最后落到 R1 复现。",
+        "spec": {
+          "type": "flow",
+          "nodes": [
             {
-              "title": "Smaller Models, Better Rejects: Preference Distillation Scaling",
-              "url": "https://huggingface.co/papers/2609.38987"
+              "label": "索引入口",
+              "detail": "curated + opinionated，按主题聚簇"
+            },
+            {
+              "label": "策略梯度族",
+              "detail": "PPO / GRPO / DAPO / GSPO / CISPO / VAPO"
+            },
+            {
+              "label": "偏好优化与 RLHF",
+              "detail": "RLHF、DPO 与奖励建模"
+            },
+            {
+              "label": "稳定性与前沿",
+              "detail": "MoE RL 稳定性、Verifier-Free / Training-Free RL"
+            },
+            {
+              "label": "Agentic RL 与 R1 复现",
+              "detail": "DeepSeek-R1 reproduction 等"
+            }
+          ],
+          "edges": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": "选一条主线"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": "对照偏好优化"
+            },
+            {
+              "from": 2,
+              "to": 3,
+              "label": "补工程坑"
+            },
+            {
+              "from": 3,
+              "to": 4,
+              "label": "落到复现"
             }
           ]
         },
-        {
-          "id": "f-reference-likelihood-reject-selection",
-          "name": "参考策略似然负例筛选（Reference-Likelihood Reject Selection）",
-          "category": "posttraining",
-          "latex": "\\mathcal{R}^\\star = \\mathrm{BottomK}_{y \\in \\mathcal{C}(x)}\\ \\log \\pi_{\\mathrm{ref}}(y \\mid x), \\qquad \\text{s.t. } y \\text{ 保留任务结构}",
-          "symbols": [
-            [
-              "\\mathcal{C}(x)",
-              "针对提示 x 采到的候选回答集合"
-            ],
-            [
-              "\\pi_{\\mathrm{ref}}",
-              "冻结参考策略"
-            ],
-            [
-              "\\mathcal{R}^\\star",
-              "被选作 reject 的低似然候选"
-            ],
-            [
-              "\\text{s.t.}",
-              "约束条件：候选必须仍与任务同构（例如打乱后的代码而非乱码）"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：动机——rejects 的价值来自它与 chosen 的对比，而不是它本身有多「错」。",
-            "第 2 步：把耦合项单独考虑：参考策略下似然越高的候选，学生只需小幅偏离就能拟合，对比信号弱。",
-            "第 3 步：因此在候选池里按参考策略对数似然取最低的一批作为 rejects。",
-            "第 4 步：但必须加约束：摘要显示打乱 code token 的 rejects 仍胜过等长乱码，说明任务是结构而非纯噪声提供了有用对比。"
-          ],
-          "analogy": "像挑错题本上的例题：要挑你最容易做错、但仍然是同类题型的题目，而不是随便抄一道完全无关的怪题。",
-          "pitfalls": [
-            "无约束地取最低似然，可能挑到乱码或语言错误的样本，丢失任务结构",
-            "把参考策略似然与教师似然混为一谈",
-            "忽略筛选会改变数据的长度与难度分布，需要与长度匹配的对照才能解释收益"
-          ],
-          "code": "import torch\n# cand_logits: (B, C) 候选在参考策略下的序列对数似然\nk = cand_logits.size(-1) // 2\nidx = torch.topk(cand_logits, k=k, dim=-1, largest=False).indices  # 取最低似然\nrejects = gather_candidates(idx)",
-          "sources": [
-            {
-              "title": "Smaller Models, Better Rejects: Preference Distillation Scaling",
-              "url": "https://huggingface.co/papers/2609.38987"
-            }
-          ]
-        }
-      ],
-      "selfCheck": {
-        "claims": [
-          "常规偏好蒸馏把教师回答视为 preferred、把学生自己的回答视为 rejected",
-          "该做法预设了「自生成失败样本最有信息量」以及「rejects 必须来自不小于学生的模型」",
-          "作者在两个假设上都未找到支持：7B 到 72B 的学生上，更小的冻结模型生成的 rejects 用更少推理算力却训出更强的学生",
-          "该结论在序列级知识蒸馏前后都成立，任务是代码生成与数学推理",
-          "作者在线性化特征模型上推导了 DPO 的有限时域效用上界来解释这一现象",
-          "混合小模型与学生同尺度模型的 rejects 时，小模型占比越高表现越好",
-          "把 rejects 重新指派到其它 prompt、并洗牌其 code token，仍优于长度匹配的乱码，说明任务结构贡献了 reject 效用",
-          "选择在参考策略下似然更低的候选能提升净迁移，且对所有来源都优于更高似然者"
-        ],
-        "uncertain": [
-          "摘要未给出任何具体准确率或提升幅度，只给趋势描述",
-          "「更小的冻结模型」具体规模区间未给出（只说明学生为 7B 到 72B）",
-          "有限时域效用上界的精确形式摘要未给出，公式为按摘要重建的通用形式，需核对原文",
-          "三个干预各自的实验设置与数据集未说明",
-          "「序列级知识蒸馏」的具体配置未说明"
-        ]
-      },
-      "teaching": {
-        "progressive": [
-          {
-            "level": "一句话",
-            "text": "做偏好数据时，负例用小模型生成反而比用学生自己或更大的模型更好。"
-          },
-          {
-            "level": "入门",
-            "text": "偏好蒸馏一般这样造数据：教师的好回答算 chosen，学生自己生成的坏回答算 rejected，然后做 DPO。作者发现这个直觉站不住。在 7B 到 72B 的学生上，用更小的冻结模型生成 rejects，推理成本更低，训出来的学生却更强，做不做序列级蒸馏都一样，任务覆盖代码和数学推理。"
-          },
-          {
-            "level": "进阶",
-            "text": "为了解释，作者在线性化特征模型上推导了 DPO 的有限时域效用上界，把 reject 分布写进收益表达式。由此得到三个可操作结论：一，把小模型与学生尺度的 rejects 混在一起，小模型占比越高越好；二，把 rejects 换到别的 prompt、甚至洗牌 code token，仍胜过长度匹配的乱码，说明有效负例靠的是任务结构；三，按参考策略下的似然筛出更低的候选能提升净迁移。归纳起来，好 reject 要保留任务结构，同时与参考策略的耦合要小。"
-          },
-          {
-            "level": "专家",
-            "text": "这改写了偏好数据的成本模型：过去认为负例质量与学生规模正相关，于是自采样或大模型生成成为默认，代价是每个 prompt 都要跑一次昂贵推理。现在只要一个小的冻结模型就能批量产负例，且负例还可以跨 prompt 复用——这对数据管线是结构性的省钱。理论解释指向一个更本质的观点：DPO 的梯度取决于策略与参考策略的似然比之差，负例若与参考策略分布太贴近，对比项被压缩；若完全脱离任务结构（乱码），则梯度方向与任务无关。适用边界是任务必须有可共享的结构（代码、数学步骤），纯开放式写作上「结构」的界定会变得模糊。"
-          }
-        ],
-        "socratic": [
-          {
-            "q": "如果负例仍由学生自己生成，会有什么代价？",
-            "a": "每个 prompt 都要跑一次学生推理，成本随心规模与数据量增长；而且自生成失败样本与当前策略高度相关，对比信号弱，容易在已犯的错误上打转。"
-          },
-          {
-            "q": "为什么换成更大的模型生成负例不是更好？",
-            "a": "摘要显示更小冻结模型的 rejects 训出的学生更强，且推理更省；更大模型并不提供更有用的对比，只会推高生成成本。"
-          }
-        ],
-        "mechanism": "必须从 DPO 的梯度结构理解：偏好项的梯度由策略与参考策略的对数似然比之差驱动。若 reject 在参考策略下似然很高，学生稍微偏离参考就能把它压下去，梯度很快饱和、信噪比低；若 reject 与参考策略解耦但保留任务结构，学生必须真正调整任务行为才能拉开差距。所以关键不是「谁更能生成错误」，而是「谁的错误能提供大而不失焦的对比」。",
-        "boundary": "当任务缺少可迁移的结构（开放式创意写作、主观对话风格）时，结构保留这一条就难以操作，跨 prompt 复用负例也可能引入错配。似然最低的候选如果已经不属于同一任务分布，收益会反转，因此筛选必须与结构约束联合使用。",
-        "analogyBoundary": "陪练类比对「负例可以来自完全不同的模型、甚至换到别的题目上」这一点失效：现实中陪练必须和你练同一个项目，而这里把 rejects 指派给别的 prompt 仍然有效，说明起作用的是结构而非语义对齐。",
-        "misconceptions": [
-          "以为 rejects 质量随生成模型规模单调提升",
-          "把「参考策略似然低」当成「回答质量差」，两者并不等价",
-          "以为只要用乱码当负例就行，摘要明确说保留任务结构的扰动才优于乱码"
-        ],
-        "ownAnalysis": "把摘要接进已有脉络：这与 DPO 中「难负例」和「分布外负例」的讨论一脉相承，但用有限时域上界给出了方向性判据，比经验性的难例挖掘更有说服力（推断）。可疑点有三：一是「更小模型更好」是否只是因为它生成的答案更短、更接近学生分布，摘要未给出长度控制的完整结果；二是乱码对照是等长匹配的，但流畅度、语法合法性等混杂因素未必被完全排除；三是结论只覆盖代码与数学这类有强结构、可自动判分的任务，能否外推到多模态或 agent 轨迹仍是开放问题（推断）。",
-        "officialNotes": [
-          {
-            "position": "摘要称有效 rejects 应保留任务结构并限制与参考策略的耦合，且更小的冻结模型可以低成本提供这样的 rejects",
-            "source": "https://huggingface.co/papers/2609.38987"
-          }
-        ],
-        "interviewAnswer": "这篇工作挑战了偏好蒸馏的两个默认假设：负例要来自学生自己，或者至少来自不比学生小的模型。作者在 7B 到 72B 的学生上发现，用更小的冻结模型生成 rejects，推理更省、训出的学生反而更强，做不做序列级蒸馏都一样，任务覆盖代码和数学。为了解释，他们在线性化特征模型上推了 DPO 的有限时域效用上界，指出有效的负例要保留任务结构、同时与参考策略的耦合要小。三个证据：混入小模型 rejects 时小模型占比越高越好；把 rejects 换到别的 prompt 或洗牌 code token 仍胜过等长乱码；按参考策略似然挑更低的候选能提升净迁移。",
-        "studyPath": {
-          "prerequisites": [
-            "DPO 目标与参考策略",
-            "偏好数据构造流程",
-            "序列级知识蒸馏"
-          ],
-          "nextSteps": [
-            "读原文核实效用上界的推导假设与公式",
-            "在自己的 DPO 数据管线上替换负例来源做 A/B",
-            "验证结论在开放式生成任务上是否仍然成立"
-          ]
-        }
-      }
-    },
-    {
-      "id": "a9ac6f5d38bf0a3c",
-      "tldr": "把音视频联合生成、跨模态生成与联合编辑统一在一个音视频对分布上，给出五条设计轴，并首次系统分类联合音视频编辑。",
-      "keyPoints": [
-        "视频与音频被人一起感知，但多数生成模型仍把两者分开建模",
-        "统一表述把联合生成、跨模态生成、联合编辑定义在同一音视频对分布上",
-        "核心问题只有一句：输出如何在时间与语义上保持跨模态一致",
-        "用五条设计轴比较方法；首次系统taxonomy联合音视频编辑，含九类编辑、28 种编辑类型",
-        "逐场景梳理方法、数据集与指标，并列出作者认为最要紧的开放问题"
-      ],
-      "why": "综述类卡片是面试前的速查表：它给出音视频生成与编辑的坐标系，帮你在多模态生成岗位面试里快速定位某篇工作处在哪条设计轴上。",
-      "difficulty": "medium",
-      "tags": [
-        "multimodal",
-        "audio-visual",
-        "video-generation",
-        "editing",
-        "survey"
-      ],
-      "entities": [
-        "joint generation",
-        "cross-modal generation",
-        "joint editing",
-        "audio-visual pairs"
-      ],
-      "diagram": {
-        "kind": "matrix",
-        "title": "统一表述与五轴分类",
-        "caption": "三类任务共用同一个音视频对分布，再用五条设计轴与九类编辑把方法摆进坐标系。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='音视频生成与编辑综述的组织结构'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>一个音视频对分布</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>联合生成 / 跨模态生成 / 联合编辑</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>五条设计轴</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>跨模态一致性如何维持</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>九类编辑 / 28 种编辑类型</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>首次系统分类联合音视频编辑</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>方法 / 数据集 / 指标 / 开放问题</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>逐个设定分别梳理</text>\n</svg>",
-        "alt": "综述结构图：三类任务共用一个音视频对分布，向下依次是五条设计轴、九类编辑与二十八种编辑类型，最后是各设定的方法、数据集、指标与开放问题。"
+        "alt": "五步阅读路线：索引入口 → 策略梯度族（PPO/GRPO/DAPO/GSPO/CISPO/VAPO）→ RLHF 与 DPO 偏好优化 → MoE 稳定性与 Verifier-Free/Training-Free RL → Agentic RL 与 DeepSeek-R1 复现"
       },
       "concepts": [
         {
-          "name": "Unified Audio-Visual Pair Distribution",
-          "readable": "不再把「生成视频」「生成音频」「改视频」「改音频」当成四个独立任务，而是认为它们都只是同一个音视频联合分布上的不同条件查询方式。",
-          "analogy": "像同一张双面地图：你可以从地势推水系，也可以从水系推地势，还可以只修改其中一面看另一面怎么变——底图始终是同一张。",
-          "analogyBreaksDown": "地图是确定性的几何关系，而音视频联合分布只是被建模的对象，模型学到的近似分布会有模态偏置，某条查询路径（例如由音频生成画面）常常比反向路径差得多，这种不对称在类比里不存在。",
-          "mechanism": "统一表述的价值在于把评价标准也统一：无论哪条路径，衡量指标都落在「时间对齐 + 语义一致」这两个维度上，于是不同论文的结果第一次可比较。",
-          "visual": "画一个大圆代表音视频对分布，圆内画四个箭头分别标注「联合采样」「音频到视频」「视频到音频」「成对编辑」，箭头端点都在同一个圆上。",
+          "name": "后训练 RL 方法谱系 (Post-Training RL Taxonomy)",
+          "readable": "把 R1 之后的 LLM 强化学习按「在线策略梯度→偏好优化→奖励建模→稳定性」分层。同层方法常只改一个部件：优势估计、参考模型或 clip 方式；索引让你先看清单再挑一篇深读。",
+          "analogy": "像一份按菜系分栏的餐厅清单：川菜、粤菜、日料各自成栏，还给出招牌菜的做法链接。你不是随便挑一家，而是先想清楚今天想吃哪种口味，再决定进哪家店。",
+          "analogyBreaksDown": "菜系分类是互斥的，方法谱系不是：GRPO 既是策略梯度也能接偏好数据，DPO 也可看成隐式奖励建模。索引里的分组只是阅读入口，不能当成严格的理论分类，否则会把跨类方法误判成互斥。",
+          "mechanism": "索引把方法放在同一坐标上，读者用「参考模型有没有、奖励从哪来、优势怎么算」三个问题就能定位差异；先建立地图再深读，避免把 PPO 的超参与 clip 直觉直接套到 DPO 这类离线损失上。",
+          "visual": "画一张二维散点图：横轴是「奖励从何而来」（规则验证器 / 奖励模型 / 隐式偏好），纵轴是「是否需要在线采样」。每个方法是一个点，GRPO 落在「验证器 + 在线」象限，DPO 落在「隐式偏好 + 离线」象限，点的颜色深浅表示工程实现复杂度。",
           "prerequisites": [
-            "生成模型的条件分布与联合分布记法",
-            "音视频时间对齐的基本概念"
+            "策略梯度与重要性采样",
+            "KL 正则项的作用",
+            "RLHF 三阶段流水线"
           ],
           "selfTest": [
-            "把三类任务放在同一分布上，最大的好处是什么？",
-            "为什么「音频到视频」与「视频到音频」的难度并不对称？",
-            "成对编辑为什么也需要联合分布而不是两次独立生成？"
+            "GRPO 与 PPO 在「优势怎么算」上的差别是什么？",
+            "DPO 属于在线还是离线方法，为什么？",
+            "Verifier-Free RL 与 Training-Free RL 各自想省掉哪一环？"
           ],
-          "formula": "p(x_v, x_a) \\ \\text{为共同底分布},\\quad \\text{三类任务} = \\text{该分布上的不同条件/边缘查询}"
+          "formula": "\\mathcal{J}(\\theta)=\\mathbb{E}_{x}\\Big[\\frac{1}{G}\\sum_{i=1}^{G}\\frac{1}{|o_i|}\\sum_t \\min\\big(r_{i,t}\\hat A_{i,t},\\ \\mathrm{clip}(r_{i,t},1\\pm\\epsilon)\\hat A_{i,t}\\big)\\Big]"
         },
         {
-          "name": "Cross-Modal Temporal-Semantic Coherence",
-          "readable": "跨模态一致性有两层：时间上要对齐，比如拍手和掌声要同时出现；语义上要相符，比如画面是雨夜，声音就不能是晴天的鸟鸣。",
-          "analogy": "像配音演员对口型：嘴型对不上立刻出戏（时间），内容对不上也出戏（语义），两者缺一不可。",
-          "analogyBreaksDown": "配音只要求贴合已有画面，是单向的；而联合生成里两个模态都可能出错，一致性还得在两个都不确定的生成过程中同时维持，容错空间小得多。",
-          "mechanism": "把一致性拆成时间与语义两个可度量的维度，才能把不同方法放在同一坐标系里比较；设计轴基本都围绕「在哪个阶段、用什么信号来约束这两层一致性」展开。",
-          "visual": "画上下两条时间条，上条是视觉事件、下条是声学事件，虚线箭头标出需要对齐的时间点；再在每条上标注语义标签，用连线表示语义一致关系。",
+          "name": "Verifier-Free RL（无外部验证器的强化学习）",
+          "readable": "常规 RLVR 要有可判对错的验证器（标准答案、单元测试），题目必须能自动判定。Verifier-Free 想在没有现成验证器时也做 RL，通常靠模型自身信号、多模型投票或可学习评判替代。索引只给了入口，具体做法待核实。",
+          "analogy": "像没有标准答案的作文课：老师没法用对错打分，只能靠同学互评、对照往届范文和自我评分来给反馈，评分质量明显不如选择题自动判分稳定。",
+          "analogyBreaksDown": "作文互评背后至少还有人的判断，而模型自评会出现「自己批自己都是满分」的塌缩；没有外部锚点时奖励可能被策略刷高，类比完全没体现奖励可被优化器利用这一风险。",
+          "mechanism": "（推断）它把验证信号从外部程序移到模型或集成评判上，用共识、置信度或不一致性当奖励代理；代价是奖励噪声与被 hack 风险上升，所以这类方法通常要配一致性约束、投票聚合或置信度过滤才稳。",
+          "visual": "画两条并列的奖励来源路径：左侧「可验证奖励」由规则或单测直接给出 0/1 脉冲信号，线条干净；右侧「无验证器」由 N 个模型分别打分再聚合，信号用虚线画出噪声，并在末端标注「需过滤」。",
           "prerequisites": [
-            "音视频同步（lip sync、事件对齐）的常用度量",
-            "条件生成中的语义对齐手段"
+            "RLVR 与可验证奖励的基本设定",
+            "奖励 hacking 的常见表现",
+            "多数投票与一致性过滤"
           ],
           "selfTest": [
-            "时间和语义不一致分别会怎么表现出来？",
-            "只优化其中一层会发生什么？",
-            "这两层的一致性可以用同一个指标衡量吗？"
+            "Verifier-Free 与 Training-Free RL 省掉的是同一个环节吗？",
+            "为什么自评奖励容易被策略钻空子？",
+            "投票聚合主要降低哪一类噪声？"
           ],
           "formula": ""
         }
       ],
       "formulas": [
         {
-          "id": "f-av-pair-joint-factorization",
-          "name": "音视频联合分布分解（Audio-Visual Joint Factorization）",
-          "category": "generative",
-          "latex": "p_\\theta(x_v, x_a) = p_\\theta(x_a \\mid x_v)\\, p_\\theta(x_v) = p_\\theta(x_v \\mid x_a)\\, p_\\theta(x_a)",
+          "id": "f-grpo-clipped-ratio",
+          "name": "GRPO 组相对策略梯度目标 (Group Relative Policy Optimization)",
+          "category": "rl",
+          "latex": "\\mathcal{J}_{\\mathrm{GRPO}}(\\theta)=\\mathbb{E}_{q,\\{o_i\\}}\\Big[\\frac{1}{G}\\sum_{i=1}^{G}\\frac{1}{|o_i|}\\sum_{t=1}^{|o_i|}\\min\\Big(r_{i,t}(\\theta)\\hat{A}_{i,t},\\ \\mathrm{clip}\\big(r_{i,t}(\\theta),1-\\epsilon,1+\\epsilon\\big)\\hat{A}_{i,t}\\Big)-\\beta\\,D_{\\mathrm{KL}}\\big[\\pi_\\theta\\,\\|\\,\\pi_{\\mathrm{ref}}\\big]\\Big],\\quad r_{i,t}=\\frac{\\pi_\\theta(o_{i,t}\\mid q,o_{i,<t})}{\\pi_{\\theta_{\\mathrm{old}}}(o_{i,t}\\mid q,o_{i,<t})}",
           "symbols": [
             [
-              "x_v",
-              "视频（视觉）模态的样本"
+              "π_θ",
+              "待优化的策略（学生模型）"
             ],
             [
-              "x_a",
-              "音频模态的样本"
+              "π_θ_old",
+              "采样时的旧策略，即行为策略"
             ],
             [
-              "p_\\theta(x_v, x_a)",
-              "被建模的音视频联合分布"
+              "o_i",
+              "同一问题下第 i 条采样回答"
             ],
             [
-              "p_\\theta(x_a \\mid x_v)",
-              "由视觉生成音频的条件分布（跨模态生成）"
+              "G",
+              "同一 prompt 的采样组大小"
+            ],
+            [
+              "r_{i,t}",
+              "第 t 个 token 的重要性比 π_θ/π_θ_old"
+            ],
+            [
+              "Â_{i,t}",
+              "组内归一化后的相对优势"
+            ],
+            [
+              "ε",
+              "clip 范围，限制单步策略变化幅度"
+            ],
+            [
+              "β",
+              "参考模型 KL 惩罚系数"
             ]
           ],
           "derivation": [
-            "第 1 步：动机——把视频与音频分开建模时，缺乏刻画两者相互约束的统一对象。",
-            "第 2 步：引入联合分布 p(x_v, x_a) 作为底分布，联合生成即直接对它采样。",
-            "第 3 步：跨模态生成是该分布的两个条件边缘：由视觉推音频，或由音频推视觉。",
-            "第 4 步：两种分解形式在数学上等价，但训练难度不对称，因为条件分布的音视频信息量并不对等。"
+            "第 1 步：PPO 需要一个价值网络估基线（critic），在 LLM 上显存开销大且难训，于是 GRPO 把 critic 整个去掉。",
+            "第 2 步：改为对同一 prompt 采样 G 条回答，用组内奖励的均值与标准差当基线，构造相对优势 Â_{i,t}=(R_i−mean)/std。",
+            "第 3 步：仍保留重要性比 r_{i,t}=π_θ/π_θ_old 做 off-policy 校正，并套上 PPO 的 clip，防止一次更新把策略推离旧策略太远。",
+            "第 4 步：对每个 token 取 min(rÂ, clip(r)Â) 再按回答长度归一平均，得到长度无关的策略梯度项。",
+            "第 5 步：最后减去 β 倍的到参考模型的 KL，把优化后的策略拉在参考模型附近，避免语言能力退化。"
           ],
-          "analogy": "像同一段演出的两个录音轨：你可以同时录两条轨（联合生成），也可以拿画面轨去补声音轨（跨模态生成），但反过来补画面往往更难。",
+          "analogy": "像同一道题让同一个学生写 5 遍，老师只比较这 5 遍之间的相对好坏：比组内平均分高的那几遍被加权鼓励，低的被抑制。不需要先定一条绝对分数线（critic），只要相对排序稳定就能提供梯度。",
           "pitfalls": [
-            "以为两种分解在训练上等价，实际上由音频推视觉通常信息不足",
-            "把 p(x_v)p(x_a) 的独立假设当成联合建模，丢掉一致性约束",
-            "忽略联合分布建模后仍需时间对齐机制，分布正确不代表采样时刻对齐"
+            "把 Â 当成绝对奖励：GRPO 用的是组内标准化后的相对优势，奖励的绝对尺度会被消掉。",
+            "忘记除以 1/|o_i| 的长度归一：长回答的 token 累加会主导梯度。",
+            "以为 GRPO 不需要参考模型：KL 项仍要 π_ref，只是省掉了 critic。",
+            "把 clip 说成裁剪奖励：clip 作用在重要性比 r 上，不是作用在奖励上。"
           ],
-          "code": "# 跨模态条件生成的训练目标（以音频到视频为例）\n# eps ~ N(0, I), x_v_t = sqrt(abar_t) * x_v + sqrt(1 - abar_t) * eps\nloss = ((model(x_v_t, t, cond=x_a) - eps) ** 2).mean()\nloss.backward()",
+          "code": "import torch\n\ndef grpo_loss(logp, logp_old, rewards, ref_logp, eps=0.2, beta=0.04):\n    # logp / logp_old / ref_logp: [G, T] 逐 token log 概率；rewards: [G]\n    adv = (rewards - rewards.mean()) / (rewards.std() + 1e-8)   # 组内相对优势\n    adv = adv.unsqueeze(1).expand_as(logp)                      # 广播到每个 token\n    ratio = torch.exp(logp - logp_old)                          # 重要性比 r\n    unclipped = ratio * adv\n    clipped = torch.clamp(ratio, 1 - eps, 1 + eps) * adv\n    pg = torch.min(unclipped, clipped)\n    kl = torch.exp(ref_logp - logp) - (ref_logp - logp) - 1.0   # 无偏 KL 估计\n    return -(pg - beta * kl).mean()",
           "sources": [
             {
-              "title": "Joint and Cross-Modal Video-Audio Generation and Editing: A Unified Formulation and Design Taxonomy",
-              "url": "https://huggingface.co/papers/2609.34381"
-            }
-          ]
-        },
-        {
-          "id": "f-crossmodal-conditional-generation",
-          "name": "跨模态条件生成目标（Cross-Modal Conditional Generation）",
-          "category": "multimodal",
-          "latex": "\\max_\\theta \\ \\mathbb{E}_{(x_v, x_a) \\sim p_{\\mathrm{data}}}\\big[ \\log p_\\theta(x_a \\mid x_v) + \\log p_\\theta(x_v \\mid x_a) \\big]",
-          "symbols": [
-            [
-              "p_{\\mathrm{data}}",
-              "真实的音视频对数据分布"
-            ],
-            [
-              "p_\\theta(x_a \\mid x_v)",
-              "给定视频生成音频的模型"
-            ],
-            [
-              "p_\\theta(x_v \\mid x_a)",
-              "给定音频生成视频的模型"
-            ],
-            [
-              "\\theta",
-              "可学习参数（可能共享或分别持有）"
-            ]
-          ],
-          "derivation": [
-            "第 1 步：把跨模态生成写成条件似然最大化，两个方向可以联合训练也可以分别训练。",
-            "第 2 步：联合训练迫使共享表征同时服务两个方向，天然鼓励双向一致的表征。",
-            "第 3 步：但两个方向的可解性不同，由音频推视觉常常欠定，因此联合目标里通常需要对视觉方向加权或改写成一致性约束。",
-            "第 4 步：编辑任务在此基础上再加一个约束：只有被指定的区域或时间段允许改变，其余部分保持不变。"
-          ],
-          "analogy": "像两个人互相翻译同一段话：来回翻译能暴露彼此理解的偏差，但如果一方语言的信息量本来就少，双向对齐会把它拖后腿。",
-          "pitfalls": [
-            "直接把两个方向的损失等权相加，忽略难度不对称",
-            "把条件生成目标当作一致性保证，实际上还需时间对齐的显式约束",
-            "在编辑任务里沿用生成目标而不加保真约束，导致未编辑区域也被改动"
-          ],
-          "code": "# 双向条件损失（等权只是最朴素的写法，实际需按方向难度加权）\nloss_a = nll(model_a(x_v), x_a)   # 视频 -> 音频\nloss_v = nll(model_v(x_a), x_v)   # 音频 -> 视频\n(loss_a + w * loss_v).backward()",
-          "sources": [
-            {
-              "title": "Joint and Cross-Modal Video-Audio Generation and Editing: A Unified Formulation and Design Taxonomy",
-              "url": "https://huggingface.co/papers/2609.34381"
+              "title": "hscspring/rl-llm-nlp",
+              "url": "https://github.com/hscspring/rl-llm-nlp"
             }
           ]
         }
       ],
       "selfCheck": {
         "claims": [
-          "视频与音频在人感知中是共同出现的，但多数生成模型把两者分开处理",
-          "综述考察联合建模两模态、由一个模态生成另一个、以及成对编辑这三类方法",
-          "组织全文的核心问题是：输出如何在时间与语义上保持跨模态一致",
-          "统一表述把联合生成、跨模态生成与联合编辑定义为同一个音视频对分布上的三类问题",
-          "taxonomy 沿五条设计轴比较方法",
-          "作者称这是首个系统taxonomy联合音视频编辑的综述，把它映射为覆盖 28 种编辑类型的九类编辑",
-          "综述为每个设定梳理了方法、数据集与指标，并给出作者认为最要紧的开放问题"
+          "该仓库自称是 post-R1 LLM×RL 的精选、带主观取舍的索引。",
+          "索引覆盖 GRPO、DAPO、DPO、PPO、RLHF、GSPO、CISPO、VAPO。",
+          "索引还包含奖励建模、MoE RL 稳定性、Verifier-Free RL、Training-Free RL、Agentic RL 与 DeepSeek-R1 复现。",
+          "仓库把大量深读博客与论文互相交叉链接。",
+          "采集信号显示 75 stars、6 forks、附带可用代码。"
         ],
         "uncertain": [
-          "五条设计轴的具体名称摘要未列出——待核实",
-          "九类编辑与 28 种编辑类型的对应关系摘要未给出",
-          "综述共收录多少篇工作、覆盖哪些数据集与指标未说明",
-          "两个公式为按摘要「统一表述」重建的通用形式，并非原文公式，需核对原文"
+          "索引内每个方法的具体实现与结论未在摘要中给出，需逐篇核对。",
+          "GRPO 公式为按公开通用形式重建，需核对原博客使用的变体（是否含 KL、是否做长度归一）。",
+          "Verifier-Free / Training-Free RL 的具体机制摘要未说明，概念解释已标注为推断。"
         ]
       },
       "teaching": {
         "progressive": [
           {
             "level": "一句话",
-            "text": "它把音视频一起生成、互相生成、一起修改的方法摆进同一张坐标系。"
+            "text": "一份把 R1 之后的 LLM 强化学习方法整理成清单的仓库。"
           },
           {
             "level": "入门",
-            "text": "画面和声音是人一起感知的，但生成模型大多分开处理：一段视频配一段音频，或者只改画面不改声音。这篇综述把三类工作放在一起看——同时生成两个模态、由一个模态推另一个模态、以及成对编辑。它用一句话统一了判断标准：输出在时间和语义上是否与另一个模态保持一致。"
+            "text": "它把 GRPO、DAPO、DPO、PPO、RLHF 这些后训练方法按主题列出来，每一项都链到一篇深读博客和相关论文，可以作为系统补后训练知识的目录。"
           },
           {
             "level": "进阶",
-            "text": "组织方式是「一个分布 + 五条轴」。统一表述把所有任务定义在同一个音视频对分布上，于是联合生成是直接采样、跨模态生成是取条件边缘、联合编辑是在保持其余部分不变的前提下局部改动。五条设计轴用来横向比较方法，具体的轴名需要读原文。它自称是首个系统taxonomy联合音视频编辑的综述，把编辑映射成覆盖 28 种类型的九个类别，并为每个设定整理方法、数据集与指标。"
+            "text": "这类索引的价值在于「先建地图再深读」：同一层方法往往只改一个部件——PPO 到 GRPO 去掉 critic 改用组内相对优势，GRPO 到 DAPO 调的是采样与 clip 策略，DPO 则把奖励模型和在线采样一起换成离线偏好损失。知道每个方法动了哪一块，才不会被名字和超参淹没。"
           },
           {
             "level": "专家",
-            "text": "这类综述的价值在评价体系而非新方法：音视频生成长期的问题是每个子任务各用一套指标，联合建模、跨模态生成与编辑无法横向比较。把任务统一到一个联合分布后，一致性被拆成时间对齐与语义相符两个可度量维度，五条设计轴基本都在回答「在哪个阶段、用什么信号约束这两层一致性」。局限也在这里：taxonomy 是组织框架，不产生新证据，轴名与类别划分的合理性需要读原文再判断；而开放问题部分给出的方向是否成立，取决于后续工作能否在同一套指标下验证。"
+            "text": "把它当成后训练领域的阅读坐标：横轴是奖励来源（规则验证器 / 奖励模型 / 隐式偏好），纵轴是在线与否，再叠加 MoE 稳定性、Verifier-Free、Training-Free、Agentic RL 这些工程前沿。它不提供统一实验对比，因此不能据此判断哪个方法更强；真要选型还得回到各自论文与复现条件（模型规模、数据、算力）去比。"
           }
         ],
         "socratic": [
           {
-            "q": "如果不做统一表述，各任务各用一套指标会怎样？",
-            "a": "论文之间无法横向比较，联合生成声称的一致性优势无法与跨模态生成对比，读者也无法判断某个设计选择究竟在哪一步起作用。"
+            "q": "为什么不直接读一篇 GRPO 论文，而要先看索引？",
+            "a": "单篇论文只会把 GRPO 讲清楚，你不知道同期还有 DAPO、GSPO、CISPO 等变体、各自又动了哪个部件；索引先给出坐标，避免只学到一个孤立的点。"
           },
           {
-            "q": "为什么「改一处、其余不动」比从头生成更难？",
-            "a": "从头生成只需符合分布，编辑还要在改动目标区域的同时严格保持其余内容与另一模态不变，等于在生成目标上再叠加一个保真约束，两者容易互相冲突。"
+            "q": "索引里的分组能当成严格分类吗？",
+            "a": "不能。很多方法跨组，比如 DPO 也可理解为隐式奖励建模。分组只是阅读入口，判断差异仍要回到损失函数与采样方式本身。"
+          },
+          {
+            "q": "如果索引不给实验对比，它的可信度从哪来？",
+            "a": "来自可追溯性：每条都链到博客与论文，读者可以自己核对。索引只负责组织信息，不负责替读者下结论。"
           }
         ],
-        "mechanism": "必须这样组织，是因为三类任务的差别只在「给定什么、生成什么」，而难点完全相同：跨模态的时间与语义一致。若各自定义问题，一致性就无法被拆解成可测量的部分，方法之间的比较也失去共同基准。统一到同一个分布上之后，联合生成、跨模态生成、联合编辑成为同一底分布上的不同查询，五条设计轴因此可以逐条对齐比较。",
-        "boundary": "作为综述它不提供新实验证据，轴与类别的划分本身带有作者主观性；摘要也未给出具体轴名与数据集清单，因此不能仅凭摘要判断覆盖面是否完整。若某个新兴设定（例如实时交互式音视频编辑）尚未被纳入坐标系，结论会很快过时。",
-        "analogyBoundary": "双面地图的类比在「两个模态都可能在生成中出错」这一点上失效：地图两侧是同一确定对象的两种投影，而音视频联合分布只是被估计的对象，估计偏差会让两个方向的不一致远大于几何关系。",
+        "mechanism": "它的设计选择是「精选 + 主观取舍 + 双向互链」：不做穷举列表，而是把方法按主题聚簇，让每个条目同时指向深读博客与原论文。这样读者既能看到同一问题的多条路线，也能立刻下钻到细节，解决了后 R1 时代方法爆炸、术语混乱、博客与论文脱节的问题。",
+        "boundary": "索引不提供统一实验对比与复现条件，方法优劣无法据此判断；仓库更新滞后时新方法会缺失；75 stars 的小仓库维护强度有限，链接腐烂与作者观点偏差都要自己复核。",
+        "analogyBoundary": "餐厅清单的类比在「可验证性」上失效：餐厅好不好可以自己去吃一次，方法好不好要看论文里的模型规模、数据与算力，换一个设定结论就可能翻转，清单本身给不出这个保证。",
         "misconceptions": [
-          "把这篇当成提出新模型的方法论文，它其实是综述与分类框架",
-          "以为统一表述意味着两个生成方向难度对称，实际上由音频推视觉通常信息不足",
-          "把「一致性」理解成单一指标，它至少包含时间对齐与语义相符两层"
+          "把索引当成 benchmark：它只组织阅读顺序，不给出方法之间的胜负结论。",
+          "以为列表里的 GRPO、DPO、PPO 是同一层可互换的方法：它们的奖励来源与在线性都不同。",
+          "看到「精选、带主观取舍」就默认内容权威：取舍标准由作者决定，仍需自己核对原文。"
         ],
-        "ownAnalysis": "放进脉络看：音视频生成领域此前缺的正是坐标系，综述把「联合/跨模态/编辑」三件事压到一个分布上，和生成模型里「条件生成只是联合分布的条件边缘」这一常识对齐（推断）。可疑之处在于：摘要没有给出五条设计轴的名称，也没有给出九类编辑的定义，因此无法判断这些划分是否 MECE，也无法判断 28 种编辑类型是互斥分类还是多标签集合（推断）。对求职者更实用的做法是把轴名抄下来，逐条问自己「我了解的某篇工作在这条轴上做了什么选择」。",
+        "ownAnalysis": "（推断）这类 awesome 型仓库在面试里的正确用法是当复习大纲：先按「奖励从哪来、要不要在线采样、有没有参考模型」三个问题自测，再挑一两个方法读源码。（待核实）摘要只给了主题名，没有给出任何一个方法的具体结论，所以本条目里的 GRPO 目标写的是公开通用形式，具体变体以原博客为准。",
         "officialNotes": [
           {
-            "position": "作者称这是首个系统taxonomy联合音视频编辑的综述，将其映射为覆盖 28 种编辑类型的九个编辑类别",
-            "source": "https://huggingface.co/papers/2609.34381"
-          },
-          {
-            "position": "作者称全文围绕「输出如何在时间与语义上保持跨模态一致」这一核心问题组织",
-            "source": "https://huggingface.co/papers/2609.34381"
+            "position": "仓库自述为 post-R1 LLM×RL 的精选、带主观取舍索引，博客与论文互相交叉链接。",
+            "source": "https://github.com/hscspring/rl-llm-nlp"
           }
         ],
-        "interviewAnswer": "这是一篇音视频生成的综述，但它的贡献是坐标系。视频和音频在人感知里是一起出现的，可生成模型基本分开做，所以作者把三类工作——联合生成、由一个模态生成另一个、以及成对编辑——统一定义在同一个音视频对分布上，判断标准统一成一句话：输出在时间和语义上跟另一个模态是否一致。然后沿五条设计轴横比方法，并首次系统梳理联合音视频编辑，分成九类、覆盖 28 种编辑类型，最后逐场景给出方法、数据集、指标和开放问题。读它的正确方式是把设计轴当成检查清单，而不是找新模型。",
+        "interviewAnswer": "我把它当后训练复习地图用。先按奖励来源和在线性把方法分四类：规则验证器加在线策略梯度（GRPO、DAPO）、奖励模型加 PPO 的 RLHF、离线偏好优化（DPO）、以及省成本方向（Verifier-Free、Training-Free）。每个方法我只记它改了哪个部件，比如 GRPO 用组内相对优势替掉 critic，DAPO 调采样和 clip。真正选型时我会回到论文的复现条件去比，不拿清单当结论。",
         "studyPath": {
           "prerequisites": [
-            "扩散/自回归生成模型的基本目标",
-            "音视频对齐与同步的常见度量",
-            "条件生成与联合分布的记法"
+            "策略梯度与重要性采样",
+            "PPO 的 clip 目标",
+            "RLHF 的奖励模型与 KL 正则"
           ],
           "nextSteps": [
-            "读原文抄下五条设计轴与九类编辑的定义",
-            "按轴对照两三篇具体的联合生成工作",
-            "关注开放问题里与流式/交互式编辑相关的方向"
+            "按索引挑 GRPO 与 DPO 各读一篇原文并手推损失",
+            "在自己的小模型上跑一遍 DPO 或 GRPO 的最小实现",
+            "整理一页「方法—改了哪个部件—代价」的对比表"
+          ]
+        }
+      }
+    },
+    {
+      "id": "199afbc0e96d447e",
+      "tldr": "Org-Agent 把组织约束做成推理主线：任务拆成原子子任务、建依赖图、拓扑排序调度，再带约束执行。",
+      "keyPoints": [
+        "面向组织场景：多用户请求、知识分散在各交互中",
+        "两类能力：跨用户交互决策、跨用户记忆与知识使用",
+        "三类约束：身份权限、信息归属与时效、冲突与联合决策",
+        "三阶段：拆原子子任务建图、拓扑排序、约束感知执行",
+        "配证据获取与记忆管理工具，并在两个 bench 上做消融"
+      ],
+      "why": "企业级 agent 的难点是权限与时效约束下的多用户协调，这条把约束显式建成图与调度，是 agent 方向的优质面试素材。",
+      "difficulty": "hard",
+      "tags": [
+        "agent",
+        "multi-agent",
+        "memory",
+        "tool-use",
+        "planning"
+      ],
+      "entities": [
+        "Org-Agent",
+        "MUSES-Bench",
+        "GroupMemBench",
+        "task dependency graph",
+        "topological sorting",
+        "evidence-acquisition tools",
+        "memory-management tools"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "Org-Agent 三阶段执行",
+        "caption": "记住这条主线：先拆子任务建依赖图，再按拓扑序调度，最后在组织约束下执行并调用证据与记忆工具。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Org-Agent 三阶段流程：任务分解与依赖图、拓扑排序调度、约束感知执行'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>任务分解</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>原子子任务 + 组织约束</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>任务依赖图</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>边编码子任务间依赖</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>拓扑排序调度</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>按依赖顺序推进</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>约束感知执行</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>证据获取 + 记忆管理工具</text></svg>",
+        "alt": "四步流程：把任务分解为原子子任务并抽取组织约束 → 构建任务依赖图（边表示依赖） → 拓扑排序得到可执行顺序 → 在约束下逐子任务执行，调用证据获取与记忆管理工具"
+      },
+      "concepts": [
+        {
+          "name": "组织约束 (Organizational Constraints)",
+          "readable": "组织场景里 agent 不能只看「用户说了什么」，还要看他是谁、有没有权限、信息是否过期、多用户需求冲突时听谁的。摘要把它们归成三类：身份与权限、信息归属与时效、冲突消解与联合决策规则。",
+          "analogy": "像公司报销：同事请你代提交，你得先确认他有没有审批额度（权限）、发票是不是本季度的（时效）、两位领导要求冲突时按哪条流程走（冲突规则），都满足才能点提交。",
+          "analogyBreaksDown": "报销流程是预先写死的规则表，查表即可；agent 面对的自然语言请求往往没显式声明权限与时效，约束要从对话与记忆里推断，还可能互相矛盾，类比给不出这种「约束抽取」的难度。",
+          "mechanism": "把约束从散落的对话里显式抽出成可检查的条件，挂在每个子任务上：执行前必须满足前置约束，执行中必须维持运行约束，从而把组织规矩变成可判定的门控，而不是靠模型自觉遵守。",
+          "visual": "画三列约束卡片：身份与权限（谁能看、谁能做）、信息归属与时效（哪条信息有效到什么时候）、冲突与联合决策（谁的需求优先、几个人同意才算通过）。每张卡片下方画一个勾选框，表示子任务执行前逐项通过。",
+          "prerequisites": [
+            "函数调用式 agent 的基本循环",
+            "多用户会话与记忆的区分",
+            "访问控制（ACL/RBAC）的概念"
+          ],
+          "selfTest": [
+            "摘要把组织约束分成哪三类？",
+            "为什么约束要在子任务执行前检查，而不是执行后统一检查？",
+            "多用户需求冲突时，约束层要提供什么信息才能继续？"
+          ],
+          "formula": "\\text{proceed}(a, s) = \\bigwedge_{c \\in C(a)} \\mathrm{sat}(c, s)"
+        },
+        {
+          "name": "任务依赖图与拓扑调度 (Task Dependency Graph and Topological Scheduling)",
+          "readable": "把大任务拆成原子子任务后，用有向边表示「谁必须在谁之前完成」，得到一张 DAG；再按拓扑序调度，保证任何子任务开始前它的前置都已就绪，避免并发执行时互相踩踏。",
+          "analogy": "像装修排期：水电没验收就不能封墙，封墙没干就不能刷漆。工头不会按报价单顺序叫人，而是先画一张先后关系图，再按能开工的顺序逐个安排。",
+          "analogyBreaksDown": "装修工期是确定值，排期只要满足先后关系；agent 的子任务耗时与成败都不确定，还可能执行到一半发现新依赖需要回退重排，静态拓扑序不够用，类比没有体现这种动态重规划。",
+          "mechanism": "把「顺序」从自然语言的隐含约定变成显式的边，调度器只依赖图结构而不依赖模型记忆；拓扑排序给出一个合法执行序，并在前置未满足时阻塞该子任务，解决了多步任务里顺序错乱与重复执行的问题。",
+          "visual": "画一张小 DAG：节点是原子子任务（圆圈），边是依赖（箭头），其中一个节点标红表示「前置未满足被阻塞」。右侧画一条拓扑序队列，已完成节点打勾、就绪节点高亮、被阻塞节点置灰。",
+          "prerequisites": [
+            "有向无环图与拓扑排序",
+            "任务分解（prompt decomposition）",
+            "调度的就绪/阻塞状态概念"
+          ],
+          "selfTest": [
+            "为什么依赖关系要用图而不是一个线性清单表示？",
+            "拓扑序唯一吗，不唯一对 agent 执行意味着什么？",
+            "如果执行中发现新依赖，图要怎么更新？"
+          ],
+          "formula": "S_j \\ge C_i \\quad \\forall (i, j) \\in E"
+        },
+        {
+          "name": "证据获取与记忆管理工具 (Evidence-Acquisition and Memory-Management Tools)",
+          "readable": "执行每个子任务时 agent 靠两类工具撑住约束：证据获取工具去查「这条信息来自哪里、是否还有效」，记忆管理工具负责在多用户交互之间存取与隔离知识，避免把 A 用户的私有信息泄漏给 B 用户。",
+          "analogy": "像医院的病历系统：医生开药前要调病历确认过敏史（证据），系统还要按科室和患者隔离访问（记忆管理），靠的不是医生记性好。",
+          "analogyBreaksDown": "病历系统有强 schema 与审计日志，写入结构化且可追溯；agent 的记忆是自然语言摘要或向量，归属与时效往往只是软标注，检索出来的信息可能已经过期，类比低估了「记忆本身不可靠」这一层。",
+          "mechanism": "把「回忆」和「查证」从模型参数里拆成外部工具调用：查证返回带来源与时间戳的证据，记忆层按用户身份做读写隔离。这样约束检查有可审计的依据，也避免长上下文里不同用户的信息互相串味。",
+          "visual": "画一个双层结构：上层是三个用户会话（不同颜色），下层是共享知识库与各自私有记忆区。箭头表示「读」可跨共享区、写只进私有区，另有一条从共享区指向带来源与时间戳的证据卡片的箭头。",
+          "prerequisites": [
+            "RAG 与向量检索基础",
+            "会话记忆与长期记忆的区别",
+            "访问控制与信息隔离"
+          ],
+          "selfTest": [
+            "为什么要把证据获取单独做成工具，而不是让模型凭上下文回答？",
+            "跨用户记忆共享最大的风险是什么？",
+            "时间戳与来源信息在冲突消解里起什么作用？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-precedence-schedule",
+          "name": "带前置约束的调度（最小化完工时间）(Precedence-Constrained Scheduling)",
+          "category": "agent",
+          "latex": "\\min_{\\{S_j\\}} \\max_{j} C_j \\quad \\text{s.t.} \\quad S_j \\ge C_i \\;\\; \\forall (i,j)\\in E, \\qquad C_j = S_j + p_j",
+          "symbols": [
+            [
+              "E",
+              "依赖图的边集，(i,j) 表示子任务 i 必须先于 j"
+            ],
+            [
+              "S_j",
+              "子任务 j 的开始时间"
+            ],
+            [
+              "C_j",
+              "子任务 j 的完成时间"
+            ],
+            [
+              "p_j",
+              "子任务 j 的处理时长"
+            ],
+            [
+              "max_j C_j",
+              "makespan，整体完工时间"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：把自然语言里的「先做 A 再做 B」抽成有向边 (i,j)∈E，得到一张 DAG。",
+            "第 2 步：要求每个子任务满足 S_j ≥ C_i，即所有前置完成才能开始，这是硬约束。",
+            "第 3 步：目标取 max_j C_j（makespan）最小，希望整体尽快结束；若无资源上限，任一拓扑序都可行，最优值等于关键路径长度。",
+            "第 4 步：一旦加上并发或资源上限，问题变成 RCPSP，一般 NP-hard，实践中退化为「拓扑序优先 + 贪心尽早开始」的启发式。"
+          ],
+          "analogy": "像搬家：必须先打包再装车、先装车再出发。如果只有一辆车（资源受限），你得决定先搬哪家才能让全部搬完最早，这正是带前置约束的调度问题。",
+          "pitfalls": [
+            "把拓扑序当成唯一解：DAG 的拓扑序通常不唯一，资源受限时不同序的完工时间并不相同。",
+            "忽略资源约束：无资源上限时 makespan 就是关键路径长度，加了并发上限才真正变难。",
+            "把 S_j ≥ C_i 写成 S_j ≥ S_i：约束的是前置的完成时间，不是开始时间。"
+          ],
+          "code": "from collections import deque\n\ndef schedule(deps, dur):\n    # deps[i] 是 i 的前置集合；返回最早开始时间、完工时间与拓扑序\n    n = len(dur)\n    indeg = [len(deps[i]) for i in range(n)]\n    children = [[] for _ in range(n)]\n    for j in range(n):\n        for i in deps[j]:\n            children[i].append(j)\n    start, finish = [0] * n, [0] * n\n    q = deque([i for i in range(n) if indeg[i] == 0])\n    order = []\n    while q:\n        i = q.popleft()\n        finish[i] = start[i] + dur[i]                # C_j = S_j + p_j\n        order.append(i)\n        for j in children[i]:\n            start[j] = max(start[j], finish[i])      # S_j >= C_i\n            indeg[j] -= 1\n            if indeg[j] == 0:\n                q.append(j)\n    if len(order) != n:\n        raise ValueError('依赖图有环，无法调度')\n    return start, finish, order",
+          "sources": [
+            {
+              "title": "Org-Agent: Beyond Personal Assistants Towards Organizational Agents",
+              "url": "https://huggingface.co/papers/2609.34392"
+            },
+            {
+              "title": "Org-Agent (arXiv canonical)",
+              "url": "https://arxiv.org/abs/2609.34392"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "论文指出组织场景需要两类互补能力：跨用户交互与决策、跨用户记忆与知识使用。",
+          "组织约束覆盖三方面：身份/权限/访问许可；信息归属与时间有效性；跨用户冲突消解规则与联合决策的完成条件。",
+          "Org-Agent 是三阶段框架：分解为原子子任务并构建任务依赖图、按依赖序拓扑排序调度、在约束下执行每个子任务。",
+          "执行阶段配有证据获取与记忆管理工具。",
+          "在 MUSES-Bench 与 GroupMemBench 上做了实验，消融支持依赖建模与工具使用的贡献。"
+        ],
+        "uncertain": [
+          "摘要未给出具体指标数值与相对提升幅度，需核对原文表格。",
+          "三阶段之间的失败处理与回退机制摘要未提。",
+          "本条目中的调度公式是按摘要「依赖/拓扑排序」写的通用形式，不是论文原始定义。",
+          "作者机构、代码是否开源与部分实验设置需人工核实。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "把公司里的权限、时效、多人冲突写成约束，让 agent 按依赖图一步步办事。"
+          },
+          {
+            "level": "入门",
+            "text": "Org-Agent 面向「服务一个组织而不是一个人」的场景：请求来自多个用户，知识散在各自交互里。它先把任务拆成原子子任务，连成依赖图，按顺序调度，执行时逐条检查组织约束。"
+          },
+          {
+            "level": "进阶",
+            "text": "关键设计是把组织约束显式化：身份与权限、信息归属与时效、冲突消解与联合决策规则。约束决定一个动作「能不能开始」（前置条件）与「执行中要满足什么」。再配证据获取工具查来源与时效、记忆管理工具做跨用户隔离；实验在 MUSES-Bench 与 GroupMemBench 上验证，消融支持依赖建模与工具使用。"
+          },
+          {
+            "level": "专家",
+            "text": "与个人助理型 agent 相比，它的难点不在单轮工具调用，而在多用户共享与冲突：同一事实对不同用户可见性不同，信息过了时效就要重新取证，联合决策需要凑齐多方同意。Org-Agent 用依赖图加拓扑调度把这些变成可检查的门控，代价是依赖图的构建质量直接决定上限，且摘要没有交代执行失败后的回退与重规划；相较纯 ReAct 循环，它牺牲灵活性换取可审计性，适合规则明确的组织流程，不适合开放探索任务。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "如果不做依赖图，直接让模型顺序执行会怎样？",
+            "a": "模型可能漏掉或颠倒隐含顺序，也无法判断某步是否已就绪；把顺序显式化成图之后，调度器可以在前置未满足时阻塞，出错也能定位到具体节点。"
+          },
+          {
+            "q": "为什么不把所有约束塞进 system prompt 就完事？",
+            "a": "约束是每条子任务各不相同的，而且要在执行时逐条判定是否满足（比如权限是否覆盖该资源）；塞进 prompt 只是软提示，无法保证真的被检查。"
+          },
+          {
+            "q": "跨用户记忆为什么要做成工具而不是长上下文？",
+            "a": "长上下文会把不同用户的私有信息混在一起，既不可审计也难以按身份隔离；做成记忆工具后可以按用户读写，并给每条信息带上来源与时间戳。"
+          }
+        ],
+        "mechanism": "组织场景的核心矛盾是「信息与权限是分布的，而动作必须先满足一组合法性条件」。Org-Agent 的解法是把合法性条件从隐含变成显式：任务先被拆成原子单元，依赖关系固化成图的边，调度只按图结构推进，约束则成为每个子任务的前置门控，并用证据与记忆工具提供可审计依据。这样执行过程可检查、可定位，而不是依赖模型自觉遵守组织规矩。",
+        "boundary": "摘要只给了框架和两个 benchmark 的结果方向，没有给出失败案例。可以预期它会在这些地方失效：约束本身模糊或不断变化的组织（无法固化成前置条件）、依赖关系需要边执行边发现的探索型任务、以及需要跨组织协商而缺乏统一权限模型的多方场景。",
+        "analogyBoundary": "公司报销的类比假设规矩是白纸黑字且稳定的；真实组织流程常有例外审批与临时授权，约束本身也会被改写，类比没有覆盖「约束需要动态更新」这一层。",
+        "misconceptions": [
+          "把 Org-Agent 当成多 agent 协作框架：摘要讲的是单个组织型 agent 的能力与约束推理。",
+          "以为拓扑排序能解决所有顺序问题：它只保证依赖满足，不处理资源冲突与失败重规划。",
+          "把「跨用户记忆」理解成共享全部上下文：它恰恰需要按身份隔离并标注归属。"
+        ],
+        "ownAnalysis": "（推断）这条工作的定位很像把「企业流程引擎」的思路搬进 LLM agent：图负责顺序，约束负责合法性，工具负责取证。它与 ReAct / Plan-and-Execute 的差别在于把计划结构留在外部而不是模型上下文里，因此可审计、可回放。（待核实）摘要既没给指标数值也没有开放代码，实际调度器如何处理运行中新增依赖、如何做冲突消解，需要读原文确认。",
+        "officialNotes": [
+          {
+            "position": "摘要称 Org-Agent 是统一的约束中心推理框架，把任务执行分为分解建图、拓扑排序调度、约束感知执行三阶段，并在 MUSES-Bench 与 GroupMemBench 上验证。",
+            "source": "https://huggingface.co/papers/2609.34392"
+          }
+        ],
+        "interviewAnswer": "我会把 Org-Agent 讲成「把组织约束显式化的 agent」。它的场景是多用户加知识分散，所以要两类能力：跨用户交互决策和跨用户记忆使用。三类约束是身份权限、信息归属与时效、冲突消解与联合决策规则。做法分三阶段：拆原子子任务建依赖图，按拓扑序调度，执行时逐条检查约束，并调用证据获取与记忆管理工具。实验在 MUSES-Bench 和 GroupMemBench 上，消融说明依赖建模和工具都有效。它的代价是依赖图质量决定上限，而且我还没看到失败重规划的设计。",
+        "studyPath": {
+          "prerequisites": [
+            "ReAct / Plan-and-Execute 的 agent 循环",
+            "RAG 与记忆分层",
+            "访问控制（RBAC/ACL）基本概念",
+            "DAG 与拓扑排序"
+          ],
+          "nextSteps": [
+            "手写一个「拆任务→建 DAG→拓扑执行」的最小 agent loop",
+            "给这个 loop 加上权限与时效两类前置检查",
+            "读原文核对约束消解算法与实验设置"
+          ]
+        }
+      }
+    },
+    {
+      "id": "dc373482c9fa535f",
+      "tldr": "MedicalGPT 提供一套医疗大模型训练流水线，覆盖增量预训练、SFT、RLHF、DPO、ORPO、GRPO。",
+      "keyPoints": [
+        "开源医疗大模型训练流水线，走 ChatGPT 式后训练流程",
+        "第一阶段：增量预训练 PT + 有监督微调 SFT",
+        "第二阶段：RLHF、DPO、ORPO 做偏好对齐",
+        "此外还实现了 GRPO",
+        "5849 stars、798 forks，附带可运行代码"
+      ],
+      "why": "后训练岗最常被问「SFT 之后接什么」，这个仓库把 PT→SFT→RLHF/DPO/ORPO/GRPO 全流程开源，适合照着复现。",
+      "difficulty": "medium",
+      "tags": [
+        "posttraining",
+        "sft",
+        "rlhf",
+        "dpo",
+        "orpo",
+        "medical"
+      ],
+      "entities": [
+        "MedicalGPT",
+        "shibing624",
+        "增量预训练 (PT)",
+        "有监督微调 (SFT)",
+        "RLHF",
+        "DPO",
+        "ORPO",
+        "GRPO",
+        "Llama"
+      ],
+      "diagram": {
+        "kind": "timeline",
+        "title": "MedicalGPT 后训练流水线",
+        "caption": "记住阶段顺序与各阶段的数据形态：补知识、学格式、对齐偏好，三者用的数据完全不同。",
+        "spec": {
+          "type": "timeline",
+          "nodes": [
+            {
+              "label": "增量预训练 PT",
+              "detail": "医疗领域语料继续预训练，注入领域知识"
+            },
+            {
+              "label": "有监督微调 SFT",
+              "detail": "指令-回答对，教会模型按格式作答"
+            },
+            {
+              "label": "RLHF",
+              "detail": "奖励模型 + 策略优化，对齐人类偏好"
+            },
+            {
+              "label": "DPO / ORPO",
+              "detail": "离线偏好数据直接优化，省掉奖励模型"
+            },
+            {
+              "label": "GRPO",
+              "detail": "组相对策略优化，去掉 critic"
+            }
+          ],
+          "edges": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": "知识 → 格式"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": "指令 → 偏好"
+            },
+            {
+              "from": 2,
+              "to": 3,
+              "label": "在线 → 离线"
+            },
+            {
+              "from": 3,
+              "to": 4,
+              "label": "换策略优化器"
+            }
+          ]
+        },
+        "alt": "五阶段流水线：增量预训练注入医疗知识 → 有监督微调学会指令格式 → RLHF 用奖励模型对齐偏好 → DPO/ORPO 用离线偏好数据直接优化 → GRPO 用组内相对优势做强化学习"
+      },
+      "concepts": [
+        {
+          "name": "领域后训练流水线 (Domain Post-Training Pipeline)",
+          "readable": "通用基座只会通用语言，医疗场景要按顺序补：先用医疗语料做增量预训练补知识，再用指令数据 SFT 学回答格式，最后用偏好数据（RLHF/DPO/ORPO/GRPO）调风格与安全。每阶段数据格式不同，不能跳步。",
+          "analogy": "像培养专科医生：先读五年医学教材（预训练），再跟着带教老师学怎么问诊写病历（SFT），最后靠上级医生对多个回答的偏好反馈打磨沟通与决策（偏好优化）。",
+          "analogyBreaksDown": "医生培养里知识与沟通是分开学的，且不会因为一次偏好反馈就忘掉教材；LLM 的参数共享，偏好优化过猛会造成分布偏移并损害语言能力，类比没有体现这种灾难性遗忘风险。",
+          "mechanism": "关键设计是阶段解耦：预训练阶段最大化领域语料似然补知识，SFT 阶段用交叉熵对齐指令格式，偏好阶段只调整相对偏好而不重新学知识。分开做可用不同数据与学习率，代价是误差逐阶段累积且难以归因。",
+          "visual": "画一条从左到右的四段管道，每段标注数据形态：无标注领域文本 → 指令-回答对 → 排序偏好对 → 带验证器的题目。管道下方画一条逐渐上升的「领域能力」曲线，并在偏好阶段标出一个语言能力可能下滑的点。",
+          "prerequisites": [
+            "交叉熵语言建模",
+            "指令微调的数据格式",
+            "RLHF/DPO 的基本流程"
+          ],
+          "selfTest": [
+            "为什么领域适配要先 PT 再 SFT，顺序反过来会怎样？",
+            "SFT 与偏好优化各自用到什么样的数据？",
+            "偏好阶段过度训练可能带来什么副作用？"
+          ],
+          "formula": "\\mathcal{L}_{\\mathrm{SFT}} = -\\mathbb{E}_{(x,y)}\\sum_t \\log p_\\theta(y_t \\mid x, y_{<t})"
+        },
+        {
+          "name": "ORPO：把 SFT 与偏好对齐合成一个损失 (Odds Ratio Preference Optimization)",
+          "readable": "ORPO 不要奖励模型也不要参考模型，直接在偏好数据上同时做 SFT 与偏好优化：对胜出回答保留语言建模损失，再用「胜出与落败回答的几率比」的 log-sigmoid 作为偏好项，用一个系数 λ 加在一起。",
+          "analogy": "像考试后既要求你把标准答案抄熟（SFT 项），又根据你这次答题比错答好多少来加分（偏好项）；不需要另请一位老师先给你打绝对分数（奖励模型）。",
+          "analogyBreaksDown": "考试加分是绝对分，ORPO 的偏好项是同一回答内部几率比的对数差，只关心相对排序；而且落败回答的几率接近 1 时会发散，实现必须数值稳定，类比体现不出这一点。",
+          "mechanism": "用长度归一化对数似然定义 odds(y|x)=p/(1−p)，取胜出与落败的对数几率比再过 log-sigmoid，得到与 DPO 类似但不需要参考模型的对齐信号；同时保留 SFT 项当锚，防止偏好优化把语言建模能力带偏。",
+          "visual": "画两根并排柱子：左柱是胜出回答的 odds，右柱是落败回答的 odds，高度差的对数画成一条向下压的 sigmoid 曲线；上方再画一条独立的 SFT 损失曲线，两条线通过 λ 相加。",
+          "prerequisites": [
+            "sigmoid 与 log-sigmoid",
+            "语言模型的对数似然",
+            "DPO 的推导思路"
+          ],
+          "selfTest": [
+            "ORPO 相比 DPO 省掉了哪个模型？",
+            "odds 与概率 p 的关系是什么？",
+            "λ 变大时偏好项与 SFT 项的相对影响如何变化？"
+          ],
+          "formula": "\\mathcal{L}_{\\mathrm{ORPO}} = \\mathbb{E}\\Big[-\\log p_\\theta(y_w|x) + \\lambda\\big(-\\log\\sigma(\\log \\tfrac{\\mathrm{odds}_\\theta(y_w|x)}{\\mathrm{odds}_\\theta(y_l|x)})\\big)\\Big]"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-orpo-odds-ratio",
+          "name": "ORPO 几率比偏好损失 (Odds Ratio Preference Optimization Loss)",
+          "category": "posttraining",
+          "latex": "\\mathcal{L}_{\\mathrm{ORPO}} = \\mathbb{E}_{(x,y_w,y_l)}\\Big[\\underbrace{-\\log p_\\theta(y_w\\mid x)}_{\\text{SFT 项}} + \\lambda \\underbrace{\\Big(-\\log\\sigma\\Big(\\log \\frac{\\mathrm{odds}_\\theta(y_w\\mid x)}{\\mathrm{odds}_\\theta(y_l\\mid x)}\\Big)\\Big)}_{\\text{相对偏好项}}\\Big],\\qquad \\mathrm{odds}_\\theta(y\\mid x)=\\frac{p_\\theta(y\\mid x)}{1-p_\\theta(y\\mid x)}",
+          "symbols": [
+            [
+              "x",
+              "输入 prompt"
+            ],
+            [
+              "y_w / y_l",
+              "偏好数据中的胜出 / 落败回答"
+            ],
+            [
+              "p_θ(y|x)",
+              "模型对整条回答的长度归一化似然"
+            ],
+            [
+              "odds_θ",
+              "几率 p/(1−p)"
+            ],
+            [
+              "λ",
+              "偏好项权重，控制对齐强度"
+            ],
+            [
+              "σ",
+              "sigmoid 函数"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：DPO 用参考模型把隐式奖励写成 β log(π_θ/π_ref)，需要额外一份冻结权重和一次前向。",
+            "第 2 步：ORPO 想免掉参考模型，于是改用模型自身对胜出与落败回答的几率比作为偏好信号。",
+            "第 3 步：对两个回答取对数几率比再过 log-sigmoid，得到一个越大越好的排序分数，加负号后变成最小化的偏好损失。",
+            "第 4 步：偏好项单独用会让模型只学「相对更好」而丢掉语言建模，于是加上胜出回答的 SFT 交叉熵当锚。",
+            "第 5 步：两项用 λ 线性组合，λ 控制对齐强度与语言能力保持之间的权衡。"
+          ],
+          "analogy": "像内部竞赛：不请外聘评委（参考模型）打绝对分，只看同一选手这次比上次（胜出 vs 落败）好多少；同时保留日常作业分（SFT 项），防止只顾比赛荒废基本功。",
+          "pitfalls": [
+            "把 odds 当成概率：odds=p/(1−p)，p 接近 1 时会发散，实现要走 log-sigmoid 而不是先算比值。",
+            "以为 ORPO 不需要落败样本：偏好项依赖 y_l，缺了就退化成普通 SFT。",
+            "把 ORPO 说成在线 RL 方法：它是在固定偏好数据上的离线损失，不做采样与探索。",
+            "忽略长度归一：p(y|x) 若按 token 连乘会数值下溢，长回答的 odds 不可靠。"
+          ],
+          "code": "import torch\nimport torch.nn.functional as F\n\ndef orpo_loss(logp_w, logp_l, lam=0.1):\n    # logp_w / logp_l: [B] 胜出 / 落败回答的长度归一化 log 概率\n    nll = -logp_w.mean()                                # SFT 项\n    p_w = logp_w.exp().clamp(1e-6, 1 - 1e-6)\n    p_l = logp_l.exp().clamp(1e-6, 1 - 1e-6)\n    log_odds_w = torch.log(p_w) - torch.log1p(-p_w)     # log(p/(1-p))\n    log_odds_l = torch.log(p_l) - torch.log1p(-p_l)\n    pref = -F.logsigmoid(log_odds_w - log_odds_l).mean()  # 相对偏好项\n    return nll + lam * pref",
+          "sources": [
+            {
+              "title": "shibing624/MedicalGPT",
+              "url": "https://github.com/shibing624/MedicalGPT"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "MedicalGPT 的目标是用 ChatGPT 式训练流水线训练自己的医疗大模型。",
+          "仓库实现了增量预训练 PT、有监督微调 SFT、RLHF、DPO、ORPO、GRPO。",
+          "GitHub 采集信号为 5849 stars、798 forks，附带可运行代码。",
+          "仓库作者为 shibing624。"
+        ],
+        "uncertain": [
+          "各阶段的具体超参、数据规模与评测结果摘要均未给出。",
+          "是否覆盖多模态医疗输入（如影像）摘要未说明。",
+          "ORPO 公式按公开标准形式重建，需核对仓库实现细节（是否对 logp 做长度归一、λ 默认值）。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "一个把医疗大模型从预训练一路训到偏好对齐的开源流水线。"
+          },
+          {
+            "level": "入门",
+            "text": "MedicalGPT 按 ChatGPT 的训练套路组织代码：先用医疗语料做增量预训练补知识，再用指令数据做 SFT 学回答格式，最后用偏好数据做 RLHF/DPO/ORPO/GRPO 调风格与安全。每个阶段的数据格式和脚本都分开了。"
+          },
+          {
+            "level": "进阶",
+            "text": "它的价值在于把「阶段」做成可插拔模块：PT 用领域无标注文本，SFT 用指令-回答对，偏好阶段用排序对；DPO/ORPO 属于离线偏好优化，GRPO 回到在线采样。同一份数据上可以对比不同损失的显存与稳定性，但摘要没有给出任何精度或医疗安全评测结果。"
+          },
+          {
+            "level": "专家",
+            "text": "从方法谱系看它是「领域适配 + 后训练全家桶」：PT 解决知识缺失，SFT 解决格式与指令跟随，RLHF/DPO/ORPO 解决偏好与安全，GRPO 提供不带 critic 的在线选项。选型时注意离线偏好方法依赖已有偏好数据且受分布偏移影响，在线方法成本与方差更高；医疗场景还有幻觉与合规问题，必须叠加检索或拒答机制，训练流水线本身不解决这些。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么不能只用 SFT 而跳过偏好阶段？",
+            "a": "SFT 只最大化标准答案的似然，教不会模型「两个都合理的回答里哪个更好」；偏好阶段直接优化相对排序，才对齐有用性与安全性。"
+          },
+          {
+            "q": "ORPO 为什么可以不要参考模型？",
+            "a": "它用模型自身对胜出与落败回答的几率比构造偏好信号，相当于拿当前分布当基线，因此不需要额外保存一份冻结的参考权重。"
+          },
+          {
+            "q": "医疗领域做后训练，最大的风险在哪？",
+            "a": "幻觉与合规：偏好优化能让回答更像医生，但不会让模型知道更多；事实性仍靠预训练数据与检索，安全边界要靠拒答与规则兜底。"
+          }
+        ],
+        "mechanism": "流水线的设计动机是让不同性质的目标各用最合适的数据：补知识要靠大规模无标注文本的似然，学格式要靠指令对，学偏好要靠比较数据。把三者混在一个损失里会互相干扰，所以解耦成阶段；ORPO 这类方法则反向而行，试图把 SFT 与偏好合成一个损失以减少阶段数，代价是引入 λ 这一新的权衡旋钮。",
+        "boundary": "该仓库给的是训练流程而非医疗级产品：不保证事实正确性、不处理合规与隐私，评测也不在摘要里。领域数据规模小或与通用分布差异过大时，PT 可能引起灾难性遗忘；偏好数据噪声大时 ORPO/DPO 会把噪声学进去，需要数据清洗与 KL 或 SFT 锚项兜底。",
+        "analogyBoundary": "专科医生培养的类比在「遗忘」上失效：人学完偏好反馈不会丢掉教材知识，而 LLM 参数共享，偏好优化过猛会带来语言能力与通用知识的回退，所以必须用锚项约束，这一点类比给不出。",
+        "misconceptions": [
+          "以为 PT 与 SFT 可以互换：PT 补知识、SFT 教格式，目标与数据都不同。",
+          "把 DPO/ORPO 当成在线强化学习：它们是在固定偏好数据上优化的离线损失。",
+          "认为加了 RLHF 就没有幻觉了：偏好对齐改的是风格与偏好，不保证事实正确。"
+        ],
+        "ownAnalysis": "（推断）这个仓库更像「教学与复现模板」而不是新方法论文：看点是同一条流水线上并列多种对齐算法，方便比较显存与稳定性。实际选型我会先看偏好数据量，数据少优先 DPO/ORPO，数据多且想要探索空间才上 GRPO；医疗场景必须外挂检索与拒答。（待核实）摘要没给评测，因此无法判断医疗能力水平，也无法确认 GRPO 实现是否与 DeepSeek 原版一致。",
+        "officialNotes": [
+          {
+            "position": "仓库自述用 ChatGPT 训练流水线训练医疗大模型，实现了增量预训练、SFT、RLHF、DPO、ORPO、GRPO。",
+            "source": "https://github.com/shibing624/MedicalGPT"
+          }
+        ],
+        "interviewAnswer": "我把 MedicalGPT 当作后训练全流程的复现模板来讲。它按阶段组织：PT 用医疗语料补知识，SFT 用指令对教格式，然后偏好阶段并列了 RLHF、DPO、ORPO 和 GRPO。DPO 和 ORPO 是离线偏好优化，ORPO 的关键是不要参考模型，用胜出与落败回答的几率比做信号，再加一个 SFT 项当锚；GRPO 则是去掉 critic 的在线方法。它的局限是仓库不保证事实性与合规，医疗场景还得外挂检索和拒答。",
+        "studyPath": {
+          "prerequisites": [
+            "语言模型交叉熵训练",
+            "指令微调数据构造",
+            "DPO 的推导",
+            "PPO / 策略梯度的基本概念"
+          ],
+          "nextSteps": [
+            "跑通仓库的 SFT 与 DPO 两个脚本，观察显存与损失",
+            "在同一份偏好数据上对比 DPO、ORPO、GRPO 的训练曲线",
+            "自建一小份中文医疗偏好对做端到端实验"
+          ]
+        }
+      }
+    },
+    {
+      "id": "c6cf073644ed8f6e",
+      "tldr": "指出 on-policy 蒸馏里轨迹对学生在线、对教师离线的不对称，提出 SCOUT 周期性用可验证奖励微调教师。",
+      "keyPoints": [
+        "OPD 中轨迹对学生 on-policy，对教师却 off-policy",
+        "教师只会续写自己的前缀，遇到学生前缀会退化",
+        "实验发现学生前缀越长，教师续写表现越差",
+        "SCOUT 周期性用可验证奖励强化教师的续写能力",
+        "多种师生配置与推理领域上稳定提升 OPD 效果"
+      ],
+      "why": "on-policy 蒸馏是 R1 之后低成本后训练的热门路线，理解「教师也要适配学生分布」这个不对称，能讲出蒸馏失败的根因。",
+      "difficulty": "hard",
+      "tags": [
+        "posttraining",
+        "distillation",
+        "on-policy-distillation",
+        "rlvr",
+        "reasoning"
+      ],
+      "entities": [
+        "SCOUT",
+        "Student-COnditioned Updates of the Teacher",
+        "on-policy distillation",
+        "off-policy teacher",
+        "RLVR",
+        "outcome reward"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "SCOUT 的师生不对称",
+        "caption": "记住这个因果链：学生采样造成分布错配，前缀越长教师越接不住，所以反过来用 RL 适配教师。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='SCOUT 的师生不对称：学生采样前缀、教师稠密监督、前缀越长越退化、SCOUT 反向适配教师'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>学生策略采样</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>自己生成轨迹前缀</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>教师稠密监督</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>教师没见过学生前缀</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>前缀越长越退化</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>教师续写质量下降</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>SCOUT 适配教师</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>RLVR 优化续写能力</text></svg>",
+        "alt": "四步流程：学生策略自己采样轨迹前缀 → 教师对这些前缀给稠密监督，但这些前缀对教师是离线的 → 前缀越长教师续写越退化 → SCOUT 周期性用可验证奖励优化教师，使其适配学生前缀"
+      },
+      "concepts": [
+        {
+          "name": "On-Policy 蒸馏的师生不对称 (On/Off-Policy Asymmetry in OPD)",
+          "readable": "OPD 让学生用自己采样出的轨迹学习，同时教师对每一步给稠密概率监督。问题是这些轨迹对学生是 on-policy 的，对教师却是 off-policy 的——教师只在「自己写出的前缀」上训练过，遇到学生写的前缀就接不下去。",
+          "analogy": "像让高年级学生批改低年级的草稿：批改者习惯从自己的解题步骤往下写，看到别人半途拐弯的草稿常常接不上，而且草稿越乱（前缀越长越偏）越接不上。",
+          "analogyBreaksDown": "人批改时可以重新读懂学生的思路再评价，语言模型却只能按条件概率续写；前缀一旦偏离训练分布，误差会沿生成长度复合放大，类比没有体现这种随 token 数累积的机制。",
+          "mechanism": "把「监督者」与「被监督分布」解耦是 OPD 的效率来源，但也造成分布错配：教师的条件分布是在自己的前缀上估计的，换成学生前缀后条件项对不上，续写质量随前缀变长下降，于是稠密监督的信号本身被污染。",
+          "visual": "画两条曲线：横轴是学生前缀长度，纵轴是教师续写的准确率或似然。教师在自己前缀上的曲线基本走平（浅色），在学生前缀上的曲线随长度快速下滑（深色），两线之间的差距就是 off-policy 间隙。",
+          "prerequisites": [
+            "知识蒸馏与前向 KL",
+            "语言模型的条件分布 p(·|prefix)",
+            "on-policy 与 off-policy 的定义"
+          ],
+          "selfTest": [
+            "为什么 OPD 里轨迹对学生 on-policy、对教师 off-policy？",
+            "为什么前缀越长教师退化越严重？",
+            "这个不对称会怎样污染蒸馏的监督信号？"
+          ],
+          "formula": "D_{\\mathrm{KL}}\\big(p_T(\\cdot\\mid y_{<t})\\,\\|\\,p_\\theta(\\cdot\\mid y_{<t})\\big)"
+        },
+        {
+          "name": "学生条件化的教师适配 (Student-Conditioned Teacher Adaptation)",
+          "readable": "SCOUT 反过来改教师：在正常 OPD 更新之外，隔一段时间让教师从学生前缀出发生成续写，再用结果对错（可验证奖励）强化它。教师因此学会接住学生的半成品，给出的监督更贴合学生真实分布。",
+          "analogy": "像让高年级学生专门练「批改别人草稿」：不只是自己会做题，还要练习从各种半成品接着往下推，练多了才批得准。",
+          "analogyBreaksDown": "人练批改是学会一种元技能，模型只是把参数调向「学生前缀条件下的高奖励续写」；当奖励只覆盖最终答案时，教师学到的可能只是碰巧拿分的续写，类比忽略了奖励只覆盖结果这一限制。",
+          "mechanism": "用 RLVR 把「教师能否从学生前缀推出正确答案」变成可优化目标：教师采样续写、用结果奖励算优势、按策略梯度更新。周期性而非每步更新，是在蒸馏效率与教师适配成本之间取平衡，也避免教师被单批学生前缀带偏。",
+          "visual": "画一个循环：左侧「学生前缀池」→ 中间「教师生成续写」→ 右侧「验证器给 0/1 奖励」→ 折回教师的参数更新，旁边用虚线标注「周期性触发」，与实线的标准 OPD 更新并列。",
+          "prerequisites": [
+            "策略梯度与优势估计",
+            "RLVR 的设定",
+            "师生蒸馏流程"
+          ],
+          "selfTest": [
+            "SCOUT 优化的是学生参数还是教师参数？",
+            "为什么教师更新要周期性而不是每步都做？",
+            "结果奖励只覆盖最终答案会带来什么风险？"
+          ],
+          "formula": "\\max_\\phi \\; \\mathbb{E}_{\\tilde y \\sim \\pi_\\theta}\\mathbb{E}_{y \\sim \\pi_\\phi(\\cdot\\mid x,\\tilde y)}\\big[R(x, \\tilde y \\oplus y)\\big]"
+        },
+        {
+          "name": "可验证奖励的强化学习 (RL with Verifiable Rewards)",
+          "readable": "RLVR 指奖励不靠人类打分或奖励模型，而由程序判定：数学题对答案、代码过单测就给 1，否则 0。它让 RL 后训练的数据可以自动扩规模，但只适用于答案可判定的任务。",
+          "analogy": "像做完题自己拿答案册对答案：对错立刻知道，不需要老师逐题点评，所以能刷很多题；但作文和开放讨论就没法这样判。",
+          "analogyBreaksDown": "对答案只看最终结果，模型可能用错误推理碰对答案却拿满分，也可能推理正确但格式不同被判错；答案册是权威且唯一的，奖励函数却可能被策略钻空子，类比没有体现这一点。",
+          "mechanism": "把奖励从学习出来的偏好模型换成确定性判定程序，去掉了奖励模型训练成本与一大部分奖励 hacking；代价是任务必须可判定，且奖励稀疏、方差大，需要组内相对优势之类的技巧来降方差。",
+          "visual": "画一条从左到右的判定管道：模型输出 → 抽取答案 → 与标准答案或单测比对 → 输出 0 或 1 的奖励。旁边画虚线框标出「只适用于可判定任务」，下方画一条稀疏的奖励脉冲信号。",
+          "prerequisites": [
+            "策略梯度与方差缩减",
+            "奖励模型的作用与风险",
+            "数学/代码任务的自动判定"
+          ],
+          "selfTest": [
+            "RLVR 与 RLHF 的奖励来源差别在哪？",
+            "为什么 RLVR 的奖励通常很稀疏？",
+            "只优化结果奖励可能带来哪些投机行为？"
+          ],
+          "formula": "R(x, y) \\in \\{0, 1\\}"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-opd-dense-kl",
+          "name": "On-Policy 蒸馏的稠密 KL 目标 (Dense KL Objective of On-Policy Distillation)",
+          "category": "posttraining",
+          "latex": "\\mathcal{L}_{\\mathrm{OPD}}(\\theta) = \\mathbb{E}_{x\\sim\\mathcal{D}}\\,\\mathbb{E}_{y\\sim\\pi_\\theta(\\cdot\\mid x)}\\left[\\frac{1}{|y|}\\sum_{t=1}^{|y|} D_{\\mathrm{KL}}\\big(p_T(\\cdot\\mid y_{<t})\\,\\|\\,p_\\theta(\\cdot\\mid y_{<t})\\big)\\right]",
+          "symbols": [
+            [
+              "π_θ",
+              "学生策略，既负责采样也负责被更新"
+            ],
+            [
+              "p_T",
+              "教师在该前缀下给出的下一 token 分布"
+            ],
+            [
+              "y ~ π_θ",
+              "学生自己采样出来的轨迹"
+            ],
+            [
+              "|y|",
+              "轨迹长度，用于长度归一"
+            ],
+            [
+              "D_KL",
+              "教师分布到学生分布的前向 KL"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：普通知识蒸馏在固定数据集上匹配教师分布，学生自己会犯的错误分布永远不出现在训练里。",
+            "第 2 步：OPD 改为从学生策略采样轨迹，让训练分布追上推理时的分布。",
+            "第 3 步：对学生写出的每个前缀 y_<t，教师给出下一 token 分布，构成逐 token 的稠密监督。",
+            "第 4 步：用前向 KL 把学生分布拉向教师，等价于教师分布加权下的交叉熵，梯度方差比只看最终答案的序列级方法小得多。",
+            "第 5 步：注意前缀 y_<t 来自学生，对教师是 off-policy 的，这正是 SCOUT 要修掉的偏差来源。"
+          ],
+          "analogy": "像陪练：学生自己打一遍（学生采样轨迹），教练在每一步都指出「这里更该走哪一步」（稠密监督），而不是只在比赛结束时说赢没赢。陪练越多，学生的坏习惯越容易被暴露。",
+          "pitfalls": [
+            "把 OPD 当成序列级蒸馏：它监督每一步的分布，不是最终答案的对错。",
+            "忽略前缀来源：前缀来自学生而非教师，教师一侧是 off-policy 的。",
+            "混用前向与反向 KL：前向 KL 是 mass-covering、反向 KL 是 mode-seeking，优化行为完全不同。",
+            "忘记长度归一：长轨迹的 KL 累加会主导整个损失。"
+          ],
+          "code": "import torch\nimport torch.nn.functional as F\n\ndef opd_loss(student_logits, teacher_logits, mask):\n    # student_logits / teacher_logits: [B, T, V]；mask: [B, T] 有效 token\n    log_q = F.log_softmax(student_logits, dim=-1)\n    log_p = F.log_softmax(teacher_logits, dim=-1)\n    p = log_p.exp()\n    kl = (p * (log_p - log_q)).sum(dim=-1)               # 每 token 前向 KL\n    kl = (kl * mask).sum(dim=-1) / mask.sum(dim=-1).clamp(min=1)\n    return kl.mean()",
+          "sources": [
+            {
+              "title": "On the Off-Policy Teacher in On-Policy Distillation",
+              "url": "https://huggingface.co/papers/2609.38360"
+            },
+            {
+              "title": "On the Off-Policy Teacher in On-Policy Distillation (arXiv canonical)",
+              "url": "https://arxiv.org/abs/2609.38360"
+            }
+          ]
+        },
+        {
+          "id": "f-scout-teacher-rlvr",
+          "name": "SCOUT 的教师 RLVR 目标 (Teacher Adaptation with Verifiable Rewards)",
+          "category": "rl",
+          "latex": "\\max_{\\phi}\\; \\mathbb{E}_{x\\sim\\mathcal{D}}\\,\\mathbb{E}_{\\tilde{y}\\sim\\pi_\\theta(\\cdot\\mid x)}\\left[\\mathbb{E}_{y\\sim\\pi_\\phi(\\cdot\\mid x,\\tilde{y})}\\big[R(x,\\tilde{y}\\oplus y)\\big] - \\beta\\, D_{\\mathrm{KL}}\\big(\\pi_\\phi(\\cdot\\mid x,\\tilde{y})\\,\\|\\,\\pi_{\\phi_0}(\\cdot\\mid x,\\tilde{y})\\big)\\right]",
+          "symbols": [
+            [
+              "φ",
+              "教师参数，本次更新的优化对象"
+            ],
+            [
+              "θ",
+              "学生策略参数，此处固定不动"
+            ],
+            [
+              "ỹ",
+              "学生采样出来的前缀"
+            ],
+            [
+              "y",
+              "教师从学生前缀续写出的部分"
+            ],
+            [
+              "R",
+              "可验证结果奖励，通常取 0 或 1"
+            ],
+            [
+              "β",
+              "到初始教师 π_φ0 的 KL 约束系数"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：先承认教师自己的前缀分布与学生分布不同，直接把教师用在学生前缀上会退化。",
+            "第 2 步：让学生先采样前缀 ỹ，把「学生前缀」变成教师的训练条件，使采样分布对齐。",
+            "第 3 步：教师从该前缀续写 y，用可验证的结果奖励 R 判断这段续写能否通向正确答案。",
+            "第 4 步：以 R 为目标对 φ 做策略梯度（可用组内相对优势降方差），这就是 RLVR 更新。",
+            "第 5 步：加一项到初始教师 π_φ0 的 KL 约束，防止适配过程中忘掉原有能力或坍缩到单一续写模式。"
+          ],
+          "analogy": "像让老教师去听新学生的课：先拿到学生真实的半成品答案（学生前缀），再练着往下写，写完拿去对答案（可验证奖励）；同时要求别丢掉原本的教学风格（KL 约束）。",
+          "pitfalls": [
+            "搞错优化对象：SCOUT 更新教师 φ，学生 θ 只在标准 OPD 里更新。",
+            "以为奖励是过程奖励：摘要说的是 outcome reward，只有最终结果可验证。",
+            "忽略周期性：教师适配是定期插入的，不是每个 batch 都做。",
+            "把 KL 约束对象写成 π_θ：应约束到初始教师 π_φ0，避免教师能力漂移。"
+          ],
+          "code": "import torch\n\ndef scout_teacher_step(teacher_logp, rewards, ref_logp, beta=0.01):\n    # teacher_logp / ref_logp: [N, T] 教师与初始教师逐 token log 概率\n    # rewards: [N] 验证器给出的 0/1 结果奖励\n    adv = (rewards - rewards.mean()) / (rewards.std() + 1e-8)\n    adv = adv.unsqueeze(1).expand_as(teacher_logp)\n    pg = (teacher_logp * adv).sum(dim=1)                # 策略梯度项\n    kl = (ref_logp - teacher_logp).mean(dim=1)          # 到初始教师的 KL\n    return -(pg - beta * kl).mean()",
+          "sources": [
+            {
+              "title": "On the Off-Policy Teacher in On-Policy Distillation",
+              "url": "https://huggingface.co/papers/2609.38360"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "OPD 中学生在自己策略生成的轨迹上、在稠密教师监督下学习。",
+          "作者指出 OPD 存在不对称：轨迹对学生 on-policy，对教师 off-policy。",
+          "教师通常被优化为从自己的前缀继续，但在 OPD 中要监督学生的前缀。",
+          "实验观察到前缀越长，教师续写表现越差。",
+          "SCOUT 在标准 OPD 更新之外，周期性用可验证奖励优化教师的续写能力。",
+          "SCOUT 在多种师生配置、模型规模和推理领域上持续提升 OPD 效果。"
+        ],
+        "uncertain": [
+          "摘要未给出具体提升数值、前缀长度阈值与教师适配的触发频率。",
+          "两个公式均为按摘要描述重建的通用形式，需核对原文定义（是否用前向 KL、KL 约束对象是否为初始教师）。",
+          "SCOUT 的额外采样量与总体计算开销摘要未提。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "蒸馏时教师不习惯学生写的前缀，所以作者反过来训练教师。"
+          },
+          {
+            "level": "入门",
+            "text": "On-policy 蒸馏让学生用自己生成的轨迹学习，教师对每一步给监督。但教师只会接着自己写的句子往下写，面对学生写的前缀越接越差。SCOUT 让教师也从学生前缀出发练习续写，用答案对错来强化。"
+          },
+          {
+            "level": "进阶",
+            "text": "问题的本质是分布错配：OPD 的采样分布对齐了学生，却没有对齐教师的条件分布。教师的训练前缀来自自己，推理时却要处理学生前缀，于是监督信号本身带偏差，且随前缀变长而放大。SCOUT 的解法是把教师适配也做成一个 RL 问题：学生前缀做条件，教师续写，结果奖励给信号，周期性执行。"
+          },
+          {
+            "level": "专家",
+            "text": "与「换更强教师」或「只用序列级蒸馏」相比，SCOUT 把 OPD 的失败归因定位在监督者的条件分布上，而不是学生容量或数据量，属于少见地把 RL 用在教师侧的做法：优化目标从「教师分布匹配」变成「教师在学生分布下的可达正确率」。适用边界是可验证任务与足够采样预算；开放生成无法提供 outcome reward，方法退化；周期性教师更新引入额外算力与能力漂移风险，需要 KL 约束控制。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "学生前缀为什么会让教师变差？",
+            "a": "教师的条件分布是在自己的前缀上估计的，学生前缀偏离该分布，条件项对不上，误差又随生成步数累积，所以前缀越长越差。"
+          },
+          {
+            "q": "为什么不直接换一个更强的教师？",
+            "a": "问题不是教师能力不够，而是它的条件分布与学生分布不匹配；更强的教师同样只在自己的前缀上训练过，错配照旧存在。"
+          },
+          {
+            "q": "SCOUT 为什么用 outcome reward 而不是逐步奖励？",
+            "a": "摘要里用的是可验证奖励，只有最终结果能被程序判定；逐步奖励需要额外的过程标注或奖励模型，成本和噪声都更高。"
+          }
+        ],
+        "mechanism": "教师侧更新之所以必须存在，是因为 OPD 把「监督者」当成固定先验，而监督的有效性取决于监督者是否覆盖被监督分布。SCOUT 让学生前缀成为教师的采样条件、用结果奖励强化「从学生前缀出发能推出正确答案」的行为，把教师从自己的分布迁移到学生分布上；同时学生侧仍是标准 OPD，避免两处同时漂移导致无法归因。",
+        "boundary": "方法依赖可验证奖励，因此只适用于答案可自动判定的推理任务；开放生成与无标准答案的任务给不出信号。前缀分布若变化过快，周期性适配可能追不上；额外的教师采样与 RL 更新带来明显算力开销。摘要未报告失效案例与开销上限。",
+        "analogyBoundary": "「老教师练批改草稿」的类比假设批改能力可以单独训练而学生保持不变；实际训练里学生同时在更新，教师适配的是移动目标，可能刚适配好学生分布又变了，类比没有体现这种共同演化。",
+        "misconceptions": [
+          "以为 SCOUT 是给学生加正则：它优化的是教师参数 φ。",
+          "把 off-policy 理解成「教师用了旧数据」：这里指轨迹前缀不来自教师自身的条件分布。",
+          "认为 on-policy 蒸馏只要轨迹来自学生就完全 on-policy：对教师而言仍然是 off-policy。"
+        ],
+        "ownAnalysis": "（推断）这条工作把蒸馏瓶颈从「学生学不动」搬到「教师教不对」，和 GAN 里判别器需要跟上生成器分布的想法有点像：监督者也要适配被监督者的分布。（待核实）摘要没给提升幅度和前缀长度阈值，因此无法判断收益是否值得额外的教师 RL 开销；如果我的理解成立，那么 teacher-side RL 与 student-side OPD 交替的稳定性会成为工程上的主要难点。",
+        "officialNotes": [
+          {
+            "position": "摘要称 OPD 存在「对学生 on-policy、对教师 off-policy」的根本不对称，并观察到教师续写能力随学生前缀变长而下降；SCOUT 通过周期性 RLVR 适配教师，在多种配置上持续提升 OPD。",
+            "source": "https://huggingface.co/papers/2609.38360"
+          }
+        ],
+        "interviewAnswer": "SCOUT 讲的是 on-policy 蒸馏里的一个不对称：轨迹是学生自己采的，对学生 on-policy，但对教师 off-policy，因为教师只在从自己前缀续写上训练过。结果就是前缀越长教师续写越差，稠密监督被污染。SCOUT 的做法是在标准 OPD 更新之外，周期性让教师从学生前缀生成续写，用可验证的结果奖励做 RL，把教师的条件分布迁到学生分布上，并用 KL 约束住原有能力。它只适用于答案可判定的任务，代价是额外的采样与教师更新算力。",
+        "studyPath": {
+          "prerequisites": [
+            "知识蒸馏与 KL 散度",
+            "策略梯度与优势估计",
+            "RLVR 的设定",
+            "语言模型的条件分布"
+          ],
+          "nextSteps": [
+            "复现一个最小的 OPD：学生采样、教师逐 token 给 KL 监督",
+            "给教师加上学生前缀条件，观察续写质量随前缀长度的变化",
+            "读原文核对 SCOUT 的触发频率、KL 约束与开销数据"
+          ]
+        }
+      }
+    },
+    {
+      "id": "e57c363c256725b4",
+      "tldr": "用多智能体自组织替代集中式计划，应对生产物流的变异性与扰动，按设计科学研究方法展开。",
+      "keyPoints": [
+        "生产物流面临变异性、动态依赖与运行扰动",
+        "这些挑战使集中式计划与控制方法受到质疑",
+        "论文采用设计科学研究方法（DSRM）",
+        "切入角度是多智能体自组织",
+        "摘要被截断，方法细节与结论未给出"
+      ],
+      "why": "制造业排产是 multi-agent 落地的真实战场，理解「集中式计划为何在扰动下失效」比多背一个算法更能回答系统设计题。",
+      "difficulty": "medium",
+      "tags": [
+        "agent",
+        "multi-agent",
+        "logistics",
+        "self-organization",
+        "planning"
+      ],
+      "entities": [
+        "multi-agent system",
+        "self-organizing production logistics",
+        "Design Science Research Methodology",
+        "centralized planning and control",
+        "IFIP"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "自组织生产物流方案",
+        "caption": "记住这个论证链：集中式在扰动下失效，才需要多智能体自组织，并用设计科学方法检验。",
+        "spec": {
+          "type": "flow",
+          "nodes": [
+            {
+              "label": "集中式计划",
+              "detail": "全局统一排产，遇扰动需整体重算"
+            },
+            {
+              "label": "变异性与扰动",
+              "detail": "需求波动、设备故障、工序相互依赖"
+            },
+            {
+              "label": "多智能体自组织",
+              "detail": "局部协商与自主决策替代全局重算"
+            },
+            {
+              "label": "DSRM 评估",
+              "detail": "设计—构建—评估闭环，产出设计知识"
+            }
+          ],
+          "edges": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": "失效触发"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": "改用分散控制"
+            },
+            {
+              "from": 2,
+              "to": 3,
+              "label": "按设计科学方法检验"
+            }
+          ]
+        },
+        "alt": "四步逻辑：集中式计划在变异性与扰动下失效 → 问题表现为需求波动、设备故障与工序相互依赖 → 改用多智能体自组织做局部协商 → 按设计科学研究方法迭代设计与评估"
+      },
+      "concepts": [
+        {
+          "name": "自组织生产物流 (Self-organizing Production Logistics)",
+          "readable": "不靠中央调度器统一排产，而是让工位、AGV、设备各自作为智能体，按局部规则与邻居协商决定下一步做什么，整体秩序从局部交互中涌现，从而在扰动下不必全局重算。",
+          "analogy": "像没有交警的环岛：每辆车只看眼前车流自行决定进入时机，整体却能顺畅通行；一旦有车抛锚，附近车辆自己绕开，不需要指挥中心重画一张全城路线图。",
+          "analogyBreaksDown": "环岛规则简单且目标单一（都想过路口），生产物流里各智能体的目标与约束并不一致（交期、能耗、设备寿命），局部最优可能造成死锁或振荡，类比给不出冲突消解机制。",
+          "mechanism": "关键设计是把决策权下放到能感知局部状态的实体，用局部信息换取响应速度与鲁棒性；代价是失去全局最优保证，因此需要协商协议或拍卖机制来缓解冲突与振荡。",
+          "visual": "画一张对比图：左侧是中央节点向所有设备发指令的星形结构，中央节点标红表示扰动下过载；右侧是无中心的网状结构，节点之间只有局部连边，个别节点失效后其余节点仍互相连通。",
+          "prerequisites": [
+            "多智能体系统基本概念",
+            "集中式与分散式控制的取舍",
+            "调度问题的基本目标（交期、吞吐）"
+          ],
+          "selfTest": [
+            "自组织相比集中式计划换来了什么、失去了什么？",
+            "为什么生产物流的扰动会让集中式重算变得昂贵？",
+            "局部规则可能导致哪些全局异常，比如死锁？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "集中式计划在扰动下的失效 (Centralized Planning Under Disturbance)",
+          "readable": "集中式计划把所有信息汇总到中央求解全局排产，静态环境下能接近最优；但需求波动、设备故障与工序依赖变化会让原计划迅速失效，重算耗时又长，越算越赶不上变化。",
+          "analogy": "像只由一位总调度用一张纸质时刻表指挥整个车站：平时很准，一旦某趟车晚点，所有人等他重画时刻表，而这期间站台已经乱了。",
+          "analogyBreaksDown": "车站重画时刻表至少信息是集中且准确的；生产现场的信息分散在各设备且上报有延迟，中央拿到的是过期状态，重算结果同样不可靠，类比忽略了信息延迟这一层。",
+          "mechanism": "集中式的瓶颈不在求解能力而在信息回流与重算周期：扰动发生的频率一旦接近重算周期，计划就永远处于过期状态。因此改进方向要么缩短重算周期，要么把决策下放，让局部能自行响应。",
+          "visual": "画一条时间轴：扰动在 t1 发生，中央在 t3 才算出新计划，t1–t3 之间是失控窗口；下方并列画分散控制的同一时间轴，响应延迟明显更短，但计划质量无保证。",
+          "prerequisites": [
+            "排产/调度问题的基本模型",
+            "集中式与分散式控制的对比",
+            "鲁棒性与响应性的权衡"
+          ],
+          "selfTest": [
+            "集中式计划失效的直接原因是什么？",
+            "为什么重算周期与扰动频率的相对大小更关键？",
+            "分散控制如何缩短响应延迟？"
+          ],
+          "formula": ""
+        },
+        {
+          "name": "设计科学研究方法 (Design Science Research Methodology)",
+          "readable": "一种面向「造物」的研究范式：先识别问题与需求，再设计并构建人工制品（这里是多智能体方案），然后用案例或实验评估它在真实场景里的效果，最后把经验抽象成设计知识，而不只是做一次性能对比。",
+          "analogy": "像造一座桥：先看河宽与车流（问题识别），再设计结构并施工（构建），然后做荷载试验（评估），最后把「这类跨度适合哪种结构」写成规范（设计知识）。",
+          "analogyBreaksDown": "桥梁有明确力学判据，评估可复现；生产物流的多智能体方案评估依赖具体工厂、数据与人的配合，几乎无法在同一条件下重复，因此设计知识的普适性弱得多，类比高估了结论的可迁移性。",
+          "mechanism": "它的价值在于把「工程实现」与「知识贡献」绑定：每个设计决策都要有对应评估，评估结果又反过来修正设计，避免只报告一个跑通的 demo 却说不出为什么这样设计。",
+          "visual": "画一个环形循环：问题识别 → 设计 → 构建 → 评估 → 设计知识，箭头顺时针闭合，并在环外侧标注「每次循环产出可复用的设计原则」。",
+          "prerequisites": [
+            "研究范式的基本区别（实证 vs 设计）",
+            "案例研究与仿真评估方法",
+            "系统工程的迭代流程"
+          ],
+          "selfTest": [
+            "DSRM 与只做仿真对比的论文差别在哪？",
+            "为什么 DSRM 强调评估要回到问题定义？",
+            "这类研究产出的设计知识如何被他人复用？"
+          ],
+          "formula": ""
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-contract-net-utility",
+          "name": "合同网式任务分配效用 (Contract-Net Task Allocation Utility)",
+          "category": "agent",
+          "latex": "a_j = \\arg\\max_{i \\in \\mathcal{A},\\; \\mathrm{cap}(i,j)=1} u_{ij}, \\qquad u_{ij} = v_j - c_{ij}",
+          "symbols": [
+            [
+              "j",
+              "待分配的工序或任务"
+            ],
+            [
+              "A",
+              "可参与投标的智能体集合"
+            ],
+            [
+              "v_j",
+              "任务 j 的价值，如交期权重或收益"
+            ],
+            [
+              "c_ij",
+              "智能体 i 完成任务 j 的代价（时间/能耗/成本）"
+            ],
+            [
+              "cap(i,j)",
+              "能力与权限是否满足，1 表示可行"
+            ],
+            [
+              "u_ij",
+              "净效用，越大越适合承担该任务"
+            ]
+          ],
+          "derivation": [
+            "第 1 步：集中式分配需要全局信息与统一求解，扰动下重算昂贵，于是改为让各智能体自行评估任务。",
+            "第 2 步：把任务分配写成净效用 u_ij = v_j − c_ij，价值减去自身完成代价，量纲统一后可直接比较。",
+            "第 3 步：加能力与权限约束 cap(i,j)=1，只在可行智能体集合里取效用最大者作为中标者。",
+            "第 4 步：逐任务独立取最大只是贪心，任务争用同一智能体时会冲突，需要按优先级排序或加协商轮次来缓解。"
+          ],
+          "analogy": "像小区里找人帮忙搬家具：谁有空、谁搬得动（能力约束），谁开价最低（代价），家具本身多重要（价值）；综合下来选净收益最高的那位，而不是由物业统一派单。",
+          "pitfalls": [
+            "忽略能力约束：只看开价最低会把任务派给做不了的智能体。",
+            "把贪心当全局最优：逐任务取 argmax 在资源争用时只是启发式，与全局最优存在间隙。",
+            "忘记通信开销：投标与协商本身耗时，任务粒度过细时协商成本可能超过收益。",
+            "把 v_j 当成固定收益：真实场景里交期紧迫度会让价值随时间变化。"
+          ],
+          "code": "def contract_net(tasks, agents, value, cost, capable, priority=None):\n    # 贪心合同网：按任务优先级逐个选净效用最大且可行的智能体\n    order = sorted(range(len(tasks)),\n                   key=lambda j: -(priority[j] if priority else value[j]))\n    assignment, load = {}, {i: 0 for i in agents}\n    for j in order:\n        best, best_u = None, float('-inf')\n        for i in agents:\n            if not capable(i, j):\n                continue\n            u = value[j] - cost(i, j, load[i])      # 负载会抬高实际代价\n            if u > best_u:\n                best, best_u = i, u\n        if best is not None:\n            assignment[j] = best\n            load[best] += 1\n    return assignment, load",
+          "sources": [
+            {
+              "title": "Toward Self-organizing Production Logistics: A Multi-agent Approach",
+              "url": "https://doi.org/10.1007/978-3-032-38614-4_37"
+            }
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "摘要指出生产物流面临变异性、动态相互依赖与运行扰动。",
+          "这些挑战使传统集中式计划与控制方法受到质疑。",
+          "论文采用设计科学研究方法（Design Science Research Methodology）。",
+          "论文标题表明其切入角度是多智能体自组织。",
+          "采集信号显示该文发表于 IFIP advances in information and communication technology，同行评审，当前引用数 0。"
+        ],
+        "uncertain": [
+          "输入摘要被截断（结尾为「establishes a...」），具体方法、案例与结论均缺失，需补全原文。",
+          "公式为按「多智能体自组织任务分配」重建的通用合同网效用形式，不是论文原文公式，必须核对。",
+          "论文是做真实工厂案例还是仅仿真，摘要未说明。",
+          "作者机构、实验规模与评估指标均待核实。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {
+            "level": "一句话",
+            "text": "让生产设备自己协商排产，而不是等中央系统重新计算。"
+          },
+          {
+            "level": "入门",
+            "text": "生产物流经常遇到需求波动、设备故障和工序互相牵制，中央排产一旦被打乱就要重算很久。论文提出用多个智能体自组织的方式，各自根据局部情况决策，并按设计科学研究方法做设计与评估。"
+          },
+          {
+            "level": "进阶",
+            "text": "它的着眼点是集中式计划的信息与重算瓶颈：扰动频率接近重算周期时，中央计划永远过期。多智能体方案把决策下放到设备或工位，用局部协商换取响应速度与鲁棒性，代价是失去全局最优保证，需要额外的冲突消解机制。"
+          },
+          {
+            "level": "专家",
+            "text": "放在 multi-agent 谱系里，它与合同网、拍卖式分配一脉相承：把排产看成任务分配，用净效用选承担者。区别在于生产物流的约束更硬（工序依赖、设备能力、交期），局部最优很容易造成死锁或振荡，因此规则设计与协商协议比「用几个 agent」更关键。摘要被截断，无法确认它用的是拍卖、共识还是规则式自组织，也无法判断评估是仿真还是真实产线，所以这里只讲到问题定位这一层。"
+          }
+        ],
+        "socratic": [
+          {
+            "q": "为什么集中式排产在扰动下会失效？",
+            "a": "扰动频繁时中央来不及重算，且各设备上报的状态本身有延迟，重算结果基于过期信息，计划算出来就已经不适用了。"
+          },
+          {
+            "q": "自组织的代价是什么？",
+            "a": "失去全局最优保证：局部决策可能互相冲突，造成死锁、资源争抢或整体振荡，需要额外的协商协议或优先级规则兜底。"
+          },
+          {
+            "q": "只有仿真的评估够不够？",
+            "a": "不够。DSRM 要求评估回到问题定义，仿真只能证明在假设模型下有效，真实产线的不确定性、人的干预与设备异常才是检验鲁棒性的关键。"
+          }
+        ],
+        "mechanism": "设计的核心动机是缩短「扰动发生 → 响应」的路径：集中式要经过状态上报、全局重算、指令下发三段延迟，而自组织让感知到扰动的智能体直接决策，只与邻居协商。代价是全局一致性变弱，所以必须设计冲突消解与优先级规则，否则局部贪心会把系统推入死锁。",
+        "boundary": "适用于扰动频繁、决策可局部化、智能体之间通信可靠的场景；当工序强耦合、需要严格全局最优（如强交期约束的瓶颈工序），或通信不可靠时，自组织反而更差。摘要被截断，实际边界条件与失效案例无法核对。",
+        "analogyBoundary": "环岛类比在「目标一致」这一点上失效：车辆目标单一所以局部规则能收敛，生产物流里各智能体目标不同（吞吐、能耗、交期），局部规则不保证收敛，可能长期振荡。",
+        "misconceptions": [
+          "把自组织等同于「没有规则」：恰恰相反，它依赖精心设计的局部规则与协商协议。",
+          "以为多智能体一定优于集中式：静态且信息完整时集中式仍能给出更优解。",
+          "把 agent 数量当成性能指标：决策粒度与协商开销才是关键。"
+        ],
+        "ownAnalysis": "（推断）这条工作的方法骨架大概率是「分布式任务分配 + 设计科学评估」，与合同网或拍卖式调度同源；真正的贡献应该在约束设计（工序依赖、扰动响应）而不是算法本身。（待核实）摘要被截断，我无法确认其自组织机制是市场型、共识型还是规则型，也无法确认是否做了真实产线验证；条目里的合同网效用公式是通用重建，必须与原文核对后才能引用。",
+        "officialNotes": [
+          {
+            "position": "摘要称生产物流面临变异性、动态依赖与运行扰动，传统集中式计划与控制方法受到挑战，论文按设计科学研究方法展开多智能体自组织研究（摘要在此处被截断）。",
+            "source": "https://doi.org/10.1007/978-3-032-38614-4_37"
+          }
+        ],
+        "interviewAnswer": "我会把它讲成一个「用 multi-agent 自组织替代集中式排产」的问题定位：集中式的瓶颈是信息回流加全局重算的延迟，扰动频繁时计划永远过期，所以把决策下放到设备或工位，用局部协商换响应速度。代价是失去全局最优，必须设计冲突消解规则，否则会死锁或振荡。评估上作者用设计科学研究方法，强调设计—构建—评估的闭环。需要说明的是我只看到被截断的摘要，具体机制和实验规模还没核实。",
+        "studyPath": {
+          "prerequisites": [
+            "多智能体系统与合同网/拍卖分配",
+            "生产调度与排产基础",
+            "集中式与分散式控制的取舍"
+          ],
+          "nextSteps": [
+            "补全原文，确认自组织机制与评估方法",
+            "在车间调度仿真环境里实现一个合同网原型，与集中式重排对比",
+            "整理一份「扰动频率 vs 重算周期」的响应延迟分析"
           ]
         }
       }

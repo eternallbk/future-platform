@@ -6,181 +6,180 @@
   "instructions": "scripts/agent-work-2026-10-03/INSTRUCTIONS.md",
   "items": [
     {
-      "id": "a2675c908b72c1ca",
-      "title": "Keyword Harnesses Fail Open: A Cheap Diagnostic Ladder for Tool-Use Claims in Small Language Models",
-      "category": "posttraining",
+      "id": "2464bfdb1f99b200",
+      "title": "GLARE: Generating Listening Heads with Appropriate Reactions",
+      "category": "generative",
       "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2610.02142v1",
+      "url": "https://arxiv.org/abs/2609.40317v1",
       "sources": [
         {
-          "url": "https://arxiv.org/abs/2610.02142v1",
-          "name": "arxiv"
-        },
-        {
-          "url": "https://huggingface.co/papers/2610.02142",
-          "name": "hf_papers"
-        },
-        {
-          "url": "https://arxiv.org/abs/2610.02142",
-          "name": "canonical"
-        }
-      ],
-      "tags": [
-        "cs.CL"
-      ],
-      "summary": "Keyword-matching benchmarks can credit small models for tool use they never perform. We document such a false positive in a matched-architecture pair of Spanish security language models and propose a ladder of strict, cheap diagnostics. A 661.6M parameter model (approx. 65% code/technical text; no dedicated SFT) and a 1,109M model (web-heavy multi-phase curriculum; 6B-token tool-SFT) share decoder, tokenizer, and special tokens, scoring almost identically on lenient tool-use metrics (B4: 0.660 vs. 0.650). Verbatim-reproduction checks on training examples separate them completely: the 600M emits valid tool calls with generalized arguments on 6/6 examples; the 1B does so on 0/6 across checkpoints. A first-token probe localizes the 1B's failure to a missing prior (prob. $10^{-4}$--$10^{-5}$ on ), which was erased by its web-heavy training phase. A targeted SFT recipe (diverse corpus, 5x higher learning rate, 2,202 steps, ~3.3 GPU-hours) repairs the 1B using three orders of magnitude fewer tokens than the failed phase. On all 269 corpus rows, valid emission rises from 0.100 to 0.959 (600M: 0.926). On 238 unseen prompts, the repaired 1B passes 0.536 vs. the 600M's 0.428 ($p = 0.004$). Embedding-drift checks show the repair did not move the trigger token's tied embedding (97.7% of the bf16 table remains bit-identical), meaning changes live in the surrounding network. Both models over-trigger, rarely answering negative prompts without a call (0.09 for 600M, 0.17 for repaired 1B). Factorial analyses confirm all repair configurations install the format, though suppression benefits from a diverse corpus remain a hypothesis due to seed sensitivity. This cheap diagnostic ladder costs minutes of CPU time and should gate tool-use claims on small models.",
-      "authors": [
-        "Juan S. Santillana"
-      ],
-      "publishedAt": "2026-10-01T08:00:00+08:00",
-      "knowledgeType": "method",
-      "why": "归属「后训练」方向；命中关键词 sft；疑似附带开源实现",
-      "relevanceScore": 65.4,
-      "qualitySignals": {
-        "upvotes": 0
-      },
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 65.4,
-      "planDepthScore": 65.82
-    },
-    {
-      "id": "ffccce0f53a7f7d2",
-      "title": "CARM: Cancellation-Aware Response Masking for LLM Reinforcement Learning",
-      "category": "posttraining",
-      "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2610.02039v1",
-      "sources": [
-        {
-          "url": "https://arxiv.org/abs/2610.02039v1",
-          "name": "arxiv"
-        }
-      ],
-      "tags": [
-        "cs.LG",
-        "cs.AI",
-        "cs.CL"
-      ],
-      "summary": "Recent years have witnessed the rapid adoption of reinforcement learning (RL) in large language model (LLM) post-training, with substantial gains in mathematical reasoning and code generation. In practical systems, however, policy updates and differences between rollout and training engines can make sampled responses off-policy. Sequence-level masking addresses this mismatch by deciding whether an entire response should contribute to optimization. A common masking rule uses the length-normalized geometric mean of sampled token probability ratios. Its signed log-ratios can cancel across positions, concealing substantial bidirectional policy drift. We propose \\emph{Cancellation-Aware Response Masking} (CARM), a sequence-level mask that takes the absolute value of each token log-ratio before averaging, preventing opposing probability changes from canceling. We prove that accepted responses satisfy a joint bound on the fraction of sampled-token ratios outside a prescribed band and their mean log-distance beyond its boundaries. Experiments on mathematical reasoning and code generation show that CARM improves mean@16 averaged over AIME 2024/2025/2026 and BeyondAIME by up to $3.13$ percentage points over geometric-mean masking, and increases average pass@1 across four code benchmarks by $2.88$ points over the strongest evaluated baseline. These findings support CARM as a theoretically grounded and effective method for response-level off-policy control in LLM reinforcement learning.",
-      "authors": [
-        "Yafei Zhang",
-        "Songshuo Lu",
-        "Sicong Liao",
-        "Zhi Chen",
-        "Yaohua Tang"
-      ],
-      "publishedAt": "2026-10-02T00:51:56+08:00",
-      "knowledgeType": "method",
-      "why": "归属「后训练」方向；命中关键词 post-training；疑似附带开源实现",
-      "relevanceScore": 65.4,
-      "qualitySignals": {},
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 65.4,
-      "planDepthScore": 65.82
-    },
-    {
-      "id": "6a22b0c8beb59101",
-      "title": "Network World Models as Environments for Algorithm Design on Complex Systems",
-      "category": "worldmodel",
-      "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2610.01048v1",
-      "sources": [
-        {
-          "url": "https://arxiv.org/abs/2610.01048v1",
-          "name": "arxiv"
-        }
-      ],
-      "tags": [
-        "cs.AI"
-      ],
-      "summary": "World models, which simulate an environment and predict how it changes under actions, are increasingly used in real-world applications such as robotics. Complex systems call for the same tool because the effect of an action is not immediate. Seeding nodes for a campaign, or immunizing nodes against an epidemic, changes little on its own; what matters is the outcome that unfolds over the steps that follow. Designing an algorithm that selects such actions to maximize expected performance on a task is inherently iterative, and every candidate must be scored by the outcome it produces. Obtaining that outcome has relied on simulation, whose cost becomes a bottleneck when candidates are evaluated over many sampled trajectories. We propose an action-conditioned Network World Model that learns a network's diffusion dynamics under interventions over time, applies each action to the network, and predicts the outcome that follows. It serves as a fast evaluator inside an algorithm design loop in which a coding agent designs and refines executable algorithms using feedback from full rollouts, action-level credit, and counterfactual probes over alternative interventions. Across eight network tasks and five diffusion models, the designed algorithms match or exceed the strongest reported baseline in 138 of 141 settings while enabling up to 14.5 times faster rollouts than Monte Carlo simulation. Code will be released upon acceptance.",
-      "authors": [
-        "Rishab Alagharu",
-        "Hongji Pu",
-        "Zeeshan Memon",
-        "Xinyuan Song",
-        "Yuntong Hu",
-        "Liang Zhao"
-      ],
-      "publishedAt": "2026-10-01T12:44:00+08:00",
-      "knowledgeType": "method",
-      "why": "归属「世界模型」方向；命中关键词 world model；疑似附带开源实现",
-      "relevanceScore": 65.2,
-      "qualitySignals": {},
-      "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 65.2,
-      "planDepthScore": 65.74
-    },
-    {
-      "id": "eebff77cf06b8b95",
-      "title": "iSEE: Object Permanence Through Self-Supervision",
-      "category": "worldmodel",
-      "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2610.01201v1",
-      "sources": [
-        {
-          "url": "https://arxiv.org/abs/2610.01201v1",
+          "url": "https://arxiv.org/abs/2609.40317v1",
           "name": "arxiv"
         }
       ],
       "tags": [
         "cs.CV"
       ],
-      "summary": "Object permanence, keeping track of an object's identity and position while it is occluded, is central to video representations that track, predict and plan. Trackers that achieve it learn from boxes, track identities and visibility labels. On the other hand, self-supervised object-centric methods discover objects without labels: through slot attention, it represents a video as slots that bind to objects and follow them across frames. However, these slots are lost under occlusion, making the desired permanence impossible. Reasoning permanence is a hard problem because it requires to detect when an object becomes occluded, re-identify when object reappears, and keep the object's hidden position continuous, using reapperance as the only learning cue. To address this, we propose iSEE, a novel framework that offers all three aforementioned requirements, without any labels whatsoever. We built iSEE using the following three proposed components: (i) Object evidence modelling: a slot's attention, compared with its own past, reveals when its object is hidden. (ii) Appearance-position separation: two slot streams let the appearance be held for re-identification while the position keeps changing. (iii) Permanence from reappearance: a walker follows the hidden object's position, trained only on where the object reappears. On LA-CATER static, iSEE returns a reappearing object to its own slot after 86% of occlusions, against 32% for SlotContrast, and localises it while hidden within 4.1 mAP of the label-trained SoTA RAM. The two streams also allow downstream planning, with the position stream as the action of a world model. Project page: https://insait-institute.github.io/iSEE/",
+      "summary": "While talking head generation has advanced rapidly, generating natural listener behavior in dyadic conversations, which know when to react, how to react, and with what type of response, remains underexplored. Existing dyadic datasets lack fine-grained listener reaction annotations, and prevailing evaluation metrics inherited from talking-head and video generation measure visual realism rather than whether a listener reacted appropriately. We address these gaps along three aspects. First, we curate a listening-head-specific dataset built from RealTalk and Seamless Interaction, comprising approximately 147 hours of paired speaker-listener videos with 64,557 event-level reaction annotations across six categories: nodding, head shaking, smiling, laughing, frowning, and surprised. Second, we introduce an audio-driven baseline built on a flow-matching transformer, namely GLARE, with prosody conditioning derived from Qwen2-Audio and a temporal reaction loss that explicitly supervises frame-wise reactions. Third, we propose a reaction-oriented evaluation protocol that jointly measures reaction occurrence (R-F1), temporal alignment (R-tIoU), asymmetric temporal deviation (R-ATD), and reaction-region visual quality (R-FID), giving a more behaviorally grounded assessment than visual-quality-only metrics. Experiment results show consistent gains over prior listening-head methods in both visual fidelity and reaction-level metrics, suggesting that reaction-aware data, modeling, and evaluation are critical for natural listening behavior.",
       "authors": [
-        "Pramish Paudel",
-        "Ajad Chhatkuli",
-        "Luc Van Gool",
-        "Danda Pani Paudel"
+        "Zikai Liao",
+        "Yumin Suh",
+        "Yi Ouyang",
+        "Yi-Lun Lee",
+        "Yi-Hsuan Tsai",
+        "Zhaozheng Yin"
       ],
-      "publishedAt": "2026-10-01T15:12:08+08:00",
+      "publishedAt": "2026-09-30T05:53:47+08:00",
       "knowledgeType": "method",
-      "why": "归属「世界模型」方向；命中关键词 world model；疑似附带开源实现",
-      "relevanceScore": 65.2,
+      "why": "归属「生成式模型」方向；命中关键词 video generation；领域核心工作",
+      "relevanceScore": 79.1,
       "qualitySignals": {},
       "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 65.2,
-      "planDepthScore": 65.74
+      "codeAvailable": false,
+      "planRelevanceScore": 79.1,
+      "planDepthScore": 70.4
     },
     {
-      "id": "99373303e219b8c5",
-      "title": "FutureWorlds: Learning Robotic World Models from Alternative Futures",
-      "category": "worldmodel",
+      "id": "ce8adac751035736",
+      "title": "Mapping the RAG Landscape: A Four Axis Taxonomy of Efficiency, Defense, Interactivity, and Reasoning",
+      "category": "rl",
       "channel": "arxiv",
-      "url": "https://arxiv.org/abs/2610.01019v1",
+      "url": "https://arxiv.org/abs/2610.01936v1",
       "sources": [
         {
-          "url": "https://arxiv.org/abs/2610.01019v1",
+          "url": "https://arxiv.org/abs/2610.01936v1",
           "name": "arxiv"
         }
       ],
       "tags": [
-        "cs.CV",
-        "cs.RO"
+        "cs.AI"
       ],
-      "summary": "Robotic world models predict action-conditioned future scenes, providing a foundation for understanding action outcomes. However, turning alternative predictions into useful learning signals remains challenging: similar candidates limit informative quality comparisons, while diverging trajectories require persistent maintenance of their individual histories. We introduce FutureWorlds, a framework that unifies candidate construction, history maintenance, and learning from relative quality. Built on a multimodal discrete autoregressive model, FutureWorlds uses diverse beam search during reinforcement learning to construct candidate futures that balance confidence and diversity. Candidate-specific bounded memory preserves scene states and ensures that generation and policy scoring use matching histories. We further propose MemSPO (Memory-Conditioned Search-Guided Policy Optimization), which converts video trajectory rewards into group-relative advantages to optimize the world model. On RT-1, BridgeV2, and RoboCasa, FutureWorlds reduces LPIPS for 32-frame predictions by 14.78%, 20.84%, and 9.12%, respectively, relative to the strongest baseline on each dataset. Under fixed evaluation configurations, only 200 MemSPO updates further improve generation quality and support continued prediction beyond the training horizon. Memory ablations, decoding sensitivity analysis, and optical-flow evaluation show that these gains extend beyond visual quality to more accurate motion prediction and more consistent object states. Project page and code: https://github.com/Alexander-wu/FutureWorlds.",
+      "summary": "Large Language Models (LLMs) have demonstrated remarkable fluency across many tasks but remain limited by their static, parameter bound knowledge and their susceptibility to hallucinating information. Retrieval Augmented Generation (RAG) addresses these issues by incorporating external retrieval into the generation process, grounding model outputs in verifiable and up to date sources. While prior surveys primarily focus on core RAG architectures and standard pipelines, recent research explores broader challenges and capabilities that extend beyond these foundational designs. This survey provides a consolidated and structured examination of contemporary RAG developments, organizing the field into a four axis taxonomy: improving retrieval efficiency, strengthening robustness and security, supporting user driven and interactive workflows, and enabling multi step or complex reasoning. We formalize key components of the RAG framework and review methods spanning dense and sparse retrieval, fusion strategies, embedding optimizations, and reinforcement learning based retrieval policies, highlighting how these advances influence practical deployment and system design. We also synthesize evaluation practices, domain specific applications, and architectural variants such as Naive, Advanced, and Modular RAG. Finally, we outline persistent challenges related to retrieval quality, reliability, domain adaptation, scalability, and explainability, and identify opportunities for building RAG systems that are more reliable, adaptable, and transparent.",
       "authors": [
-        "Hao Wu",
-        "Shengju Qian",
-        "Weiyan Wang",
-        "Fan Xu",
-        "Fan Zhang",
-        "Yuanpeng He",
-        "Qingsong Wen",
-        "Yuxuan Liang"
+        "Meghana Sunil",
+        "Shravya V",
+        "Shravan Venkatraman",
+        "Joe Dhanith PR"
       ],
-      "publishedAt": "2026-10-01T12:04:31+08:00",
+      "publishedAt": "2026-10-02T00:06:05+08:00",
       "knowledgeType": "method",
-      "why": "归属「世界模型」方向；命中关键词 world model；疑似附带开源实现",
-      "relevanceScore": 65.1,
+      "why": "归属「强化学习」方向；命中关键词 reinforcement learning；领域核心工作",
+      "relevanceScore": 73.0,
       "qualitySignals": {},
       "peerReviewed": false,
-      "codeAvailable": true,
-      "planRelevanceScore": 65.1,
-      "planDepthScore": 65.7
+      "codeAvailable": false,
+      "planRelevanceScore": 73.0,
+      "planDepthScore": 69.45
+    },
+    {
+      "id": "03b7d33155ec3826",
+      "title": "Prefill-Free Cross-Family KV Cache Transfer for Heterogeneous Multi-Agent LLMs",
+      "category": "agent",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.32259",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.32259",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.32259",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Recent multi-agent LLM systems increasingly combine heterogeneous models for specialized agent roles. However, text-based communication requires each receiver to prefill shared context already processed by the sender. Reusing the sender's key-value (KV) cache avoids this redundancy, but prefill-free transfer across model families must handle differences in tokenization, model depth, and KV representations. To address these issues, we propose HeteroFold, a prefill-free cross-family KV cache transfer method that keeps both the sender and receiver frozen. HeteroFold aligns model structures, maps the sender cache into the receiver space, and calibrates it to preserve receiver behavior. Across six transfer directions, HeteroFold achieves the best cache-transfer performance on all four long-context benchmarks and most short-context settings. It also matches text-based communication on the multi-agent benchmark. At 32K context length, Llama-3.1-8BrightarrowMinistral-3-14B transfer is 10.7times faster than Native Prefill and 1.18--1.47times faster than the state-of-the-art prefill-free baselines, Dense Latent and KV Ridge. These results show that HeteroFold enables efficient cross-family KV reuse without receiver prefill.",
+      "authors": [
+        "Vincent-Daniel Yun",
+        "Woosang Lim",
+        "Haneul Yoo",
+        "Sungjoo Yoo",
+        "Murali Annavaram",
+        "Sai Praneeth Karimireddy"
+      ],
+      "publishedAt": "2026-09-29T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「Agent 理论与实践」方向；命中关键词 agent、multi-agent、agent benchmark；社区热度 1；领域核心工作",
+      "relevanceScore": 96.1,
+      "qualitySignals": {
+        "upvotes": 1
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 96.1,
+      "planDepthScore": 69.44
+    },
+    {
+      "id": "c11ece1b5ce8f921",
+      "title": "Beyond Prediction: Steering VLM Agents with Retrospective World Modeling",
+      "category": "rl",
+      "channel": "arxiv",
+      "url": "https://arxiv.org/abs/2609.39101v1",
+      "sources": [
+        {
+          "url": "https://arxiv.org/abs/2609.39101v1",
+          "name": "arxiv"
+        }
+      ],
+      "tags": [
+        "cs.AI",
+        "cs.LG"
+      ],
+      "summary": "Equipping VLM agents with world modeling capabilities has shown strong potential for complex reasoning and long-horizon planning, while reducing the dependence of policy learning on costly real-world interactions. Existing methods mainly rely on prospective simulation to predict the consequences of candidate actions. However, this forward-only paradigm focuses on what will happen next and provides limited constraints for verifying whether an action is causally consistent with the observed state transition, which can lead to plausible-looking but physically incoherent behaviors. In this paper, we challenge the view of world modeling as only prospective prediction and introduce Retrospective World Modeling, a new agent learning paradigm that enables agents to reason backward by estimating the retrospective attribution distribution $P(\\hat{a}{t}|s_t, s{t+1})$ for the action that most likely caused a given transition. Based on this capability, we formulate the Self-Consistency Reward (SCR), an intrinsic signal that measures the probabilistic consistency between the policy action and the retrospective explanation. Integrating SCR into reinforcement learning provides dense transition-level feedback and steers agents toward behaviors that are both task-effective and physically grounded. Extensive experiments across diverse agentic tasks show that our method substantially improves policy robustness and generalization over prospective-only world modeling baselines.",
+      "authors": [
+        "Yongjiang Liu",
+        "Jie Zhang",
+        "Haoyue Zhang",
+        "Jingcai Guo",
+        "Deze Zeng",
+        "Song Guo"
+      ],
+      "publishedAt": "2026-09-29T18:41:04+08:00",
+      "knowledgeType": "method",
+      "why": "归属「强化学习」方向；命中关键词 reinforcement learning；领域核心工作",
+      "relevanceScore": 71.9,
+      "qualitySignals": {},
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 71.9,
+      "planDepthScore": 69.04
+    },
+    {
+      "id": "46e46e5e396eb9ef",
+      "title": "E-MoE: Enhanced Mixture-of-Experts for Non-Factorized Diffusion Language Models",
+      "category": "generative",
+      "channel": "hf_papers",
+      "url": "https://huggingface.co/papers/2609.37533",
+      "sources": [
+        {
+          "url": "https://huggingface.co/papers/2609.37533",
+          "name": "hf_papers"
+        },
+        {
+          "url": "https://arxiv.org/abs/2609.37533",
+          "name": "canonical"
+        }
+      ],
+      "tags": [],
+      "summary": "Masked diffusion models (MDMs) generate sequences by progressively unmasking several tokens per denoising step, but their reverse process is typically factorized over positions, limiting sample quality in the few-step regime where diffusion's speed advantage over autoregressive decoding matters most. A recent line of work introduces a continuous Gaussian latent, trained as a variational autoencoder, to capture correlations across positions, but such approaches are prone to posterior collapse, where the latent is silently ignored. We propose Enhanced Mixture-of-Experts (E-MoE), which builds the reverse process as a mixture of factorized distributions over a discrete shared latent given by the expert-routing decisions of a Mixture-of-Experts (MoE) backbone, without increasing active parameters over the factorized baseline. Across synthetic multi-modal benchmarks, binarized MNIST, and LM1B, E-MoE improves few-step generation over factorized baselines.",
+      "authors": [
+        "Arseny Ivanov",
+        "Alexander Kolesov",
+        "Alexander Korotin",
+        "Ivan Oseledets",
+        "Mikhail Goncharov"
+      ],
+      "publishedAt": "2026-09-29T08:00:00+08:00",
+      "knowledgeType": "method",
+      "why": "归属「生成式模型」方向；命中关键词 diffusion；领域核心工作",
+      "relevanceScore": 74.7,
+      "qualitySignals": {
+        "upvotes": 16
+      },
+      "peerReviewed": false,
+      "codeAvailable": false,
+      "planRelevanceScore": 74.7,
+      "planDepthScore": 68.82
     }
   ]
 }

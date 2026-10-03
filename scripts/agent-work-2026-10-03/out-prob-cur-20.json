@@ -1,0 +1,142 @@
+{
+  "batchId": "prob-cur-20",
+  "entries": [
+    {
+      "id": "cross-entropy-backward",
+      "tldr": "考点是 CE 的解析梯度：dL/dlogits = softmax − onehot（mean 再除 N），多标签必须换 BCEWithLogits。",
+      "restated": "输入 logits[N,C] 与 targets：多分类是类别索引 [N]，多标签是 [N,C] 的 0/1；输出标量（mean/sum）或逐样本损失 [N]（none），并给出 dL/dlogits 的 [N,C] 解析梯度。人工题面给了语义与结论，未附数值样例。",
+      "approach": [
+        {
+          "step": "朴素写法（错在哪）",
+          "detail": "按定义写 CE = -log(exp(z_y) / Σ_j exp(z_j))：先算 softmax 再取 log，指数可能上溢、log(0) 直接 -inf；推梯度时还要展开 ∂p_i/∂z_j = p_i(δ_ij − p_j) 这个 C×C Jacobian，再乘 -1/p_y，代价 O(N·C²) 且中间项全靠手算，极易漏项。"
+        },
+        {
+          "step": "正确写法：fused log_softmax + gather",
+          "detail": "关键观察一：F.log_softmax 把 max 减法与 logsumexp 融在一个 kernel 里，永远不显式算 exp 大数，也不会 log(0)。关键观察二：损失只用到 target 位置的那一个 log 概率，用 gather 按索引取值即可，前向严格等价于 -log softmax[target]，代价 O(N·C)。reduction 分三支：mean 除 N、sum 不除、none 返回 [N]。"
+        },
+        {
+          "step": "反向：不要展开 C×C Jacobian",
+          "detail": "把 Jacobian 代进 dL/dz，非目标类之间、目标类与其它类的交叉项会相消（用了 Σ_i p_i = 1 与 Σ_i δ_iy = 1 这两个恒等式），最后只剩 dL/dz = softmax(z) − onehot(y)，逐元素 O(N·C)，完全不需要矩阵乘法；mean 归约时再整体除以 N。这一结论对 ±1e4 这种极端 logits 也成立，因为它是概率减法、天然有界。"
+        },
+        {
+          "step": "多标签分支：softmax 换成逐元素 sigmoid",
+          "detail": "多标签时各类不互斥（一张图可以同时是猫和狗），softmax 强制概率和为 1 的假设直接错，必须对每个 logit 独立做 sigmoid + BCE，框架里用 fused 的 BCEWithLogits。此时梯度是 sigmoid(z) − y，且 mean 归约要除以 N·C（numel）而不是 N，两个分母不要混。"
+        }
+      ],
+      "complexity": {
+        "time": "O(N·C)（前向 log_softmax + gather；反向一次逐元素减法）",
+        "space": "O(N·C)（log_probs 与梯度都和 logits 同形）",
+        "why": "代价来自对 [N,C] 全矩阵做归一化，以及与 C 线性的逐元素回传，不是朴素推法里的 O(N·C²) Jacobian。"
+      },
+      "code": {
+        "language": "python",
+        "source": "import torch\nimport torch.nn.functional as F\n\n\ndef cross_entropy_manual(logits, targets, reduction='mean'):\n    '''多分类 CE = -log softmax(logits)[target]。\n\n    logits: [N, C] float；targets: [N] int64\n    返回：标量（mean/sum）或 [N]（none）\n    '''\n    if logits.dim() != 2 or targets.dim() != 1:\n        raise ValueError('expect logits [N, C] and targets [N]')\n    if logits.size(0) != targets.size(0):\n        raise ValueError('batch mismatch: %d vs %d' % (logits.size(0), targets.size(0)))\n    if reduction not in ('mean', 'sum', 'none'):\n        raise ValueError('reduction must be mean/sum/none, got %r' % reduction)\n    if logits.size(0) == 0:                      # 空 batch：mean 会得 nan，显式短路\n        return logits.new_zeros(0) if reduction == 'none' else logits.new_zeros(())\n    log_probs = F.log_softmax(logits, dim=-1)                       # [N, C]\n    picked = log_probs.gather(1, targets.unsqueeze(1)).squeeze(1)   # [N]\n    loss = -picked                                                  # [N]\n    if reduction == 'mean':\n        return loss.mean()\n    if reduction == 'sum':\n        return loss.sum()\n    return loss\n\n\ndef cross_entropy_backward(logits, targets, reduction='mean'):\n    '''解析梯度：dL/dlogits = softmax(logits) - onehot(target)，mean 时再 /N。\n\n    返回 [N, C]，与 logits 同形。\n    '''\n    probs = torch.softmax(logits, dim=-1)                                    # [N, C]\n    onehot = F.one_hot(targets, num_classes=logits.size(-1)).to(probs.dtype)  # [N, C]\n    grad = probs - onehot\n    if reduction == 'mean':\n        grad = grad / logits.size(0)\n    return grad\n\n\ndef binary_cross_entropy_manual(logits, targets, reduction='mean'):\n    '''多标签：C 个互相独立的 sigmoid 二分类，用 fused BCEWithLogits。\n\n    logits/targets: [N, C]；targets 为 0/1（软标签也可以）。\n    '''\n    if logits.shape != targets.shape:\n        raise ValueError('expect same shape, got %s vs %s' % (tuple(logits.shape), tuple(targets.shape)))\n    return F.binary_cross_entropy_with_logits(logits, targets.to(logits.dtype), reduction=reduction)\n\n\ndef binary_cross_entropy_backward(logits, targets, reduction='mean'):\n    '''sigmoid + BCE 的解析梯度：dL/dlogits = sigmoid(logits) - target。\n\n    mean 归约除以 N*C（numel）：每个标签都是独立的一个二分类样本。\n    '''\n    grad = torch.sigmoid(logits) - targets.to(logits.dtype)\n    if reduction == 'mean':\n        grad = grad / logits.numel()\n    return grad\n\n\ndef _demo():\n    torch.manual_seed(0)\n    logits = torch.randn(4, 5, dtype=torch.double, requires_grad=True)\n    targets = torch.tensor([0, 3, 4, 1])\n    loss = cross_entropy_manual(logits, targets)          # mean\n    loss.backward()\n    ours = cross_entropy_backward(logits.detach(), targets)\n    ref = F.cross_entropy(logits.detach(), targets)\n    print('loss ours=%.10f torch=%.10f' % (loss.item(), ref.item()))\n    print('grad max|diff|=%.3e' % (ours - logits.grad).abs().max().item())\n    print('row sums of grad:', [round(v, 12) for v in ours.sum(dim=-1).tolist()])\n\n    bl = torch.randn(3, 6, dtype=torch.double, requires_grad=True)\n    bt = (torch.rand(3, 6, dtype=torch.double) > 0.5).to(torch.double)\n    b_loss = binary_cross_entropy_manual(bl, bt)\n    b_loss.backward()\n    print('bce max|diff|=%.3e' % (binary_cross_entropy_backward(bl.detach(), bt) - bl.grad).abs().max().item())\n\n    print('per-sample loss:', [round(v, 6) for v in cross_entropy_manual(logits.detach(), targets, 'none').tolist()])\n    print('empty mean:', cross_entropy_manual(torch.zeros(0, 5), torch.zeros(0, dtype=torch.long)).item())\n    print('extreme logits (1e4 vs 0):', cross_entropy_manual(torch.tensor([[1e4, 0.0], [-1e4, 0.0]]), torch.tensor([1, 1])).item())\n\n\nif __name__ == '__main__':\n    _demo()\n",
+        "walkthrough": [
+          {
+            "note": "先立形状契约：多分类 logits [N,C] + targets [N]，多标签 targets [N,C]；入口处把维度、batch 长度、reduction 取值全部校验并 raise。手撕题最常见的扣分不是算法，而是 silent 地接受非法输入然后返回一个看似正常的数。"
+          },
+          {
+            "note": "空 batch 单独短路：N=0 时 mean 会得到 nan、gather 也可能在索引上出问题，这里直接返回 0（标量）或空张量 [0]，让上层训练循环可以跳过这一步。"
+          },
+          {
+            "note": "F.log_softmax(logits, dim=-1) 是整个实现的支点：它内部做 max 减法与 logsumexp，所以 logits 里出现 ±1e4 也不会溢出；换成 torch.log(torch.softmax(...)) 会先算 exp 大数再取 log，答案直接是 inf / nan。"
+          },
+          {
+            "note": "gather(1, targets.unsqueeze(1)).squeeze(1) 把 [N,C] 沿 dim=1 按索引收集成 [N]：gather 要求 index 与输入同维，所以先 unsqueeze 成 [N,1]，取完再 squeeze 回 [N]；取负即逐样本 CE。"
+          },
+          {
+            "note": "reduction 三分支决定了后面梯度的缩放：mean 除以样本数 N、sum 原样、none 保留 [N]。cross_entropy_backward 里的分支必须与之严格一致，否则解析梯度会和 autograd 差一个常数因子。"
+          },
+          {
+            "note": "cross_entropy_backward 就是那个要推导的结论：probs = softmax(logits) [N,C]，onehot = F.one_hot(targets, C) 转成同 dtype 的 [N,C]，两者相减即 dL/dlogits；mean 归约时再整体除以 N。面试时要说清它是 Jacobian 交叉项相消的结果，而不是凑巧。"
+          },
+          {
+            "note": "多标签用 fused BCEWithLogits，不要手写 -[y·log σ(z) + (1−y)·log(1−σ(z))]：σ 饱和到 0 或 1 时 log 会爆。它的解析梯度是 σ(z) − y，注意 mean 除以 numel = N·C，和前面多分类的 N 不是同一个分母。"
+          },
+          {
+            "note": "_demo 用 autograd 把结论验回来，而不是“看着对”：double 精度下比较手写损失与 F.cross_entropy、手写梯度与 logits.grad 的最大绝对误差，并检查梯度每行之和为 0（softmax − onehot 必然行和为 0）；再跑一遍极端 logits 和空 batch 的边界。这是现场自证梯度正确最快的办法，也可以换成 torch.autograd.gradcheck。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "N=0（空 batch）：mean 会得到 nan，代码显式返回 0，训练循环可直接跳过",
+        "C=1 或某个样本只有一个候选类：softmax 恒为 1，梯度恒为 0，退化成没有信息量的常数",
+        "logits 全相等：probs 均匀 = 1/C，梯度 = 1/C − onehot，模长有界（说明 CE 梯度不会爆炸）",
+        "logits 出现 ±1e4 这类极值：必须用 fused log_softmax；log(softmax) 会得到 -inf / nan",
+        "targets 越界或 dtype 不是 int64：gather / one_hot 直接报错（题面未要求 ignore_index）",
+        "多标签 targets 是 0~1 软标签：BCEWithLogits 仍然成立，但 onehot + CE 的写法完全失效",
+        "多标签 mean 的分母是 N·C（numel）而不是 N，写错会让损失与梯度整体差 C 倍"
+      ],
+      "pitfalls": [
+        "混淆 log_softmax 与 log(softmax)：后者先算概率再取 log，数值上会 inf/nan，语义上也只是恰好接近",
+        "多标签场景误用 softmax（把互斥假设硬套到可以多标签的任务上）",
+        "mean 归约时忘记除以 batch size N",
+        "多标签 BCE 的 mean 除以 N·C（numel）而不是 N，梯度整体差 C 倍",
+        "推梯度时只对 -log p_y 求导，忘了 p_y 依赖全部 logits，漏掉 Jacobian 交叉项就得不到 p − y",
+        "gather 的 index 忘记 unsqueeze / squeeze，拿到 [N,1] 后广播出错误形状",
+        "把 softmax 里的 max 减法当成可选优化：不减 max 时 exp 上溢，训练一开始就 nan",
+        "one_hot 返回 long，与 float 的 probs 相减要么报错，要么在低精度下悄悄丢精度"
+      ],
+      "followUps": [
+        "为什么 PyTorch 的 CrossEntropyLoss 要把 log_softmax 与 nll_loss 融成一个 op？",
+        "加了 label smoothing 之后 dL/dlogits 变成什么形状？",
+        "序列任务里 labels 的 padding 置 -100，ignore_index 如何影响 mean 的分母？",
+        "focal loss 相对 CE 的梯度多了哪一项？",
+        "为什么 CE 对 logits 的梯度每行之和恒为 0？这一性质在优化上意味着什么？",
+        "如何用有限差分或 gradcheck 验证你手写的 backward？",
+        "二分类用单个 logit + BCEWithLogits，与用两个 logit + CE 等价吗？差在哪里？"
+      ],
+      "variations": [
+        "二分类：单个 logit + sigmoid + BCE",
+        "多标签：逐元素 sigmoid + BCEWithLogits（本题第二段）",
+        "label smoothing CE / focal loss（改的是目标分布与逐样本权重）",
+        "带温度的 KD 蒸馏：soft target 的 CE，除以 T² 才是对 logits 的梯度",
+        "序列 CE：logits [N,T,V] reshape 成 [N*T,V]，labels 的 pad 位置置 -100",
+        "大词表下的 sampled softmax / 分层 softmax",
+        "从 CE 推到 KL：CE = H(p) + KL(p‖q)，硬标签时 H(p)=0"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "交叉熵反向传播的形状流",
+        "caption": "记住两件事：形状全程是 [N,C] 没变过，梯度就是「概率减 onehot」，mean 归约再除 N。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='交叉熵前向与反向的形状流转'>\n<rect x='12' y='12' width='230' height='44' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='24' y='30' font-size='13' font-weight='bold' fill='currentColor'>logits  [N, C]</text>\n<text x='24' y='48' font-size='13' fill='currentColor'>未过激活的原始分数</text>\n<line x1='127' y1='56' x2='127' y2='66' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='127,68 123,60 131,60' fill='var(--line-1)'/>\n<rect x='12' y='68' width='230' height='44' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='24' y='86' font-size='13' font-weight='bold' fill='currentColor'>probs = softmax(logits, -1)</text>\n<text x='24' y='104' font-size='13' fill='currentColor'>逐行归一，fused 版更稳</text>\n<line x1='127' y1='112' x2='127' y2='122' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='127,124 123,116 131,116' fill='var(--line-1)'/>\n<rect x='12' y='124' width='230' height='44' rx='8' fill='none' stroke='var(--accent)' stroke-width='1.8'/>\n<text x='24' y='142' font-size='13' font-weight='bold' fill='currentColor'>grad = probs - onehot(target)</text>\n<text x='24' y='160' font-size='13' fill='currentColor'>形状不变，逐元素相减</text>\n<line x1='127' y1='168' x2='127' y2='178' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='127,180 123,172 131,172' fill='var(--line-1)'/>\n<rect x='12' y='180' width='230' height='44' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='24' y='198' font-size='13' font-weight='bold' fill='currentColor'>mean 归约：grad = grad / N</text>\n<text x='24' y='216' font-size='13' fill='currentColor'>sum / none 不再缩放</text>\n<line x1='250' y1='12' x2='250' y2='224' stroke='var(--line-1)' stroke-width='1.2'/>\n<text x='262' y='30' font-size='13' fill='currentColor'>例：C = 3，target = 1</text>\n<text x='262' y='56' font-size='13' fill='currentColor'>probs  = [0.2, 0.7, 0.1]</text>\n<text x='262' y='82' font-size='13' fill='currentColor'>onehot = [0.0, 1.0, 0.0]</text>\n<text x='262' y='108' font-size='13' fill='currentColor'>grad   = [0.2, -0.3, 0.1]</text>\n<text x='262' y='134' font-size='13' fill='currentColor'>每行和 = 0：概率再分配</text>\n<text x='262' y='164' font-size='13' fill='currentColor'>多标签：sigmoid - y</text>\n<text x='262' y='190' font-size='13' fill='currentColor'>mean 除 N·C（numel）</text>\n<text x='262' y='216' font-size='13' fill='currentColor'>极端 logits 走 fused</text>\n</svg>",
+        "alt": "左侧竖排流程：logits [N,C] 经 softmax 得到 probs [N,C]，减去 onehot(target) 得到同形状的梯度，mean 归约时再除以 N；右侧给出 C=3、target=1 时 probs、onehot、grad 的数值与行和为 0 的性质。"
+      },
+      "selfTest": [
+        "写出 CE 对 logits 的梯度；并说清 mean 归约时多分类的分母是 N、多标签 BCE 的分母是 N·C，为什么不同？",
+        "把手写实现的 F.log_softmax 换成 torch.log(torch.softmax(...))，logits = [1e4, 0] 时会输出什么？为什么？",
+        "多标签任务里把 BCEWithLogits 换成 softmax + CE 会发生什么？请从梯度角度解释（提示：各类概率被强制和为 1）。",
+        "为什么 CE 对 logits 的梯度每一行之和恒为 0？这个性质对优化意味着什么？"
+      ],
+      "keyPoints": [
+        "CE = -log softmax(logits)[target]，框架里用 fused log_softmax + nll",
+        "多标签分类用 BCEWithLogits，不用 softmax+CE",
+        "反向传播结论：dL/dlogits = softmax(logits) - onehot（mean 归约时再除以 N）",
+        "字节、爱奇艺等面经反复出现“交叉熵公式”与“手写交叉熵反向传播”",
+        "多分类 mean 除以 N，多标签 BCE 的 mean 除以 N·C（numel），两个分母不要混"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（cross-entropy-backward）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题面直接给出 CE = -log softmax(logits)[target]，本实现的损失与之逐元素一致",
+          "人工题面直接给出 dL/dlogits = softmax(logits) - onehot(target)，并注明 mean 归约再除以 N",
+          "人工题面直接要求多标签情形用 BCEWithLogits，而不是 softmax + CE",
+          "手工推导的梯度可以用 torch.autograd 对齐验证（代码 _demo 里就是这么做的）",
+          "F.log_softmax 与 log(softmax) 数值稳定性不同：前者内部做 max 减法与 logsumexp"
+        ],
+        "uncertain": [
+          "人工题干未给具体输入形状与数值样例，[N,C] / [N] 是按 PyTorch CrossEntropyLoss 的通用约定写的，不是题面明说",
+          "题干未提 ignore_index / label smoothing / class weight，本题解按不实现处理，只在 followUps 里提出",
+          "空 batch 且 reduction='mean' 时我选择返回 0（工程取舍）；PyTorch 官方返回 nan，若要求严格对齐应改回 nan",
+          "人工 referenceSolution 只给了多分类与多标签的前向；多标签反向导数 sigmoid − y 与 mean 除 numel 是我按其定义补的，属超出人工原文的补充",
+          "代码按 torch 2.x 语义写（F.one_hot、BCEWithLogits 的 reduction 参数），题干未声明框架版本"
+        ]
+      }
+    }
+  ]
+}

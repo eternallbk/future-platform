@@ -1,0 +1,140 @@
+{
+  "batchId": "prob-cur-22",
+  "entries": [
+    {
+      "id": "sliding-window",
+      "tldr": "共用窗口骨架：right 扩张、left 只右移；lc3 跳 last[ch]+1，lc76 靠 missing 记账。",
+      "restated": "题意澄清：这是两道字符串题而不是张量题——输入是 Python str，可看作长度 n 的字符序列 s[0..n-1]（换成张量视角就是 [n] 的离散 token 序列，无 padding，n = len(s)）。lc3：输入 s（允许空串），输出一个 int，即最长无重复字符子串的长度。lc76：输入 s 与 t（m = len(t)，题面未给样例），输出 s 中覆盖 t 全部字符（含重复次数）的最短子串本身，无解返回空串。人工题干只有一句要求，未规定字符集、n 上限与样例，因此按通用约定实现。",
+      "approach": [
+        {
+          "step": "暴力/易错写法：枚举所有左右端点再逐个校验",
+          "detail": "lc3 的第一反应是 for i / for j 枚举全部 O(n^2) 个子串，再用 set 判重，整体 O(n^3)；lc76 更糟——枚举 O(n^2) 个子串，每个还要 O(m) 与 Counter(t) 对账，是 O(n^2·m)。这类写法在面试里几乎必然被打断，因为题目要求的是线性。更隐蔽的半成品是「用 set 判重 + while 收缩」：思路对，但 lc3 里左指针只能一格一格挪，遇到长重复段会退化成 O(n^2) 的挪动次数，也丢失了本题最想考的「跳」这一手。"
+        },
+        {
+          "step": "为什么可以用窗口：单向移动的单调性",
+          "detail": "两个指针都只会向右走：right 每轮加一，left 只在「当前窗口已经不合法/还能更短」时右移，且从不回退。于是每个字符最多入窗一次、出窗一次，总移动次数 O(n)。这就是人工 keyPoints 里「每个字符最多进出窗口各一次」的准确含义，也是 lc3 与 lc76 共用的骨架。判断「窗口是否合法」的代价必须做到 O(1)，否则均摊不成立——lc3 用「字符最后出现位置」，lc76 用「还缺多少个字符」的计数器，都是 O(1) 查询。"
+        },
+        {
+          "step": "lc3 的正确设计：哈希表记最后出现位置，left 一步跳到 last[ch]+1",
+          "detail": "维护 last[ch] = ch 最近一次出现的下标。right 扫到 ch 时，若 ch 上次出现的位置 last[ch] 仍然落在当前窗口内（即 last[ch] >= left），那么 s[left..right] 里出现了两个 ch，唯一能保住「更长的候选窗口」的做法是让 left 直接跳到 last[ch]+1：这样窗口内恰好只剩一个 ch，而且跳过的 [left, last[ch]] 这些起点不可能再产出更长的无重复窗口（它们都包含下标 last[ch]，而 right 又包含 ch），所以跳过不丢解。因为 left 是「跳到某位置」而不是「一格一格挪」，lc3 连 while 都不需要，一个 if 就够。窗口的合法性判定就是 last[ch] >= left，不用 set 去重，天然 O(1)。"
+        },
+        {
+          "step": "lc76 的正确设计：need/missing 记账 + missing==0 时收缩",
+          "detail": "把 t 的字符需求记成 need = Counter(t)，另设 missing = 还需凑齐的字符总个数（初值 len(t)，含重数）。right 扫到 ch：若 need[ch] > 0，说明它是当前还缺的，missing 减一；随后无论命中与否都执行 need[ch] -= 1，于是 need[ch] 可以为负，负值表示窗口内该字符相对 t 有盈余——这个「负数盈余」的记账方式让收缩时能原样归还（need[out] += 1，若归还后 need[out] > 0 说明覆盖被破坏，missing 加一）。当 missing == 0，说明 s[left..right] 已覆盖 t，此时必须先记录答案（此刻窗口仍合法）再移动 left 去尝试更短的窗口，直到 missing > 0 退出 while。和 lc3 的区别在于：lc3 只要求「无重复」，所以能一步跳到安全位置；lc76 要求「最小」，每个可能成为最优解的 left 都要被真正枚举到，因此收缩必须一格一格来——这正是两题骨架相同而收缩方式不同的原因。"
+        }
+      ],
+      "complexity": {
+        "time": "O(n)（lc3）与 O(n + m)（lc76），n = len(s)，m = len(t)",
+        "space": "O(|Σ|)：lc3 的 last 与 lc76 的 need 各存字符表规模；lc76 返回子串需 O(答案长度) 的切片空间",
+        "why": "right 走 n 步、left 全程只右移 ≤ n 步，哈希计数查询均摊 O(1)，故每个字符进出窗口各一次。"
+      },
+      "code": {
+        "language": "python",
+        "source": "from collections import Counter\n\n\ndef length_of_longest_substring(s: str) -> int:\n    '''lc3：最长无重复字符子串。\n\n    s 是长度 n 的字符序列 s[0..n-1]（无 padding，n = len(s)）；\n    返回最长无重复窗口的长度（int）。不变量：s[left..right] 内字符互不相同。\n    '''\n    left = 0                  # 窗口左端（闭区间），只向右移动\n    last = {}                 # last[ch] = ch 最后一次出现的下标\n    best = 0\n    for right, ch in enumerate(s):\n        # 只有上次出现位置仍在窗口内才算重复；last[ch] < left 说明它已被移出窗口，\n        # 若此时仍让 left 起跳，左指针会回退，窗口既变长也不满足不变量。\n        if ch in last and last[ch] >= left:\n            left = last[ch] + 1\n        last[ch] = right      # 无论是否重复，都必须刷新最后出现位置\n        best = max(best, right - left + 1)\n    return best\n\n\ndef min_window(s: str, t: str) -> str:\n    '''lc76：s 中覆盖 t 全部字符（含重数）的最短子串。\n\n    n = len(s)，m = len(t)；返回子串本身，无解返回空串。\n    不变量：missing == 0 当且仅当 s[left..right] 已经覆盖 t。\n    '''\n    if not s or not t:        # 边界：空 s 必然无解；t 为空时「覆盖」没有定义\n        return ''\n    need, missing = Counter(t), len(t)\n    left = 0\n    best = (0, float('inf'))  # (start, end) 闭区间；end = inf 表示还没找到可行窗口\n    for right, ch in enumerate(s):\n        if need[ch] > 0:      # 这个字符当前还缺，算命中一个，missing 减一\n            missing -= 1\n        need[ch] -= 1         # 允许为负：负数表示窗口内该字符相对 t 有盈余\n        while missing == 0:   # 窗口已覆盖 t，收缩左端去尝试更短的可行窗口\n            if right - left < best[1] - best[0]:\n                best = (left, right)   # 先记录（此刻仍覆盖 t），再移动 left\n            out = s[left]\n            need[out] += 1    # 把 s[left] 归还出窗口\n            if need[out] > 0:  # 归还后仍然缺它，说明覆盖被破坏\n                missing += 1\n            left += 1\n    if best[1] == float('inf'):\n        return ''             # 从未出现 missing == 0，s 覆盖不了 t\n    return s[best[0]:best[1] + 1]\n\n\nif __name__ == '__main__':\n    assert length_of_longest_substring('abcabcbb') == 3   # 'abc'\n    assert length_of_longest_substring('') == 0           # 空串\n    assert length_of_longest_substring('bbbbb') == 1      # 全相同字符\n    assert length_of_longest_substring('pwwkew') == 3     # 'wke'\n    assert min_window('ADOBECODEBANC', 'ABC') == 'BANC'\n    assert min_window('a', 'a') == 'a'\n    assert min_window('a', 'aa') == ''                    # t 有重数需求，无解\n    print('lc3 + lc76 self-test passed')\n",
+        "walkthrough": [
+          {
+            "note": "依赖与形状说明：整份实现只用标准库 collections.Counter，不涉及 torch；这里没有张量，输入就是 str，n = len(s) 相当于张量视角下 [n] 的离散 token 序列（无 padding，所以每个位置都有效）。人工 referenceSolution 的算法被完整保留：lc3 是 last 字典 + last[ch] >= left 判断 + 一步跳；lc76 是 Counter(t) + missing 计数 + missing == 0 时收缩。下面按「块」讲设计，而不是逐行念。"
+          },
+          {
+            "note": "lc3 的窗口与状态：left 是闭区间左端，right 由 enumerate 提供，窗口恒为 s[left..right]；last 只存「最近一次出现」，best 存「历史最优长度」。三者的关系是：不变量保证窗口内无重复，right - left + 1 就是当前合法窗口长度，取 max 即为答案。"
+          },
+          {
+            "note": "lc3 的 if 块（本题第一个扣分点）：条件是 ch in last and last[ch] >= left，两个合取项都不能省。省略 last[ch] >= left 会踩人工 pitfalls 里那条「左指针回退」——例如 s = 'abba'，扫到最后一个 a 时 last['a'] = 0，但此时 left 已经推到 2，若盲目 left = last['a'] + 1 = 1，左指针从 2 退回 1，窗口被错误地放大，还会得到 4 这种超过 n 的假答案。省略 ch in last 则字典查不到键，Python 直接 KeyError。"
+          },
+          {
+            "note": "lc3 的 last[ch] = right 必须在 if 之后无条件执行：它记录的是「最近一次出现」，无论该字符是被接受进窗口还是刚触发了一次跳跃，当前位置都是最新的。如果只在「不重复」分支里更新，重复字符的位置就永远是旧值，后续会反复触发跳跃。"
+          },
+          {
+            "note": "lc76 的记账语义：need[ch] 的符号是这份实现的核心。正数表示窗口内还缺这么多个 ch，0 表示刚好够，负数表示盈余（窗口里多了）。missing 是「所有正数需求的汇总」，因此 missing == 0 等价于窗口覆盖 t。right 扩张时先判断 need[ch] > 0 再自减，保证只有「真正补上缺口」的那次命中才会让 missing 减一，多余的同字符只把 need 压得更负，不会把 missing 减成负数。"
+          },
+          {
+            "note": "lc76 的 while 块（本题第二个扣分点）：顺序是「先记录答案、再归还并移动 left」。人工 pitfalls 点名要小心更新顺序——need[out] += 1 是归还，必须发生在移动 left 之前，且判断用的是归还之后的 need[out] > 0：归还后仍是正数，说明这个字符在窗口外还有缺口，覆盖被破坏，missing 加一，while 退出。这个「先加后判」的顺序对应人工 pitfalls 所说的「先减后加写错」，也就是 right 侧扩张时的自减和 left 侧收缩时的回加，两侧的语义不能互换。"
+          },
+          {
+            "note": "lc76 的收尾：best 用 (start, end) 元组存闭区间，初始 end 为 inf 当哨兵，最后靠 best[1] == inf 判断「从未覆盖成功」并返回空串——这就是人工 pitfalls 里「返回空串的条件判断遗漏」。另外比较用的是严格小于，所以长度相同的多个最短覆盖子串会保留最早出现的那个；再补一个 t 为空串的守卫：此时 missing 恒为 0，while 会在 right 还没走完时反复收缩，left 超过 right 后 s[left] 越界，所以显式返回空串（LeetCode 约束 t 长度 ≥ 1，这一行只是把实现补成健壮的）。"
+          },
+          {
+            "note": "自测块：七个 assert 覆盖了 lc3 的三类边界（典型串 / 空串 / 全相同 / 跳跃回退诱饵 pwwkew）与 lc76 的三类边界（标准样例 / 单字符命中 / 重数不足无解）。把这七个断言跑通，基本可以确认两侧指针和 need 符号语义都没写反。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "lc3：s 为空串，返回 0（循环不执行，best 保持 0）",
+        "lc3：s 全为同一字符，如 'bbbbb'，返回 1（每轮都触发跳跃，窗口长度恒为 1）",
+        "lc3：先出现长重复段再出现新字符，如 'pwwkew'，检验 left 跳跃后不会漏掉更长的候选窗口",
+        "lc3：last[ch] < left 的历史位置（如 'abba' 末尾的 a），不得让 left 回退",
+        "lc76：s 中根本不含 t 的某个字符，missing 永不归零，必须返回空串",
+        "lc76：t 含有重复字符（如 t = 'aa'）时，need 的重数语义必须生效，s = 'a' 应返回空串",
+        "lc76：s 恰好等于 t，或 t 就是整个 s 的最短覆盖，答案等于 s 本身（切片右端点要 +1）",
+        "lc76：答案出现在字符串末尾，如 'ADOBECODEBANC' 的 'BANC'，收缩循环在 right 到达 n-1 时仍要完成一次比较",
+        "lc76：t 为空串（LeetCode 约束下不会出现），实现显式返回空串以避免 while 收缩越界"
+      ],
+      "pitfalls": [
+        "lc3 未判断 last[ch] >= left，导致左指针回退（人工 pitfalls 原话）",
+        "lc76 收缩时更新 need 的顺序写错（先减后加）——右侧扩张先 need[ch] -= 1，左侧收缩先 need[out] += 1 再判断 > 0，两侧不能互换（人工 pitfalls 原话）",
+        "lc76 返回空串的条件判断遗漏（人工 pitfalls 原话）：必须用哨兵判断「从未找到可行窗口」",
+        "lc3 把 last[ch] = right 写进 if 分支内部，导致重复字符的位置永远是旧值，窗口长度被反复截短",
+        "lc3 用 while 逐个挪 left 去重（改成 set 版本）虽然答案正确，但丢掉了「一步跳到 last[ch]+1」这一考点，且挪动次数退化为 O(n) 以上的常数",
+        "lc76 的 best 比较写成 right - left + 1 与闭区间长度混用，或切片写成 s[best[0]:best[1]] 漏掉右端点 +1，答案会少一个字符",
+        "lc76 在 while 中先移动 left 再记录答案，记录下来的窗口已经不覆盖 t，会得到非法的更短答案",
+        "语言细节：Java/C++ 用 int 数组代替哈希表时忘记先清空或把下标存成 0 而不是 -1，导致首次出现被误判为重复"
+      ],
+      "followUps": [
+        "lc3 如果要求返回子串本身（不是长度），代码要怎么改？（用 best 记录 left/right，注意只在长度严格变大时更新）",
+        "如果字符集固定为 ASCII，用长度 128 的数组代替 dict，复杂度与常数各有什么变化？",
+        "如果 s 是流式输入（不能随机访问、只能顺序读），这套窗口还能用吗？需要额外保存什么？",
+        "lc76 若要求返回所有最短覆盖子串，或要求字典序最小的那个，怎么在不破坏 O(n) 的前提下处理？",
+        "把 lc76 改成「覆盖 t 的最短子序列」而不是子串，滑动窗口还成立吗？（不成立，要换成贪心 + 预处理 next 位置表）",
+        "如何证明 left 从不回退就能保证不漏解？（提示：以 s[left..right] 覆盖 t 为前提，left 增大时窗口只会更短）"
+      ],
+      "variations": [
+        "lc340 至多包含 K 个不同字符的最长子串（lc3 的推广，last 换成计数 + 收缩条件变成「不同字符数 > K」）",
+        "lc1004 最大连续 1 的个数 III（窗口合法性条件变成「窗口内 0 的个数 ≤ K」）",
+        "lc424 替换后的最长重复字符、lc209 长度最小的子数组（固定条件、收缩到不满足为止）",
+        "lc438 找到字符串中所有字母异位词 / lc567 字符串的排列（固定长度窗口 + 计数比较，是 lc76 的「等长」特例）",
+        "lc992 K 个不同整数的子数组（恰好 K 个 = 至多 K 个 − 至多 K−1 个，滑动窗口的差分技巧）",
+        "lc727 最小窗口子序列（子序列版，窗口不适用，改用双指针贪心 + 回溯最小化）"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "滑动窗口指针与不变量",
+        "caption": "两个指针都不回退，所以最坏也是线性；lc3 能跳着收缩，lc76 只能一格一格收缩。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><text x='240' y='17' text-anchor='middle' font-size='14' font-weight='bold' fill='currentColor'>滑动窗口：两个指针都只向右移动</text><text x='140' y='36' text-anchor='middle' font-size='13' fill='var(--accent)'>窗口 s[left..right]</text><rect x='24' y='44' width='42' height='36' rx='4' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='45' y='68' text-anchor='middle' font-size='16' fill='currentColor'>a</text><rect x='72' y='44' width='42' height='36' rx='4' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='93' y='68' text-anchor='middle' font-size='16' fill='currentColor'>b</text><rect x='120' y='44' width='42' height='36' rx='4' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='141' y='68' text-anchor='middle' font-size='16' fill='currentColor'>c</text><rect x='168' y='44' width='42' height='36' rx='4' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='189' y='68' text-anchor='middle' font-size='16' fill='currentColor'>a</text><rect x='216' y='44' width='42' height='36' rx='4' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='237' y='68' text-anchor='middle' font-size='16' fill='currentColor'>b</text><rect x='264' y='44' width='42' height='36' rx='4' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='285' y='68' text-anchor='middle' font-size='16' fill='currentColor'>c</text><rect x='312' y='44' width='42' height='36' rx='4' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='333' y='68' text-anchor='middle' font-size='16' fill='currentColor'>b</text><rect x='360' y='44' width='42' height='36' rx='4' fill='none' stroke='var(--line-1)' stroke-width='2'/><text x='381' y='68' text-anchor='middle' font-size='16' fill='currentColor'>b</text><rect x='68' y='40' width='146' height='44' rx='6' fill='none' stroke='var(--accent)' stroke-width='2.5'/><text x='45' y='94' text-anchor='middle' font-size='13' fill='currentColor'>0</text><text x='93' y='94' text-anchor='middle' font-size='13' fill='currentColor'>1</text><text x='141' y='94' text-anchor='middle' font-size='13' fill='currentColor'>2</text><text x='189' y='94' text-anchor='middle' font-size='13' fill='currentColor'>3</text><text x='237' y='94' text-anchor='middle' font-size='13' fill='currentColor'>4</text><text x='285' y='94' text-anchor='middle' font-size='13' fill='currentColor'>5</text><text x='333' y='94' text-anchor='middle' font-size='13' fill='currentColor'>6</text><text x='381' y='94' text-anchor='middle' font-size='13' fill='currentColor'>7</text><polygon points='93,100 87,114 99,114' fill='currentColor'/><text x='93' y='130' text-anchor='middle' font-size='13' fill='currentColor'>left=1</text><polygon points='189,100 183,114 195,114' fill='currentColor'/><text x='189' y='130' text-anchor='middle' font-size='13' fill='currentColor'>right=3</text><text x='45' y='130' text-anchor='middle' font-size='13' fill='currentColor'>已出窗</text><path d='M10 144 L470 144' stroke='var(--line-1)' stroke-width='1.5'/><text x='10' y='164' font-size='13' fill='currentColor'>lc3：ch='a' 与窗口内的 0 号重复 → left = last['a']+1 = 1，一步跳到位</text><text x='10' y='186' font-size='13' fill='currentColor'>lc76：missing==0 才收缩，need 回加 &gt; 0 则 missing+1</text><text x='10' y='208' font-size='13' fill='currentColor'>共同点：right 移 n 次、left 共移 ≤ n 次 → 均摊 O(n)</text><text x='10' y='230' font-size='13' fill='currentColor'>差别：lc3 靠 last 一步跳；lc76 要逐个收缩才能取到最小窗口</text></svg>",
+        "alt": "字符串 abcabcbb 上的滑动窗口：right 扫到下标 3 的 a 时，last['a']=0 仍在窗口内，left 从 0 一步跳到 1，窗口收缩为 s[1..3]='bca'；图下方说明 lc3 的 last 一步跳、lc76 的 missing==0 才逐个收缩，以及两者 left/right 都不回退因而均摊 O(n)。"
+      },
+      "selfTest": [
+        "手写 lc3 时，如果把条件写成 if ch in last: left = last[ch] + 1（去掉 last[ch] >= left），在 s = 'abba' 上会得到什么错误结果？为什么？",
+        "lc76 中 need[ch] 为什么允许变成负数？如果改成 need[ch] = max(0, need[ch] - 1)，收缩时还能正确判断「覆盖被破坏」吗？",
+        "为什么 lc3 可以用 if 一步跳、而 lc76 必须用 while 一格一格收缩？请从「窗口合法性」与「目标函数是否单调」两个角度回答。",
+        "把 lc76 的 while 里「记录 best」放到移动 left 之后，最短覆盖子串会变成什么？在 s = 'ADOBECODEBANC', t = 'ABC' 上验证一下。"
+      ],
+      "keyPoints": [
+        "lc3 用哈希表记录字符最后出现位置，左指针跳到 last[ch]+1",
+        "lc76 用 need/have 计数与 missing 变量，missing==0 时收缩窗口找最小",
+        "两者都是 O(n)，每个字符最多进出窗口各一次",
+        "补充：lc3 只要求「窗口内无重复」，所以能一步跳到 last[ch]+1；lc76 要求「最小」，必须真正枚举每个可行左边界，因此只能逐个收缩"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（sliding-window）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工 referenceSolution 里 lc3 使用 last 字典并以 last[ch] >= left 作为跳跃条件，lc76 使用 Counter(t) 与 missing 计数并在 missing == 0 时收缩；本实现与这两段算法逐句一致，只额外补了空串守卫。",
+          "lc3 与 lc76 的 right 每轮加一、left 全程只右移，因此每个字符最多入窗一次、出窗一次，均摊 O(n)（lc76 另加 O(m) 建表）。",
+          "lc76 中 need[ch] 允许为负，负值表示窗口内该字符相对 t 的盈余，因此收缩归还时用 need[out] > 0 判断覆盖是否被破坏。",
+          "人工 pitfalls 三条（lc3 左指针回退、lc76 need 更新顺序、lc76 返回空串条件遗漏）已全部保留并各补了一条成因说明。"
+        ],
+        "uncertain": [
+          "人工题干未给具体输入形状与规模上限：这里按 LeetCode 通用约定处理（lc3 的 s 允许空串；lc76 的 s、t 长度 ≥ 1），并对 t 为空串补了返回空串的守卫，属于边界加固，不改变算法语义。",
+          "人工题干未给样例与字符集：实现按任意 Python 字符（含 Unicode）工作，复杂度中的 |Σ| 指实际出现的不同字符数，而非固定 128/256。",
+          "张量形状是按任务要求给出的等价视角（s 视作 [n] 的离散 token 序列，无 padding）；原题是纯字符串题，不存在真实张量维度，这一点在 restated 中已注明。",
+          "lc76 在存在多个长度相同的最短覆盖子串时返回哪一个，题干未规定；本实现用严格小于比较，保留最早出现的那个，与人工 referenceSolution 的写法一致。",
+          "人工 referenceSolution 未对 t 为空串做保护（missing 恒为 0 会让 while 收缩越界），本实现补了 if not s or not t 分支，此处与人工代码存在一行差异，已说明理由。"
+        ]
+      }
+    }
+  ]
+}

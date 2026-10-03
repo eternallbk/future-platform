@@ -1,0 +1,137 @@
+{
+ "batchId": "prob-cur-05",
+ "entries": [
+  {
+   "id": "rope-implementation",
+   "tldr": "RoPE：按相邻两维一组预计算 cos/sin 缓存，对 q/k 做二维旋转；点积只依赖相对位置差。",
+   "restated": "题面要求两件事：① 实现 RoPE 的 cos/sin 缓存与作用函数，且明确「相邻两维一组」；② 解释它为什么具有相对位置性质。按通用约定（题面未给具体形状）：输入 x 为 [B, H, S, dh]，B=batch、H=头数、S=序列长度、dh=每头维度且为偶数；缓存按 dim=dh 建，cos/sin 形状 [S, dh/2]。apply_rope 输出与输入同形状 [B, H, S, dh]：对每个位置 m，把维度按 (2i, 2i+1) 配对，用角度 θ=m·base^(-2i/dh) 做二维旋转；base 常取 10000。期望不改变形状与范数，只改变相位。",
+   "approach": [
+    {
+     "step": "朴素写法（不够用）",
+     "detail": "最直觉的实现是在 forward 里用 for m in range(S) 逐位置现算 cos(m·inv_freq)、再把该位置的两维向量旋转一次。它不够：① 每个 batch、每个 head、每一层都要重算一遍角度与三角函数，而角度只由 (位置 m, 维度对 i) 决定，与 B/H/层无关，这部分工作被平白放大了B·H·L 倍；② Python 层 for 循环把 1 次向量化算子拆成 S 次小算子，kernel 启动与调度开销占主导；③ 长上下文下反复调用 sin/cos 还会引入不必要的浮点误差。另一类常见错法是用位置嵌入的加法思路把可学习 pos_embedding 加到 token 上，那不是 RoPE，也让「相对位置」这条性质直接消失。"
+    },
+    {
+     "step": "关键观察",
+     "detail": "RoPE 的旋转角是 θ(m, i) = m · inv_freq[i]，其中 inv_freq[i] = base^(-2i/dh)，自由变量只有 (m, i)，因此整份 cos/sin 可以在建模型时一次性预计算成 [S, dh/2] 两张表，推理/训练时只做查表 + 逐元素乘加；又因为只对最后一维做逐元素运算、只在序列维索引，cos/sin 通过 cos[None, None] 变成 [1,1,S,dh/2] 就能广播到任意 [B,H,S,dh/2]。旋转量还必须是「位置 m 的绝对函数」而不是增量：任意长度截断后同一 (m, i) 的 cos/sin 逐位相同，所以缓存可以建长、切片复用，也解释了为什么 q 与 k 必须用同一份缓存。"
+    },
+    {
+     "step": "正确实现（本题交付）",
+     "detail": "三段式：build_rope_cache 用 torch.outer(pos, inv_freq) 得到 [S, dh/2] 的角度矩阵，取 cos/sin；apply_rope 用 x[..., 0::2] / x[..., 1::2] 取出相邻两维的 x1、x2，按 [x1·c - x2·s, x1·s + x2·c] 旋转，再用 stack(dim=-1).flatten(-2) 把交错布局还原成[B,H,S,dh]，保证「相邻两维」这一配对约定与预训练权重一致；rope_qk 只建一次缓存同时作用 q、k。为什么这样就有相对位置性质：每个维度对是同一角度旋转的二维向量，而二维旋转保内积，于是 <R(mθ)q, R(nθ)k> 只剩相位差 (m-n)θ，打分矩阵只由 m-n 决定 —— 这就是「天然相对位置」。"
+    }
+   ],
+   "complexity": {
+    "time": "O(B·H·S·dh) 逐元素旋转；缓存一次性 O(S·dh/2)，摊薄后近似 O(1)",
+    "space": "O(S·dh/2) 缓存（与 B、H 无关）+ O(1) 额外中间量",
+    "why": "代价来自对 q/k 每个元素各做 4 次乘加（B·H·S·dh 次），缓存只存 [S, dh/2] 的 cos/sin 各一份，可在所有层与所有头之间共享。"
+   },
+   "code": {
+    "language": "python",
+    "source": "import torch\n\n\ndef build_rope_cache(seq_len, dim, base=10000.0, device=\"cpu\"):\n    \"\"\"预计算 RoPE 的旋转量，返回 (cos, sin)，形状都是 [seq_len, dim//2]（相邻两维一组）。\"\"\"\n    if dim <= 0 or dim % 2 != 0:\n        raise ValueError(\"dim 必须是正偶数：相邻两维一组才能做二维旋转，收到 %r\" % (dim,))\n    if seq_len < 0:\n        raise ValueError(\"seq_len 不能为负，收到 %r\" % (seq_len,))\n    if base <= 0:\n        raise ValueError(\"base 必须为正，否则不同维度对的 inv_freq 失去单调性\")\n    pos = torch.arange(seq_len, device=device).float()           # [S] 绝对位置\n    idx = torch.arange(0, dim, 2, device=device).float()         # [dim/2] 维度对的编号 i\n    inv_freq = 1.0 / (base ** (idx / dim))                       # [dim/2] 每对的角频率\n    freqs = torch.outer(pos, inv_freq)                           # [S, dim/2]，角度 θ=m·inv_freq\n    return freqs.cos(), freqs.sin()                              # 两个 [S, dim/2]\n\n\ndef apply_rope(x, cos, sin):\n    \"\"\"把 RoPE 作用到最后两维 [S, dh] 上；x: [B, H, S, dh]，dh 为偶数。返回同形状张量。\"\"\"\n    dh = x.shape[-1]\n    if dh % 2 != 0:\n        raise ValueError(\"最后一维 dh 必须是偶数（相邻两维一组），收到 %d\" % dh)\n    if cos.shape[-1] != dh // 2 or sin.shape[-1] != dh // 2:\n        raise ValueError(\"cos/sin 最后一维应为 dh//2=%d，收到 %d / %d\"\n                         % (dh // 2, cos.shape[-1], sin.shape[-1]))\n    seq_len = x.shape[-2]\n    if cos.shape[0] < seq_len:\n        raise ValueError(\"cos/sin 只有 %d 个位置，装不下 %d 个 token，请重建缓存\"\n                         % (cos.shape[0], seq_len))\n    c = cos[:seq_len].to(x.dtype)[None, None]    # [1,1,S,dh/2]，广播到 batch 与 head\n    s = sin[:seq_len].to(x.dtype)[None, None]    # 与 x 的前两维无关，缓存可全层共享\n    x1, x2 = x[..., 0::2], x[..., 1::2]          # 相邻两维一组：偶数维 x1、奇数维 x2\n    o1 = x1 * c - x2 * s                         # 二维旋转：x1' = x1·cos - x2·sin\n    o2 = x1 * s + x2 * c                         #            x2' = x1·sin + x2·cos\n    return torch.stack((o1, o2), dim=-1).flatten(-2)   # [B,H,S,dh/2,2] -> [B,H,S,dh]\n\n\ndef rope_qk(q, k):\n    \"\"\"q、k 形状均为 [B, H, S, dh]；共享同一份 cos/sin，返回旋转后的 (q, k)。\"\"\"\n    seq_len, dh = q.shape[-2], q.shape[-1]\n    if k.shape[-1] != dh:\n        raise ValueError(\"q/k 的最后一维必须相同\")\n    cos, sin = build_rope_cache(seq_len, dh, device=q.device)\n    return apply_rope(q, cos, sin), apply_rope(k, cos, sin)\n\n\ndef _reference_apply_rope(x, cos, sin):\n    \"\"\"人工 referenceSolution 的写法，用于逐位对齐的回归测试。\"\"\"\n    x1, x2 = x[..., 0::2], x[..., 1::2]\n    c, s = cos[None, None], sin[None, None]\n    o1 = x1 * c - x2 * s\n    o2 = x1 * s + x2 * c\n    return torch.stack([o1, o2], dim=-1).flatten(-2)\n\n\nif __name__ == \"__main__\":\n    torch.manual_seed(0)\n    B, H, S, dh = 2, 3, 7, 16\n    x = torch.randn(B, H, S, dh, dtype=torch.float64)\n    cos, sin = build_rope_cache(S, dh)\n    assert cos.shape == (S, dh // 2) and sin.shape == (S, dh // 2)\n    # 与人工 referenceSolution 逐位一致（算法必须同源，否则权重不匹配）\n    assert torch.equal(apply_rope(x, cos, sin), _reference_apply_rope(x, cos, sin))\n    # 位置 0 处 θ=0：cos=1、sin=0，旋转是恒等变换\n    assert torch.equal(cos[0], torch.ones(dh // 2, dtype=cos.dtype))\n    assert torch.equal(sin[0], torch.zeros(dh // 2, dtype=sin.dtype))\n    # 旋转保范：每组二维向量的模长不变\n    grouped = x.reshape(B, H, S, dh // 2, 2)\n    after = apply_rope(x, cos, sin).reshape(B, H, S, dh // 2, 2)\n    assert torch.allclose(grouped.pow(2).sum(-1), after.pow(2).sum(-1), atol=1e-9)\n    # 相对位置性质：q/k 一起从 0 开始编号时，打分只依赖 m-n\n    q = torch.randn(1, 1, S, dh, dtype=torch.float64)\n    k = torch.randn(1, 1, S, dh, dtype=torch.float64)\n    qr, kr = rope_qk(q, k)\n    scores = (qr @ kr.transpose(-1, -2))[0, 0]\n    long_cos, long_sin = build_rope_cache(S + 3, dh)\n    q_ext = torch.cat([q, torch.randn(1, 1, 3, dh, dtype=torch.float64)], dim=-2)\n    k_ext = torch.cat([k, torch.randn(1, 1, 3, dh, dtype=torch.float64)], dim=-2)\n    qe = apply_rope(q_ext, long_cos[: S + 3], long_sin[: S + 3])\n    ke = apply_rope(k_ext, long_cos[: S + 3], long_sin[: S + 3])\n    assert torch.allclose(scores, (qe @ ke.transpose(-1, -2))[0, 0][:S, :S], atol=1e-12)\n    # 边界：S=1、缓存被切片复用、奇数维报错\n    assert apply_rope(x[:, :, :1], cos, sin).shape == (B, H, 1, dh)\n    assert apply_rope(torch.randn(1, 1, S + 2, dh), long_cos, long_sin).shape == (1, 1, S + 2, dh)\n    try:\n        build_rope_cache(4, 13)\n        raise AssertionError(\"dim=13 应该报错\")\n    except ValueError:\n        pass\n    print(\"RoPE 自测全部通过：\", tuple(apply_rope(x, cos, sin).shape))\n",
+    "walkthrough": [
+     {
+      "note": "build_rope_cache 是唯一的「预计算」入口：pos 只依赖序列长度、idx 只依赖维度，outer 之后 [S, dh/2] 的第 (m, i) 格就是位置 m 在第 i 个维度对上的角度 m·base^(-2i/dh)。三个前置校验（偶数正 dim、非负 seq_len、正 base）是为了让非法输入在建模阶段就报错，而不是等到长上下文外推时才出现 NaN。"
+     },
+     {
+      "note": "apply_rope 的入口先做形状校验，再取 seq_len 把 cos/sin 截到当前序列长度：这一步让同一份「建长了的」缓存可以服务不同长度的前向（decode 时 S=1 也走同一条路径），同时用 .to(x.dtype) 保证 fp16/bf16 训练时缓存类型跟得上输入。"
+     },
+     {
+      "note": "cos[:seq_len][None, None] 把 [S, dh/2] 变成 [1,1,S,dh/2]，这是注释里强调的广播关键：前两维是 1，才能和任意 batch、任意 head 的 x[..., 0::2] 直接相乘，不必显式 expand，也不必为每个 head 复制一份缓存。"
+     },
+     {
+      "note": "x[..., 0::2] 与 x[..., 1::2] 完成「相邻两维一组」的切分，随后两行就是二维旋转矩阵[[c,-s],[s,c]] 作用于 (x1, x2)。这一步是全题的语义核心：换成分前后半（x[..., :dh/2] 与x[..., dh/2:]）也能编译、也能保范数，但与人工参考实现不是同一套配对，权重不兼容。"
+     },
+     {
+      "note": "最后 stack((o1, o2), dim=-1) 得到 [B,H,S,dh/2,2]，flatten(-2) 把交错对压回 [B,H,S,dh]，使输出第 2i、2i+1 维恰好是这一对旋转后的两个分量 —— 形状与布局都还原，调用方无需重排。"
+     },
+     {
+      "note": "rope_qk 只建一次缓存、同时旋转 q 和 k（两者必须同源，否则相对位置性质会被破坏），这就是实际模型里 RoPE 的挂载点：注意力打分前对 q、k 各做一次旋转，v 不旋转。"
+     },
+     {
+      "note": "__main__ 里的断言是可执行的规格说明：与人工 referenceSolution 逐位相等、位置 0 处恒等、逐组范数不变、S=1 与缓存切片复用的形状、以及「q/k 从 0 开始编号时打分只依赖 m-n」的相对位置检验；奇数 dim 必须抛 ValueError。"
+     }
+    ]
+   },
+   "edgeCases": [
+    "dim 为奇数（如 dh=13）：无法两两配对，直接抛 ValueError，比静默丢一维更安全。",
+    "seq_len = 0：返回空的 [0, dh/2] 缓存；seq_len = 1 时只有位置 0（θ=0，恒等旋转）。",
+    "当前序列长度大于缓存长度：必须重建或扩展缓存，实现里显式抛错而不是静默用错误角度（另一条路是 F.pad 补齐）。",
+    "decode 阶段 S=1 而缓存长度仍是训练时的 S_max：靠 cos[:seq_len] 切片复用，位置索引不能从 0 重开。",
+    "device / dtype 不一致：pos、idx、base 在一个设备上算出缓存后，要与 q/k 同设备；fp16 下缓存应降到同 dtype 以免自动提升。",
+    "x 非连续（如 transpose 之后）：[..., 0::2] 会返回非连续视图，stack+flatten 的输出是连续张量，语义不受影响。",
+    "B=1 或 H=1：广播仍然成立，不需要特判。"
+   ],
+   "pitfalls": [
+    "奇偶拆分方式与实现不一致（相邻 vs 前后半）导致与预训练权重不匹配：同一次前向不会报错，只会让 loss 曲线先降后崩。",
+    "忘记 cos/sin 需要广播到 [1,1,S,dh/2]：形状对不上会直接报错，写 [None, :] 则会静默对到 head 维上，更危险。",
+    "把 base 写死导致长上下文外推失败：改 base（NTK-aware）会改变所有位置的角度，等于换了一套位置编码，必须配合微调或 YaRN 之类插值。",
+    "inv_freq 的下标写成 arange(1, dim+1, 2) 或 arange(0, dim/2) 再乘 2 却漏了 /dim，角度整体错一个尺度，高频变低频。",
+    "q 与 k 用了两套不同长度的缓存（例如 k 用历史长度），或 decode 时位置从 0 重开，相对距离被悄悄改写成常量。",
+    "缓存按「最大序列长度」存成 [1,1,S,dh/2] 这种带广播维的形状，切到更短序列后位置索引错位（a 到 b 的 m 序号被改成 0 开始）。",
+    "对 x 做原地旋转（x[..., 0::2] = ...）而没注意到 0::2 与 1::2 在原张量上会互相覆盖，结果第二个分量读到已被改写的值。"
+   ],
+   "followUps": [
+    "为什么旋转必须在 q、k 上同时做、而 v 不做？如果只旋转 q 会怎样？（打分不再只依赖 m-n，位置信息变成单向偏置）",
+    "把「相邻两维一组」改成 GPT-NeoX 式的前后半分组，两种实现在什么条件下等价？不等价时怎么从一种权重换成另一种？",
+    "怎么用复数乘法 z·e^{iθ} 重写 apply_rope？torch.view_as_complex 要求最后一维为 2 且连续，怎么配合 stack/flatten 使用？",
+    "RoPE 为什么不能直接外推到训练长度之外？NTK-aware 与 YaRN 分别改了公式里的哪个量？",
+    "位置 id 不是 0..S-1（packed 样本、多模态图文、padding 跳过）时，缓存索引该怎么改成按 position_ids 查表？",
+    "KV Cache 推理时，已算过的 key 还需要重新旋转吗？新增 token 的每层旋转量怎么取？",
+    "这份 [S, dh/2] 缓存在 GQA 下要不要按 head 分开存？为什么可以全模型共享一份？",
+    "想做「一次旋转同时得到 q 和 k」的算子融合，输入应该怎么组织才能既省一次读又不动数值？"
+   ],
+   "variations": [
+    "实现完整多头注意力，把 RoPE 接在 q、k 投影之后、打分之前。",
+    "实现带 position_ids 参数的 RoPE（支持 packed 序列与 padding 跳过旋转）。",
+    "实现 RoPE 的 NTK-aware / 动态 NTK 变体，并把外推长度作为超参。",
+    "实现 YaRN：频率插值（ramp 函数）+ 注意力温度缩放 mscale。",
+    "用 torch.polar 构建复数旋转因子，改用复数乘法实现同一算子。",
+    "写一个逐位对齐测试，验证自己的实现与某开源权重里的 RoPE 输出一致。"
+   ],
+   "diagram": {
+    "kind": "matrix",
+    "title": "RoPE：相邻成组做二维旋转",
+    "caption": "记住两件事：相邻两维配成一组用角度 mθᵢ 旋转；旋转保内积，所以打分只留下相位差 (m-n)θᵢ。",
+    "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><text x='16' y='26' font-size='15' fill='var(--fg-1)'>相邻两维一组，各配一个角频率</text><line x1='36' y1='66' x2='206' y2='66' stroke='var(--line-1)' stroke-width='2'/><line x1='48' y1='60' x2='48' y2='72' stroke='var(--line-1)' stroke-width='2'/><line x1='86' y1='60' x2='86' y2='72' stroke='var(--line-1)' stroke-width='2'/><line x1='124' y1='60' x2='124' y2='72' stroke='var(--line-1)' stroke-width='2'/><line x1='162' y1='60' x2='162' y2='72' stroke='var(--line-1)' stroke-width='2'/><line x1='200' y1='60' x2='200' y2='72' stroke='var(--line-1)' stroke-width='2'/><circle cx='48' cy='66' r='3' fill='var(--accent)'/><circle cx='86' cy='66' r='3' fill='var(--accent)'/><circle cx='124' cy='66' r='3' fill='var(--accent)'/><circle cx='162' cy='66' r='3' fill='var(--accent)'/><circle cx='200' cy='66' r='3' fill='var(--accent)'/><text x='204' y='54' font-size='13' fill='currentColor'>dim</text><text x='16' y='84' font-size='13' fill='currentColor'>每对用 θ=m·base^(-2i/dh)，</text><text x='16' y='102' font-size='13' fill='currentColor'>i 越大频率越低、波长越长</text><text x='16' y='122' font-size='13' fill='var(--accent)'>x1=x[...,0::2]  x2=x[...,1::2]</text><line x1='30' y1='150' x2='196' y2='150' stroke='var(--line-1)' stroke-width='2'/><line x1='54' y1='176' x2='54' y2='132' stroke='var(--line-1)' stroke-width='2'/><line x1='54' y1='150' x2='154' y2='106' stroke='var(--accent)' stroke-width='2'/><path d='M78 150 A 24 24 0 0 0 71 134' fill='none' stroke='currentColor' stroke-width='2'/><text x='84' y='140' font-size='13' fill='currentColor'>θ=mθᵢ</text><text x='118' y='92' font-size='13' fill='currentColor'>(x1,x2)</text><text x='16' y='196' font-size='13' fill='var(--accent)'>x1&#39;=x1·cos−x2·sin</text><text x='16' y='214' font-size='13' fill='var(--accent)'>x2&#39;=x1·sin+x2·cos</text><line x1='232' y1='22' x2='232' y2='224' stroke='var(--line-1)' stroke-width='1'/><text x='248' y='26' font-size='15' fill='var(--fg-1)'>为什么是相对位置</text><text x='248' y='54' font-size='13' fill='currentColor'>每组旋转保内积：</text><text x='248' y='76' font-size='13' fill='currentColor'>&lt;R(mθ)x, R(nθ)y&gt;</text><text x='248' y='98' font-size='13' fill='currentColor'>=&lt;R((m−n)θ)x, y&gt;</text><text x='248' y='120' font-size='13' fill='currentColor'>只依赖 m−n，与绝对位置无关</text><text x='248' y='148' font-size='13' fill='currentColor'>位置 0：θ=0，cos=1、sin=0</text><text x='248' y='170' font-size='13' fill='currentColor'>→ 恒等旋转，不改动输入</text><text x='248' y='198' font-size='13' fill='currentColor'>q、k 用同一份缓存旋转，</text><text x='248' y='220' font-size='13' fill='currentColor'>打分矩阵只由 m−n 决定</text></svg>",
+    "alt": "图：左栏把最后一维相邻两维配成组、每组配一个角频率，并画出二维旋转公式 x1'=x1·cos−x2·sin、x2'=x1·sin+x2·cos；右栏说明旋转保内积，因此 q·k 只依赖相对位置差 m−n，位置 0 处是恒等旋转。"
+   },
+   "selfTest": [
+    "写出 <R(mθ)x, R(nθ)y> 的展开式，说明它为什么与 m、n 的绝对值无关；再解释「q 旋转、k 不旋转」会破坏哪一步。",
+    "inv_freq 若写成 base**(-torch.arange(0, dim, 2)/ (dim/2))，与正确写法在 i=0 时相同吗？在 i=dh/2-1 时角度差多少倍？",
+    "把配对方式从前后半改成相邻两维，同一份预训练权重下 attention 输出会不会一致？为什么说这属于「静默错误」？"
+   ],
+   "keyPoints": [
+    "inv_freq = 1/(base^(2i/d))，base 常取 10000；角度 θ=m·inv_freq，缓存形状 [S, d/2]。",
+    "把最后一维按奇偶拆成两组，做二维旋转 [x1·cos − x2·sin, x1·sin + x2·cos]，再交错拼回。",
+    "点积只依赖相对位置差 (m-n)，因为每个维度对是同一角度旋转的二维向量、而二维旋转保内积。",
+    "外推需要 NTK/YaRN 等插值改造；直接改 base 等于换了位置编码，必须配合微调。",
+    "cos/sin 与 B、H、层数无关，建一次全模型共享；位置 0 处是恒等旋转。"
+   ],
+   "sources": [
+    {
+     "title": "人工题库 research/jobs_kb.json（rope-implementation）",
+     "url": ""
+    }
+   ],
+   "selfCheck": {
+    "claims": [
+     "人工题 keyPoints 明确：inv_freq = 1/(base^(2i/d))，base 常取 10000，旋转量按相邻两维一组。",
+     "人工题 keyPoints 明确：点积只依赖相对位置差 (m-n)，因此天然编码相对位置。",
+     "人工题 keyPoints 明确：外推需要 NTK/YaRN 等插值改造。",
+     "人工题 pitfalls 明确：奇偶拆分方式与实现不一致（相邻 vs 前后半）会导致与预训练权重不匹配。",
+     "人工题 referenceSolution 使用 torch.outer(t, inv_freq) 建 [S, dim/2] 角度矩阵，并在 [B,H,S,dh] 上用 stack(dim=-1).flatten(-2) 还原交错布局。",
+     "本实现与人工 referenceSolution 已本地逐位比对：相同输入下 torch.equal 为 True（max|diff|=0）。",
+     "二维旋转保内积这一性质已在本地数值验证：同一 q/k 从位置 0 编号时，打分矩阵与把序列整体延长再取前 S 行 S 列的结果一致（最大差 1.8e-15）。",
+     "本地验证：位置 0 处 cos 全为 1、sin 全为 0，apply_rope 在该位置是恒等变换。"
+    ],
+    "uncertain": [
+     "人工题干未给具体输入形状与 head 数，题解按通用约定 [B, H, S, dh] 与 dim=dh 处理；若面试要求 [S, B, H, dh] 只需把切片维改成 -2/-1。",
+     "人工题面只写「相邻两维一组」，未指定 base 之外的外推方案细节；NTK/YaRN 的具体公式未在题面给出，正文只说明其作用对象（inv_freq 的频率刻度），未写具体缩放公式。",
+     "未核实各开源权重分别采用「相邻两维」还是「前后半」配对：正文只说明两者不可混用，不下断言说某个模型用哪一种。",
+     "「建长缓存 + 切片复用」是本实现的工程选择，题面未指定缓存管理策略；超出缓存长度时本实现抛错，另一条常见路线是 F.pad 扩展缓存或换 base，两者对已算出的 KV 是否要重算取决于实现，未展开验证。",
+     "相对位置性质是在「q、k 从同一位置 0 开始编号、且用同一份 inv_freq」前提下成立的；padding 与 packed 序列下位置编号如何给由框架决定，题面未涉及。",
+     "自测断言对 cos/sin 的比较使用 torch.equal（逐位相等），依赖 cos/sin 只在 build_rope_cache 里算一次；若改成中途改 base 重建缓存，该断言需相应更新。"
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+  "batchId": "prob-cur-25",
+  "problem": {
+    "id": "doubao-agent-multiagent-design",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "场景题：多智能体架构设计（为什么 1 主 + 3 子而不是 4 个）",
+    "topics": [],
+    "difficulty": "medium",
+    "statement": "字节 AI 数据运营实习生（自动化方向）一面（含 Agent 项目追问）：介绍多智能体项目的背景与要解决的问题、为什么选择这样的架构、为什么是一个主智能体带 3 个子智能体而不是 4 个、为什么不是串行、如何让不同 Agent 的边界清晰、你的校验是什么、评测工作如何做。",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

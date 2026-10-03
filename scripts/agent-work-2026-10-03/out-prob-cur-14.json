@@ -1,0 +1,152 @@
+{
+  "batchId": "prob-cur-14",
+  "entries": [
+    {
+      "id": "kmp",
+      "tldr": "next[i] 是 p[0..i] 的最长相等前后缀长度；失配时 i 不动、回退 j，均摊 O(n+m) 而非 O(n*m)。",
+      "restated": "输入主串 s（长度 n）与模式串 p（长度 m，可为空）；要求先构造 next（next[i] = p[0..i] 的最长相等前后缀长度，不含自身），再线性扫描 s，返回 p 全部出现（含重叠）的起始下标，并说明为何是 O(n+m) 而非 O(n*m)。字符串是一维字符序列，无张量形状；人工题干未给样例与取值范围。",
+      "approach": [
+        {
+          "step": "朴素/易错写法：s 的每个起点都做一次整体比对",
+          "detail": "最直接的写法是 for i in range(n-m+1): 若 s[i:i+m] == p 就记录 i。它正确但最坏 O(n*m)：主串越长、模式串越像「前缀几乎全是同一字符」，回退就越频繁。真正致命的不是慢，而是写 KMP 时仍然沿用「失配就从头再来」的直觉：把 j 直接清 0（等价于右滑一格的朴素），或者把 while 写成 if （一次回退后不再继续回退），两者都能跑出结果，但只是「看起来像 KMP」的朴素算法，复杂度回到 O(n*m)，面试时一被追问「为什么是线性」就露馅。"
+        },
+        {
+          "step": "观察：失配时真正有用的信息是「模式串自己」——已匹配的那一段的最长相等前后缀",
+          "detail": "当 s[i] != p[j] 时，s[i-j..i-1] 与 p[0..j-1] 一定相等，这个事实不会因为失配而改变。既然 s 的这段后缀等于 p 的前缀，就可以把 p 向右滑到「p 的某个前缀同时也是 p[0..j-1] 的后缀」的位置，即滑到最长相等前后缀的长度 next[j-1] 处，让 i 原地不动继续比。next 数组就是把这个「滑多远」预先算好：它只依赖模式串，与主串无关，所以能离线 O(m) 构造一次、反复使用。"
+        },
+        {
+          "step": "构造 next：自身匹配自身，j 是长度也是下标，回退用 next[j-1]",
+          "detail": "构造 next 是让 p 与自己的位移版本做匹配：nxt[i] 问的是「p[0..i] 的最长相等前后缀长度」。用 j 记录当前最长相等前后缀长度，p[0..j-1] 是候选前缀、p[i-j..i-1] 是候选后缀，因此比较的是 p[i] 与 p[j]。两者不等时，候选前缀要缩短到「p[0..j-1] 自己的最长相等前后缀」，也就是 j = nxt[j-1]；这一步必须用 while，因为缩短一次后仍可能不等。循环从 i=1 开始：nxt[0] 按定义是 0（不含自身），参与计算只会把 p[0]==p[0] 误算成 1。"
+        },
+        {
+          "step": "匹配：i 单向前进 + 命中后回退 j，两处共同保证严格线性与重叠匹配",
+          "detail": "for i, ch in enumerate(s) 是主串指针唯一的推进方式，循环体内任何一行都不改 i——这是 O(n) 的结构性理由；j 每轮最多 +1，而 while 里每次回退都让 j 严格变小，所以回退总次数不超过 j 的增长总次数，均摊代价是 O(1) 每轮。命中（j == m）时先记下 i-m+1，再令 j = nxt[j-1]（m 位命中就是 nxt[m-1]）：既让 j 立刻回到 <m 免得下一轮比较 p[j] 越界，又保留「本次匹配的后缀可能同时是下一次匹配的前缀」的可能性，重叠匹配（aaaaa 找 aa）才找得全。"
+        }
+      ],
+      "complexity": {
+        "time": "O(n+m)：构造 next O(m) + 匹配 O(n)，n=|s|、m=|p|；均摊而非每步都是常数",
+        "space": "O(m)：next 数组长度等于模式串长度；匹配阶段除 j/res 与结果本身只用 O(1) 额外变量",
+        "why": "i 由 for 单向推进，共 n 次、永不回退；j 每轮至多 +1（总量 ≤ n），而每次 while 回退都让 j 严格减小，所以回退总次数 ≤ 增长总次数，均摊每轮 O(1)。构造 next 同理，j 的总增长 ≤ m。暴力的 O(n*m) 正来自「失配时把 i 也回退」。"
+      },
+      "code": {
+        "language": "python",
+        "source": "\"\"\"手写 KMP 字符串匹配（纯标准库，可直接 python 运行）。\n\n与人工 referenceSolution（web/data/jobs.json 的 handWrittenCoding[id=kmp]）算法逐步一致：\n  build_next:  nxt[i] = p[0..i] 的最长相等前后缀长度（不含自身），回退用 nxt[j-1]\n  kmp_search:  主串指针 i 只前进不回退；失配 j = nxt[j-1]；命中后 j = nxt[j-1] 以支持重叠匹配\n本文件只在人工版本上补了空串短路、下标不变量的注释与自测交叉验证，返回语义（全部重叠出现）未改动。\n依赖：仅标准库（random 只用于自测）。\n\"\"\"\nimport random\n\n\ndef build_next(p):\n    \"\"\"next[i] = p[0..i] 的最长相等前后缀长度（不含自身）。时间 O(m)。\"\"\"\n    nxt = [0] * len(p)                     # 空串自然得到 []，无需特判\n    j = 0                                  # j 既是当前最长相等前后缀长度，也是待比的前缀末位下标\n    for i in range(1, len(p)):             # 从 1 开始：nxt[0] 恒为 0（不含自身）\n        while j > 0 and p[i] != p[j]:      # 失配：链式回退到次长相等前后缀\n            j = nxt[j - 1]\n        if p[i] == p[j]:                   # 走到这里必有 j < i，比较不会越界\n            j += 1\n        nxt[i] = j                         # nxt[i] 记的是 p[0..i] 的答案\n    return nxt\n\n\ndef kmp_search(s, p):\n    \"\"\"返回 p 在 s 中全部（含重叠）出现的起始下标；p 为空返回 []。时间 O(n+m)。\"\"\"\n    if not p:\n        return []                          # 人工 pitfall：漏掉空串判断会在 p[0] 处越界\n    m = len(p)\n    nxt = build_next(p)\n    j = 0                                  # 已匹配 p 的前 j 个字符\n    res = []\n    for i, ch in enumerate(s):             # i 只在这里 +1，循环体内绝不回退\n        while j > 0 and ch != p[j]:        # 失配只退 j，主串指针不动\n            j = nxt[j - 1]\n        if ch == p[j]:                     # p 非空且 j < m（命中即回退），p[j] 恒合法\n            j += 1\n        if j == m:                         # 命中一次：[i-m+1, i] 恰好是 p\n            res.append(i - m + 1)\n            j = nxt[j - 1]                 # 命中后回退 j，重叠出现才不会漏\n    return res\n\n\ndef _naive_all(s, p):\n    \"\"\"朴素对照实现 O(n*m)，只在自测里用来交叉验证 KMP 的结果。\"\"\"\n    if not p:\n        return []\n    m = len(p)\n    return [i for i in range(len(s) - m + 1) if s[i:i + m] == p]\n\n\ndef _demo():\n    assert build_next(\"abab\") == [0, 0, 1, 2]         # 不含自身：nxt[3] = 2（\"ab\"）\n    assert build_next(\"aaaa\") == [0, 1, 2, 3]         # 全同字符：前后缀只差最右一位\n    assert build_next(\"\") == [] and build_next(\"a\") == [0]\n    assert kmp_search(\"ababaab\", \"abab\") == [0]       # 首发命中后 j 回退到 nxt[3] = 2\n    assert kmp_search(\"aaaaa\", \"aa\") == [0, 1, 2, 3]  # 重叠出现必须全部返回\n    assert kmp_search(\"abc\", \"abc\") == [0]            # p == s\n    assert kmp_search(\"ab\", \"abc\") == []              # p 比 s 长\n    assert kmp_search(\"abc\", \"\") == []                # 空模式串（人工 pitfall）\n    assert kmp_search(\"\", \"a\") == []                  # 空主串\n    assert kmp_search(\"aab\", \"a\") == [0, 1]\n    rng = random.Random(20261003)                     # 固定种子，结果可复现\n    for _ in range(2000):                             # 随机小串上与暴力实现逐一对拍\n        s = \"\".join(rng.choice(\"ab\") for _ in range(rng.randint(0, 12)))\n        p = \"\".join(rng.choice(\"ab\") for _ in range(rng.randint(1, 5)))\n        assert kmp_search(s, p) == _naive_all(s, p), (s, p)\n    print(\"KMP 自测通过：10 组手工用例 + 2000 组随机串与朴素实现交叉验证一致\")\n\n\nif __name__ == \"__main__\":\n    _demo()\n",
+        "walkthrough": [
+          {
+            "note": "模块划分与依赖：build_next 只吃模式串、可离线构造一次复用；kmp_search 复用同一个 next 数组。除自测用的标准库 random 外没有任何依赖，也没有 torch 语义可讲——KMP 全程是字符比较与整数下标。"
+          },
+          {
+            "note": "build_next 的不变量：进入第 i 轮前，j 等于 p[0..i-1] 的最长相等前后缀长度。比较 p[i] 与 p[j] 恰好是把「候选前缀的下一位」与「新加入的后缀末位」对齐；相等则前后缀各延长一位（j += 1），不等则把候选前缀缩短到 nxt[j-1]。这里 nxt 的下标是字符位置，而 j 是长度，长度 j 对应前缀 p[0..j-1]，它的最长相等前后缀记在 nxt[j-1]——这就是「回退用 j-1」而不是 j 的原因。"
+          },
+          {
+            "note": "为什么 nxt[i] 记在 i 上、循环从 i=1 起步：nxt[i] 的定义是「p[0..i] 的答案」，所以每算完一轮立刻写回 nxt[i]；nxt[0] 由定义直接为 0，若让 i 从 0 开始，p[0] 会与 p[j]=p[0] 自己比较，得到错误的前后缀长度 1。"
+          },
+          {
+            "note": "内层为什么是 while 而不是 if：一次回退只把前缀缩短到「次长」，缩短后的 p[j] 仍可能与 p[i] 不等，必须链式回退；当 j 退到 0 时条件 j > 0 让循环停下，此时前缀为空串，只需一次 done 比较：p[i] == p[0] 则 j=1，否则 j 保持 0。"
+          },
+          {
+            "note": "kmp_search 的失配处理与不变量：j 表示「已匹配 p 的前 j 个字符」，所以 p 当前试图对齐的位置是 i-j+1。失配时只做 j = nxt[j-1]，不碰 i——这正是相对朴素算法的全部差别。可以证明 j < m 恒成立（初始 0；命中后立刻回退到 nxt[m-1] ≤ m-1），所以 p[j] 永不越界，无需额外判断。"
+          },
+          {
+            "note": "命中与重叠：j == m 时匹配区间是 [i-m+1, i]，因此起始下标写 i - m + 1；紧接着 j = nxt[j-1] 做「退役回退」。如果这里写成 j = 0 或直接 return，就会漏掉重叠出现——「aaaaa 找 aa」应该返回 [0,1,2,3]，只有回退保留后缀才会得到 4 个结果。"
+          },
+          {
+            "note": "自测与边界：_demo 钉了 10 组手工用例（含 build_next 在空串/单字符/全同字符上的结果，kmp_search 在 p 为空、s 为空、p 比 s 长、p == s、重叠匹配上的行为），另外用固定种子 20261003 生成 2000 组随机小串与朴素实现逐一对拍；_naive_all 只是自测的对照物，不是交付的算法路径。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "p 为空串：人工 pitfall 明确要求判断，直接返回 []（否则 p[0] 越界）。",
+        "s 为空串：enumerate 不执行，返回 []，不需要额外分支。",
+        "m > n：最后一轮的 j 永远到不了 m，返回 []，build_next 仍能正常构造。",
+        "p == s：返回 [0]；命中后 j 回退到 nxt[m-1]，继续扫完剩余字符不会产生多余结果。",
+        "完全无匹配（例如 s='abc'、p='bcd'）：j 一路回退到 0，返回 []。",
+        "重叠匹配：s='aaaaa'、p='aa' 返回 [0,1,2,3]；s='ababab'、p='abab' 返回 [0,1,2]（每命中一次都要回退，否则只能找到 1 个）。",
+        "全同字符模式串：build_next('aaaa') = [0,1,2,3]，回退链每步只缩一位，是 next 回退的最坏形状（但均摊仍是线性）。",
+        "周期串：p='abcabc'、nxt=[0,0,0,1,2,3]，命中后 j 回退到 3 而不是 0。",
+        "模式串首字符不出现于主串：j 始终为 0，每轮只做一次 p[0] 比较。",
+        "Unicode/中文串（如 s='杭州西湖'、p='西湖'）：Python 的 str 下标按码点计数，返回的下标也是码点下标；若调用方按字节切片（UTF-8）会错位，需要显式约定。",
+        "同一个模式串需要多次匹配不同主串：next 只与 p 有关，应构造一次后复用，不要在主串循环里重建。"
+      ],
+      "pitfalls": [
+        "next 数组定义用「含自身」还是「不含自身」混用——人工 pitfall 原文。本实现是「不含自身」（nxt[0] = 0），含自身的写法下标会整体错一位，混用会让回退量算错却仍能跑出部分结果。",
+        "失配时写成 j = next[j] 导致越界或死循环——人工 pitfall 原文。j 是长度、next 的下标是字符位置，正确写法是 j = next[j-1]；写错后在 j 恰为 0 或某个已回退值时可能取到过大的值，形成死循环或越界。",
+        "忘记空串判断——人工 pitfall 原文。p 为空时 p[0] 直接 IndexError（下一句 if ch == p[j] 就会炸）。",
+        "内层 while 写成 if：一次回退不够，链式回退被截断，漏匹配且复杂度仍是 O(n*m)。",
+        "失配时把 j 清 0（等价于朴素算法），或干脆连同 i 一起回退——两者都让 O(n+m) 的论证失效。",
+        "命中后忘记 j = nxt[j-1]（写成 j = 0 或直接 return i-m+1），漏掉重叠出现。",
+        "命中下标写成 i-m 或 i-j（应为 i-m+1）：差一位，样例少一个字符时才会暴露。",
+        "构造 next 时循环写成 range(len(p))：nxt[0] 被算成 1，整个 next 数组系统性偏大。",
+        "把「KMP」写成用切片比较 s[i:i+m] == p 的版本（那是朴素算法，切片本身还要额外拷贝 O(m)）。",
+        "把 next 数组当成「模式串每个前缀的答案」之外的东西，例如拿去存「失配后 i 的跳转」——KMP 里 i 从不跳转。"
+      ],
+      "followUps": [
+        "把均摊 O(n+m) 讲成严格证明：为什么 while 的总回退次数不超过 n（以及构造 next 时不超过 m）？",
+        "next 的「不含自身」与「含自身 / 右移一位（next[0]=-1）」三种定义之间如何互换？面试官给出另一种定义时你怎么改代码？",
+        "如何用 next 求最小循环节 / 最小周期（n - next[n-1]）并判断周期整除 n（lc459 重复的子字符串）？",
+        "优化的 next（nextval / 前缀函数改进）：当 p[j] == p[next[j-1]] 时继续回退，避免「回退后立刻又失配」的无效比较，它改变了复杂度吗？",
+        "与 Z-algorithm、Rabin-Karp 字符串哈希、Boyer-Moore 的对比：各自最坏/期望复杂度、常数、以及散列冲突的处理。",
+        "多模式匹配怎么推广到 AC 自动机？KMP 的失配指针与 AC 的 fail 指针是什么关系？",
+        "流式/在线场景：主串以数据块到达、不能整体驻留内存时，KMP 需要保存哪些状态（j 与 next 即可），为什么这一性质使它比需要回看的算法更适合流式处理？",
+        "如果只要求「第一次出现」，命中后直接返回能省什么？如果要求「不允许重叠」，命中后应该把 j 置为多少？"
+      ],
+      "variations": [
+        "lc28 实现 strStr()：KMP 的最直接应用（首次出现，命中即返回）。",
+        "lc459 重复的子字符串：用 n - next[n-1] 求最小循环节，再看 n 能否被整除。",
+        "lc1392 最长快乐前缀：直接就是 next[m-1]（不含自身定义下即最长相等前后缀长度）。",
+        "lc214 最短回文串：把 s + '#' + reverse(s) 拼起来跑 KMP，用 next 末值求最长回文前缀。",
+        "lc686 重复叠加字符串匹配、lc796 旋转字符串：都可在拼接串上用 KMP 求解。",
+        "AC 自动机（多模式匹配）：把 KMP 的单条失配链推广成 Trie 上的 fail 指针（BFS 构造）。",
+        "Z-algorithm：同一类「前缀与后缀相等」的信息，用 Z 数组代替 next，语义更直观但空间同样 O(m)。",
+        "Rabin-Karp / 字符串哈希：把字符比较换成滚动哈希比较，期望 O(n+m) 但有碰撞风险。",
+        "Boyer-Moore / Horspool：从右往左比并利用坏字符/好后缀规则跳过更多字符，实践中常数常优于 KMP。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "KMP 失配回退与 next 数组",
+        "caption": "追踪一条真实的失配链：s='ababaab' 找 p='abab'，i=3 处已经命中过一次并把 j 回退到 next[3]=2；到 i=5 时 p[3]='b' 与 s[5]='a' 冲突，j 连续回退 3 → next[2]=1 → next[0]=0，最终 p[0] 与 s[5] 命中，而 i 始终停在 5——「主串指针不回退」就是 O(n) 的全部来源。图里 next 的值与 p 的字符同列，因此能直接看出回退等于「把模式串右滑到下一个可能的重叠位置」，而不是从头再来。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15'/><text x='12' y='16' font-size='14' fill='currentColor'>KMP 失配回退：i 不动，j = next[j-1]</text><text x='12' y='46' font-size='13' fill='currentColor'>s</text><rect x='30' y='28' width='30' height='26' fill='none' stroke='var(--line-1)'/><text x='45' y='46' font-size='14' fill='currentColor' text-anchor='middle'>a</text><rect x='64' y='28' width='30' height='26' fill='none' stroke='var(--line-1)'/><text x='79' y='46' font-size='14' fill='currentColor' text-anchor='middle'>b</text><rect x='98' y='28' width='30' height='26' fill='none' stroke='var(--line-1)'/><text x='113' y='46' font-size='14' fill='currentColor' text-anchor='middle'>a</text><rect x='132' y='28' width='30' height='26' fill='none' stroke='var(--line-1)'/><text x='147' y='46' font-size='14' fill='currentColor' text-anchor='middle'>b</text><rect x='166' y='28' width='30' height='26' fill='none' stroke='var(--line-1)'/><text x='181' y='46' font-size='14' fill='currentColor' text-anchor='middle'>a</text><rect x='200' y='28' width='30' height='26' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='215' y='46' font-size='14' fill='var(--accent)' text-anchor='middle'>a</text><rect x='234' y='28' width='30' height='26' fill='none' stroke='var(--line-1)'/><text x='249' y='46' font-size='14' fill='currentColor' text-anchor='middle'>b</text><text x='12' y='68' font-size='13' fill='var(--accent)'>i=5：主串指针不回退，这就是 O(n) 的来源</text><line x1='215' y1='56' x2='215' y2='78' stroke='var(--accent)' stroke-dasharray='3 3'/><text x='12' y='98' font-size='13' fill='currentColor'>p</text><rect x='98' y='80' width='30' height='26' fill='none' stroke='var(--line-1)'/><text x='113' y='98' font-size='14' fill='currentColor' text-anchor='middle'>a</text><rect x='132' y='80' width='30' height='26' fill='none' stroke='var(--line-1)'/><text x='147' y='98' font-size='14' fill='currentColor' text-anchor='middle'>b</text><rect x='166' y='80' width='30' height='26' fill='none' stroke='var(--line-1)'/><text x='181' y='98' font-size='14' fill='currentColor' text-anchor='middle'>a</text><rect x='200' y='80' width='30' height='26' fill='none' stroke='var(--accent)' stroke-width='2'/><text x='215' y='98' font-size='14' fill='var(--accent)' text-anchor='middle'>b</text><text x='12' y='120' font-size='13' fill='currentColor'>j=3：p[3]='b' 与 s[5]='a' 失配（同一列）</text><text x='12' y='138' font-size='13' fill='currentColor'>回退1：j = next[j-1] = next[2] = 1（i 仍是 5）</text><text x='12' y='156' font-size='13' fill='currentColor'>回退2：p[1] 仍失配 → j = next[0] = 0 → p[0] 命中 → j = 1</text><text x='12' y='176' font-size='13' fill='currentColor'>next[i] = p[0..i] 的最长相等前后缀长度（不含自身）</text><text x='12' y='200' font-size='13' fill='var(--fg-1)'>next</text><rect x='98' y='182' width='30' height='24' fill='none' stroke='var(--line-1)'/><text x='113' y='200' font-size='14' fill='currentColor' text-anchor='middle'>0</text><rect x='132' y='182' width='30' height='24' fill='none' stroke='var(--line-1)'/><text x='147' y='200' font-size='14' fill='currentColor' text-anchor='middle'>0</text><rect x='166' y='182' width='30' height='24' fill='none' stroke='var(--line-1)'/><text x='181' y='200' font-size='14' fill='currentColor' text-anchor='middle'>1</text><rect x='200' y='182' width='30' height='24' fill='none' stroke='var(--line-1)'/><text x='215' y='200' font-size='14' fill='currentColor' text-anchor='middle'>2</text><text x='12' y='226' font-size='13' fill='currentColor'>命中后 j = next[m-1]，重叠出现才不漏（aaaaa 找 aa）</text></svg>",
+        "alt": "指针移动图：主串 s='ababaab' 的 7 个字符框横向排列，第 5 个 s[5]='a' 被高亮；模式串 p='abab' 右移两格对齐（p[0] 对齐 s[2]），p[3]='b' 与 s[5]='a' 处于同一列并高亮失配，两行之间用虚线标出比较列；下方标出回退链 j=3 失配 → j=next[2]=1（仍失配）→ j=next[0]=0 → p[0] 命中 → j=1，并注明 i 始终停在 5；再下面是与 p 同列的 next 数组 [0,0,1,2] 及其定义 next[i]=p[0..i] 的最长相等前后缀长度（不含自身），底部提示命中后 j=next[m-1] 才能找出重叠出现。"
+      },
+      "selfTest": [
+        "build_next('abab') 与 build_next('aaaa') 分别是多少？为什么 nxt[0] 恒为 0？（答：[0,0,1,2] 与 [0,1,2,3]；nxt[0] 按「不含自身」的定义就是 0，若从 i=0 开始循环会把 p[0] 与自身比较得到 1。）",
+        "kmp_search('ababaab','abab') 返回什么？在 i=3 命中之后 j 是多少？（答：[0]；命中后 j = nxt[3] = 2，于是 i=4 的 s[4]='a' 直接与 p[2]='a' 比较，而不是从 p[0] 重新开始。）",
+        "kmp_search('aaaaa','aa') 为什么返回 [0,1,2,3] 而不是 [0,2]？如果命中后写 j = 0 会少掉哪些？（答：aa 在 aaaaa 中每个位置都出现，且长度 2 的窗口两两重叠；命中后必须 j = nxt[j-1] = nxt[1] = 1 才能保留「后缀兼作下次前缀」的可能，写 j = 0 只能在偶数位命中，漏掉 [1,3]。）",
+        "把失配处理写成 j = 0 而不是 j = nxt[j-1]，代码还能跑对吗？复杂度变成什么？（答：结果仍然正确但退化成朴素匹配，最坏 O(n*m)；线性性的全部收益来自复用已匹配的前后缀信息。）",
+        "为什么 p 为空必须特判？（答：m=0 时 j==m 恒成立，p[j]=p[0] 会 IndexError；人工 pitfall 明确列了这一条。）"
+      ],
+      "keyPoints": [
+        "next[i] 表示 p[0..i] 的最长相等前后缀长度（不含自身）",
+        "失配时 j = next[j-1] 回退，主串指针 i 不回退",
+        "匹配成功后也要回退 j（j = next[m-1]）以支持重叠匹配",
+        "构造 next 本身 O(m)、匹配 O(n)，主串指针永不回退",
+        "回退用 while 做链式回退，j 的长度语义决定了下标是 j-1；p 为空必须特判"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（kmp）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题干（web/data/jobs.json 的 handWrittenCoding[id=kmp]，title=手写 KMP 字符串匹配）要求：先构造 next 数组（最长相等前后缀），再在主串中线性匹配，并说明为什么复杂度是 O(n+m) 而不是 O(n*m)。",
+          "人工 keyPoints 的四条（next[i] 为不含自身的最长相等前后缀长度；失配用 j = next[j-1] 且 i 不回退；匹配成功后也要回退 j 以支持重叠匹配；构造 O(m)、匹配 O(n)）在本文件的 tldr/approach/code/complexity/keyPoints 中被完整保留并展开，没有改写或反驳。",
+          "人工 referenceSolution 的算法路径为：build_next 里 for i in range(1,len(p)) → while j>0 and p[i]!=p[j]: j=nxt[j-1] → if p[i]==p[j]: j+=1 → nxt[i]=j；kmp_search 里 if not p: return [] → for i,ch in enumerate(s) → while j>0 and ch!=p[j]: j=nxt[j-1] → if ch==p[j]: j+=1 → if j==len(p): res.append(i-len(p)+1); j=nxt[j-1]。本文件 code.source 与之逐步一致，只额外补了注释、空串短路与 _demo 自测。",
+          "人工 pitfalls 的三条（next 定义含/不含自身混用、失配写成 j = next[j] 导致越界或死循环、忘记空串判断）全部原样保留在 pitfalls 中，并各自补充了成因与后果，其余条目是新增的补充项。",
+          "code.source 已在本机 Python 3.12.9 上真实执行（exec 后调用 _demo()）：10 组手工断言全部通过，并用固定种子 20261003 生成 2000 组随机小串与朴素实现 _naive_all 逐一对拍通过；除标准库 random 外无任何依赖，未使用 torch。",
+          "本文件的图解是自包含内联 SVG（viewBox='0 0 480 240'、xmlns、font-size 13/14、仅用 currentColor / var(--accent) / var(--fg-1) / var(--line-1)，无 image/use/style/script/url()），其中的 s、p、next 数值（s='ababaab'、p='abab'、next=[0,0,1,2]、回退链 3→1→0）都由本文件代码实际跑出，不是手写示意。"
+        ],
+        "uncertain": [
+          "人工题干未给任何具体样例与输入取值范围（没有 s/p 示例、没有 n、m 的量级）；本文件的 s='ababaab'、p='abab' 以及自测用例都是为讲解自造的通用约定示例。",
+          "人工 referenceSolution 采用「不含自身」的 next 定义（nxt[0]=0）；不少教材/模板用「含自身」或整体右移一位、next[0]=-1 的版本，数值与代码写法都不同（但等价）。本文件严格跟随人工版本，没有替人工做定义选择。",
+          "题干只说「在主串中线性匹配」，未明确要求返回全部出现还是首次出现；本文件跟随人工 referenceSolution 的语义返回全部（含重叠）起始下标；若面试只要求首次出现，命中后应直接 return i-m+1。",
+          "复杂度 O(n+m) 是均摊结论（j 的总增长量决定回退总量），人工题干只要求「说明为什么」，未给形式化证明；本文件的解释基于均摊论证，若把内层 while 写成 if 则结论不成立。",
+          "题干未说明字符集与编码；实现的复杂度与字符集无关，返回下标按 Python 的码点计数，若调用方按 UTF-8 字节切片会错位，这一约定本文件只在 edgeCases 里提示、未替人工决定。",
+          "人工 keyPoints 提到「构造 next 本身是 O(m)，匹配是 O(n)」，未区分最坏与均摊；本文件按均摊理解，两者在 KMP 里数值相同但论证方式不同。",
+          "本题没有外部 URL（人工 sources 只有面经标题），按纪律 sources[].url 留空，未编造任何链接。"
+        ]
+      }
+    }
+  ]
+}

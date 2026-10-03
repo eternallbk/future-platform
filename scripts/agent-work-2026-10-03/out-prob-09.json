@@ -1,0 +1,179 @@
+{
+  "batchId": "prob-09",
+  "entries": [
+    {
+      "id": "pb-949462393c28b944",
+      "itemId": "949462393c28b944",
+      "tldr": "四拍依次输出 d×1、×3、×7、×8：2 位计数器选倍数，全部用移位加减实现，不用乘法器。",
+      "restated": "输入 d（8 位）、clk（周期 5ns）、rst（低电平复位），d 上升沿表示写入有效。输出 out 与 input_grant（reg）：写入后每个时钟周期依次输出该数乘 1、3、7、8。题面在「加载中…」处截断，示意图未采集，无样例与位宽。",
+      "approach": [
+        {
+          "step": "暴力",
+          "detail": "最直白的写法是四拍各自直接算乘：用 2 位计数器选路，out <= d_reg*1 / *3 / *7 / *8。功能上能过，但本题叫「移位运算与乘法」，考察点就是用移位加减替代乘法器：`*` 会综合出乘法器（面积与时序都差），面试官必然追问「不用乘法器怎么写」。另一个问题是如果不锁存 d，四个倍数会乘到已经变化的输入上，波形直接错。"
+        },
+        {
+          "step": "关键观察",
+          "detail": "要输出的四个倍数 1/3/7/8 全是 2^a ± 2^b 的形式：1 = 1、3 = 2+1、7 = 8−1、8 = 8。于是每一次乘都能写成「把 d 左移若干位再加减 d」：d、2d+d、8d−d、8d。这就是题名的来源——乘法被降级为移位与加减，硬件里只需要加法器和连线。这个观察同时解释了为什么要分成四拍：每拍只做一次移位加减，面积可以做到极小，而代价是延迟四拍才有全部四个结果。"
+        },
+        {
+          "step": "最优",
+          "detail": "用一个 2 位计数器 cnt 当唯一状态，0→1→2→3→0 循环：cnt==0 的那一拍把端口 d 锁进 d_reg，并同拍把 input_grant 拉高（宣告「此刻输入的 d 有效」）；其余三拍 input_grant 为 0 且沿用 d_reg。输出按 cnt 选表达式：cnt=0 给 d_reg，cnt=1 给 (d_reg<<1)+d_reg，cnt=2 给 (d_reg<<3)-d_reg，cnt=3 给 d_reg<<3。复位低电平有效，把 cnt 与 d_reg 一起清零。"
+        },
+        {
+          "step": "为什么这样就够",
+          "detail": "三件事互相咬合：① 2 位计数器恰好覆盖 4 个倍数，且第 4 拍后回绕到 0，天然准备好接收下一个 d；② d_reg 保证四拍乘的是同一个输入，d 在后续拍变化也不会让输出漂移；③ input_grant 与锁存同拍，接收方在数据被采样的那一拍就知道输入有效，满足题面「输出一个信号通知此时刻输入的 d 有效」。因为 1/3/7/8 都能被移位加减精确表达，四个输出与真乘法逐位相同，不存在近似或舍入，只剩位宽问题。"
+        }
+      ],
+      "complexity": {
+        "time": "O(1)（每拍一拍组合逻辑；4 拍给出 4 个倍数）",
+        "space": "O(1) 硬件：2 位 cnt + 8 位 d_reg + 一个移位加法器",
+        "why": "代价来自「一拍算一个倍数」的时间复用：用 4 拍换掉 4 个并行乘法器/移位器，面积换时序；Python 模型每拍也只做 O(1) 次移位加减。"
+      },
+      "code": {
+        "language": "python",
+        "source": "\"\"\"牛客「移位运算与乘法」：把 Verilog 时序逻辑写成周期精确的 Python 模型，并逐拍自检。\n\n题面要点（细节见 restated）：\n  · d 是 8 位输入，d 的上升沿表示这一拍的写入有效；\n  · 写入后每个时钟周期依次输出该数乘 1、3、7、8；\n  · input_grant 是「此刻输入的 d 有效」的握手信号；\n  · clk 周期 5ns，rst 低电平复位。\n本实现全程不使用 * 号，只用移位与加减，验证「移位运算与乘法」的等价性。\n\n用法：python shift_mul.py [d0 d1 d2 ...]\n\"\"\"\nimport sys\n\nMULTIPLIERS = (1, 3, 7, 8)   # 四个时钟周期分别要输出的倍数\nOUT_BITS = 11               # 255 * 8 = 2040 < 2048，out 至少 11 位才不会溢出\n\n\ndef shift_mul(d, k):\n    \"\"\"只用移位与加减算 d*k（k 属于 {1,3,7,8}）：这四个数都能写成 2^a ± 2^b。\"\"\"\n    if k == 1:\n        return d                    # 1 = 1\n    if k == 3:\n        return (d << 1) + d         # 3 = 2 + 1\n    if k == 7:\n        return (d << 3) - d         # 7 = 8 - 1\n    if k == 8:\n        return d << 3               # 8 = 2^3\n    raise ValueError(\"k=%r 不是 2^a±2^b，移位实现不覆盖\" % (k,))\n\n\nclass ShiftMulUnit:\n    \"\"\"周期精确模型：低电平异步复位；cnt 在 0..3 循环，cnt==0 那一拍锁存 d。\"\"\"\n\n    def __init__(self):\n        self.cnt = 0\n        self.d_reg = 0\n        self.out = 0\n        self.input_grant = 0\n\n    def step(self, d, rst_n):\n        \"\"\"一个时钟上升沿之后，返回该拍稳定下来的 (out, input_grant)。\"\"\"\n        if not rst_n:                       # 低电平复位优先，等价于 negedge rst_n 分支\n            self.cnt = 0\n            self.d_reg = 0\n            self.out = 0\n            self.input_grant = 0\n            return self.out, self.input_grant\n        d = d & 0xFF                        # d 只有 8 位\n        grant = 1 if self.cnt == 0 else 0\n        cur = d if grant else self.d_reg    # 只有写入拍采新值，其余三拍沿用锁存值\n        self.out = shift_mul(cur, MULTIPLIERS[self.cnt]) & ((1 << OUT_BITS) - 1)\n        self.input_grant = grant\n        self.d_reg = cur\n        self.cnt = (self.cnt + 1) % 4\n        return self.out, self.input_grant\n\n\ndef simulate(stream):\n    \"\"\"testbench：第 0 拍先低电平复位，再逐拍给激励，返回 [(cycle, d, out, grant), ...]。\"\"\"\n    uut = ShiftMulUnit()\n    uut.step(0, 0)                          # 复位一拍，把 cnt / d_reg 拉回 0\n    log = []\n    for cyc, d in enumerate(stream):\n        out, grant = uut.step(d, 1)\n        log.append((cyc, d, out, grant))\n    return log\n\n\ndef check(log):\n    \"\"\"参考模型：从最近一次 grant 的拍起，out 必须等于 最近写入的 d 乘当前倍数。\"\"\"\n    last_d = None\n    base = 0\n    for cyc, d, out, grant in log:\n        if grant:\n            last_d, base = d, cyc\n        elif last_d is None:\n            continue                        # 复位后还没写入过，输出无意义\n        k = MULTIPLIERS[(cyc - base) % 4]\n        want = last_d * k\n        if out != want:\n            raise AssertionError(\"cycle %d: out=%d，期望 %d*%d=%d\" % (cyc, out, last_d, k, want))\n    return True\n\n\ndef main(argv):\n    stream = [int(a) & 0xFF for a in argv[1:]] or [7, 255, 0, 128, 1, 2]\n    print(\"cycle   d  grant    out\")\n    for cyc, d, out, grant in simulate(stream):\n        print(\"%5d %3d %6d %6d\" % (cyc, d, grant, out))\n    check(simulate(stream))\n    print(\"自检通过：四拍 ×1/×3/×7/×8 与真乘法逐拍一致；最大输出 %d < 2^%d\" % (255 * 8, OUT_BITS))\n    return 0\n\n\nif __name__ == \"__main__\":\n    sys.exit(main(sys.argv))\n",
+        "walkthrough": [
+          {
+            "note": "shift_mul 是本题的核心：×1/×3/×7/×8 全部写成移位加减。注意 7 倍用的是 (d<<3)-d（8d 减 1d），而不是把 d 累加七次——移位天然完成「乘 2 的幂」，加法器只负责修正偏差；把它的结果和真乘法 d*k 对拍即可证明等价。d=0 时四个分支都返回 0，无需特判。"
+          },
+          {
+            "note": "ShiftMulUnit.step 模拟一个时钟上升沿，对应 Verilog 的 always @(posedge clk or negedge rst_n)：先判复位（rst 低电平有效，立刻把 cnt/d_reg/out/input_grant 全部清零并返回），再判 cnt 决定这一拍是「写入拍」还是「延续拍」。"
+          },
+          {
+            "note": "写入拍（cnt==0）：cur = d，于是 out = d_reg = d、input_grant = 1；延续拍：cur = self.d_reg，端口 d 被忽略。这正是「d 的上升沿表示写入有效」的语义，也是必须锁存 d_reg 的原因。out 用 (1<<11)-1 做掩码，模拟寄存器位宽截断；cnt 用 %4 回绕。"
+          },
+          {
+            "note": "simulate 是 testbench：先给一拍低电平复位，再逐拍驱动并记录 (cycle, d, out, input_grant)。check 是参考模型：从最近一次 grant 的那一拍开始，按 MULTIPLIERS[(cyc-base)%4] 算出「应有倍数」，断言 out == last_d * k；任何一拍移位算错都会在这里抛 AssertionError，而不是靠肉眼看波形。"
+          },
+          {
+            "note": "RTL 对照（面试要能写出来）：`always @(posedge clk or negedge rst_n) if(!rst_n) begin cnt<=2'd0; d_reg<=8'd0; input_grant<=1'b0; end else begin if(cnt==2'd0) begin d_reg<=d; input_grant<=1'b1; end else input_grant<=1'b0; cnt<=cnt+2'd1; end`；输出用 `case(cnt) 2'd0: out=d_reg; 2'd1: out=(d_reg<<1)+d_reg; 2'd2: out=(d_reg<<3)-d_reg; 2'd3: out=d_reg<<3; endcase`。case 必须覆盖 cnt 的全部 4 种取值，否则组合逻辑真值表不全，综合出 latch。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "d=0：四拍输出全 0，但 input_grant 仍然必须在 cnt==0 那一拍拉高——DUT 只负责宣告数据有效，不能因为数据是 0 就不写。",
+        "d=255（8 位最大值）：×8 = 2040 超过 8 位，out 至少要 11 位；若 out 只有 8 位，第 4 拍会输出 2040 mod 256 = 248。",
+        "复位：rst 低电平有效，任意时刻拉低都要把 cnt 与 d_reg 清零；复位后尚未写入任何 d 时 input_grant 必须是 0，不能默认拉高。",
+        "写入拍之后 d 立刻变化：因为乘的是 d_reg，输出序列只由写入那一拍的 d 决定，这正是锁存的意义（也是「d 上升沿有效」的等价说法）。",
+        "连续写入：第 4 拍后 cnt 回绕到 0，若 d 再次有效就接收下一组；上一组还没走完新数据就到来时，本文按 cnt==0 直接覆盖处理（题面未定义反压）。",
+        "仿真初值：复位前的第一拍不应被当成有效数据；模型里先跑一拍低电平复位，避免出现未初始化值。",
+        "cnt 位宽：2 位刚好表示 0..3；写成 3 位也能工作，但回绕与比较的字面量要同步改。"
+      ],
+      "pitfalls": [
+        "input_grant 时序写错：它要在「d 被接收」的那一拍为高，而不是延后一拍；把 grant 放到 cnt==1 的拍上，接收方会误以为写入发生在后一拍。",
+        "忘记锁存 d（把端口 d 直接接进乘法逻辑）：后续三拍 d 若变化，输出会跟着变，波形全错。",
+        "用乘法器：写 out <= d_reg*3 功能正确，但违背题目「移位运算与乘法」的考察意图；正确写法是 (d_reg<<1)+d_reg。",
+        "位宽截断：out 只有 8 位时 255×8 = 2040 被截成 248；RTL 里要把 out 声明为 11 位，或先把 d_reg 扩宽（如 {3'b0,d_reg}）再移位。",
+        "复位极性写反：题面明确 rst 为低电平复位，必须写 if(!rst_n)，写成 if(rst) 行为完全相反。",
+        "组合逻辑 case 没覆盖 cnt 的全部 4 种取值（或用 if/else 漏掉兜底分支），综合出 latch。",
+        "计数器回绕边界写错：cnt 只有 2 位却写 if(cnt==2'd4) 清零（4 被截成 0，判不到）；应让 cnt 自然进位回绕，或显式判 cnt==2'd3。"
+      ],
+      "followUps": [
+        "如果不用 4 拍时间复用，而是每拍同时给出四个倍数（面积换吞吐），怎么写？四路移位加法器并联，用 input_grant 直接选通输出。",
+        "如果倍数换成 ×5、×9、×15 呢？5 = 4+1 → (d<<2)+d；9 = 8+1 → (d<<3)+d；15 = 16−1 → (d<<4)−d，仍是 2^a±2^b。",
+        "能否只用累加器省掉移位？可以先算 d，再累加出 3d、7d，但 8d 仍需移位，且累加要多花寄存器和拍数。",
+        "如果 out 只给 8 位，期望行为是什么？需要在模块内部扩宽、在输出端口截断，并把截断规则写进注释。",
+        "如果 d 每拍都可能有效、不允许 4 拍节流，握手怎么改？加一级输入缓冲寄存器组，或引出 ready 做反压。",
+        "如何验证 RTL 正确？用这份 Python 模型当参考模型，随机 d 序列对拍；或直接在 testbench 里把 out 与 d*1/3/7/8 比较。",
+        "若题面的「乘1378」其实是一次性乘 1378（而非四拍乘 1/3/7/8）：1378 = 1024+256+64+32+2 = 2^10+2^8+2^6+2^5+2^1，可用 5 个移位加实现，但那与「在每个时钟周期分别输出」的措辞不符。"
+      ],
+      "variations": [
+        "把 4 拍扩成 8 拍：cnt 扩到 3 位，依次输出该数的 8 个倍数，全部写成 2^a±2^b 的组合。",
+        "改成只输出 2 的幂序列（d、2d、4d、8d）：纯左移、不需要加法器，作为对照更凸显本题为什么要加法器。",
+        "改成流水线版本：第一拍锁存 d，第二拍同时算 3d 与 7d，第三拍输出 8d，用 valid 延迟链对齐。",
+        "改成带 valid/ready 反压的版本：输出端加 ready 后，cnt 只在握手成功时推进。",
+        "改成「输出四个倍数并累加求和」：在上面的状态机上再加一个累加寄存器，退化成带状态的算术变体。",
+        "软件侧同源变形：不用乘号实现整数乘除（如 LeetCode 29 两数相除），与本题共享「移位加减代替乘除」的思想。"
+      ],
+      "diagram": {
+        "kind": "timeline",
+        "title": "四拍状态机与移位乘法",
+        "caption": "cnt 从 0 到 3 循环，每拍用一个移位加减表达式给出一个倍数；只有 cnt=0 那一拍锁存 d 并拉高 input_grant。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' font-size='13'><text x='14' y='22' font-size='14' fill='currentColor'>cnt 0→1→2→3→0 循环，每拍给出一个倍数</text><line x1='14' y1='32' x2='466' y2='32' stroke='var(--line-1)' stroke-width='1'/><path d='M422 58 L422 48 L62 48 L62 52' fill='none' stroke='currentColor' stroke-width='1'/><path d='M58 48 L62 56 L66 48 Z' fill='currentColor'/><text x='168' y='42' font-size='13' fill='currentColor'>cnt 计满 3 后回到 0，等待下一次写入</text><rect x='14' y='58' width='96' height='82' rx='6' fill='none' stroke='var(--accent)' stroke-width='2'/><rect x='134' y='58' width='96' height='82' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='254' y='58' width='96' height='82' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1'/><rect x='374' y='58' width='96' height='82' rx='6' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='23' y='80' font-size='13' fill='currentColor'>cnt = 0</text><text x='23' y='102' font-size='13' fill='currentColor'>×1: d</text><text x='23' y='124' font-size='13' fill='var(--accent)'>grant=1</text><text x='143' y='80' font-size='13' fill='currentColor'>cnt = 1</text><text x='143' y='102' font-size='13' fill='currentColor'>×3: 2d+d</text><text x='143' y='124' font-size='13' fill='var(--fg-1)'>grant=0</text><text x='263' y='80' font-size='13' fill='currentColor'>cnt = 2</text><text x='263' y='102' font-size='13' fill='currentColor'>×7: 8d-d</text><text x='263' y='124' font-size='13' fill='var(--fg-1)'>grant=0</text><text x='383' y='80' font-size='13' fill='currentColor'>cnt = 3</text><text x='383' y='102' font-size='13' fill='currentColor'>×8: 8d</text><text x='383' y='124' font-size='13' fill='var(--fg-1)'>grant=0</text><path d='M112 99 L126 99' stroke='currentColor' stroke-width='1'/><path d='M126 95 L133 99 L126 103 Z' fill='currentColor'/><path d='M232 99 L246 99' stroke='currentColor' stroke-width='1'/><path d='M246 95 L253 99 L246 103 Z' fill='currentColor'/><path d='M352 99 L366 99' stroke='currentColor' stroke-width='1'/><path d='M366 95 L373 99 L366 103 Z' fill='currentColor'/><text x='14' y='172' font-size='13' fill='currentColor'>图中 d 指锁存后的 d_reg：2d 即左移 1 位，8d 即左移 3 位</text><text x='14' y='198' font-size='13' fill='currentColor'>写入沿：d 上升沿把 d 锁进 d_reg，并同拍拉高 input_grant</text><text x='14' y='224' font-size='13' fill='currentColor'>四个倍数全部由移位加减得到，不需要综合出乘法器</text></svg>",
+        "spec": {
+          "type": "timeline",
+          "nodes": [
+            {
+              "label": "cnt=0",
+              "detail": "锁存 d 到 d_reg，input_grant=1，out=d_reg（×1）"
+            },
+            {
+              "label": "cnt=1",
+              "detail": "out=(d_reg<<1)+d_reg（×3），input_grant=0"
+            },
+            {
+              "label": "cnt=2",
+              "detail": "out=(d_reg<<3)-d_reg（×7），input_grant=0"
+            },
+            {
+              "label": "cnt=3",
+              "detail": "out=d_reg<<3（×8），input_grant=0，下一拍回绕到 cnt=0"
+            }
+          ],
+          "edges": [
+            {
+              "from": 0,
+              "to": 1,
+              "label": "clk 上升沿"
+            },
+            {
+              "from": 1,
+              "to": 2,
+              "label": "clk 上升沿"
+            },
+            {
+              "from": 2,
+              "to": 3,
+              "label": "clk 上升沿"
+            },
+            {
+              "from": 3,
+              "to": 0,
+              "label": "cnt 回绕，等待下一次写入"
+            }
+          ]
+        },
+        "alt": "时间线图：cnt=0 时 out=d_reg 且 input_grant=1，cnt=1 时 out=2d+d（×3），cnt=2 时 out=8d-d（×7），cnt=3 时 out=8d（×8），计满后回绕到 cnt=0 等待下一次写入；四拍共用同一个锁存值 d_reg，全程不含乘法器。"
+      },
+      "selfTest": [
+        "为什么必须先把 d 锁存到 d_reg？如果把端口 d 直接接进乘法逻辑，第 2～4 拍的输出会发生什么？",
+        "(d_reg<<3)-d_reg 为什么等于 7×d_reg？如果要求输出 15 倍，这个表达式该怎么写？",
+        "out 只声明成 8 位、d 取 255 时，第 4 拍输出是多少？为什么？",
+        "input_grant 应该在那一拍为高？如果改成延后一拍为高，接收方会怎么误解这次传输？"
+      ],
+      "keyPoints": [
+        "1/3/7/8 都是 2^a±2^b，用移位加减替代乘法器是本题考点。",
+        "2 位 cnt 是唯一状态：cnt==0 那拍同时锁存 d 与拉高 input_grant。",
+        "必须锁存 d_reg，否则后三拍输出会随输入端漂移。",
+        "out 位宽不足会截断：255×8 = 2040，至少要 11 位。",
+        "rst 低电平有效；组合 case 覆盖 cnt 全部取值，避免 latch。"
+      ],
+      "sources": [
+        {
+          "title": "移位运算与乘法_牛客题霸_牛客网",
+          "url": "https://nowcoder.com/practice/1dd22852bcac42ce8f781737f84a3272"
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "题面：d 为一个 8 位数，要在每个时钟周期分别输出该数乘 1378，并输出一个信号通知此刻输入的 d 有效；d 给出的信号的上升沿表示写入有效。（原文中「1378」确实连写、无分隔符）",
+          "题面：输入信号为 d、clk、rst，类型 wire；clk 为周期 5ns 的时钟；rst 为低电平复位。",
+          "题面：输出信号为 input_grant 与 out，类型 reg；题面另含「信号示意图」「波形示意图」两处引用。",
+          "题面文本以「加载中...」结尾，没有给出任何输入/输出样例，也没有给 out / input_grant 的位宽与复位方式（同步还是异步）。",
+          "本文代码已实际运行：d=7 时四拍输出为 7、21、49、56，与 7×1/3/7/8 一致；check 用真乘法逐拍对拍通过，退出码 0。",
+          "255×8 = 2040 需要 11 位二进制；2040 截成 8 位是 248（2040 mod 256）。"
+        ],
+        "uncertain": [
+          "「乘1378」的分隔符在采集时丢失：本文按「连续四个时钟周期依次输出 ×1、×3、×7、×8」理解（该读法与题名「移位运算与乘法」自洽，也与该题公开题解的通行版本一致），但现有文本无法严格证明；若原题是「乘 13、78」或一次性乘 1378，倍数序列需要改。",
+          "out 的位宽题面未给出（原文只写「输出信号 input_grant out类型 reg」），本文按至少 11 位推断；实际题目模板可能只给 8 位（会截断）或 16 位，需以原题端口声明为准。",
+          "复位方式题面只说「rst 为低电平复位」，未说明是同步复位还是异步复位；本文模型按异步（negedge rst_n）实现，Verilog 写法需按题目模板调整。",
+          "input_grant 的精确时序（与写入同拍高还是延后一拍）无法从题面确认；本文按「d 被接收的那一拍为高」实现。",
+          "题面引用了「信号示意图」与「波形示意图」，但两张图没有随文本采集，波形的具体形状（out 是否保持、input_grant 高几拍、有无输出使能）无法核对。",
+          "题面残留 testbench 描述（clk 5ns、rst 低电平），推测原题是 Verilog 手撕题；但题面在「加载中…」处截断，plan 的 topics 只标了「位运算」，无法 100% 确认原始编程语言与提交模板。",
+          "连续写入（上一组四拍尚未走完时新的 d 上升沿到来）的行为题面未定义；本文按 cnt==0 直接覆盖旧数据实现，是否需要反压或缓冲待核实。",
+          "输出是组合逻辑还是寄存器输出无法从题面确认；若 out 被寄存，波形会整体延后一拍，而 5ns 的时钟周期只说明 testbench 配置，推不出这一点。"
+        ]
+      }
+    }
+  ]
+}

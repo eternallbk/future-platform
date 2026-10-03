@@ -1,0 +1,24 @@
+{
+  "batchId": "prob-cur-37",
+  "problem": {
+    "id": "meituan-reward-shock",
+    "origin": "curated",
+    "kind": "exam",
+    "marker": "笔试场景",
+    "title": "为什么 GRPO 训练一开始 Reward 会大幅震荡",
+    "topics": [
+      "大模型与RL"
+    ],
+    "difficulty": "hard",
+    "statement": "美团大模型算法二面：“奖励函数如何设置的，为什么？有没有想过为什么一开始 Reward 出现大幅度震荡？GRPO 是否一定有效，还有什么解决方法？”",
+    "sourceUrl": null,
+    "sourceName": "人工整理（research/jobs_kb.json）",
+    "substance": 7.0,
+    "has": {
+      "keyPoints": false,
+      "pitfalls": false,
+      "solution": false,
+      "answerOutline": true
+    }
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "batchId": "prob-cur-12",
+  "entries": [
+    {
+      "id": "binary-search",
+      "tldr": "二分查找考的是区间不变量：左闭右闭配 l<=r、左闭右开配 l<r；结束后 lower_bound 返回的 l 即首个 >= target 的位置。",
+      "restated": "输入：升序数组 nums（可能含重复元素、可能为空，元素可为负数）与整数 target。要求写两个函数：(1) 标准二分，找到 target 返回它的下标，找不到返回 -1；(2) lower_bound，返回第一个 >= target 的下标（“位置”，找不到时约定为 len(nums) 而不是 -1），即 bisect_left 的语义。题干没有给出具体样例数据与输出格式。",
+      "approach": [
+        {
+          "step": "朴素写法：线性扫描",
+          "detail": "直接 for i, x in enumerate(nums) 找第一个等于 target 的元素，时间 O(n)。它在有序数组上完全是浪费：区间有序意味着「落在哪一半」只看一个中点就能判定，一次比较就能扔掉一半候选，而线性扫描每次只排除一个元素。更关键的是，如果题目改成 lower_bound，线性扫描还得额外处理「target 比所有元素都大」时返回 len(nums) 这种越界位置，容易写成返回 -1。"
+        },
+        {
+          "step": "易错写法：区间定义与循环条件、mid 更新三者不对齐",
+          "detail": "二分的常见错法不是思路错，而是「说的区间」和「写的更新」不是同一个东西。若申明区间是左闭右开 [l, r)，却写 while l <= r，当 l == r 时会去访问 nums[r]，在 r == len(nums) 时直接 IndexError（空数组尤其明显）；若申明左闭右闭 [l, r]，却把更新写成 r = mid（或 l = mid），候选区间就不再单调收缩，mid 可能长期停在同一处而陷入死循环。所以三种写法必须成套使用，不能各挑一半。"
+        },
+        {
+          "step": "正确写法：先固定不变量，再让每步只保留「解真正可能所在的区间」",
+          "detail": "左闭右闭版本把答案锁在 [l, r] 内（l=0, r=n-1）：mid 命中即返回；nums[mid] < target 说明 mid 及其左侧都不可能是答案，令 l = mid + 1；否则 r = mid - 1。区间长度每轮严格减小，循环条件 while l <= r 覆盖「区间内还有元素」的全部情况，退出时说明搜遍无果，返回 -1。左闭右开版本把答案锁在 [l, r) 内（l=0, r=n）：因为 r 本身不可达，所以 nums[mid] < target 时 l = mid + 1，否则 r = mid（mid 仍有可能是答案，不能被排除），循环条件相应变成 while l < r。"
+        },
+        {
+          "step": "lower_bound：把「可能等于」留在区间里，退出时 l 就是答案",
+          "detail": "判定条件从相等改成 nums[mid] < target：小于 target 的整段都可以安全排除（l = mid + 1），其余情况包括 nums[mid] == target 时答案可能是 mid 或者更早的位置，所以只能把右界收到 mid（r = mid）而不能是 mid - 1。循环结束时 l == r，区间 [l, r) 已空，而「所有小于 target 的元素都在 l 左边」且「l 位置（若存在）不小于 target」同时成立，因此 l 就是第一个 >= target 的位置；当 target 大于所有元素时 l == n，这正是不带 -1 的「位置」语义。"
+        },
+        {
+          "step": "工程加固：mid 的写法、有序性前置校验与 main 自测",
+          "detail": "mid 统一写 l + (r - l) // 2：它恒等于 floor((l + r) / 2)，在 Python 里天然不会溢出（大整数），在 C++/Java 这类定宽语言里则避免 l + r 溢出，面试官通常会追问这一点。此外把「数组必须升序」做成显式前置校验（线性 O(n)，语义上不改变二分本身 O(log n) 的比较次数），并顺手解决一个真实歧义：数组未排序时二分返回的 -1 没有意义，显式报错比静默给错答案好。main 里再用 bisect_left 与暴力线性扫描对拍，覆盖空数组、全相同、target 小于全体、大于全体这些边界。"
+        }
+      ],
+      "complexity": {
+        "time": "O(log n)：标准二分与 lower_bound 都是每轮扔掉约一半候选，最多约 floor(log2(n)) + 1 次比较（n=1e6 时约 20 次）；前置有序性校验是 O(n) 且只做一次",
+        "space": "O(1)：只用 l、r、mid 三个整型下标，不随 n 增长（迭代写法无递归栈；线性扫描的暴力解同样 O(1) 但时间是 O(n)）",
+        "why": "代价来自「每轮把候选区间长度从 r-l+1 压到约一半」，区间长度按 n → n/2 → n/4 … → 1 递减，所以轮数是 log2(n) 量级；空间上没有任何随输入增长的辅助结构。"
+      },
+      "code": {
+        "language": "python",
+        "source": "\"\"\"手写二分查找：标准查找（返回下标或 -1）+ lower_bound（第一个 >= target 的位置）。\n\n与人工参考实现同一算法：\n  · binary_search  左闭右闭 [l, r]，while l <= r，r = mid - 1 / l = mid + 1，未命中返回 -1；\n                   有重复元素时返回的是某个命中下标，不保证是第一个（要第一个用 lower_bound）；\n  · lower_bound    左闭右开 [l, r)，while l < r，r = mid / l = mid + 1，返回 l（可能等于 n）。\n本文件多出的内容只是：有序性前置校验、若干帮助函数与 main 里的对拍自测。\n形状约定：nums 是一维升序序列（list 或支持 len/下标访问的序列），无张量维度。\n只依赖标准库。\n\"\"\"\nfrom bisect import bisect_left\n\n\ndef _check_sorted(nums):\n    \"\"\"显式校验升序（非递减）前提：二分只在有序数组上有意义。O(n) 前置检查。\"\"\"\n    for i in range(1, len(nums)):\n        if nums[i - 1] > nums[i]:\n            raise ValueError(\"nums 必须非递减有序，位置 %d 处 %r > %r\" % (i, nums[i - 1], nums[i]))\n\n\ndef binary_search(nums, target):\n    \"\"\"标准二分：找到返回下标，找不到返回 -1。左闭右闭区间 [l, r]。\"\"\"\n    _check_sorted(nums)\n    l, r = 0, len(nums) - 1            # 答案（若存在）一定落在闭区间 [l, r] 内\n    while l <= r:                      # 区间非空才继续\n        mid = l + (r - l) // 2         # 等价于 (l+r)//2，且不依赖定宽整数溢出行为\n        if nums[mid] == target:\n            return mid\n        if nums[mid] < target:\n            l = mid + 1                # mid 及其左侧全部排除\n        else:\n            r = mid - 1                # mid 及其右侧全部排除\n    return -1                          # 区间已空：不存在 target\n\n\ndef lower_bound(nums, target):\n    \"\"\"返回第一个 >= target 的位置；target 大于所有元素时返回 len(nums)（不是 -1）。\n\n    区间是左闭右开 [l, r)，初始 r = len(nums) 本身就是一个合法返回值。\n    \"\"\"\n    _check_sorted(nums)\n    l, r = 0, len(nums)\n    while l < r:                       # [l, r) 非空才继续；结束条件 l == r\n        mid = l + (r - l) // 2\n        if nums[mid] < target:\n            l = mid + 1                # mid 太小，答案只能更靠右\n        else:\n            r = mid                    # mid 可能是答案，右界只能收到 mid\n    return l                           # l == r，即第一个 >= target 的位置\n\n\ndef upper_bound(nums, target):\n    \"\"\"返回第一个 > target 的位置（区分 left/right 的追问版）。\"\"\"\n    _check_sorted(nums)\n    l, r = 0, len(nums)\n    while l < r:\n        mid = l + (r - l) // 2\n        if nums[mid] <= target:\n            l = mid + 1\n        else:\n            r = mid\n    return l\n\n\ndef contains(nums, target):\n    \"\"\"用 lower_bound 的返回值判断存在性：位置必须落在数组内且该位置确实等于 target。\"\"\"\n    i = lower_bound(nums, target)\n    return i < len(nums) and nums[i] == target\n\n\ndef count_equal(nums, target):\n    \"\"\"重复元素的个数 = upper_bound - lower_bound，顺手展示两个边界的配合。\"\"\"\n    return upper_bound(nums, target) - lower_bound(nums, target)\n\n\ndef main():\n    cases = [\n        ([], 5),                            # 空数组\n        ([7], 7),                           # 单元素命中\n        ([7], 5),                           # 单元素未命中\n        ([1, 3, 5, 7, 9], 7),               # 常规命中（index 3）\n        ([1, 3, 5, 7, 9], 2),               # 常规未命中\n        ([5, 5, 5, 5, 5], 5),               # 全相同\n        ([-9, -4, 0, 3], -4),               # 负数\n    ]\n    for nums, target in cases:\n        idx = binary_search(nums, target)\n        lo = lower_bound(nums, target)\n        brute_idx = next((i for i, v in enumerate(nums) if v == target), -1)\n        brute_lo = next((i for i, v in enumerate(nums) if v >= target), len(nums))\n        # binary_search 只保证「命中且 nums[idx] == target」或 -1，重复元素下不保证下标最小\n        assert idx == -1 or nums[idx] == target, (nums, target, idx)\n        assert (idx != -1) == (brute_idx != -1), (nums, target, idx)\n        assert lo == brute_lo, (nums, target, lo)\n        assert lo == bisect_left(nums, target), (nums, target, lo)\n        assert contains(nums, target) == (idx != -1)\n        print(\"nums=%-18s target=%-3s binary_search=%-3s lower_bound=%d count=%d\"\n              % (nums, target, idx, lo, count_equal(nums, target)))\n\n    dup = [1, 2, 2, 2, 3, 5]\n    print(\"重复数组 [1,2,2,2,3,5]：target=2 -> lower=%d upper=%d count=%d\"\n          % (lower_bound(dup, 2), upper_bound(dup, 2), count_equal(dup, 2)))\n\n    # 性质对拍：随机数组上 lower_bound 必须等于「第一个 >= target 的下标」的暴力解\n    import random\n    rng = random.Random(0)\n    for _ in range(200):\n        n = rng.randrange(0, 40)\n        arr = sorted(rng.randrange(-10, 11) for _ in range(n))\n        t = rng.randrange(-12, 13)\n        brute = next((i for i, v in enumerate(arr) if v >= t), len(arr))\n        assert lower_bound(arr, t) == brute == bisect_left(arr, t), (arr, t)\n        hits = [i for i, v in enumerate(arr) if v == t]\n        idx = binary_search(arr, t)\n        assert (idx != -1) == bool(hits) and (idx == -1 or arr[idx] == t), (arr, t)\n    print(\"200 组随机对拍通过：binary_search / lower_bound / upper_bound 与暴力解一致\")\n\n    try:\n        binary_search([3, 1, 2], 1)\n    except ValueError as exc:\n        print(\"乱序数组被显式拒绝：%s\" % exc)\n    else:\n        raise AssertionError(\"乱序数组本应报错\")\n\n    print(\"main 自测全部通过\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
+        "walkthrough": [
+          {
+            "note": "_check_sorted 是前置守卫：二分正确性完全建立在「数组有序」上，乱序输入下它返回的 -1 是假阴性。线性扫一遍确认非递减，代价 O(n)，只做一次，不影响二分本身的 O(log n) 比较次数。"
+          },
+          {
+            "note": "binary_search 的两行初始化定义不变量：l=0、r=n-1，即「若 target 存在，其下标必在闭区间 [l, r] 内」。后面所有更新都必须保持这条不变量，这就是写二分时唯一要盯住的东西。"
+          },
+          {
+            "note": "循环条件 while l <= r 是「区间 [l, r] 内还有候选元素」的等价表述：l == r 时还剩一个元素要看，必须进循环；l > r 时区间空了，说明已经排除所有可能，返回 -1。"
+          },
+          {
+            "note": "mid = l + (r - l) // 2 先算宽度再取半，恒等于 floor((l + r)/2)。用减法形式的意义有二：一是定宽整数语言里 l + r 可能溢出（Python 不会，但这是面试高频追问点），二是向下取整保证 mid < r 在 [l, r) 版本中恒成立，区间不会停滞。"
+          },
+          {
+            "note": "三个分支的方向就是「mid 与 target 的大小关系决定哪一半被排除」：相等直接命中返回下标；nums[mid] < target 时由于数组有序，下标 ≤ mid 的元素全都小于 target，所以 l = mid + 1；否则下标 ≥ mid 的元素全都大于 target，所以 r = mid - 1。每一步区间长度严格减小，故必然终止。注意这里返回的是「某个」命中下标：数组含重复元素时，先命中哪一个由 mid 序列决定，要第一个/最后一个必须换 lower_bound / upper_bound。"
+          },
+          {
+            "note": "lower_bound 把区间换成左闭右开 [l, r) 并令初始 r = n：这样 r 天然是「target 大于所有元素」时的合法返回值，不需要额外分支。分支条件也从「相等」改成 nums[mid] < target，因为 lower_bound 要找的是位置而不是相等性；等于 target 的元素可能是答案也可能不是（左边可能还有更早的相等元素），所以只能 r = mid 而不是 mid - 1。"
+          },
+          {
+            "note": "lower_bound 结束时 l == r，返回 l。此时所有小于 target 的元素都在 l 左侧，而 l 位置（若未越界）满足 nums[l] >= target，两者合起来正是「第一个 >= target」的定义；target 最大时 l == n，越界即表示不存在，返回的是位置而不是 -1，这正是人工 pitfall 强调要区分的地方。"
+          },
+          {
+            "note": "upper_bound 只把判定条件改成 nums[mid] <= target，就能把「等于」的元素整段推到左边界左边，于是拿到第一个 > target 的位置；它与 lower_bound 的差就是重复元素的个数，count_equal 用一行体现这个关系。"
+          },
+          {
+            "note": "contains 说明「用 lower_bound 实现标准查找」时最容易漏的一步：返回的位置必须先判 i < len(nums)（target 超过全体时 i == n），再判 nums[i] == target，否则会索引越界或把「第一个更大的元素」误判成命中。"
+          },
+          {
+            "note": "main 先跑七组定向用例（空数组、单元素命中/未命中、常规命中/未命中、全相同元素、负数），再在 200 组随机有序数组上与 bisect_left 及暴力线性扫描对拍，最后确认乱序输入会抛 ValueError，把「边界处理」从口头承诺变成可运行的断言。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "空数组 nums = []：binary_search 因 r = -1 直接不进循环返回 -1；lower_bound 返回 0（== len(nums)），不能返回 -1。",
+        "n = 1：两个函数都只进一次循环；命中返回 0，未命中分别返回 -1 与 0 或 1（视 target 与唯一元素的大小关系）。",
+        "target 小于所有元素：binary_search 返回 -1，lower_bound 返回 0。",
+        "target 大于所有元素：binary_search 返回 -1，lower_bound 返回 len(nums)（越界位置，必须当成「不存在」而不是错误下标）。",
+        "大量重复元素：binary_search 返回的是某个（不保证第一个）等于 target 的下标，取决于 mid 命中哪一次；要第一个/最后一个必须改用 lower_bound / upper_bound。",
+        "全相同元素：等价于「找第一个」或「找最后一个」的特殊情形，二分仍会在 log2(n) 轮内结束，不会退化。",
+        "负数与零：比较只用 <、==，不涉及绝对值或除法取整，符号不构成特殊情况。",
+        "非整数元素（浮点、字符串）：只要支持 < 与 == 且数组有序就通用；但浮点相等比较不可靠，面试里应说明这是 lower_bound 语义而不是相等查找。",
+        "未排序输入：二分的前提不成立，本实现显式抛 ValueError；若在面试里被要求「不做校验」，要口头说明前提。",
+        "区间写成左闭右开却让 r = n - 1：会漏掉「答案恰好是 n」的情形，lower_bound 无法返回 len(nums)。"
+      ],
+      "pitfalls": [
+        "mid 更新写错导致死循环（如恒用 mid=(l+r)//2 配 r=mid）——人工 pitfall：在左闭右闭版本里 r = mid 不收缩区间，l == r 时会原地打转",
+        "循环条件与区间定义不一致——人工 pitfall：左闭右开 [l, r) 配 while l <= r 会访问 nums[n] 抛 IndexError（空数组最明显）",
+        "返回值在找不到时返回了 l 而不是 -1（需明确题目约定）——人工 pitfall：lower_bound 返回的是「位置」，可以等于 n，和标准二分的 -1 是两套约定",
+        "把 mid 当成元素值参与比较：mid 是下标，命中判断必须写 nums[mid] == target，写成 mid == target 只在恰好 nums[i] == i 时才对",
+        "左闭右闭版本取 r = len(nums) 或左闭右开版本取 r = len(nums) - 1：初始化与区间语义错位，前者越界、后者漏掉哨兵位置",
+        "lower_bound 里把 r = mid 写成 r = mid - 1：等于 target 的那个位置会被跳过，返回第一个「大于」target 的位置（退化成 upper_bound 甚至更错）",
+        "在 C++/Java 里写 (l + r) // 2 而不写 l + (r - l) // 2：l + r 可能溢出成负数，随后的下标访问直接崩溃；Python 无此问题，但面试答题时应主动提这一点",
+        "用 lower_bound 替代标准查找时忘记校验 nums[i] == target：target 大于全体时 i == n 会越界，i < n 时也可能只是「第一个更大的元素」而被误判成命中",
+        "循环中途用 return 之外的方式提前 break，或把命中分支写成 nums[mid] != target 继续收缩：前者丢返回、后者找不到出口",
+        "浮点数组上直接比相等：浮点误差会让 == 永远不成立，应该明确用 lower_bound 的区间语义。"
+      ],
+      "followUps": [
+        "把「第一个 >= target」改成「第一个 > target」（即 upper_bound），代码只需改哪一个比较符号？",
+        "为什么两种写法里区间长度的收缩量不同（mid-1/mid+1 与 mid/mid+1）？请从不变量角度解释，而不是背结论。",
+        "怎么用 lower_bound 实现「统计 target 出现次数」？复杂度是多少？",
+        "如果数组旋转过（如 [4,5,6,7,0,1,2]），二分还能用吗？需要额外判断哪一半是有序的，请说明判定条件。",
+        "在排序矩阵（行、列都递增）里找 target，或者用二分答案（如「最小化最大值」的分割数组）时，二分的是什么量、check 函数怎么写？",
+        "如果 mid 改成 l + (r - l + 1) // 2（向上取整），哪些写法仍正确、哪些会死循环？为什么一般配 l = mid 使用？",
+        "n 很大而比较代价很高（比如比较的是字符串或磁盘上的数据）时，怎么进一步压低比较次数（插值查找、Fibonacci 查找、Eytzinger 布局、branchless 二分）？",
+        "为什么 Python 的 bisect 模块只有 bisect_left / bisect_right 两个函数？标准二分查找用它们怎么表达？"
+      ],
+      "variations": [
+        "有序数组里查第一个和最后一个等于 target 的下标（lc34）：lower_bound 与 upper_bound 各一次。",
+        "旋转排序数组查找（lc33 / lc81 含重复）：先用 nums[l] 与 nums[mid] 判断哪一半有序，再决定去哪一半。",
+        "搜索插入位置（lc35）：就是 lower_bound，返回值可等于 n。",
+        "求平方根 / 猜数字（lc69、lc374）：在值域上二分，check 是单调谓词而不是数组比较。",
+        "有序矩阵中第 K 小的元素 / 分割数组的最大值：二分答案，在答案值域上二分并计数。",
+        "寻找峰值（lc162）：比较 nums[mid] 与 nums[mid+1] 的「爬坡方向」决定往哪边收缩，属于二分在非有序数组上的推广。",
+        "二分查找的边界推广：找最左/最右满足单调谓词 P 的位置（谓词二分），前两种写法都是它的特例。",
+        "C++ 的 std::lower_bound / std::upper_bound、Python 的 bisect_left / bisect_right，语义与本题完全对齐。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "lower_bound 指针移动",
+        "caption": "记住这张图：每一次都把 l 或 r 精确地推到 mid 的相邻一侧，被排除的区间（斜线阴影）越来越大，而 [l, r) 始终是唯一可能藏答案的区间；最终 l == r 停在 5，就是第一个 >= 7 的位置。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg'><rect x='0' y='0' width='480' height='240' fill='none' stroke='currentColor' stroke-opacity='0.15' stroke-width='1'/><text x='12' y='16' font-size='13' fill='currentColor'>lower_bound(nums, target=7)：每轮把指针推到 mid 的一侧</text><text x='12' y='48' font-size='13' fill='currentColor'>step1</text><text x='174' y='48' font-size='13' fill='currentColor'>step2</text><text x='336' y='48' font-size='13' fill='currentColor'>step3 命中</text><text x='12' y='66' font-size='13' fill='var(--accent)'>l=0 r=6 mid=3：nums[3]=5&lt;7 -&gt; l=4</text><text x='174' y='66' font-size='13' fill='currentColor'>l=4 r=6 mid=5：nums[5]=7&gt;=7 -&gt; r=5</text><text x='336' y='66' font-size='13' fill='currentColor'>l=5 r=5 -&gt; 返回 5</text><text x='160' y='48' font-size='14' fill='var(--line-1)'>▸</text><text x='322' y='48' font-size='14' fill='var(--line-1)'>▸</text><text x='12' y='93' font-size='13' fill='var(--fg-1)'>第一轮排除下标 0..3</text><text x='174' y='93' font-size='13' fill='var(--fg-1)'>第二轮排除下标 5..6？不</text><text x='336' y='93' font-size='13' fill='var(--accent)'>l==r：第一个 &gt;= 7 的位置</text><text x='12' y='119' font-size='13' fill='currentColor'>nums 下标</text><text x='106' y='119' font-size='13' fill='currentColor'>0</text><text x='152' y='119' font-size='13' fill='currentColor'>1</text><text x='198' y='119' font-size='13' fill='currentColor'>2</text><text x='244' y='119' font-size='13' fill='currentColor'>3</text><text x='290' y='119' font-size='13' fill='currentColor'>4</text><text x='336' y='119' font-size='13' fill='currentColor'>5</text><text x='382' y='119' font-size='13' fill='currentColor'>6</text><rect x='12' y='126' width='414' height='34' fill='none' stroke='var(--line-1)' stroke-width='1'/><line x1='71' y1='126' x2='71' y2='160' stroke='var(--line-1)' stroke-width='1'/><line x1='130' y1='126' x2='130' y2='160' stroke='var(--line-1)' stroke-width='1'/><line x1='189' y1='126' x2='189' y2='160' stroke='var(--line-1)' stroke-width='1'/><line x1='248' y1='126' x2='248' y2='160' stroke='var(--line-1)' stroke-width='1'/><line x1='307' y1='126' x2='307' y2='160' stroke='var(--line-1)' stroke-width='1'/><line x1='366' y1='126' x2='366' y2='160' stroke='var(--line-1)' stroke-width='1'/><text x='33' y='148' font-size='13' fill='currentColor'>1</text><text x='92' y='148' font-size='13' fill='currentColor'>3</text><text x='151' y='148' font-size='13' fill='currentColor'>3</text><text x='210' y='148' font-size='13' fill='currentColor'>5</text><text x='269' y='148' font-size='13' fill='currentColor'>7</text><text x='328' y='148' font-size='13' fill='currentColor'>7</text><text x='387' y='148' font-size='13' fill='currentColor'>9</text><line x1='11' y1='160' x2='15' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='19' y1='160' x2='23' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='27' y1='160' x2='31' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='35' y1='160' x2='39' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='43' y1='160' x2='47' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='51' y1='160' x2='55' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='59' y1='160' x2='63' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='67' y1='160' x2='71' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='75' y1='160' x2='79' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='83' y1='160' x2='87' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='91' y1='160' x2='95' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='99' y1='160' x2='103' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='107' y1='160' x2='111' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='115' y1='160' x2='119' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='123' y1='160' x2='127' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='131' y1='160' x2='135' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='139' y1='160' x2='143' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='147' y1='160' x2='151' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='155' y1='160' x2='159' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='163' y1='160' x2='167' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='171' y1='160' x2='175' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='179' y1='160' x2='183' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='187' y1='160' x2='191' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='365' y1='160' x2='369' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='373' y1='160' x2='377' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='381' y1='160' x2='385' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='389' y1='160' x2='393' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='397' y1='160' x2='401' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='405' y1='160' x2='409' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='413' y1='160' x2='417' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><line x1='421' y1='160' x2='425' y2='126' stroke='var(--line-1)' stroke-width='1' opacity='0.45'/><circle cx='248' cy='120' r='3' fill='currentColor'/><text x='228' y='115' font-size='13' fill='currentColor'>mid</text><circle cx='12' cy='164' r='3' fill='var(--accent)'/><text x='12' y='180' font-size='13' fill='var(--accent)'>l</text><circle cx='426' cy='164' r='3' fill='var(--accent)'/><text x='414' y='180' font-size='13' fill='var(--accent)'>r=n=7</text><circle cx='307' cy='120' r='3' fill='currentColor'/><text x='300' y='115' font-size='13' fill='currentColor'>mid</text><circle cx='189' cy='164' r='3' fill='currentColor'/><text x='186' y='180' font-size='13' fill='currentColor'>l</text><circle cx='307' cy='164' r='3' fill='currentColor'/><text x='304' y='180' font-size='13' fill='currentColor'>r</text><text x='12' y='204' font-size='13' fill='currentColor'>不变量：[l, r) 内必有答案（若答案存在）</text><text x='12' y='222' font-size='13' fill='currentColor'>终止：l == r；返回 l；target 大于全体时 l == n</text></svg>",
+        "alt": "在升序数组 nums=[1,3,3,5,7,7,9] 上对 target=7 演示 lower_bound 的三步：初始区间 [0,7) 中点为 3（值 5 小于 7）把 l 推到 4；第二轮中点为 5（值 7）把 r 收到 5；第三轮 l 与 r 相遇于 5，返回位置 5。图下方用斜线阴影标出被排除的区间，并注明不变量 [l, r) 与终止条件 l == r。"
+      },
+      "selfTest": [
+        "为什么左闭右闭版本的循环条件是 l <= r，而左闭右开版本是 l < r？（答：前者 [l, r] 在 l == r 时还剩一个元素必须检查；后者 [l, r) 在 l == r 时区间已空，再进去就会访问到 nums[r] 越界。）",
+        "lower_bound 里 nums[mid] == target 时，为什么只能写 r = mid 而不能写 r = mid - 1？（答：mid 本身可能就是「第一个 >= target」的答案；写成 mid - 1 会把它排除，从而可能跳到更小的错误位置。）",
+        "mid = l + (r - l) // 2 与 mid = (l + r) // 2 在 Python 里结果一样吗？为什么面试还要写前者？（答：整数下恒等；差别在 C++/Java 等定宽语言里 l + r 可能溢出，前者是防御式写法。）",
+        "用 lower_bound 判断 target 是否存在，需要几步检查？（答：两步——i < len(nums) 保证不越界，nums[i] == target 保证确实是命中而不是「第一个更大的元素」。）",
+        "target 大于数组所有元素时，两个函数各返回什么？（答：binary_search 返回 -1；lower_bound 返回 n，这是「位置」而不是下标命中。）"
+      ],
+      "keyPoints": [
+        "左闭右闭 [l,r]：while l<=r，r=mid-1 / l=mid+1",
+        "左闭右开 [l,r)：while l<r，r=mid / l=mid+1",
+        "mid = l + (r-l)//2 避免溢出",
+        "lower_bound：循环结束后 l 即第一个 >= target 的位置",
+        "这是小红书多模态实习的手撕原题，考察边界、循环写法与终止逻辑熟练度"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（binary-search）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题干（web/data/jobs.json 与 web/data/problem-bank.json 的 handWrittenCoding[id=binary-search]）要求：实现标准二分（找到返回下标、找不到返回 -1），并说明左闭右闭与左闭右开两种写法的循环条件与 mid 更新差异，再实现「查找第一个 >= target 的位置」。",
+          "人工 referenceSolution 的算法路径为：binary_search 用 l=0, r=len(nums)-1、while l<=r、mid=l+(r-l)//2、相等返回 mid、nums[mid]<target 则 l=mid+1 否则 r=mid-1、循环外返回 -1；lower_bound 用 l=0, r=len(nums)、while l<r、mid=l+(r-l)//2、nums[mid]<target 则 l=mid+1 否则 r=mid、返回 l。本文件的两个函数与之逐步一致，只额外加了有序性前置校验。",
+          "人工 keyPoints 的五条结论（两种区间写法的循环条件与 mid 更新、l+(r-l)//2 避免溢出、lower_bound 结束时 l 即第一个 >= target 的位置、小红书多模态实习手撕原题）在 keyPoints 中逐条保留，正文与代码未修改或反驳其中任何一条。",
+          "人工 pitfalls 的三条（mid 更新导致死循环、循环条件与区间定义不一致、找不到时返回 l 而不是 -1）全部保留在 pitfalls 中，并各补了触发条件说明。",
+          "lower_bound 的返回值语义等同于标准库 bisect_left：target 大于所有元素时返回 len(nums)，本实现的 main 用 bisect_left 在定向用例与 200 组随机有序数组上对拍验证。"
+        ],
+        "uncertain": [
+          "人工题干没有给出具体输入规模、样例数据与输出格式（例如是否要求返回「插入位置」、target 大于全体时是否输出 -1 还是 n），本文件按 lower_bound/bisect_left 的通用约定解释为「位置、可为 len(nums)」，并在 selfTest 中把这一约定显式化；如果人工本意是找不到就返回 -1，需要人工确认。",
+          "人工 pitfall 提到「找不到时返回了 l 而不是 -1」，但未指明针对哪个函数；本文件按上下文理解为针对标准二分（其找不到必须返回 -1），并把 lower_bound 的 l == n 说明为「位置」约定，二者并不冲突，但人工若另有意图需确认。",
+          "题干说标题为「含四种边界写法」，而 prompt 只明确点名了左闭右闭、左闭右开与 lower_bound 三种；本文件按 prompt 与 referenceSolution 的实际内容书写，并补了 upper_bound 作为第四种边界写法的常见追问，未擅自改写人工标题。",
+          "代码里的测试用例（空数组、单元素、全相同元素、负数、随机对拍 200 组）是通用边界取值，不代表题目约束；题干未规定元素取值范围与是否允许重复元素，本文件按「允许重复、可为负数」的通用情况处理。",
+          "仓库里只有参考实现的静态文本，我没有在题库侧运行人工代码本身；运行验证的是与之逐步等价的改写版（含额外的有序性校验与测试用例）。",
+          "本题无外部可引用链接：人工题库只标了来源面经（小红书多模态算法日常实习面经等），题干文本里没有出现任何 URL；按纪律不编造链接，sources[].url 留空字符串。"
+        ]
+      }
+    }
+  ]
+}

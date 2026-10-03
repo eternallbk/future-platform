@@ -2,430 +2,669 @@
   "batchId": "queue-11",
   "entries": [
     {
-      "id": "2760b3ea24e31fe2",
-      "tldr": "用静态背景反射体加轨迹驱动的动态点反射体渲染完整距离-方位-多普勒张量，RADIal 上回收 90.7% 参考检出目标。",
+      "id": "f3a23f89c9a8fb34",
+      "tldr": "RAPO 按执行与自举两种角色分别自适应策略正则系数，D4RL 上超基线",
       "keyPoints": [
-        "雷达靠多普勒直接测径向速度，但已有动态雷达新视角合成只重建距离-方位张量",
-        "既有表征把雷达点扩散写进场景几何，视角一变就渲染错",
-        "DyRAD 用固定解析 PSF 渲染反射体，不让传感器扩散烘进场景",
-        "反射体速度由目标轨迹投影到视线，多普勒既是输出也是轨迹监督",
-        "RADIal 上回收 90.7% 参考检出目标，最强基线为 26.9%"
+        "离线 RL 的策略正则需平衡策略改进与不确定价值估计",
+        "TD3+BC 用同一策略兼执行与自举两个角色，把两者耦合",
+        "RAPO 通过微分候选策略更新来自适应两组更新系数",
+        "TD3+BC 上拆自举/执行 actor，IQL 上只调优势加权温度",
+        "D4RL locomotion 与 AntMaze 上均超基线，TD3+BC 增益更大"
       ],
-      "why": "自动驾驶闭环评测需要能换视角、换配置的雷达仿真；把传感器 PSF 与场景解耦、零样本迁移传感器配置的思路，可直接迁移到多传感器合成数据管线。",
+      "why": "离线 RL 是后训练对齐的重要工具；理解策略约束的角色差异，能解释单一正则强度为何总在保守与改进间折中",
       "difficulty": "hard",
-      "tags": ["radar", "novel-view-synthesis", "autonomous-driving", "doppler", "sensor-simulation"],
-      "entities": ["DyRAD", "RADIal", "Boreas", "range-azimuth-Doppler (RAD)", "point-spread function (PSF)"],
-      "diagram": {
-        "kind": "architecture",
-        "title": "DyRAD 渲染流程",
-        "caption": "记住：场景里只存与传感器无关的反射体，传感器扩散交给固定解析 PSF。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='DyRAD 四层渲染流程：场景表示、视线投影求速度、固定解析 PSF 渲染、输出完整 RAD 张量'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>场景表示</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>静态背景 + 轨迹动态</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>速度投影到视线</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>多普勒有物理来源</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>固定解析 PSF 渲染</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>扩散不写进几何</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>完整 RAD 张量</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>RADIal 回收 90.7%</text></svg>",
-        "alt": "竖排四层流程图：场景用静态背景与轨迹驱动的动态反射体表示，速度投影到视线得到多普勒，经固定解析 PSF 渲染，输出完整距离-方位-多普勒张量。"
-      },
-      "concepts": [
-        {
-          "name": "Radar Point Spread Function (PSF)",
-          "readable": "雷达信号处理链会把一个点反射的能量摊到多个距离、方位、多普勒格子里；这个摊开的形状就是 PSF，由波形与处理链决定，与场景内容无关。",
-          "analogy": "像用一支毛边笔点一个点：你心里想点的是一个针尖大小的点，落到纸上却晕开一圈。那圈晕开的形状取决于笔和纸，不取决于你想点什么。",
-          "analogyBreaksDown": "毛边笔的晕开随下笔力度变化，而雷达 PSF 在给定波形与处理链后是固定的；类比也掩盖了它在距离、方位、多普勒三个维上形状不同、且随目标速度展宽的事实。",
-          "mechanism": "把 PSF 从可学习的场景几何里拿出来，作为固定解析算子套在反射体上；这样传感器扩散不会被当成场景结构，换视角或换雷达配置时都不需要重新拟合。",
-          "visual": "横轴为距离、纵轴为多普勒的二维热力图：一个理想反射体应是一个被已知形状模糊后的亮斑而非锐点，颜色深浅代表能量，模糊核固定不变。",
-          "prerequisites": ["雷达距离-多普勒处理与 FFT", "神经渲染或新视角合成的基本概念", "多普勒效应的物理含义"],
-          "selfTest": ["为什么把 PSF 学进场景几何会在视角移动时出错？", "PSF 固定这一假设在什么条件下成立？", "多普勒在 DyRAD 里同时承担哪两个角色？"],
-          "formula": "I(r,a,d)=\\sum_k A_k\\,h(r-r_k,\\;a-a_k,\\;d-d_k)"
-        },
-        {
-          "name": "Range-Azimuth-Doppler Tensor",
-          "readable": "雷达一帧的三种测量堆成一个三维张量：距离、方位角、多普勒即径向速度。它比只有距离-方位的张量多了速度这一维，因此能区分静止杂波与运动目标。",
-          "analogy": "像监控画面里每个像素都额外贴上速度标签：不只看到有人在哪，还知道他正朝你冲过来还是掉头走开。",
-          "analogyBreaksDown": "视频像素的位置是精确的，而雷达张量里每个反射会沿三个维度同时扩散，格点亮度不是干净的存在标记；多普勒还只是径向分量，横向运动完全看不见。",
-          "mechanism": "把多普勒作为可渲染输出，就要求场景表征显式存反射体速度；DyRAD 用目标轨迹投影到视线补上这个量，使速度维可解释，也能反过来监督轨迹。",
-          "visual": "画一个三维格子，三个轴是距离、方位、多普勒：静态背景反射体落在零多普勒平面上，动态目标在非零多普勒处出现亮斑，颜色深浅代表能量。",
-          "prerequisites": ["FFT 与雷达距离-多普勒处理", "坐标系变换与视线投影几何"],
-          "selfTest": ["RAD 张量比距离-方位张量多出的那一维由什么物理量构成？", "只渲染距离-方位张量的方法为什么无法表达运动？", "零多普勒平面上的能量主要来自什么？"],
-          "formula": ""
-        },
-        {
-          "name": "Zero-Shot Sensor-Configuration Transfer",
-          "readable": "同一份重建场景不改任何参数就能换成另一套雷达规格来渲染，因为传感器特性被隔离在固定的 PSF 里，场景只存与传感器无关的反射体。",
-          "analogy": "像同一份菜谱换不同牌子的烤箱都能烤：菜谱写的是食材和步骤，烤箱的脾气单独写在另一张纸上。",
-          "analogyBreaksDown": "换烤箱只需调温度和时间，而换雷达配置会同时改变距离分辨率、多普勒模糊与 PSF 形状，某些配置下原本可分辨的反射体会合并，迁移并非总是无损。",
-          "mechanism": "把「场景是什么」与「传感器怎么看」解耦：场景用与传感器无关的反射体表示，渲染时再套目标配置的解析 PSF，因此不必在目标配置上重新拟合。",
-          "visual": "左侧一份共享的场景反射体点云，右侧两条并列渲染管线套用不同 PSF 参数，输出两张规格不同但结构一致的 RAD 热力图。",
-          "prerequisites": ["雷达波形与分辨率参数的基本概念", "表示解耦与域迁移的常见思路"],
-          "selfTest": ["零样本换配置在表示层面成立的原因是什么？", "哪类传感器参数变化最可能破坏这种迁移？", "为什么作者说这种解耦让可迁移性变得可直接检验？"],
-          "formula": ""
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-radar-psf-rendering",
-          "name": "雷达点扩散函数渲染（Radar PSF Rendering）",
-          "category": "engineering",
-          "latex": "I(r,a,d)=\\sum_{k=1}^{K} A_k\\, h\\!\\left(r-r_k,\\; a-a_k,\\; d-d_k\\right)",
-          "symbols": [["I(r,a,d)", "渲染出的距离-方位-多普勒张量强度"], ["k", "第 k 个反射体（静态背景或运动跟踪的动态点）"], ["A_k", "反射体幅度"], ["(r_k,a_k,d_k)", "反射体的距离、方位、多普勒坐标"], ["h(·)", "由雷达信号处理链导出的固定解析点扩散函数"]],
-          "derivation": ["第 1 步：动机。雷达处理会把单个反射的能量扩散到多个 bin，若把这种扩散当作场景几何去学习，视角一变渲染就错。", "第 2 步：表示。把场景拆成静态背景反射体与轨迹跟踪的动态点反射体，每个反射体只保留幅度、位置与速度参数。", "第 3 步：渲染。每个反射体经固定解析 PSF 摊开并叠加，得 I = Σ_k A_k h(Δr, Δa, Δd)。", "第 4 步：速度维。多普勒坐标由反射体速度投影到视线得到，因此渲染结果可反过来监督目标轨迹。"],
-          "analogy": "像画星空：星星本身是点，望远镜的衍射决定了照片里亮斑的形状；先存星星位置，再按镜头特性摊开，而不是把亮斑当成星星的形状去记。",
-          "pitfalls": ["把 PSF 摊开的亮斑当成场景几何去拟合，换视角即失效", "忽略多普勒只是径向速度投影，横向运动不可见", "把零样本迁移说成对任意雷达配置都无损"],
-          "code": "import torch, torch.nn.functional as F\n\ndef render_rad(centers, amps, psf, shape=(64, 64, 32)):\n    # centers: [K,3] 为 (距离, 方位, 多普勒) 整数格点\n    vol = torch.zeros(shape)\n    for c, a in zip(centers, amps):\n        vol[c[0], c[1], c[2]] += a\n    return F.conv3d(vol[None, None], psf[None, None], padding=1)[0, 0]",
-          "sources": [{"title": "DyRAD: Radar Novel View Synthesis for Dynamic Driving Scenes", "url": "https://huggingface.co/papers/2609.39841"}]
-        },
-        {
-          "id": "f-doppler-los-projection",
-          "name": "多普勒视线投影（Doppler Line-of-Sight Projection）",
-          "category": "engineering",
-          "latex": "v_r=\\frac{\\mathbf{v}\\cdot(\\mathbf{p}-\\mathbf{o})}{\\lVert \\mathbf{p}-\\mathbf{o}\\rVert}",
-          "symbols": [["v", "反射体（被跟踪目标）的速度矢量"], ["p", "反射体位置"], ["o", "雷达位置"], ["(p-o)/‖p-o‖", "雷达指向反射体的视线单位矢量"], ["v_r", "径向速度，决定多普勒 bin"]],
-          "derivation": ["第 1 步：动机。RAD 张量的多普勒维需要每个反射体的径向速度，摘要说明该速度由目标轨迹导出。", "第 2 步：跟踪给出世界坐标系下的速度 v 与位置 p。", "第 3 步：构造从雷达到反射体的视线单位矢量 u = (p-o)/‖p-o‖。", "第 4 步：做点积得径向速度 v_r = v·u，再映射到对应的多普勒 bin；接近与远离给出相反符号。"],
-          "analogy": "像站在路边听车：只有朝你开来或离你而去的那个速度分量会让音调变高变低，横向开过去的车音调几乎不变。",
-          "pitfalls": ["把速度大小直接当成多普勒，忽略视线夹角", "忘记多普勒有符号，接近与远离落在不同半边", "横向运动在多普勒上接近零，不能据此判断目标静止"],
-          "code": "import torch\n\ndef radial_velocity(v, p, o):\n    los = p - o\n    u = los / los.norm(dim=-1, keepdim=True)\n    return (v * u).sum(-1)   # v_r = v · u",
-          "sources": [{"title": "DyRAD: Radar Novel View Synthesis for Dynamic Driving Scenes", "url": "https://arxiv.org/abs/2609.39841"}]
-        }
-      ],
-      "selfCheck": {
-        "claims": ["雷达通过多普勒直接测量径向速度。", "已有的动态场景雷达新视角合成方法只重建距离-方位张量，而渲染多普勒的方法假设场景静态。", "雷达处理会把每个反射扩散到多个 bin，已有表示把这种扩散吸收进场景几何，导致视角移动时渲染错误。", "DyRAD 用静态背景反射体与运动跟踪的动态点反射体渲染完整 RAD 张量，反射体速度由目标轨迹投影到视线。", "PSF 是来自雷达信号处理链的固定解析函数，这一分离使零样本传感器配置迁移成为可能。", "在 RADIal 上 DyRAD 回收 90.7% 参考检出目标，最强基线为 26.9%；评测还覆盖 Boreas 与合成基准，包含位移视角。"],
-        "uncertain": ["渲染张量的精确合成形式（卷积还是逐 bin 叠加）摘要未给出，公式为按摘要重建的通用形式，需核对原文", "PSF 的具体解析形式与参数化方式摘要未说明", "位移视角与零样本换配置的定量结果摘要未报告", "90.7% 与 26.9% 的评测协议细节（目标匹配阈值等）摘要未说明"]
-      },
-      "teaching": {
-        "progressive": [
-          {"level": "一句话", "text": "给自动驾驶的雷达做「换个视角重新拍」的仿真，而且连速度维一起渲染对。"},
-          {"level": "入门", "text": "雷达不只测距离和方向，还能靠多普勒直接测径向速度。已有方法要么只重建距离-方位图，要么只给静态场景渲多普勒。DyRAD 把场景拆成静态背景反射体和带轨迹的动态点反射体，渲染出完整的距离-方位-多普勒张量。"},
-          {"level": "进阶", "text": "关键设计是把传感器造成的扩散从场景里拿出来：雷达处理会把一个反射摊到多个 bin，之前的方法把这层扩散当成几何学进去，视角一变就渲染错。DyRAD 改用信号处理链导出的固定解析 PSF 渲染反射体，并把目标轨迹速度投影到视线得到多普勒，使多普勒既是输出也监督轨迹；副作用是同一场景可零样本换雷达配置。"},
-          {"level": "专家", "text": "与只重建距离-方位张量的动态雷达方法相比，DyRAD 保留了多普勒这一直接速度测量；与只渲多普勒的静态方法相比，它由轨迹驱动动态反射体。在表示层与传感器解耦后，可迁移性无需在目标配置上重拟合即可检验，并在位移视角这一前人未测的设置上评测。RADIal 上参考检出目标的雷达检测回收率 90.7%，最强基线 26.9%。适用边界是轨迹质量与 PSF 固定假设。"}
-        ],
-        "socratic": [
-          {"q": "不把 PSF 固定成解析形式会怎样？", "a": "传感器扩散会被当作场景几何拟合，训练视角下看起来对，视角一移动这层假几何就渲染错，换雷达配置还必须重新拟合。"},
-          {"q": "为什么多普勒要来自目标轨迹，而不是让网络自由预测？", "a": "摘要的设定是速度由轨迹投影到视线得到，这样多普勒有物理来源；同时它又能反过来当作轨迹的监督信号，避免速度维变成无约束的自由变量。"}
-        ],
-        "mechanism": "必须这样设计是因为雷达测量的张量里混着传感器效应：同一组反射体在不同雷达配置下的形状不同。若把这种效应学进场景，场景就绑死在一种传感器和一个视角上。把 PSF 固定为解析算子、场景只存与传感器无关的反射体，才让「场景是什么」与「雷达怎么看」分开，从而支持位移视角与零样本换配置。",
-        "boundary": "依赖可靠的目标跟踪为动态反射体定速度，跟踪失败或目标未被跟踪时多普勒无从得到；PSF 固定假设要求信号处理链已知且不变；渲染质量受限于反射体式表示，对复杂散射、多径与杂波的处理能力摘要未说明。",
-        "analogyBoundary": "「先存星星再按镜头摊开」的类比忽略了多普勒维：速度造成的展宽与观察视角强相关，而镜头模糊是一次成像、与观察角度无关。",
-        "misconceptions": ["以为雷达新视角合成就是相机新视角合成换个传感器，忽略多普勒是直接测量", "以为把 PSF 一起学进去更端到端、效果更好", "以为 90.7% 是整体检测精度，它其实是参考检出目标中被回收的比例"],
-        "ownAnalysis": "摘要明确把「PSF 被吸收进几何」指为视角移动时渲染错误的根因，这个诊断与传感器仿真里常见的「把仪器响应当成被测对象」是同一类错误（推断）。把多普勒同时用作渲染输出与轨迹监督，构成一个闭环结构，是这条工作里最值得迁移的设计（推断）。需注意摘要没有报告位移视角下的具体数值，也没说明零样本换配置在多大的参数跨度上仍成立。",
-        "officialNotes": [{"position": "DyRAD 用静态背景反射体与运动跟踪的动态点反射体渲染完整 RAD 张量，反射体速度由目标轨迹投影到视线，PSF 来自雷达信号处理链且保持固定，因而支持零样本传感器配置迁移。", "source": "https://huggingface.co/papers/2609.39841"}],
-        "interviewAnswer": "我关注 DyRAD 对雷达新视角合成的两点改动。第一，它渲染完整的距离-方位-多普勒张量，把雷达独有的径向速度测量用起来；第二，它不把 PSF 的扩散学进场景几何，而是用信号处理链导出的固定解析 PSF 渲染反射体，所以换视角不会渲染错，还能零样本换雷达配置。多普勒由目标轨迹投影到视线得到，同时反过来监督轨迹。RADIal 上参考检出目标的回收率从基线的 26.9% 提到 90.7%。",
-        "studyPath": {
-          "prerequisites": ["雷达距离-多普勒处理与 FFT", "神经辐射场与新视角合成", "多目标跟踪基础"],
-          "nextSteps": ["读原文实验设置，核对位移视角与换配置的定量结果", "对比把 PSF 学进几何的基线，理解误差来源", "熟悉 RADIal 与 Boreas 的数据格式与标注"]
-        }
-      }
-    },
-    {
-      "id": "c68ae3f5745b08f4",
-      "tldr": "借《塞尔达》三场世界回应测试追问：HiDream-O1-Video 是否真懂世界变化，视频模型不等于世界模型。",
-      "keyPoints": [
-        "海拉鲁规则由设计师显式写死，世界模型则从数据与交互学状态-行动-后果",
-        "可信虚拟世界需要状态、变化、交互与反馈，规则稳定才能被预测",
-        "智象把它定位为「更懂真实世界的视频生成模型」，属 UiT 同源演进路线",
-        "官方称支持前置多模态意图理解、5—20 秒、1080P、物理变化生成与原生音画",
-        "但符合常识的成片不能证明已具备可泛化物理认知，仍需看可观察输出"
-      ],
-      "why": "世界模型岗位高频问「视频生成是否等于世界模型」；这条中文材料给出可复述的判断标准与国产模型路线，适合作为面试开场。",
-      "difficulty": "easy",
-      "tags": ["world-model", "video-generation", "hidream", "multimodal", "chinese-media"],
-      "entities": ["HiDream-O1-Video-1.0", "智象（HiDream.ai）", "UiT (Unified Transformer)", "《塞尔达传说：旷野之息》"],
+      "tags": ["offline-rl", "policy-regularization", "td3-bc", "iql", "d4rl"],
+      "entities": ["RAPO", "TD3+BC", "IQL", "D4RL", "AntMaze"],
       "diagram": {
         "kind": "flow",
-        "title": "世界回应判断链",
-        "caption": "记住：判断世界模型要看它能否稳定回应行动，而不是画面是否逼真。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='竖排四层判断链：三场世界回应测试、规则稳定且可组合、状态变化交互反馈、可观察输出验证'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>三场回应测试</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>看模型如何回应行动</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>规则稳定可组合</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>玩家才能形成预测</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>状态变化交互反馈</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>可信世界的四要素</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>可观察输出验证</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>成片不等于物理认知</text></svg>",
-        "alt": "竖排四层流程图：从三场世界回应测试，到规则稳定且可组合，到状态变化交互与反馈，最后落到可观察输出验证。"
+        "title": "RAPO 角色自适应更新",
+        "caption": "同一份策略被拆成执行与自举两个角色，各自学一个更新系数",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='RAPO 角色自适应策略优化流程'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>共享 actor</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>执行/自举耦合</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>拆双 actor</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>两角色各持系数</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>超梯度定系数</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>对候选更新求导</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>D4RL 验证</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>TD3+BC 增益最大</text>\n</svg>",
+        "alt": "流程图：共享 actor 被拆成自举与执行两个 actor，各自用超梯度学一个更新系数，最后在 D4RL 上验证且 TD3+BC 增益最大"
       },
       "concepts": [
         {
-          "name": "World Model",
-          "readable": "对世界状态及其变化规律形成表征，并能支持预测、规划或行动，而不只是生成看起来合理的画面。",
-          "analogy": "像玩桌游时那本裁判手册：任何新动作都能查规则、给出判罚；而视频生成器更像一叠拍好的精彩集锦，看着热闹却答不出没拍过的动作。",
-          "analogyBreaksDown": "裁判手册是人工写死的，世界模型要从数据里学，学到的可能是相关性而非真规则；类比还暗示存在一本完备手册，而物理规律未必能被有限规则写完。",
-          "mechanism": "判断口径从「输出像不像」转向「状态与行动后果的关系是否可泛化」：只有学到转移关系，才能在不出真机的情况下推演不同动作的结果，这正是规划与决策需要的能力。",
-          "visual": "横轴是时间步，纵轴是世界状态；一条实线是真实轨迹，一条虚线是模型在想象中滚动的预测，两条线的分叉速度代表模型是否抓住变化规律。",
-          "prerequisites": ["视频扩散或自回归生成模型基础", "基于模型的强化学习与规划概念"],
-          "selfTest": ["世界模型与视频生成器的判断标准差别在哪？", "为什么状态表征不一定等于像素？", "规则稳定为什么比画面逼真更关键？"],
-          "formula": "s_{t+1}\\sim p_\\theta(s_{t+1}\\mid s_t,\\,a_t)"
+          "name": "Role-Adaptive Policy Optimization（角色自适应策略优化）",
+          "readable": "把策略网络在离线 RL 里干的两件事分开看：挑动作去环境执行、给 critic 提供自举动作。RAPO 认为这两件事需要不同的正则强度，于是把更新系数变成可学的、按角色分别更新的量。",
+          "analogy": "像同一个人既做前台又管仓库：前台要敢拍板、仓库要稳。公司只有一套考核标准管两个岗位，结果要么前台太怂要么仓库太冒进。RAPO 相当于给两个岗位各配一套 KPI。",
+          "analogyBreaksDown": "公司里两个岗位的 KPI 可以各自独立调整；RL 里执行策略与自举策略共享同一个 critic 和同一批离线数据，调一个会改变另一个的价值目标，角色并不能完全解耦。",
+          "mechanism": "用基座算法自己的 actor 目标构造候选更新，再对系数求超梯度，选出让该角色更优的取值；TD3+BC 因此拆出 bootstrap 与 execution 两个 actor，而价值学习本已独立的 IQL 只调优势加权温度。",
+          "visual": "横轴为训练步、纵轴为 D4RL 归一化回报：实线 RAPO、虚线基座；另用小柱状图画出 α_boot 与 α_exec 随步数分叉，说明两个角色确实要不同强度。",
+          "prerequisites": ["离线 RL 与分布偏移（CQL/IQL/TD3+BC）", "策略梯度与 target network 自举", "超梯度/隐式微分的概念"],
+          "selfTest": ["RAPO 与「再调一个正则超参」的本质区别是什么？", "为什么两个角色需要不同系数？", "IQL 上为什么不拆 actor？"],
+          "formula": "\\alpha_i^\\star=\\arg\\min_{\\alpha_i}J\\big(\\theta-\\alpha_i\\nabla_\\theta L_i^{\\mathrm{actor}}(\\theta)\\big)"
         },
         {
-          "name": "Rule Stability and Composability",
-          "readable": "世界里的规则要稳定到能被经验预测，又要能互相组合，从而产生设计师没有逐条写死的解法。",
-          "analogy": "像厨房里的基本操作：知道火会加热、油会起烟，你就能自己组合出煎炒焖炸，而不是只会照着菜谱点某一道菜。",
-          "analogyBreaksDown": "厨房操作基本可逆、后果可控，而虚拟世界里的规则组合可能产生爆炸式状态，学习式模型也无法保证组合后仍然符合物理。",
-          "mechanism": "规则稳定让玩家形成可迁移的预期，可组合让有限规则覆盖大量情境；这两条一起，才使「世界感」来自可预测的交互反馈而非画面细节。",
-          "visual": "一张二维方格图：横纵轴各列若干基本规则，格子里填入两条规则叠加后的结果，颜色越深表示相互作用越强。",
-          "prerequisites": ["交互式系统的状态-动作建模", "组合泛化的基本直觉"],
-          "selfTest": ["只有稳定但不可组合的规则会出现什么问题？", "可组合性为什么能产生没被写死的解法？", "学习式模型的规则完备性如何检验？"],
-          "formula": ""
-        },
-        {
-          "name": "Observable Output Evaluation",
-          "readable": "不靠官方口号或单段成片判定能力，而是回到可观察、可复现的输出上逐项验证宣称。",
-          "analogy": "像验车不看销售说辞，而是亲自打火、踩刹车、试空调，逐项看仪表和手感。",
-          "analogyBreaksDown": "验车有标准项目与合格线，而这里的回应测试由评测者自行设计，缺少统一阈值，选哪些场景本身就带主观性。",
-          "mechanism": "把能力宣称翻译成可观察的测试场景，是为了防止用传播口径替代证据；摘要也据此指出，一段符合常识的成片不能证明可泛化的物理认知。",
-          "visual": "左侧一列官方宣称能力，右侧一格一格对应可观察测试与勾选状态，未通过的格子留空并标出待补证据。",
-          "prerequisites": ["评测协议与基准设计常识", "模型能力边界的常见失效模式"],
-          "selfTest": ["为什么单段成功样例不构成能力证据？", "定性回应测试缺什么才无法下结论？", "如何为物理一致性设计可复现测试？"],
+          "name": "Bootstrap-Execution Role Split（自举-执行角色分离）",
+          "readable": "把「给 critic 提供自举动作」的策略和「真正拿去执行」的策略拆成两个网络或两组参数，前者求稳、后者求进，避免一个策略同时被两种需求拉扯。",
+          "analogy": "像球队的陪练与首发：陪练要按对手（target Q）的水平喂球，首发才按当下最优打；让同一批人又当陪练又当首发，训练强度和比赛强度会互相干扰。",
+          "analogyBreaksDown": "球队里陪练与首发可以各自轮换、互不干扰；RL 中两者共享同一批离线数据与 critic，分离后仍要防止执行策略的分布漂移把自举目标的锚点带跑。",
+          "mechanism": "自举目标额外惩罚「策略导致的 target value 变化」，让自举动作别把价值锚点推离原处；执行目标只优化局部策略改进代理，允许更激进的提升，两个目标因此可以各用各的系数。",
+          "visual": "画两个并排的策略方块共用下方一个 critic 方块；自举侧连线标「惩罚 target 漂移」，执行侧标「改进代理」，两边的旋钮分别写 α_boot、α_exec。",
+          "prerequisites": ["TD3+BC 的 actor 目标与 delayed policy update", "target network 与自举误差", "离线 RL 中的分布外动作问题"],
+          "selfTest": ["自举 actor 的惩罚项约束的是什么量？", "拆开两个 actor 后，critic 的目标会怎么变？", "为什么这种拆分在 TD3+BC 上收益比 IQL 大？"],
           "formula": ""
         }
       ],
       "formulas": [
         {
-          "id": "f-world-model-transition-planning",
-          "name": "世界模型的状态转移与规划（World Model Transition and Planning）",
-          "category": "worldmodel",
-          "latex": "s_{t+1}\\sim p_\\theta(s_{t+1}\\mid s_t,a_t),\\qquad \\hat{a}=\\arg\\max_{a}\\;\\mathbb{E}\\Big[\\sum_{k} r(s_{t+k})\\Big]",
-          "symbols": [["s_t", "世界状态表征"], ["a_t", "动作或交互"], ["p_θ", "学到的状态转移模型"], ["r(·)", "回报或任务目标"], ["â", "据想象轨迹规划出的动作"]],
-          "derivation": ["第 1 步：文章定义世界模型要对世界状态及其变化规律形成表征。", "第 2 步：把「状态-行动-后果」的关系写成条件分布 p_θ(s_{t+1}|s_t, a_t)，而不是只生成观测。", "第 3 步：有了转移模型，就能在不与环境交互的情况下滚动预测多个时间步。", "第 4 步：以累积回报最大化为目标挑选动作，转移模型因此支持规划与行动。"],
-          "analogy": "像下棋时在脑子里推演：先记住盘面状态，再按规则试走几步，挑出最有利的一手，不必真的落子。",
-          "pitfalls": ["把画面逼真当成世界模型的判断标准", "以为状态必须等于像素，忽略潜在状态表征", "把规则由人工写死的游戏引擎当成学习到的世界模型"],
-          "code": "import torch\n\ndef rollout(model, s0, policy, horizon=5):\n    s, traj = s0, []\n    for _ in range(horizon):\n        a = policy(s)      # 选动作\n        s = model(s, a)    # s_{t+1} ~ p_θ(·|s_t, a_t)\n        traj.append((s, a))\n    return traj",
-          "sources": [{"title": "从海拉鲁到现实世界：视频模型如何理解「变化」", "url": "https://leiphone.com/category/yanxishe/NGx4Ckx3MbUWlIs3.html"}]
-        }
-      ],
-      "selfCheck": {
-        "claims": ["文章围绕 HiDream-O1-Video 的三场世界回应测试展开。", "《塞尔达》的规则主要由设计师与工程师显式构建，机器学习语境的世界模型则从数据和交互中学习状态、行动与后果之间的关系。", "智象把 HiDream-O1-Video-1.0 定义为「更懂真实世界的视频生成模型」，并放在一个 UiT、四大模型同源演进的路线中。", "官方介绍的能力包括前置多模态意图理解、5—20 秒动态时长、1080P 输出、物理变化生成与原生音画。", "文章认为视频模型本身不是完整世界模型，一段符合常识的成片不能证明模型已具备可泛化的物理认知。"],
-        "uncertain": ["三场回应测试的具体场景、判定标准与是否有量化结果摘要未给出（摘要末尾截断在拉环场景）", "HiDream V1 的真实物理一致性水平无法从这篇定性报道判断，需核对官方技术报告", "摘要未给出模型参数量、训练数据规模与开源情况"]
-      },
-      "teaching": {
-        "progressive": [
-          {"level": "一句话", "text": "视频生成得好看不等于懂世界，关键看它会不会稳定地回应你的动作。"},
-          {"level": "入门", "text": "文章用三个测试看 HiDream-O1-Video 会不会像《塞尔达》那样回应玩家的行动。海拉鲁的规则是人写的，但规则稳定且可组合，玩家才能预测和利用。世界模型要类似地从数据和交互中学状态、行动与后果的关系。"},
-          {"level": "进阶", "text": "作者强调世界模型不是更大规模的视频生成器：它要对世界状态及其变化规律形成表征，并支持预测、规划或行动。智象把 HiDream V1 定位为更懂真实世界的视频生成模型，宣称有前置多模态意图理解、5—20 秒动态时长、1080P、物理变化生成与原生音画，并放在 UiT 同源演进路线里；文章同时提醒，视频模型本身不是完整世界模型。"},
-          {"level": "专家", "text": "这篇的价值在于给出可操作的判断标准：不看画面拟真度，而看系统是否对行动作出符合物理的回应、规则是否稳定可组合。作者把塞尔达这类显式规则引擎与从数据学状态-行动-后果的世界模型区分开，并指出符合常识的成片不能证明可泛化的物理认知，必须回到可观察输出。其评测仍是定性的三场回应测试，缺少量化指标、统一阈值与多模型对照。"}
-        ],
-        "socratic": [
-          {"q": "为什么规则稳定比画面逼真更关键？", "a": "只有规则稳定，玩家才能依据经验预测后果并据此规划；画面逼真但回应不一致，用户无法建立可迁移的预测，世界感立刻崩塌。"},
-          {"q": "为什么不能直接用视频生成质量评判世界模型？", "a": "视频质量只衡量单段输出是否合理，而世界模型要求状态表征与行动后果的关系可泛化；符合常识的成片可能只是拟合了训练分布，换个没见过的交互就会露馅。"}
-        ],
-        "mechanism": "世界模型的实用价值来自可被行动调用的转移关系：只有把状态、动作与后果的关系学到，才能在不碰真机的情况下推演「如果这样做会怎样」。因此评测必须针对回应是否稳定、是否遵循物理、能否组合出未写死的解法，而不是针对单段视频的观感。",
-        "boundary": "文章的结论建立在三场定性回应测试上，没有量化基准与多模型对照，不能据此判断 HiDream V1 在物理一致性上达到何种水平；用游戏引擎类比世界模型也有边界——引擎规则是显式写死的，学习式模型无法保证规则完备或物理正确。",
-        "analogyBoundary": "塞尔达类比容易让人以为世界模型也需要一本显式规则手册，但学习式模型给出的是概率性、可能违反物理的预测，也没有设计者保证所有交互都被覆盖。",
-        "misconceptions": ["把世界模型等同于更大更强的视频生成模型", "认为画面对就行，忽略能否稳定回应行动", "把关卡设计师写死的规则当成模型学到的物理规律"],
-        "ownAnalysis": "文章给出的判断标准（状态、变化、交互、反馈，规则稳定且可组合）与机器人学里基于模型的规划所需条件基本一致（推断）。可疑处在于三场测试的选择由作者决定，缺少反例与量化阈值，「更懂真实世界」仍是官方叙事而非可复现结论。用于面试时，把它当作提问框架比当作 HiDream V1 的性能证明更稳妥。",
-        "officialNotes": [{"position": "智象官方将 HiDream-O1-Video-1.0 定义为「更懂真实世界的视频生成模型」，具备前置多模态意图理解、5—20 秒动态时长、1080P 输出、物理变化生成与原生音画，属于一个 UiT、四大模型同源演进的路线。", "source": "https://leiphone.com/category/yanxishe/NGx4Ckx3MbUWlIs3.html"}],
-        "interviewAnswer": "我会把世界模型和视频生成器分开看。世界模型要对世界状态及其变化规律形成表征，支持预测、规划或行动；标准是能否对行动作出符合物理的稳定回应，而非画面像不像。HiDream-O1-Video 官方定位是更懂真实世界的视频生成模型，宣称有前置多模态意图理解、5—20 秒、1080P、物理变化生成等能力，但它本身不是完整世界模型。文章用三场回应测试观察物理变化，属定性验证，还需可观察的量化输出才能下结论。",
-        "studyPath": {
-          "prerequisites": ["视频扩散与生成模型基础", "基于模型的规划与世界模型概念", "多模态大模型的能力边界"],
-          "nextSteps": ["查 HiDream 官方技术报告核对宣称能力", "对照 DreamerV3 等世界模型的评测协议", "自己设计可量化的物理回应测试"]
-        }
-      }
-    },
-    {
-      "id": "ee2e59c46b3f17f3",
-      "tldr": "把「怎么移动」与「去哪」解耦：源城市学相对转移先验，目标城市只用 POI 图落地，十城 14 次迁移优于适配基线。",
-      "keyPoints": [
-        "目标城市只有 POI 坐标与类别，没有任何轨迹可用于训练或选型",
-        "已有生成器预测绝对目的地，把移动行为与城市 POI 身份绑死",
-        "Nomad 改为上下文条件化相对转移，分离「怎么移动」与「在哪落地」",
-        "历史条件流匹配学转移先验，覆盖语义位移、地理位移与耗时",
-        "十城 14 次迁移，分布保真平均误差较最强基线低约 15%"
-      ],
-      "why": "跨城市冷启动是出行与推荐建模的真实痛点；把转移先验与落地图分开的因子化设计，对做可迁移表征与 RL 探索的岗位是可复用的方法论。",
-      "difficulty": "hard",
-      "tags": ["human-mobility", "flow-matching", "transfer-learning", "trajectory-generation", "graph"],
-      "entities": ["Nomad", "flow-matching", "points of interest (POIs)", "behavior graph", "exploration–return walk"],
-      "diagram": {
-        "kind": "architecture",
-        "title": "Nomad 迁移与落地",
-        "caption": "记住：可迁移的是相对转移先验，绝对目的地必须靠目标城市 POI 图重新落地。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='竖排四层流程图：源城市 POI 与轨迹、历史条件流匹配学转移先验、采样相对转移、在目标城市 POI 图落地'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>源城市 POI + 轨迹</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>只在这里学怎么移动</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>历史条件流匹配</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>语义与地理位移 + 耗时</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>采样相对转移</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>不含城市 POI 身份</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>目标城市落地</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>行为图 + 探索返回游走</text></svg>",
-        "alt": "竖排四层流程图：源城市 POI 与轨迹训练历史条件流匹配转移先验，采样相对位移，最后在目标城市 POI 图上用行为图与探索返回游走落地。"
-      },
-      "concepts": [
-        {
-          "name": "Target-Trajectory-Free Transfer",
-          "readable": "源城市有 POI 与轨迹，目标城市只有地图上的 POI 坐标和类别，训练、选型、生成全程都拿不到目标城市的轨迹或任何轨迹派生统计量。",
-          "analogy": "像只拿一张陌生城市的地图和店铺名录就要猜出当地人怎么逛街：你在家乡观察过大量逛街路线，但到新城市没有任何一份路线记录。",
-          "analogyBreaksDown": "逛街类比里目标城市居民的文化偏好可能与家乡完全不同，模型却假设「怎么移动」的先验可迁移，只把「去哪里」重新落地；两地出行习惯差异极大时，这一分解就失效。",
-          "mechanism": "把输出从绝对目的地改成语义位移、地理位移与耗时的相对转移，并让条件只依赖历史与源城市学到的先验，从而不需要目标城市的任何轨迹或其派生统计量。",
-          "visual": "左边源城市地图上有密集轨迹线，中间是一个与地图无关的转移先验模块，右边目标城市地图只有 POI 点、没有轨迹线，输出轨迹由先验落到这些点上。",
-          "prerequisites": ["轨迹生成与序列建模基础", "流匹配或扩散模型基本概念", "图结构与随机游走"],
-          "selfTest": ["为什么预测绝对目的地会妨碍跨城市迁移？", "「无目标轨迹」具体排除了哪些信息？", "这一因子化测试的是什么层面的可迁移性？"],
-          "formula": ""
-        },
-        {
-          "name": "Flow-Matching Transition Prior",
-          "readable": "用流匹配学一个以历史为条件的分布，采样出的是相对位移三元组：POI 语境间的语义位移、地理位移与经过的时间，而不是某个具体目的地。",
-          "analogy": "像学会「逛完咖啡馆通常会往书店方向走十分钟」这种句式，而不是背下「从 A 店到 B 店」的具体路线。",
-          "analogyBreaksDown": "句式可以任意组合，但位移三元组之间受地理距离与时间预算的硬约束，采样出的组合未必在目标城市物理可行，需要落地步骤再筛。",
-          "mechanism": "把连续位移当作可采样的向量场来学，条件里加入历史，使先验与具体城市解耦；语义位移落在 POI 类别空间，地理位移与耗时落在度量空间，三者在同一分布里联合建模。",
-          "visual": "三维散点图的三个轴分别是语义位移、地理位移、耗时，每个点是源城市的一个转移样本，流匹配把这个点云变成一个可按历史条件采样的连续场。",
-          "prerequisites": ["连续归一化流与流匹配", "条件生成建模"],
-          "selfTest": ["条件里为什么要放历史？", "语义位移与地理位移分别对应什么空间？", "为什么把三个量放在同一先验里联合建模？"],
-          "formula": "\\mathcal{L}(\\theta)=\\mathbb{E}\\lVert v_\\theta(x_t,t,h)-(x_1-x_0)\\rVert_2^2"
-        },
-        {
-          "name": "Explore–Return Walk Grounding",
-          "readable": "采样得到的相对转移本身没有坐标，要靠目标城市的行为图和一次「先探索、再返回」的游走，把它对应到该城市真实的 POI 序列上。",
-          "analogy": "像拿着「先往热闹处走」的模糊指令在陌生街区找店：先朝可能有店的方向逛出去，发现不对再折回来换一条路。",
-          "analogyBreaksDown": "真人可以边走边看招牌，而这里的图与候选 POI 完全来自地图属性，走错时没有实时反馈可用；目标城市 POI 缺失或类别粒度不同时，游走会系统性偏离。",
-          "mechanism": "行为图承载目标城市的 POI 连接先验，探索步负责找到与采样位移匹配的候选，返回步保证轨迹落点闭合、不越界，从而把与城市无关的转移变成城市相关的轨迹。",
-          "visual": "目标城市地图上由 POI 节点与边构成的行为图，一条游走先在图上向外探索若干跳，再沿原路或等价路径返回，落点高亮为预测的下一站。",
-          "prerequisites": ["图搜索与随机游走", "POI 类别体系与空间近邻"],
-          "selfTest": ["为什么不能直接把采样的位移拼成轨迹？", "探索与返回两步各自解决什么问题？", "行为图提供的是什么先验？"],
-          "formula": ""
-        }
-      ],
-      "formulas": [
-        {
-          "id": "f-flow-matching-transition-prior",
-          "name": "历史条件流匹配转移先验（History-Conditioned Flow-Matching Prior）",
-          "category": "generative",
-          "latex": "\\mathcal{L}(\\theta)=\\mathbb{E}_{t,\\,x_0,\\,x_1,\\,h}\\left\\lVert v_\\theta(x_t,t,h)-(x_1-x_0)\\right\\rVert_2^2",
-          "symbols": [["h", "历史条件（用户的过往访问与时间信息）"], ["x_1", "真实转移样本，即（语义位移, 地理位移, 耗时）"], ["x_0", "噪声端点"], ["x_t", "在两端点之间的插值点"], ["v_θ", "学到的速度场，用于按条件采样"]],
-          "derivation": ["第 1 步：动机。需要一个与城市无关、只描述「人怎么移动」的分布，并且能按历史条件采样。", "第 2 步：把一次转移写成三元组 x =（语义位移, 地理位移, 耗时），作为连续空间里的一个点。", "第 3 步：在噪声端点 x_0 与数据端点 x_1 之间插值得 x_t，让网络回归位移方向 x_1 - x_0。", "第 4 步：训练完成后按历史条件积分速度场采样，得到目标城市里并不存在的相对转移样本。"],
-          "analogy": "像学写字时的笔顺：不背整篇范文，而是学每一步笔尖往哪走；换一张纸（换城市）仍能照着笔顺写。",
-          "pitfalls": ["把流匹配采样出的位移直接当坐标用，忘记还需要落地步骤", "条件里漏掉历史，先验退化成全局平均", "以为三个位移维度可以独立采样，忽略它们的联合相关性"],
-          "code": "import torch\n\ndef flow_matching_loss(v_theta, x1, hist):\n    x0 = torch.randn_like(x1)   # (语义, 地理, 耗时)\n    t = torch.rand(x1.shape[0], 1)\n    xt = (1 - t) * x0 + t * x1\n    return ((v_theta(xt, t, hist) - (x1 - x0)) ** 2).mean()",
-          "sources": [{"title": "Relative Transitions, Not Absolute Destinations: A Transfer-and-Ground Framework for Target-Trajectory-Free Human Mobility Generation", "url": "https://arxiv.org/abs/2610.02033v1"}]
-        },
-        {
-          "id": "f-relative-transition-factorization",
-          "name": "相对转移因子化（Relative-Transition Factorization）",
+          "id": "f-rapo-role-adaptive-hypergradient",
+          "name": "RAPO 角色自适应系数（Role-Adaptive Coefficient via Hypergradient）",
           "category": "rl",
-          "latex": "\\hat{T}_{tgt}=\\mathrm{Ground}\\!\\left(\\Delta\\sim p_\\theta(\\Delta\\mid h);\\;G_{tgt}\\right),\\qquad \\Delta=(\\delta_{sem},\\delta_{geo},\\delta_{t})",
-          "symbols": [["h", "历史条件"], ["Δ", "相对转移三元组：语义位移、地理位移、耗时"], ["p_θ(Δ|h)", "源城市轨迹学到的转移先验"], ["G_tgt", "目标城市行为图"], ["Ground(·)", "探索-返回游走落地算子"], ["T̂_tgt", "生成的目标城市轨迹"]],
-          "derivation": ["第 1 步：动机。绝对目的地把可复用的移动行为与城市特有的 POI 身份纠缠在一起，跨城市不可迁移。", "第 2 步：改为生成本地无关的相对量 Δ，其分布只由源城市轨迹与历史条件决定。", "第 3 步：目标城市信息只进入落地算子，在行为图上用探索-返回游走把 Δ 匹配成具体 POI 序列。", "第 4 步：于是可迁移性在表征层被直接检验，而不需要假设整个移动分布在城市间不变。"],
-          "analogy": "像把「往人多的地方走五分钟」这类相对指令和「具体进哪家店」分开：指令跨城市通用，进哪家店必须查当地地图。",
-          "pitfalls": ["以为相对转移先验一定比绝对目的地更准，忽略落地步骤的误差", "把「可迁移」理解成整个移动分布不变", "目标城市 POI 类别粒度与源城市不一致时仍照搬语义位移"],
-          "code": "def generate(prior, ground_fn, hist, graph, n=1):\n    out = []\n    for _ in range(n):\n        delta = prior.sample(hist)          # (语义, 地理, 耗时)\n        poi_seq = ground_fn(delta, graph)   # 探索-返回游走落地\n        out.append(poi_seq)\n    return out",
-          "sources": [{"title": "Relative Transitions, Not Absolute Destinations: A Transfer-and-Ground Framework for Target-Trajectory-Free Human Mobility Generation", "url": "https://arxiv.org/abs/2610.02033v1"}]
+          "latex": "\\alpha_i^\\star=\\arg\\min_{\\alpha_i}J\\big(\\theta_i'(\\alpha_i)\\big),\\quad \\theta_i'(\\alpha_i)=\\theta-\\alpha_i\\,\\nabla_\\theta L_i^{\\mathrm{actor}}(\\theta),\\quad \\frac{\\partial J}{\\partial \\alpha_i}=-\\nabla_{\\theta_i'}J^{\\top}\\,\\nabla_\\theta L_i^{\\mathrm{actor}}",
+          "symbols": [
+            ["\\theta", "基座算法（如 TD3+BC）的策略参数"],
+            ["L_i^{\\mathrm{actor}}", "角色 i 的 actor 目标：bootstrap 或 execution"],
+            ["\\alpha_i", "角色 i 的策略更新系数，RAPO 要学的量"],
+            ["\\theta_i'(\\alpha_i)", "用系数缩放基座更新方向后得到的候选参数"],
+            ["J", "可微软目标：衡量候选更新对该角色的好坏"],
+            ["\\partial J/\\partial\\alpha_i", "超梯度，给出系数该往哪个方向调"]
+          ],
+          "derivation": [
+            "动机：离线 RL 的正则强度同时管住执行与自举，而两个角色对不确定价值估计的容忍度不同，单一系数必然是折中。",
+            "把策略更新写成候选形式：先用基座 actor 目标算出方向 ∇L，再用系数 α 缩放步长，得到候选参数 θ'(α)。",
+            "为每个角色定义可微的元目标 J：自举角色看 target value 被推离锚点的程度，执行角色看局部策略改进代理。",
+            "对 α 求导得超梯度 ∂J/∂α = -∇_{θ'}Jᵀ∇L，沿其下降方向更新 α，省掉验证集网格搜索。",
+            "TD3+BC 用两组 α 分别驱动 bootstrap 与 execution actor；IQL 的价值学习已独立，只对优势加权提取的逆温度做同样处理。"
+          ],
+          "analogy": "像调音台上原来只有一根总音量杆同时推两路音轨，现在先试听一遍候选混音（候选更新），再分别微调两路，而不是凭经验拍一个折中值。",
+          "pitfalls": [
+            "把 α 当普通超参用网格搜索调：RAPO 的核心是可微超梯度，搜索会丢掉它相对于自动调参的效率优势。",
+            "以为 IQL 也要拆 actor：IQL 的价值学习本就与执行 actor 无关，没有第二个角色可拆。",
+            "把「自举惩罚」等同于「保守正则」：前者约束的是 target value 的漂移，不是动作分布本身。"
+          ],
+          "code": "import torch\n\n# params: actor 的可训练参数列表；alpha: 标量系数（需要梯度）\ndef rapo_alpha_step(params, loss_fn, meta_loss_fn, alpha, lr=1e-2):\n    loss = loss_fn()                                              # 基座 actor 目标 L_i^actor\n    grads = torch.autograd.grad(loss, params, create_graph=True)  # 保留图以支持二阶\n    cand = [p - alpha * g for p, g in zip(params, grads)]         # 候选参数 θ'(α)\n    meta = meta_loss_fn(cand)                                     # 元目标 J(θ'(α))\n    hyper = torch.autograd.grad(meta, alpha)[0]                   # 超梯度 ∂J/∂α\n    with torch.no_grad():\n        alpha -= lr * hyper\n    return alpha.detach()\n\n# 注意：meta_loss_fn 需支持在候选参数上做函数式前向\n",
+          "sources": [
+            {"title": "Role-Adaptive Policy Optimization for Offline Reinforcement Learning", "url": "https://arxiv.org/abs/2609.40149v1"}
+          ]
         }
       ],
       "selfCheck": {
-        "claims": ["目标城市只提供 POI 坐标与类别，没有任何目标轨迹或轨迹派生统计量可用于训练、模型选择或生成。", "已有轨迹生成器通常预测绝对目的地，把可复用移动行为与城市特有的 POI 身份和空间布局纠缠在一起。", "Nomad 用历史条件流匹配模型学得关于语义位移、地理位移与耗时的转移先验。", "推理时用行为图与探索-返回游走把采样到的转移落到目标城市的 POI 图上。", "在十城 14 次迁移上优于适配基线，分布保真平均误差较各指标最强基线低约 15%，下游效用低约 3%。"],
-        "uncertain": ["流匹配转移先验的具体目标函数与条件化方式摘要未给出，公式为按摘要重建的通用形式，需核对原文", "行为图如何从 POI 构建、探索-返回游走的算法细节摘要未说明", "15% 与 3% 的分层结果（按城市或迁移难度）摘要未报告"]
+        "claims": [
+          "离线 RL 的策略正则需要平衡策略改进与对不确定价值估计的依赖（摘要开篇明说）。",
+          "这种平衡在选择执行动作与提供自举动作两种角色间可能不同，而 TD3+BC 通过共享策略把两者耦合。",
+          "RAPO 按角色自适应策略更新系数，并通过微分候选策略更新来学习这些系数。",
+          "TD3+BC 版本拆开 bootstrap 与 execution actor：自举目标惩罚策略引起的 target value 变化，执行目标评估局部策略改进代理。",
+          "IQL 版本保留原价值更新，只自适应优势加权策略提取中的逆温度。",
+          "在 D4RL locomotion 与 AntMaze 上优于两个基座算法，TD3+BC 的 RAPO 实例平均表现超过基线。"
+        ],
+        "uncertain": [
+          "公式为按摘要重建的通用超梯度形式，摘要未给 J 的具体定义与 α 的参数化，需核对原文。",
+          "「outperforms baselines on average」的基线清单与具体数值摘要未给，无法判断提升幅度。",
+          "IQL 变体的逆温度是全局标量还是随状态变化，摘要未说明。"
+        ]
       },
       "teaching": {
         "progressive": [
-          {"level": "一句话", "text": "学会「人一般怎么走」，再把这种走法落到陌生城市地图上，不需要当地任何轨迹。"},
-          {"level": "入门", "text": "很多轨迹生成器只在有轨迹数据的城市能用，但目标城市常常只有公开地图上的 POI 坐标和类别。Nomad 的思路是别直接预测「去哪」，而是学与城市无关的相对转移，再在目标城市的 POI 图上把位移落地成轨迹。"},
-          {"level": "进阶", "text": "已有方法预测绝对目的地，这会把可复用的移动行为与城市特有的 POI 身份和空间布局绑在一起，跨城市就失效。Nomad 用历史条件流匹配在源城市轨迹上学关于语义位移、地理位移与耗时的转移先验；推理时用行为图和探索-返回游走把采样到的位移落到目标城市 POI 上。这样可迁移性在表征层被直接检验，而不用假设整个移动分布不变。"},
-          {"level": "专家", "text": "因子化的关键在于输出不含任何城市特有标识：先验项只由源城市轨迹与历史决定，目标城市信息只进入落地算子。于是「可迁移」被拆成两问——转移先验是否可迁移、落地是否合理，而不是笼统要求分布不变。实验覆盖十城 14 次迁移，分布保真平均误差较各指标最强基线低约 15%，下游效用低约 3%，后者明显更小，说明效用类指标对落地误差更敏感。边界是目标城市 POI 类别粒度与空间覆盖必须可用。"}
+          {"level": "一句话", "text": "同一套策略既挑动作又当自举目标，正则强度不该一样，RAPO 让两者各调各的。"},
+          {"level": "入门", "text": "离线 RL 靠正则把策略拴在数据分布附近：太松会被价值估计误差带偏，太紧又学不动。TD3+BC 只用一个系数管住所有策略更新。RAPO 指出「选动作去执行」和「提供动作给 critic 自举」对正则的需求不同，于是把系数按角色拆开，并让系数由候选更新求导自动学出来。"},
+          {"level": "进阶", "text": "RAPO 把基座算法的 actor 目标当作更新方向，用系数 α 缩放成候选参数 θ'(α)，再在候选点上评估可微元目标 J：自举角色关心 target value 是否被推离锚点，执行角色关心局部策略改进代理。对 α 求超梯度即可定系数，省掉验证集网格搜索。落到 TD3+BC 时拆出自举与执行两个 actor 各持系数；落到 IQL 时价值学习已与执行 actor 无关，于是保留原价值更新、只适配优势加权提取的逆温度。"},
+          {"level": "专家", "text": "与 CQL/IQL 这类「改价值目标」的路线不同，RAPO 不换损失，而是把超参自适应做成对候选更新的可微软约束，因此能套在任意带正则的 actor 上，代价是要对候选参数再做一次反向传播。它与自适应 KL/自动温度类工作动机相似，但区分维度不是训练进度而是功能角色。适用边界很明确：只有两个角色的最优强度确实不同、且元目标可微并与最终回报相关时才占优；摘要显示 TD3+BC 收益远大于 IQL，正因为 IQL 的价值学习本就与执行 actor 解耦。"}
         ],
         "socratic": [
-          {"q": "为什么不直接预测绝对目的地？", "a": "绝对目的地把可复用的移动行为与城市特有的 POI 身份、空间布局纠缠在一个输出里；换城市后这些标识全部失效，模型学到的行为无法复用。"},
-          {"q": "既然有了转移先验，为什么还需要探索-返回游走这一步？", "a": "先验采样出的只是语义与地理位移的数值，没有坐标；必须靠行为图与游走把它匹配成目标城市真实存在的 POI 序列，并保证轨迹不越界、能闭合。"}
+          {"q": "为什么不直接用网格搜索调正则系数？", "a": "验证集搜索要为每个取值重训策略，离线 RL 训练本身就很贵；超梯度一次反向传播就给出调整方向，成本低得多。"},
+          {"q": "为什么 TD3+BC 需要拆两个 actor，而 IQL 不用？", "a": "TD3+BC 的 target Q 依赖同一个策略的动作，执行变好会顺带改自举目标；IQL 用期望回归独立拟合价值，执行 actor 不进入价值学习，所以只调温度即可。"},
+          {"q": "如果两个角色的系数始终相等会怎样？", "a": "那就退化回基座算法，收益消失；摘要中 IQL 增益较小也侧面说明角色耦合程度决定了可适配的空间大小（推断）。"}
         ],
-        "mechanism": "关键在于把城市相关信息从待迁移的部分里彻底剥离：只要输出还带具体 POI 身份，跨城市就退化成分布适配问题。改成相对转移后，先验只描述「怎么移动」，落地算子才注入目标城市结构，于是可以在不假设整体分布不变的前提下检验可迁移性，也让目标城市无需任何轨迹或派生统计量。",
-        "boundary": "需要目标城市可获取 POI 坐标与类别，且类别体系与源城市可比；若两地出行习惯差异极大，可迁移的「怎么移动」先验本身就不成立。下游效用只提升约 3%，说明迁移对具体任务效果的帮助有限，摘要也未报告按城市或迁移难度分层的失败情况。",
-        "analogyBoundary": "「只拿地图猜当地人怎么逛街」的类比暗示地图信息足够，但忽略了先验来源：它仍来自源城市居民的行为，文化差异大时无从猜测，模型也无法主动向目标城市居民求证。",
-        "misconceptions": ["以为无目标轨迹迁移就是零样本泛化，忽略它仍依赖源城市轨迹", "把相对转移理解成只用相对坐标，忽略语义位移也在先验里", "看到 15% 就以为下游任务也提升 15%，实际下游效用只有约 3%"],
-        "ownAnalysis": "把绝对目的地换成相对转移，本质上是把城市标识从预测目标里移除，与跨域推荐里去掉物品 ID、只保留行为模式的思路接近（推断）。摘要声称这使可迁移性可被直接检验，在表征层的这个论证是成立的。可疑处是「上下文条件化」的具体做法与落地失败率未在摘要给出，且下游效用仅提升约 3%，提示当前收益主要在分布层面而非任务层面（推断）。",
-        "officialNotes": [{"position": "Nomad 把学习「人如何移动」与确定「移动在哪里实现」分离：源城市轨迹训练历史条件流匹配转移先验，推理时用行为图与探索-返回游走落到目标城市 POI 图；目标城市不提供任何轨迹或轨迹派生统计量。", "source": "https://arxiv.org/abs/2610.02033v1"}],
-        "interviewAnswer": "我关注的是目标城市无轨迹这个设定：只能拿到 POI 坐标和类别，训练到生成都不能用当地轨迹。已有生成器预测绝对目的地，把行为模式与城市特有 POI 身份绑死了。Nomad 改成上下文条件化的相对转移，用历史条件流匹配在源城市学语义位移、地理位移和耗时的先验，推理时再用行为图和探索-返回游走落到目标城市 POI 上。十城 14 次迁移中，分布保真误差比最强基线低约 15%，下游效用低约 3%。",
+        "mechanism": "离线 RL 的失败根源是数据分布外的价值估计不可信，所以策略更新必须被约束；但约束要服务两个目的——让 critic 的自举目标稳定、让执行动作有效。一个系数同时承担两件事时，最优解只能是两者的折中。RAPO 的处理是：把每个角色的更新写成「基座 actor 方向 × 可学系数」，再用可微元目标衡量这次候选更新对该角色的好坏，于是系数可以通过对候选参数求导自动拿到梯度。这样既保留基座算法的损失设计，又把正则强度从人工超参变成随角色变化的可学量。",
+        "boundary": "只在角色差异确实存在、且有可微元目标时有用：若两个角色的最优系数本就接近（如价值学习与执行 actor 解耦的 IQL），收益会退化到仅调温度。超梯度需要二阶梯度，显存与算力开销上升；batch 太小时元目标噪声大，系数可能被带偏。摘要未覆盖离线数据质量极差或目标分布外极端的场景。",
+        "analogyBoundary": "调音台类比默认两路音轨互不干扰，但 RL 里两个角色共享 critic 与同一批离线数据：调自举系数会改变 target value，从而反过来影响执行侧的改进方向。两个旋钮是耦合的，不能各自单独调到最优。",
+        "misconceptions": [
+          "以为 RAPO 是全新的离线 RL 算法：它更像套在 TD3+BC/IQL 上的系数适配层，损失形式不变。",
+          "以为系数越大越保守：系数只决定沿基座 actor 方向的步长，方向本身已由带正则的 actor 目标决定。",
+          "以为 IQL 也要拆两个 actor：IQL 的价值学习不依赖执行 actor，没有对应的第二个角色。"
+        ],
+        "ownAnalysis": "（推断）RAPO 的定位更接近离线 RL 里的「超参元学习」而非新的保守性机制：它没改 CQL/IQL 那套价值惩罚，而是承认同一目标下不同用途需要不同强度。与自适应 KL、自动温度调节相比，它把「随训练进度自适应」换成「随功能角色自适应」，这是较新的切分维度。可疑之处在于元目标 J 与真实回报的相关性：若 J 只是代理量，超梯度可能把系数带去优化 J 而非提升 D4RL 得分；（待核实）摘要未给 J 的形式与消融，因此无法判断收益来自角色分离还是系数自适应本身。",
+        "officialNotes": [
+          {"position": "RAPO 按角色自适应策略更新系数，通过微分候选策略更新学习系数；TD3+BC 上拆 bootstrap/execution actor，IQL 上只调优势加权提取的逆温度；D4RL locomotion 与 AntMaze 上优于两基座。", "source": "https://arxiv.org/abs/2609.40149v1"}
+        ],
+        "interviewAnswer": "我关注 RAPO，是因为它讲清了离线 RL 里一个常被忽略的耦合：策略同时是执行者和 critic 的自举动作来源，这两件事对价值估计误差的敏感度不同，而 TD3+BC 用共享策略加单一正则系数，等于强迫两者折中。RAPO 拆出自举与执行两个 actor，把更新系数写成基座 actor 方向上的可学标量，再用候选更新的超梯度更新系数。它在 D4RL locomotion 和 AntMaze 上超过基座，而且 TD3+BC 版本增益更大，说明角色耦合越强收益越大。",
         "studyPath": {
-          "prerequisites": ["轨迹生成与序列建模", "流匹配与扩散模型基础", "图上的搜索与随机游走"],
-          "nextSteps": ["查原文的十城 14 迁移实验设置与基线", "梳理行为图如何从 POI 构建", "分析下游效用只提升约 3% 的原因"]
+          "prerequisites": ["离线 RL 与分布偏移（CQL/IQL/TD3+BC）", "策略梯度、target network 与自举", "隐式微分/超梯度的基本概念"],
+          "nextSteps": ["复现 TD3+BC 与 IQL 的 D4RL 基线", "写一个玩具版超梯度系数适配器", "对比自动温度（adaptive KL）与角色自适应的差异"]
         }
       }
     },
     {
-      "id": "1787bd32264be89f",
-      "tldr": "首个基于用户历史的个性化图像生成基准，并提出 PEARL：推理器与冻结生成器交替推理-反思，个性化指标平均提升 15%。",
+      "id": "3c23a289ae566ea1",
+      "tldr": "GrammarRL 用直接+反向自监督奖励与 RLOO 微调，语法约束解码平均提升 9.8 分",
       "keyPoints": [
-        "首个从用户历史（评论、帖子、图像、描述、元数据）做个性化生成的统一基准",
-        "两个任务：个性化场景生成与个性化创意生成",
-        "评估覆盖目标保真、视觉质量、用户可区分性、语义对齐与任务效用",
-        "PEARL 把多模态推理器与冻结图像生成器耦合进交替的推理-反思循环",
-        "用差分数据奖励优化，两任务个性化指标平均提升 15%"
+        "语法约束解码保证输出合法，却常明显损害语义质量",
+        "提示不充分或指令跟随弱时，这种权衡尤其严重",
+        "GrammarRL 免标注，用模型自身似然构造直接与反向奖励",
+        "以 RLOO 优化语法约束 rollout 组，加入 top-1 beam 假设与冻结基座正则",
+        "三个任务平均提升 9.8 分、最高 22.8 BLEU，推理仍是贪婪成本"
       ],
-      "why": "个性化生成正从「给几张参考图」走向「理解用户是谁」；基准的多轴协议与冻结生成器加推理器的解耦训练，是生成式岗位可直接复用的范式。",
+      "why": "语法约束解码（JSON/SQL/形式语言）是 LLM 落地刚需，这篇给出免标注 RL 修语义的通用配方，后训练岗位可直接借鉴",
       "difficulty": "medium",
-      "tags": ["personalization", "image-generation", "benchmark", "multimodal", "reasoning"],
-      "entities": ["PEARL", "Personalized Scene Generation", "Personalized Creative Generation"],
+      "tags": ["grammar-constrained-decoding", "rloo", "self-supervised-reward", "llm-posttraining", "structured-output"],
+      "entities": ["GrammarRL", "RLOO", "Llama", "beam search"],
       "diagram": {
         "kind": "flow",
-        "title": "PEARL 推理反思循环",
-        "caption": "记住：PEARL 不改生成器权重，靠推理-反思循环与差分数据奖励把用户历史变成个性化信号。",
-        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='竖排四层流程图：用户历史输入多模态推理器，驱动冻结图像生成器，再经反思与差分数据奖励形成交替循环'><rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>用户历史</text><text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>评论·帖子·图像·元数据</text><line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,70 236,62 244,62' fill='var(--line-1)'/><rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>多模态推理器</text><text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>产出条件与提示</text><line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,124 236,116 244,116' fill='var(--line-1)'/><rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>冻结图像生成器</text><text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>不更新任何权重</text><line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/><polygon points='240,178 236,170 244,170' fill='var(--line-1)'/><rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/><text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>反思与差分奖励</text><text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>交替循环，指标 +15%</text></svg>",
-        "alt": "竖排四层流程图：用户历史输入多模态推理器，推理器驱动冻结的图像生成器出图，再由反思与差分数据奖励反馈到下一轮推理。"
+        "title": "GrammarRL 训练闭环",
+        "caption": "在语法约束下采样一组输出，用双向自监督奖励做留一比较，再拉回冻结基座",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='GrammarRL 免标注强化学习训练流程'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>语法约束采样</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>组内 rollout</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>双向自监督奖励</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>直接 + 反向</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>RLOO + KL 正则</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>冻结基座约束</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>贪婪成本推理</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>平均 +9.8 分</text>\n</svg>",
+        "alt": "流程图：语法约束采样出 rollout 组，计算直接与反向自监督奖励，用 RLOO 加冻结基座 KL 正则微调，推理仍保持贪婪解码成本"
       },
       "concepts": [
         {
-          "name": "User-History Personalization",
-          "readable": "不再只给几张精选参考图，而是把用户长期积累的评论、帖子、图像、描述和元数据当作条件，让生成结果贴合他的生活方式与审美偏好。",
-          "analogy": "像给一位老朋友挑生日礼物：你不是只看他最近发的一张照片，而是记得他半年来吐槽过什么、常去哪家店、喜欢什么颜色。",
-          "analogyBreaksDown": "朋友记忆会随时间与场合变化并被主动修正，而这里的历史是冻结的文本与图像集合，模型无法追问「你现在还喜欢这个吗」，历史里的噪声也会被一并学到。",
-          "mechanism": "把个性化条件从少量视觉样例扩展到多模态历史，并把评测拆成目标保真、视觉质量、用户可区分性、语义对齐与任务效用多个轴，避免单一相似度指标掩盖个性化失败。",
-          "visual": "左侧一列用户历史条目（评论、帖子、图片缩略图、时间戳），右侧同一提示词下不同用户生成的图像排成行，行间差异应明显大于行内差异。",
-          "prerequisites": ["扩散模型与图像生成条件控制", "多模态大模型的图文条件输入", "评测指标设计常识"],
-          "selfTest": ["只用参考图做条件与用用户历史做条件的差别在哪？", "为什么需要「用户可区分性」这一指标？", "两个任务分别对应什么真实场景？"],
+          "name": "Grammar-Constrained Decoding（语法约束解码）",
+          "readable": "解码时用语法/自动机屏蔽掉不合法的下一个 token，保证输出一定能被解析（如合法 JSON、SQL）。代价是模型的偏好分布被强行裁剪，可能出现语法完美但语义跑偏的输出。",
+          "analogy": "像让选手在固定格子里写字：格子保证字迹不出界、格式规范，但如果题没读懂，写出来的仍是格式正确却答非所问的答案。",
+          "analogyBreaksDown": "格纸只限制形状，不改变写什么；语法约束却是逐步裁剪概率分布，会把整条序列的概率质量重新分配，可能把本来语义正确的路径也一起挤掉。",
+          "mechanism": "把语法编译成 token 级的允许集合，每步只在合法 token 上重归一化概率。它保证句法合法，却无法保证偏好输出仍可达到，因此提示欠明确或指令跟随弱时语义退化最严重。",
+          "visual": "画一条 token 概率条形图，灰色柱是被语法屏蔽的候选，彩色柱是剩余候选；再画一条被屏蔽动作之后的语义得分曲线，显示它在屏蔽后骤降。",
+          "prerequisites": ["自回归解码与 top-k/top-p 采样", "形式语言/自动机与 tokenizer 的对应", "序列对数似然的计算"],
+          "selfTest": ["语法约束为什么可能降低语义质量？", "什么样的提示最容易暴露这一权衡？", "beam search 能多大程度缓解它、代价是什么？"],
           "formula": ""
         },
         {
-          "name": "Reason-Reflect Loop",
-          "readable": "多模态推理器先根据用户历史与任务想一轮，驱动冻结的生成器出图，再对结果做反思并调整下一轮推理，如此交替，而不是一次前向出图。",
-          "analogy": "像装修时先画效果图，站在屋里看一圈觉得电视墙太暗，改一版再看，几轮之后才定稿。",
-          "analogyBreaksDown": "装修可以实地感受，而这里「看一圈」靠推理器对自己的输出做文本判断，没有真实用户反馈，反思可能收敛到推理器自身的偏好而非用户的。",
-          "mechanism": "把推理与生成解耦：生成器冻结，只让推理器承担理解用户与调整条件的职责，使训练信号集中在推理环节，避免为个性化重训大生成模型。",
-          "visual": "一个闭环：用户历史与任务进入推理器，箭头指向冻结生成器输出图像，图像再回箭头到反思模块，反思结果注入下一轮推理，循环数轮后输出终图。",
-          "prerequisites": ["多模态推理模型", "图像生成的条件控制", "奖励优化与偏好优化基本概念"],
-          "selfTest": ["为什么冻结生成器反而是优势？", "反思环节的输入是什么、输出去了哪里？", "循环轮数增加一定更好吗？"],
-          "formula": ""
-        },
-        {
-          "name": "Differential Data Reward",
-          "readable": "摘要只说明 PEARL 用差分数据奖励做优化，没有给出定义；按名称可理解为用成对或差分的数据构造相对奖励信号来驱动推理-反思循环（推断）。",
-          "analogy": "像评菜时不打绝对分数，而是让你比较同一道菜的两版，指出哪一版更合口味——相对判断通常比绝对打分更稳定。",
-          "analogyBreaksDown": "品尝两版菜时差异是直接可感的，而这里是被当作奖励的数据差分，若差分数据本身噪声大或有偏，奖励会把推理器引向错误方向；摘要未给定义，这一类比只是推测。",
-          "mechanism": "把奖励从绝对评分改成基于数据差分的相对信号，可在缺少可靠绝对评判标准时提供更稳的优化方向（推断，摘要未给出具体形式）。",
-          "visual": "两条并列样本行：同一用户历史下的两组生成结果，中间标出差分箭头，箭头方向决定奖励正负，再反馈到推理器参数。",
-          "prerequisites": ["奖励建模与偏好优化", "成对或对比式训练目标"],
-          "selfTest": ["绝对奖励与差分奖励在什么情况下差别最大？", "为什么相对信号可能更稳定？", "摘要缺少定义时应如何评价这一设计？"],
-          "formula": "r(\\Delta)=\\mathrm{score}(x^{+})-\\mathrm{score}(x^{-})\\quad（按命名推断的通用形式）"
+          "name": "Reinforce Leave-One-Out（RLOO 留一优势）",
+          "readable": "对同一个输入采样一组输出，用「自己的奖励减去组内其它样本的平均奖励」当优势，不需要额外训练 value 网络。奖励只需能比较同一组内的相对好坏。",
+          "analogy": "像小组互评：不打绝对分，只看你比同组平均表现好多少。即使整套题偏难、大家分数都低，也不会把所有人当差生一起惩罚。",
+          "analogyBreaksDown": "互评假设同学水平互不相关；语言模型的多条 rollout 来自同一策略、高度相关，组内方差可能很小，留一基线接近噪声，优势信号会被削弱。",
+          "mechanism": "组内留一均值给出无偏的低方差基线，替代 PPO 的 critic；配合对冻结基座的 KL 正则防止模型为刷奖励而偏离原分布，再混入 top-1 beam 假设以稳定组内比较。",
+          "visual": "画一组竖直的点表示同组 G 条 rollout 的奖励，画一条水平线是留一均值，每个点的竖直箭头指向该线，箭头长度就是优势 A_i。",
+          "prerequisites": ["REINFORCE 与策略梯度定理", "baseline 降方差的作用", "KL 正则/参考模型约束"],
+          "selfTest": ["RLOO 为什么不需要 critic？", "留一均值与普通组内均值的区别是什么？", "去掉 KL 正则会出什么问题？"],
+          "formula": "A_i=r_i-\\frac{1}{G-1}\\sum_{j\\neq i}r_j"
         }
       ],
       "formulas": [
         {
-          "id": "f-reason-reflect-reward",
-          "name": "推理-反思循环的奖励目标（Reason-Reflect Reward Objective）",
-          "category": "generative",
-          "latex": "\\max_{\\phi}\\;\\mathbb{E}_{H,\\,c}\\left[\\sum_{k=1}^{K} R\\Big(G\\big(\\pi_\\phi(H,c,z_{k})\\big)\\Big)\\right]",
-          "symbols": [["π_φ", "可训练的多模态推理器"], ["H", "用户历史（评论、帖子、图像、描述、元数据）"], ["c", "任务与提示，如个性化场景生成"], ["z_k", "第 k 轮推理产生的条件信号"], ["G", "冻结的图像生成器"], ["R", "个性化奖励，对应多轴评测指标"], ["K", "反思轮数"]],
-          "derivation": ["第 1 步：动机。个性化信号来自难以直接建模的用户历史，同时不希望重训大生成模型。", "第 2 步：让可训练的推理器 π_φ 读用户历史 H 与任务 c，产出条件交给冻结生成器 G 出图。", "第 3 步：对出图按个性化指标打分得奖励 R，并把结果作为反思再喂回推理器，形成 K 轮交替。", "第 4 步：以期望累积奖励为目标优化推理器参数 φ，生成器权重保持冻结。"],
-          "analogy": "像摄影师与修图师分工：修图师（生成器）手法固定，摄影师（推理器）反复翻用户相册后调构图，拍完看回放再继续调。",
-          "pitfalls": ["以为要微调图像生成器，实际只训练推理端", "把一次前向出图当成 PEARL 的完整流程，漏掉反思循环", "用单一相似度指标代替多轴评测协议"],
-          "code": "def reason_reflect(reasoner, frozen_gen, hist, task, rounds=3):\n    rewards = []\n    for _ in range(rounds):\n        cond = reasoner(hist, task)      # 产出条件\n        img = frozen_gen(cond)           # 冻结生成器出图\n        r = reward(img, hist, task)      # 个性化奖励\n        reasoner.reflect(img, r)         # 反思注入下一轮\n        rewards.append(r)\n    return sum(rewards) / len(rewards)",
-          "sources": [{"title": "Personalized Image Generation with Reasoning and Reflection", "url": "https://huggingface.co/papers/2610.00737"}]
+          "id": "f-grammarlr-dual-reward",
+          "name": "GrammarRL 双向自监督奖励（Direct + Reverse Reward）",
+          "category": "rl",
+          "latex": "r_i=\\underbrace{\\log\\pi_\\theta(y_i\\mid x)}_{\\text{直接奖励}}+\\beta\\,\\underbrace{\\log\\pi_\\theta(x\\mid y_i)}_{\\text{反向奖励}}",
+          "symbols": [
+            ["x", "输入提示/源文本"],
+            ["y_i", "第 i 条经语法约束得到的 rollout"],
+            ["\\pi_\\theta", "当前策略模型"],
+            ["\\log\\pi_\\theta(y_i\\mid x)", "直接奖励：给定输入，这条合法输出有多可能"],
+            ["\\log\\pi_\\theta(x\\mid y_i)", "反向奖励：从生成输出重建输入有多好"],
+            ["\\beta", "两项奖励的平衡权重，摘要未给具体取值"]
+          ],
+          "derivation": [
+            "动机：语法约束只保证 y 合法，不保证它忠于 x，需要一个免标注信号同时衡量「合法」与「贴题」。",
+            "直接奖励取策略自身似然 log π(y|x)，衡量模型对这条合法输出的偏好，无需人工标注。",
+            "只用直接奖励会奖励模型本来就爱说的措辞，可能与语义无关；因此加入反向奖励 log π(x|y)，能反推出输入的输出才真正保留语义。",
+            "两项加权求和作为组内奖励，交给 RLOO 做相对比较，避免绝对奖励尺度带来的基线问题。"
+          ],
+          "analogy": "像翻译考试的两道检查：一是「这句话像不像母语者会说的」（直接奖励），二是「拿译文回译能不能还原原文」（反向奖励）。只查前者会选出漂亮但跑题的句子，只查后者又会选出字面对应却别扭的译文。",
+          "pitfalls": [
+            "把反向奖励当成互信息下界照搬：摘要只说它是「从输出重建输入」的似然，没有声明互信息形式。",
+            "以为两个奖励留一个就够：消融显示单独任一项都可能不如未训练基线。",
+            "忽略冻结基座正则：没有它 RLOO 会把模型推离原分布，语法约束下的语义反而更差。"
+          ],
+          "code": "import torch\n\n# policy.logprob(target, cond) 返回给定条件下的对数似然\ndef dual_reward(policy, x_ids, y_ids, beta=0.5):\n    direct = policy.logprob(y_ids, cond=x_ids)     # log π(y | x)：直接奖励\n    reverse = policy.logprob(x_ids, cond=y_ids)    # log π(x | y)：反向奖励\n    return direct + beta * reverse\n\n# 一组语法约束 rollout 的奖励\nrewards = dual_reward(policy, x_batch, y_batch)\nprint(rewards.mean(), rewards.std())\n",
+          "sources": [
+            {"title": "GrammarRL: Effective Grammar-Constrained Decoding via Reinforcement Learning", "url": "https://arxiv.org/abs/2609.39869v1"}
+          ]
         },
         {
-          "id": "f-differential-data-reward",
-          "name": "差分数据奖励（Differential Data Reward）",
-          "category": "generative",
-          "latex": "\\mathcal{L}(\\phi)=-\\mathbb{E}_{(x^{+},x^{-})\\sim\\mathcal{D}}\\left[\\log\\sigma\\!\\left(\\mathrm{score}_\\phi(x^{+}\\mid H)-\\mathrm{score}_\\phi(x^{-}\\mid H)\\right)\\right]",
-          "symbols": [["D", "差分数据对集合"], ["x⁺", "更贴合该用户的样本"], ["x⁻", "次优或对照样本"], ["H", "用户历史"], ["score_φ", "推理器给出的评分"], ["σ", "sigmoid 函数"]],
-          "derivation": ["第 1 步：摘要只说 PEARL 用差分数据奖励优化，未给形式；这里按成对偏好或差分信号的通用做法重建。", "第 2 步：把同一用户历史下更好与更差的结果组成数据对。", "第 3 步：用两个样本评分之差过 sigmoid 得到偏好概率，取负对数似然作为损失。", "第 4 步：梯度只依赖两样本的相对差，因此不需要绝对奖励的标定。"],
-          "analogy": "像盲品两款同款不同批次的茶：说「这杯更好」比给每杯打绝对分更容易取得一致。",
-          "pitfalls": ["把差分奖励等同于绝对分数回归", "忽略差分数据的构造方式会直接决定模型学到什么偏好", "把重建形式当成作者原式（本条目已标注待核实）"],
-          "code": "import torch, torch.nn.functional as F\n\ndef diff_data_reward_loss(score, x_pos, x_neg, hist):\n    s_pos = score(x_pos, hist)   # 更贴合用户的样本\n    s_neg = score(x_neg, hist)   # 次优对照样本\n    return -F.logsigmoid(s_pos - s_neg).mean()",
-          "sources": [{"title": "Personalized Image Generation with Reasoning and Reflection", "url": "https://arxiv.org/abs/2610.00737"}]
+          "id": "f-grammarlr-rloo-objective",
+          "name": "RLOO 留一优势目标（Reinforce Leave-One-Out Objective）",
+          "category": "rl",
+          "latex": "\\mathcal{L}(\\theta)=-\\mathbb{E}_{x}\\Big[\\frac{1}{G}\\sum_{i=1}^{G}A_i\\log\\pi_\\theta(y_i\\mid x)\\Big]+\\lambda\\,\\mathrm{KL}\\!\\big(\\pi_\\theta\\,\\|\\,\\pi_{\\mathrm{ref}}\\big),\\quad A_i=r_i-\\frac{1}{G-1}\\sum_{j\\neq i}r_j",
+          "symbols": [
+            ["G", "每组语法约束 rollout 的数量"],
+            ["r_i", "第 i 条 rollout 的双向自监督奖励"],
+            ["A_i", "留一优势：自己的奖励减去同组其它样本的平均奖励"],
+            ["\\pi_{\\mathrm{ref}}", "冻结的基座模型，用于 KL 正则"],
+            ["\\lambda", "KL 正则强度"],
+            ["y_{beam}", "额外混入组内的 top-1 beam search 假设"]
+          ],
+          "derivation": [
+            "动机：自监督奖励既没有绝对尺度，也没有标准答案，用同组其它样本作基线比额外学一个 value 网络更稳、更省。",
+            "对每组 G 条语法约束 rollout 计算奖励 r_i，留一基线 b_i = (1/(G-1))Σ_{j≠i} r_j。",
+            "优势 A_i = r_i - b_i 只保留相对好坏，代入 REINFORCE 的 log 策略梯度目标做参数更新。",
+            "为防止模型为拿奖励而偏离可读输出，加入对冻结基座 π_ref 的 KL 正则；并把 top-1 beam 假设混入组内以稳定方差。"
+          ],
+          "analogy": "像球队组内排名：教练不设绝对分数线，只看你这场比同组其他人的平均表现好多少，再决定加练还是减量。评分标准随组内水平浮动，不需要外请一个裁判长期驻场。",
+          "pitfalls": [
+            "把 RLOO 的留一基线与 PPO 的 value critic 混为一谈：RLOO 不训练 critic，基线直接来自同组样本。",
+            "忘记 KL 项：没有冻结基座约束时，模型会为最大化似然奖励而退化成重复合法串。",
+            "把 beam 假设当监督标签：它只是混入 rollout 组的一个候选，不是 ground truth。"
+          ],
+          "code": "import torch\n\ndef rloo_advantage(rewards):\n    # rewards: [G]，同组 G 条语法约束 rollout 的自监督奖励\n    g = rewards.numel()\n    total = rewards.sum()\n    # A_i = r_i - (1/(G-1)) * sum_{j != i} r_j = (G*r_i - total) / (G-1)\n    return (g * rewards - total) / (g - 1)\n\ndef rloo_loss(logprobs, rewards, logprobs_ref, lam=0.01):\n    adv = rloo_advantage(rewards).detach()\n    pg = -(adv * logprobs).mean()                 # REINFORCE 项\n    kl = (logprobs - logprobs_ref).mean()         # 对冻结基座的 KL 近似\n    return pg + lam * kl\n",
+          "sources": [
+            {"title": "GrammarRL: Effective Grammar-Constrained Decoding via Reinforcement Learning", "url": "https://arxiv.org/abs/2609.39869v1"}
+          ]
         }
       ],
       "selfCheck": {
-        "claims": ["论文提出首个从用户历史做个性化图像生成的统一基准，历史包含评论、帖子、图像、描述与元数据。", "基准含个性化场景生成与个性化创意生成两个任务，以及覆盖目标保真、视觉质量、用户可区分性、历史语义对齐与任务效用的多轴评估协议。", "两个任务分别对应个性化商品展示与社交媒体内容创作两个真实场景。", "PEARL 把多模态推理器与冻结图像生成器耦合在交替的推理-反思循环中，用差分数据奖励优化。", "PEARL 在两个任务上超过强基线，个性化指标平均提升 15%。"],
-        "uncertain": ["差分数据奖励的定义与计算方式摘要未给出，相关公式为按命名重建的通用形式，需核对原文", "推理-反思循环的轮数、冻结生成器具体是哪个模型、训练数据规模摘要均未说明", "15% 是跨多个个性化指标的平均值，各指标分别提升多少摘要未报告"]
+        "claims": [
+          "语法约束生成保证句法合法，但当模型偏好输出与语法不匹配时会明显损害语义质量。",
+          "提示欠明确或指令跟随能力有限时，这一权衡最严重。",
+          "GrammarRL 是免标注的强化学习方法，用模型自身似然构造直接奖励与反向奖励。",
+          "用 RLOO 目标优化语法约束 rollout 组，并混入 top-1 beam 假设、对冻结基座做正则。",
+          "在信号语言 gloss 翻译、层级文本分类、命名实体识别上，用 1B 到 8B 的 Llama 评测。",
+          "相较约束贪婪解码平均提升 9.8 分，最高提升 22.8 BLEU，并保持贪婪解码的推理成本。",
+          "消融显示两个奖励互补：单独任一项都可能不如未训练基线。"
+        ],
+        "uncertain": [
+          "两个奖励的加权方式与 β 取值范围摘要未给，公式写的是通用加权形式，需核对原文。",
+          "「matches or outperforms beam search on two of the three tasks」未说明是哪两个任务。",
+          "反向奖励是否使用同一模型、是否对输入做掩码，摘要未交代。"
+        ]
       },
       "teaching": {
         "progressive": [
-          {"level": "一句话", "text": "不只给几张参考图，而是读你长期留下的内容，生成像你会喜欢的图。"},
-          {"level": "入门", "text": "以前的个性化图像生成大多只看几张精选参考图，抓不住「用户是谁」。这篇提出首个从用户历史做个性化生成的统一基准，含两个任务和多轴评测，并提出 PEARL：多模态推理器与冻结图像生成器交替推理与反思。"},
-          {"level": "进阶", "text": "用户历史包含评论、帖子、图像、描述和元数据，目标是由此生成贴合其生活方式与审美的图像。基准有两个任务：个性化场景生成（把给定物体放进反映用户偏好的场景，对应个性化商品展示）和个性化创意生成（按主题生成符合用户视觉身份的新图，对应社交媒体创作）；评测覆盖目标保真、视觉质量、用户可区分性、历史语义对齐与任务效用。PEARL 把可训练推理器与冻结生成器耦合在交替循环里，用差分数据奖励优化。"},
-          {"level": "专家", "text": "PEARL 的取舍很清晰：生成器冻结，训练信号全部落在多模态推理器上，由推理产出条件、看结果、再反思改进下一轮。这样既避免为个性化重训扩散模型，也把「理解用户」与「出图能力」分开。基准的多轴协议是对单相似度评测的修正：用户可区分性专门惩罚那种对不同用户生成雷同图的模型。两任务平均提升 15%，但摘要未报告各指标分别提升多少，也未说明循环轮数与推理成本的权衡。"}
+          {"level": "一句话", "text": "强制模型输出合法语法常让它答偏，GrammarRL 用两个自打分奖励把它拉回来。"},
+          {"level": "入门", "text": "语法约束解码每步只允许合法 token，输出一定能解析，但模型原本想说的话常被屏蔽掉，于是出现「格式对、内容错」。让人工标注修正数据很贵，GrammarRL 改用两个不需要标注的奖励：输出在给定输入下有多可能（直接奖励），以及从输出能否反推出输入（反向奖励），再用 RLOO 在一组采样之间比较优劣。"},
+          {"level": "进阶", "text": "GrammarRL 对同一提示做多条语法约束 rollout，逐条算双向奖励，用留一均值做基线得到优势，套 REINFORCE 更新；同时把 top-1 beam 假设混进组里稳定比较，并对冻结基座加 KL 正则防止模型为刷奖励而漂移。这样既不需要标注，也不需要训练 critic，推理阶段仍可保持贪婪解码的开销。摘要的消融很关键：只用直接奖励或只用反向奖励都可能低于未训练基线，说明「贴题」与「可复原」两个信号必须同时在场。"},
+          {"level": "专家", "text": "与 beam search 相比，GrammarRL 把「在合法序列空间里搜索」换成「让策略自己更倾向于合法且贴题的输出」，因此训练成本换来了推理成本的下降——摘要称其在三个任务中的两个追平或超过 beam search，却保持贪婪解码成本。与 PPO 类 RLHF 相比，它用组内留一基线替代 critic，用模型自身的两个似然替代奖励模型，属于典型的 label-free、reward-model-free 路线，因此天花板受限于自监督奖励与真实语义的一致性；若反向似然与任务语义相关性弱，训练只会让模型更「自洽」而不更正确。"}
         ],
         "socratic": [
-          {"q": "为什么要把图像生成器冻结？", "a": "个性化需要的是理解用户而不是重画世界；冻结生成器既省算力，又让训练信号集中到推理环节，便于用奖励优化推理行为而不破坏生成质量。"},
-          {"q": "为什么需要用户可区分性这个指标？", "a": "如果模型对所有人都生成风格相似的图，目标保真和视觉质量可能都不差，但个性化根本没发生；可区分性直接检验输出能否把不同用户区分开。"}
+          {"q": "既然语法约束已经保证合法，为什么还需要强化学习？", "a": "合法性不等于正确性。约束只在解码时裁剪分布，会连带屏蔽语义正确的路径；RL 通过奖励让模型在合法空间内主动偏向贴题输出。"},
+          {"q": "为什么不能只保留直接奖励 log π(y|x)？", "a": "直接奖励等于奖励模型本来就爱说的措辞，与是否忠于输入无关；消融显示单独用它可能连未训练基线都不如，必须配反向奖励补上语义约束。"},
+          {"q": "为什么用 RLOO 而不是 PPO？", "a": "自监督奖励没有绝对尺度，组内留一基线既省掉 critic 训练，又天然做了相对归一化，适合「一组 rollout 比好坏」的场景。"}
         ],
-        "mechanism": "个性化信号的来源决定架构选择：当条件从几张参考图变成噪声大、跨模态、时间跨度长的用户历史时，直接微调生成器既昂贵又难以把历史对齐到像素空间。把理解用户交给推理器、把出图交给冻结生成器，再用奖励优化推理端，等于把最难的部分放进语言与推理空间处理。",
-        "boundary": "摘要没有给出用户历史的规模上限、隐私处理方式与冷启动表现；推理-反思循环会增加推理成本与延迟，轮数增加未必单调变好。基准来自电商与社交媒体场景，迁移到医疗、教育等其它领域时，历史语义与评测轴都需要重新定义。",
-        "analogyBoundary": "「给老朋友挑礼物」的类比暗示模型真的了解这个人，但它只是从冻结的历史文本与图片里做统计推断，既不理解上下文时间线，也无法像朋友那样求证或遗忘过时偏好。",
-        "misconceptions": ["以为个性化图像生成就是把参考图做风格迁移", "以为 PEARL 微调了图像生成器，实际生成器是冻结的", "把 15% 当成所有指标的统一提升，忽略多轴协议与任务差异"],
-        "ownAnalysis": "把「理解用户」交给推理器、把「出图」交给冻结生成器，是当前个性化生成里成本最低的分工方式，也与用奖励优化策略而非重训基座的思路一致（推断）。真正值得关注的是评测：用户可区分性与历史语义对齐这两轴把「看起来个性化」和「确实对应用户」分开，比再多一个生成模型更重要（推断）。可疑处是差分数据奖励与推理-反思循环的具体形式摘要未给，15% 提升无法据此判断来自推理改进还是来自更好的提示（推断）。",
-        "officialNotes": [{"position": "论文提出首个从用户历史做个性化图像生成的统一基准，含个性化场景生成与个性化创意生成两个任务及多轴评估协议；PEARL 将多模态推理器与冻结图像生成器耦合在交替的推理-反思循环中，用差分数据奖励优化，两个任务的个性化指标平均提升 15%。", "source": "https://huggingface.co/papers/2610.00737"}],
-        "interviewAnswer": "这篇做从用户历史出发的个性化图像生成。它指出现有工作只用少量参考图做条件，抓不住用户是谁，于是提出首个基于用户历史的统一基准，两个任务是个性化场景生成与创意生成，评测覆盖目标保真、视觉质量、用户可区分性与任务效用。PEARL 把多模态推理器和冻结的图像生成器放进交替的推理-反思循环，用差分数据奖励优化，两个任务上个性化指标平均提升 15%。关键设计是冻结生成器，把训练信号集中在理解用户这一侧。",
+        "mechanism": "语法约束解码的本质是在每步把不合法的 token 概率清零再归一化，这会使原本偏向某条语义正确路径的概率质量被整体挤走——约束越强、提示越模糊，损失越大。GrammarRL 不去改解码器，而是让策略本身学会在合法集合内更偏向「贴题」的输出。之所以必须是两个奖励：直接似然只看输出像不像模型平时会说的话，反向似然才检验输出是否携带输入信息，二者相乘式地互补才能同时约束格式与语义。之所以要用留一比较：自监督奖励没有绝对标尺，组内相对优势是唯一可靠的信号。",
+        "boundary": "当反向似然与任务语义弱相关时会失效：例如输出与输入本来就是多对一（分类标签），log π(x|y) 几乎没有区分度，此时反向奖励退化为噪声。任务需要长程推理或外部事实时，自监督奖励也无法提供正确性信号。此外检测依赖分组采样，G 太小留一基线方差大；模型过强时组内奖励几乎相同，优势趋零，训练停滞。",
+        "analogyBoundary": "翻译考试的双向检查假设「回译一致」等价于语义正确，但很多任务不满足：分类任务里同一标签能对应无数输入，回译必然失败；创意写作里忠实回译反而说明译得死板。类比里的「两个检查都过就是好答案」并不成立。",
+        "misconceptions": [
+          "以为 GrammarRL 改了解码器：它改的是模型参数，推理时仍可退回贪婪约束解码。",
+          "以为反向奖励是人工标注：它完全来自模型自身似然，属于自监督信号。",
+          "以为两个奖励可互相替代：消融显示单独任一项都可能不如未训练基线。"
+        ],
+        "ownAnalysis": "（推断）GrammarRL 与 RLHF 的结构同构，只是把「奖励模型 + critic」换成了「模型自身双向似然 + 组内留一基线」，这是典型的 label-free 路线，适合结构化输出这种标注昂贵、但格式约束可自动验证的场景。可疑处在于反向奖励 log π(x|y) 在短输入上的方差：摘要中的三类任务都满足「输出应能复原输入」的假设（gloss 翻译、层级分类、NER），换到开放式生成可能立刻失效。另一个（待核实）点是它是否真能与 beam search 在语义质量上打平，摘要只说三个任务中的两个，且 9.8 分的平均提升相对贪婪解码，未与更强解码基线全面对比。",
+        "officialNotes": [
+          {"position": "GrammarRL 是免标注 RL 方法：以模型自身似然的直接奖励与反向奖励为信号，用 RLOO 优化语法约束 rollout 组，混入 top-1 beam 假设并对冻结基座正则；1B–8B Llama 上平均提升 9.8 分、最高 22.8 BLEU，并保持贪婪解码推理成本。", "source": "https://arxiv.org/abs/2609.39869v1"}
+        ],
+        "interviewAnswer": "语法约束解码是结构化输出的常用手段，但它有个真实痛点：约束一强，模型想说的内容被屏蔽，格式对了内容却偏了。GrammarRL 的思路我很喜欢：不标注、不训奖励模型，直接用模型自己的两个似然——给定输入的输出似然，以及从输出重建输入的似然——作为互补奖励，再用 RLOO 在同一提示的一组语法约束 rollout 之间做留一比较，配合冻结基座的 KL 正则和一条 beam 假设。它的收益是推理时能退回贪婪解码，所以没有 beam 的算力开销，同时平均提升 9.8 分。我觉得最值得记的是消融结论：两个奖励缺一不可。",
         "studyPath": {
-          "prerequisites": ["扩散模型与图像生成条件控制", "多模态大模型的图文理解", "偏好优化与奖励建模"],
-          "nextSteps": ["读原文看两个任务的数据构造与指标定义", "弄清差分数据奖励的具体形式", "对比只给参考图的个性化基线"]
+          "prerequisites": ["自回归解码与约束解码（FST/自动机）", "REINFORCE、baseline 与 RLOO", "KL 正则与参考模型"],
+          "nextSteps": ["用 outlines/grammar 约束实现一次 rollout 采样", "手写 20 行 RLOO 损失并跑一个玩具任务", "对比 beam search 与 GrammarRL 的推理成本与质量"]
+        }
+      }
+    },
+    {
+      "id": "1ccf724dac9d1501",
+      "tldr": "Atomic-Chat：本地运行的智能体 AI 应用与推理引擎，用开源权重模型 100% 离线",
+      "keyPoints": [
+        "定位是本地 AI 应用 + 面向智能体的推理引擎",
+        "可在个人电脑上离线运行开源权重大模型",
+        "强调隐私：数据不出本机、完全离线可用",
+        "标签覆盖 GGUF、DeepSeek、Gemma 与 TypeScript 实现"
+      ],
+      "why": "本地推理是工程岗高频考点：量化、显存估算、离线部署与隐私。读这个仓库能得到一套端到端可跑参考实现",
+      "difficulty": "medium",
+      "tags": ["local-inference", "llm-app", "gguf", "typescript", "offline"],
+      "entities": ["Atomic-Chat", "AtomicBot-ai", "GGUF", "TypeScript", "DeepSeek", "Gemma"],
+      "diagram": {
+        "kind": "architecture",
+        "title": "本地推理应用分层",
+        "caption": "应用层、引擎层、权重层都在本机，所以才能宣称 100% 离线与隐私",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Atomic-Chat 本地推理应用的分层架构'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>本地桌面应用</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>对话与智能体</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>内置推理引擎</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>本机加载模型</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>GGUF 量化权重</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>开源模型</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>100% 离线私有</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>数据不出本机</text>\n</svg>",
+        "alt": "分层架构图：本地桌面应用调用内置推理引擎，引擎加载 GGUF 量化开源权重，全程在本机完成，因而 100% 离线且数据不外传"
+      },
+      "concepts": [
+        {
+          "name": "Local Inference Engine（本地推理引擎）",
+          "readable": "把模型权重、tokenizer 与采样循环全部放在用户自己的机器上执行，不依赖任何远端 API。它要解决的核心问题是：在有限显存/统一内存、没有服务端批处理的前提下，把推理跑得足够快。",
+          "analogy": "像家里装了净水器而不是每天买桶装水：不用等配送、不用担心水厂看见你喝多少，但要自己承担滤芯成本（显存与算力）。",
+          "analogyBreaksDown": "净水器只服务一个家庭、负载固定；本地推理引擎面对的模型大小可能远超机器内存，还要处理长上下文导致的内存增长，随时可能被系统换页拖垮，这是净水器没有的失效模式。",
+          "mechanism": "关键设计是量化权重 + 内存映射加载 + 流式解码：权重按需映射进内存而非一次性反序列化，KV cache 随上下文增长，解码逐 token 返回，从而让个人设备也能跑起开源大模型。",
+          "visual": "画一条水平的显存刻度条，分成权重、KV cache、运行时三段；随上下文长度增长，KV 段不断变长，剩余空间变红表示将触发换页。",
+          "prerequisites": ["Transformer 自回归解码", "参数量、量化位宽与显存的关系", "KV cache 的组成"],
+          "selfTest": ["本地推理与调用云端 API 的取舍各是什么？", "为什么长上下文会拖慢本地推理？", "量化到 4 bit 主要省的是哪部分内存？"],
+          "formula": "M_{\\mathrm{weights}}\\approx \\frac{P\\times b}{8}"
+        },
+        {
+          "name": "GGUF Quantized Weights（GGUF 量化权重格式）",
+          "readable": "一种为本地推理设计的权重文件格式，支持同一模型内混合精度：大部分权重压到 4–5 bit，少数敏感层保留更高位宽，并自带元数据（tokenizer、超参），单文件即可加载。",
+          "analogy": "像把行李按重要性分包：衣服抽真空压缩（4 bit），相机和药品保持原装（8 bit），箱子外贴清单（元数据），到了目的地不用再翻说明书就能开箱使用。",
+          "analogyBreaksDown": "行李压缩只影响体积、不影响功能；量化是有损的，位宽选错会让模型在推理任务上明显掉点，而且不同任务对哪些层敏感并不一致，不能照抄别人的混合位宽配方。",
+          "mechanism": "按块（block）共享缩放与零点做低比特量化，并允许逐层指定不同量化类型；混合精度让平均位宽下降的同时保住对精度敏感的部分，因此显存估算要取平均位宽而不是最小位宽。",
+          "visual": "画一个由方块组成的权重矩阵，色深表示位宽：大片浅色是 4 bit 块，零星深色块是 8 bit；右侧标出平均位宽与文件大小。",
+          "prerequisites": ["对称/非对称量化与缩放因子", "反量化与算子融合", "模型序列化格式的基本概念"],
+          "selfTest": ["为什么 GGUF 的显存估算要用平均位宽？", "4 bit 量化主要损失什么？", "元数据自带对部署有什么好处？"],
+          "formula": "b_{\\mathrm{eff}}=\\frac{1}{P}\\sum_{k}P_k b_k"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-gguf-quantized-weight-memory",
+          "name": "GGUF 量化权重显存估算（Quantized Weight Footprint）",
+          "category": "engineering",
+          "latex": "M_{\\mathrm{weights}}\\approx\\frac{P\\times b}{8}\\ \\mathrm{bytes},\\qquad M_{\\mathrm{total}}\\approx M_{\\mathrm{weights}}+M_{\\mathrm{KV}}+M_{\\mathrm{runtime}}",
+          "symbols": [
+            ["P", "模型参数量（个）"],
+            ["b", "每权重平均比特数，如 Q4 实际约 4.5 bit"],
+            ["M_{\\mathrm{weights}}", "权重占用字节数"],
+            ["M_{\\mathrm{KV}}", "KV cache 占用，随上下文长度线性增长"],
+            ["M_{\\mathrm{runtime}}", "运行时、激活与缓冲等额外开销"]
+          ],
+          "derivation": [
+            "动机：在本地跑开源权重模型前，要先判断显存或统一内存够不够，最粗的估算是按参数量与量化位宽算权重体积。",
+            "每个参数用 b bit 存储，P 个参数共 P×b bit，除以 8 得字节数。",
+            "再加上随上下文增长的 KV cache（与层数、KV 头数、头维、上下文长度成正比）与运行时开销，才接近实际峰值。",
+            "GGUF 支持逐层混合精度，b 应取平均位宽，因此这条估算只能当量级参考而非精确值（待核实）。"
+          ],
+          "analogy": "像搬家前估箱子：先按平均体积乘件数估主体（权重），再单独算冰箱洗衣机（KV cache）和过道占用（运行时）。只算主体就会低估到装不下。",
+          "pitfalls": [
+            "把「参数量 × 位宽」当全部显存：漏掉 KV cache 与运行时开销，长上下文时误差可达数倍。",
+            "把 Q4 当正好 4 bit：缩放、零点等元数据使平均位宽更高。",
+            "在统一内存设备上套用独立显存概念：模型与系统共享同一内存池，可用上限更小。"
+          ],
+          "code": "def mem_gb(params_b, bits, ctx=4096, layers=32, kv_heads=8, head_dim=128, kv_bytes=2):\n    weights = params_b * 1e9 * bits / 8                            # 权重字节\n    kv = 2 * layers * kv_heads * head_dim * ctx * kv_bytes         # K 与 V 两份\n    total = weights + kv\n    return weights / 2**30, kv / 2**30, total / 2**30\n\n# 8B 模型、平均 4.5 bit、4K 上下文\nw, kv, t = mem_gb(8, 4.5, ctx=4096)\nprint(f\"weights={w:.2f} GB kv={kv:.2f} GB total={t:.2f} GB\")\n",
+          "sources": [
+            {"title": "AtomicBot-ai/Atomic-Chat", "url": "https://github.com/AtomicBot-ai/Atomic-Chat"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "仓库自述为「本地 AI 应用与智能体推理引擎」，可在本机运行开源权重 LLM。",
+          "仓库宣称私密、100% 离线。",
+          "GitHub 标签包含 gguf、deepseek、gemma、TypeScript、apple-silicon、desktop-app 等。",
+          "采集元数据显示约 1.6k stars、193 forks，标记为附带开源实现。"
+        ],
+        "uncertain": [
+          "摘要只有一句项目简介，未给支持的模型清单、量化格式细节与推理后端；显存估算公式是通用工程形式，不代表本仓库实现（待核实）。",
+          "「智能体推理引擎」的具体能力（工具调用/函数调用）摘要未说明。",
+          "性能指标、是否依赖 llama.cpp 等第三方后端均未提供。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "它把聊天应用和模型推理都装进你的电脑，不联网也能用开源大模型。"},
+          {"level": "入门", "text": "常见 AI 应用要把你的输入发到云端，需要联网也有隐私顾虑。Atomic-Chat 把模型权重下载到本机，用本地推理引擎直接在个人电脑上算，因此号称 100% 离线。它同时是聊天应用和面向智能体的推理引擎，标签显示走 TypeScript 实现并支持 GGUF 量化权重。"},
+          {"level": "进阶", "text": "本地推理的关键约束是内存：权重按位宽折算体积，还要额外放下随上下文增长的 KV cache。GGUF 这类格式允许逐层混合精度，把大部分权重压到 4–5 bit、保留少数敏感层更高精度，从而让 8B 级模型落进消费级设备。应用层则负责会话管理、流式输出与智能体工具调用。它的工程价值在于把「量化权重 → 本地引擎 → 桌面应用」这条链路完整开源，可作为自建离线助手的起点；代价是模型能力受本机能耗与内存限制。"},
+          {"level": "专家", "text": "与云端服务相比，本地推理把延迟、隐私和边际成本的优势换成了吞吐与规模上的劣势：没有连续批处理，显存小，模型上限低，长上下文时 KV cache 会把内存吃满并触发换页。与直接用 llama.cpp/ollama 命令行相比，这类项目的增量是产品化的应用层与智能体编排，而非推理内核本身；评估时应重点看它支持的量化格式、后端抽象（是否可换引擎）以及工具调用的实现方式，这些决定了它是否只是壳。摘要信息极少，具体取舍需要读源码验证。"}
+        ],
+        "socratic": [
+          {"q": "为什么它敢宣称 100% 离线？", "a": "因为权重、tokenizer 与推理循环都在本机，输入不离开设备；只要模型文件已下载，网络断开也不影响推理。"},
+          {"q": "本地跑模型最先撞到什么墙？", "a": "内存。权重之外还要放随上下文增长的 KV cache 与运行时开销，长上下文时往往比权重本身更容易撑爆。"},
+          {"q": "用 4 bit 量化省内存，代价是什么？", "a": "有损压缩，位宽过低时推理与知识密集任务掉点；而且不同层敏感度不同，混合精度配方需要实测而非照抄。"}
+        ],
+        "mechanism": "为了让个人电脑跑得动开源大模型，必须同时解决存储与内存带宽两个瓶颈：权重以量化格式落盘，加载时按块反量化，KV cache 随生成逐步增长，解码逐 token 流式返回。应用层之所以能与引擎解耦，是因为模型文件自带 tokenizer 与超参元数据，引擎只需按统一接口调用。这样设计的直接后果是：离线可用、隐私可控，但吞吐受单机限制，无法通过批处理摊薄成本。",
+        "boundary": "不适用于需要大模型能力上限、高并发或超长上下文的场景：单机内存限制了可加载的模型规模，长上下文会把 KV cache 撑爆，且没有云端弹性伸缩。若组织要求审计或统一版本管理，本地分发权重反而更难治理。摘要只有一句简介，因此「智能体能力」与「离线」的具体边界要以源码为准。",
+        "analogyBoundary": "净水器类比默认滤芯成本固定，但本地推理的成本随上下文长度和模型规模剧烈变化：对话越长内存占用越高，换更大模型则直接装不下，不像换滤芯那样线性可预期。",
+        "misconceptions": [
+          "以为本地推理等于免费：省下 API 费用，但付出硬件、电费与推理速度。",
+          "以为「离线」就没有隐私风险：本机日志、剪贴板与插件仍可能外传数据。",
+          "以为量化只是压缩文件大小：它同时改变数值精度与推理质量。"
+        ],
+        "ownAnalysis": "（推断）这类项目真正的技术含量在推理引擎与格式兼容层，而非聊天界面；从标签看它覆盖 GGUF、DeepSeek、Gemma 与 apple-silicon，说明走的是「消费级硬件 + 开源权重」的路线，和 ollama/llama.cpp 生态高度重叠。价值判断的关键是它是否自研推理内核，还是仅做上层封装：若是后者，差异点只剩智能体编排与体验，容易被替代。摘要未提供任何性能或架构信息，（待核实）建议直接看仓库的依赖与目录结构再下结论。",
+        "officialNotes": [
+          {"position": "仓库自述：面向智能体的本地 AI 应用与推理引擎，在本机运行开源权重 LLM，私密且 100% 离线。", "source": "https://github.com/AtomicBot-ai/Atomic-Chat"}
+        ],
+        "interviewAnswer": "我把 Atomic-Chat 当作本地推理链路的端到端参考：应用层在桌面端，推理引擎在本机加载 GGUF 量化权重，所以数据不出设备、断网可用。面试里我会强调它的约束：本地推理的瓶颈是内存而不只是算力，权重按位宽折算后还要放 KV cache 和运行时开销，长上下文很容易把内存吃满；因此量化位宽和上下文长度是两个必须一起估的参数。至于它的智能体能力，我会说标签和简介指向工具型应用，但具体实现需要读源码确认，不会凭简介下结论。",
+        "studyPath": {
+          "prerequisites": ["Transformer 解码与 KV cache", "量化基础（位宽、缩放、反量化）", "本地推理生态（GGUF、llama.cpp 类后端）"],
+          "nextSteps": ["用 llama.cpp 或同类后端手动跑一次 GGUF 模型", "按显存公式估算几档模型与上下文组合", "对比云端 API 与本地推理的延迟、成本与隐私边界"]
+        }
+      }
+    },
+    {
+      "id": "c7a49d8868aeffb0",
+      "tldr": "把掩码扩散推理拆成五轴，用一步效用优势度量适配机会，只在 top 10% 状态自适应",
+      "keyPoints": [
+        "掩码扩散模型的解锁顺序是一种推理期决策",
+        "现有方法可归为 score/cardinality/region/commitment/planning 五轴",
+        "用策略反转定义适配机会：最优候选相对固定动作的一步效用优势",
+        "三个模型十个任务上适配机会高度异质，部分区间集中且可预测",
+        "选择性适配只改 top 10% 状态，在 LLaDA-8B 上捕获 56.9% 机会"
+      ],
+      "why": "扩散语言模型的推理策略是生成式新战场；「只在少数状态上适配」的思路可迁移到任何采样期决策问题",
+      "difficulty": "hard",
+      "tags": ["masked-diffusion", "inference-strategy", "llada", "adaptive-decoding", "language-model"],
+      "entities": ["Masked Diffusion Language Models", "MDM", "LLaDA-8B"],
+      "diagram": {
+        "kind": "matrix",
+        "title": "选择性适配决策矩阵",
+        "caption": "适配的价值取决于状态：只在机会大且可预测的状态上换动作才划算",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='选择性状态适配的收益矩阵：按机会大小与动作选择分四格'>\n<text x='163' y='34' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>固定动作</text>\n<text x='321' y='34' font-size='14' text-anchor='middle' fill='currentColor' font-weight='bold'>选择性适配</text>\n<text x='40' y='88' font-size='13' text-anchor='start' fill='currentColor'>低机会</text>\n<text x='40' y='184' font-size='13' text-anchor='start' fill='currentColor'>高机会</text>\n<rect x='88' y='48' width='150' height='64' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='163' y='76' font-size='13' text-anchor='middle' fill='currentColor'>几乎无损</text>\n<text x='163' y='96' font-size='13' text-anchor='middle' fill='currentColor'>省下算力</text>\n<rect x='246' y='48' width='150' height='64' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='321' y='76' font-size='13' text-anchor='middle' fill='currentColor'>过度适配</text>\n<text x='321' y='96' font-size='13' text-anchor='middle' fill='currentColor'>收益被噪声吃掉</text>\n<rect x='88' y='144' width='150' height='64' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='163' y='172' font-size='13' text-anchor='middle' fill='currentColor'>错过可预测收益</text>\n<text x='163' y='192' font-size='13' text-anchor='middle' fill='currentColor'>基线偏低</text>\n<rect x='246' y='144' width='150' height='64' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='321' y='172' font-size='13' text-anchor='middle' fill='currentColor'>只改 top 10%</text>\n<text x='321' y='192' font-size='13' text-anchor='middle' fill='currentColor'>捕获 56.9%</text>\n</svg>",
+        "alt": "2x2 矩阵：低机会状态无论固定还是适配收益都小；高机会状态下固定动作会错过收益，而只适配 top 10% 的高机会状态即可捕获 56.9% 的候选集 oracle 机会"
+      },
+      "concepts": [
+        {
+          "name": "Adaptation Opportunity（适配机会 / 一步效用优势）",
+          "readable": "在掩码扩散的某一步，把「另选一个动作」和「沿用验证集选定的固定动作」的单步效用相减，差值就是这一刻换动作能多拿多少。它衡量的是「此时此地该不该改策略」，而不是整条序列的最终好坏。",
+          "analogy": "像开车时判断该不该变道：变道收益等于变道后这一步的通行速度减去留在原车道的速度。堵点密集且可预判时值得变，随机抖动时频繁变道反而更慢。",
+          "analogyBreaksDown": "变道的收益只影响眼前一段路，之后还能再变回来；扩散推理的一步选择会改变后续所有步的条件分布，错误会沿去噪链传播，一步效用优势并不等于全局回报优势。",
+          "mechanism": "把推理动作空间拆成五个正交轴（分数、并行度、可选区域、是否允许改写、是否规划未来），就能枚举候选动作并比较单步效用。适配的价值因此同时取决于反转出现的频率与幅度，而不只是「有没有更好的动作」。",
+          "visual": "横轴是去噪步，纵轴是适配机会 Δ_t 的柱状图；大多数柱接近零，少数几根很高，用另一种颜色标出这些高柱，直观显示机会分布高度异质。",
+          "prerequisites": ["掩码扩散/离散扩散模型的去噪过程", "推理期解码策略（顺序、并行、重掩码）", "验证集调参与分布外泛化的概念"],
+          "selfTest": ["Δ_t 大说明什么、又不能说明什么？", "为什么只看反转频率不够，还要看幅度？", "一步效用优势与最终指标是什么关系？"],
+          "formula": "\\Delta_t=\\max_{a}U_t(a)-U_t(a^{\\mathrm{fix}})"
+        },
+        {
+          "name": "Selective State Adaptation（选择性状态适配）",
+          "readable": "既然适配机会只在少数状态上集中，就别全程自适应，而是训练一个轻量检测器，只在打分高的状态上换动作。这样用很小的额外开销换取大部分可得的收益。",
+          "analogy": "像考前划重点：全本书都背性价比低，用往年题标出高频章节，只复习 10% 的页数却覆盖了一半以上考点。",
+          "analogyBreaksDown": "划重点依据的是稳定的考纲分布；检测器只在验证提示上标定，一旦实际输入的分布变了，判定的「高机会状态」可能完全错位，收益反而低于统一策略。",
+          "mechanism": "关键是让检测器便宜且可校准：在验证提示上计算机会标签，拟合一个只看当前状态的分类器，用阈值控制适配比例。摘要报告在 LLaDA-8B 约束 JSON 填充上，只适配 top 10% 状态即可捕获 56.9% 的候选集 oracle 机会。",
+          "visual": "画两条并排的柱：整体 oracle 机会总量，以及只取检测器 top 10% 状态时捕获的部分，用颜色比例表示 56.9% 的覆盖率。",
+          "prerequisites": ["分类器校准与阈值选择", "验证集/测试集划分纪律", "推理开销与收益的权衡分析"],
+          "selfTest": ["为什么要用检测器而不是全局自适应？", "捕获率 56.9% 的分母是什么？", "检测器在什么情况下会失效？"],
+          "formula": "\\mathrm{Cap}(S)=\\frac{\\sum_{t\\in S}\\Delta_t}{\\sum_{t}\\Delta_t}"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-mdm-adaptation-opportunity",
+          "name": "适配机会：一步效用优势（Adaptation Opportunity）",
+          "category": "generative",
+          "latex": "\\Delta_t=\\max_{a\\in\\mathcal{C}_t}U_t(a)-U_t(a^{\\mathrm{fix}})",
+          "symbols": [
+            ["t", "第 t 个去噪/解锁步"],
+            ["\\mathcal{C}_t", "该步的候选动作集合，由五轴定义的离散选择组成"],
+            ["U_t(a)", "执行动作 a 后的单步效用，摘要未给具体形式"],
+            ["a^{\\mathrm{fix}}", "在验证集上选定的固定动作"],
+            ["\\Delta_t", "适配机会，大于零表示换动作更好"]
+          ],
+          "derivation": [
+            "动机：掩码扩散允许任意顺序解锁 token，但现有方法都固定一套策略，真正缺的是「何时该改」的判据。",
+            "把每步可选动作写成候选集：打分方式（score）、并行度（cardinality）、可选区域（region）、是否允许改写（commitment）、是否规划未来去噪（planning）。",
+            "定义单步效用 U_t(a)，用候选中最优动作与验证集选出的固定动作相减，得到适配机会 Δ_t。",
+            "适配价值同时取决于反转出现的频率与幅度：只有在 Δ_t 既大又可由状态预测时才值得适配。"
+          ],
+          "analogy": "像早高峰判断要不要换地铁线：换线收益等于换线后这一段的预计耗时减去原线路耗时。偶尔且幅度极小的提速不值得折腾，只有可预判的大堵点才值得换。",
+          "pitfalls": [
+            "把 Δ_t 当整体回报差：它只是单步效用优势，不含错误沿去噪链的传播。",
+            "以为出现反转就该适配：频率高但幅度极小的反转，收益抵不过检测与切换开销。",
+            "把五轴当成五种独立算法：它们是可以组合的推理决策维度。"
+          ],
+          "code": "import torch\n\ndef adaptation_opportunity(util_candidates, util_fixed):\n    # util_candidates: [T, A] 每步每个候选动作的单步效用\n    # util_fixed:      [T]    验证集选定固定动作的效用\n    best = util_candidates.max(dim=-1).values     # max_a U_t(a)\n    delta = best - util_fixed                     # Δ_t，大于零表示换动作更好\n    return delta\n\nutils = torch.tensor([[0.2, 0.9, 0.5, 0.1],\n                      [0.3, 0.2, 0.25, 0.4],\n                      [0.7, 0.6, 0.8, 0.55]])\nfixed = torch.tensor([0.5, 0.4, 0.6])\nprint(adaptation_opportunity(utils, fixed))       # 每步的适配机会\n",
+          "sources": [
+            {"title": "Unmask the State: When Does State Adaptation Matter for Masked Diffusion Language Models", "url": "https://arxiv.org/abs/2609.33355"}
+          ]
+        },
+        {
+          "id": "f-mdm-selective-capture",
+          "name": "选择性适配的机会捕获率（Captured Opportunity）",
+          "category": "generative",
+          "latex": "\\mathrm{Cap}(S)=\\frac{\\sum_{t\\in S}\\Delta_t}{\\sum_{t}\\Delta_t},\\qquad S=\\{t:g_\\phi(z_t)\\ge\\tau\\},\\ |S|=\\lceil 0.1T\\rceil",
+          "symbols": [
+            ["S", "被检测器判定为高机会、执行适配的状态集合"],
+            ["\\Delta_t", "状态 t 的适配机会"],
+            ["g_\\phi(z_t)", "在验证提示上标定的轻量检测器打分"],
+            ["\\tau", "阈值，使 S 只覆盖约前 10% 的状态"],
+            ["\\mathrm{Cap}(S)", "捕获到的候选集 oracle 机会占比"]
+          ],
+          "derivation": [
+            "动机：适配机会分布高度异质，均匀适配会把算力花在几乎没有收益的状态上，还可能引入噪声。",
+            "在验证提示上逐步计算 Δ_t，得到「候选集 oracle 机会」的参考总量。",
+            "训练轻量检测器 g_φ 并取阈值 τ，只挑出高机会状态，从而控制适配带来的额外开销。",
+            "用捕获率 Cap(S) 衡量「只改一小部分状态」能拿回多少 oracle 机会；摘要在 LLaDA-8B 约束 JSON 填充上报告 top 10% 状态捕获 56.9%。"
+          ],
+          "analogy": "像用体检指标筛高危人群：不可能给所有人做全套检查，先用便宜指标筛出 10% 的人，再对他们做深入检查，仍能覆盖一半以上的真实风险。",
+          "pitfalls": [
+            "把 56.9% 当绝对性能提升：它是相对候选集 oracle 机会的捕获比例，不是任务指标涨幅。",
+            "认为检测器通用：它只在验证提示上标定，输入分布漂移会直接失效。",
+            "忽略大多数状态的 Δ_t 接近零，误以为自适应一定优于固定策略。"
+          ],
+          "code": "import torch\n\ndef capture_ratio(delta, score, top_frac=0.1):\n    k = max(1, int(round(top_frac * delta.numel())))\n    sel = torch.topk(score, k).indices        # 检测器打分最高的状态\n    oracle = delta.sum()\n    return (delta[sel].sum() / oracle).item() if oracle > 0 else 0.0\n\ndelta = torch.tensor([0.0, 0.7, 0.02, 0.9, 0.01, 0.6])   # 逐步适配机会\nscore = torch.tensor([0.1, 0.8, 0.2, 0.95, 0.15, 0.7])  # 检测器打分\nprint(capture_ratio(delta, score, top_frac=0.34))\n",
+          "sources": [
+            {"title": "Unmask the State: When Does State Adaptation Matter for Masked Diffusion Language Models", "url": "https://arxiv.org/abs/2609.33355"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "掩码扩散语言模型允许灵活的生成顺序，解锁策略因此是推理期决策。",
+          "论文把 MDM 推理整理为五个轴：score、cardinality、region、commitment、planning。",
+          "论文用「策略反转」研究何时该改变选择，并把适配机会定义为最优候选动作相对验证集固定动作的一步效用优势。",
+          "适配价值取决于这类反转的频率与幅度。",
+          "在三个 MDM、十个任务上适配机会高度异质，部分区间存在集中且可预测的一步收益。",
+          "在 LLaDA-8B 的约束 JSON 填充任务上，只适配 top 10% 状态可捕获 56.9% 的候选集 oracle 机会。",
+          "结论倾向：状态适配应选择性使用，而非全程统一使用。"
+        ],
+        "uncertain": [
+          "五轴候选动作的具体形式与单步效用 U_t 的定义摘要未给，公式为按摘要重建的通用形式，需核对原文。",
+          "检测器的结构、训练成本与阈值标定方法未说明。",
+          "「candidate-set oracle opportunity」的确切分母定义未在摘要中展开。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "掩码扩散模型该按什么顺序解锁 token？答案是：多数时候别改，只在少数关键时刻改。"},
+          {"level": "入门", "text": "掩码扩散语言模型不像自回归那样从左到右生成，它每步可以挑位置、挑数量、决定要不要改写。现有方法各自固定一套策略。这篇论文问的是：生成过程中，什么时候换成另一种做法才划算？做法是把推理选项拆成五个轴，用「换动作比固定动作多拿的一步效用」定义适配机会，然后发现机会只集中在少数状态上。"},
+          {"level": "进阶", "text": "论文的核心度量是适配机会 Δ_t：在当前状态，候选动作里最好的那个相对验证集选出的固定动作，单步效用高多少。Δ_t 的分布在不同模型和任务上非常不均匀，但某些区间的收益既大又可从状态预测。于是自然推出「选择性适配」：训练一个轻量检测器，只对打分最高的约 10% 状态切换动作，其余沿用固定策略。在 LLaDA-8B 的约束 JSON 填充上，这样只改 10% 的状态就捕获了 56.9% 的候选集 oracle 机会，说明均匀适配的收益被长尾稀释了。"},
+          {"level": "专家", "text": "这项工作的价值不在提出又一个解码器，而是把「推理期该不该自适应」变成一个可测量的问题：先定义五轴动作空间，再用一步效用优势量化机会，最后用捕获率衡量选择性策略拿回多少收益。它把解码器设计从「哪个策略更好」推进到「哪个状态值得换策略」，与自适应计算/早退类思路同源。局限是 Δ_t 只是单步量，去噪链上的误差传播不在度量内；检测器依赖验证集提示，分布漂移时会错位；因此结论是「选择性适配有效」，而不是「自适应一定优于固定」。"}
+        ],
+        "socratic": [
+          {"q": "如果一直用固定策略会怎样？", "a": "在机会集中的区间会白丢收益：明明有更好的动作却不用；但反过来，全程自适应会在低机会状态引入噪声与开销，净收益可能是负的。"},
+          {"q": "为什么不直接对每个状态都自适应？", "a": "多数状态的 Δ_t 接近零，切换只带来开销和额外错误；摘要的 56.9% 说明收益集中在少数状态，选择性适配的性价比更高。"},
+          {"q": "一步效用优势足够吗？", "a": "不够。它没考虑这一步选择如何改变后续条件的分布，错误会沿去噪链传播，所以 Δ_t 是启发式指标而非最终回报。"}
+        ],
+        "mechanism": "掩码扩散把生成拆成多步离散决策，每步都有多种可替换的推理动作，因此「策略好不好」取决于状态而不是全局。论文必须先给出可比较的动作空间（五轴），再给出可计算的判据（一步效用优势），否则「何时该改」无从讨论。之所以强调频率与幅度两个维度：只有同时满足「反转常出现」与「反转收益大」的区间才值得适配。选择性适配正是这一分析的直接推论——把适配预算花在可预测的高机会状态上，其余交给固定策略兜底。",
+        "boundary": "当 Δ_t 无法从当前状态预测时会失效：检测器在验证提示上标定，输入分布一变就可能把低机会状态判成高机会。若五轴候选集合不完备，oracle 机会本身就被低估，结论会偏向「不值得适配」。此外单步效用与最终指标不一致的任务（需要长程规划）上，逐步贪心适配可能反而伤害全局结果。",
+        "analogyBoundary": "变道类比隐含「决策可随时撤销、影响局部」，而扩散推理中一旦某些 token 被确定或改写，后续所有步的条件分布都会变化，错误不可撤销。类比也低估了检测成本：真实系统里判定「高机会状态」本身就要算力。",
+        "misconceptions": [
+          "以为论文提出了新的解码算法：它主要给出分析框架与选择性适配策略。",
+          "把 56.9% 当成准确率或性能提升：它是候选集 oracle 机会的捕获比例。",
+          "以为五轴是互斥的五种方法：它们是可组合的推理决策维度。"
+        ],
+        "ownAnalysis": "（推断）这项工作把自适应计算的经典问题搬到了扩散语言模型上：与早退网络、自适应深度类似，核心是「算力该花在哪里」。它的新意在于用一步效用优势把「策略反转」量化，并用捕获率把选择性适配的效果变成可报告的数字，这比单纯比较解码器更有方法论价值。可疑处在于验证集标定的检测器与真实推理分布的一致性：摘要报告的是单一模型（LLaDA-8B）与单类任务（约束 JSON 填充）的 56.9%，跨任务迁移性（待核实）；另外 Δ_t 的一步视角可能系统性低估需要提前规划的收益。",
+        "officialNotes": [
+          {"position": "论文把 MDM 推理组织为 score/cardinality/region/commitment/planning 五轴，用「最优候选动作相对验证集固定动作的一步效用优势」定义适配机会，并证明在三个 MDM、十个任务上机会高度异质；据此提出选择性适配，在 LLaDA-8B 约束 JSON 填充上只适配 top 10% 状态即捕获 56.9% 的候选集 oracle 机会。", "source": "https://arxiv.org/abs/2609.33355"}
+        ],
+        "interviewAnswer": "掩码扩散语言模型的解锁顺序本身就是一个推理决策，过去大家各发一个解码器，很难说清什么时候该换。这篇论文先把它整理成五个轴——打分方式、并行度、可选区域、是否允许改写、是否规划未来，然后用「最优候选相对固定动作的一步效用优势」定义适配机会。关键发现是机会分布极不均匀，只在少数状态上集中且可预测，所以它提出选择性适配：训练轻量检测器只改 top 10% 的状态，在 LLaDA-8B 的约束 JSON 填充上说能捕获 56.9% 的候选集 oracle 机会。我会补一句边界：Δ_t 是单步量，不含误差传播，检测器也依赖验证集分布。",
+        "studyPath": {
+          "prerequisites": ["离散/掩码扩散模型与去噪目标", "自回归与扩散解码策略的差异", "验证集调参与分类器校准"],
+          "nextSteps": ["复现一个简单的掩码扩散采样循环", "在玩具任务上统计 Δ_t 的分布", "对比固定策略、均匀自适应与选择性适配的开销收益"]
+        }
+      }
+    },
+    {
+      "id": "500b7b2c77308a10",
+      "tldr": "OpenLake：面向 LLM 推理与 GPU 训练的高性能存储引擎",
+      "keyPoints": [
+        "定位是 LLM 推理与 GPU 训练共用的存储引擎",
+        "目标是高效服务大模型推理的数据读取",
+        "同时覆盖 GPU 训练侧的权重与检查点需求",
+        "标签含 RDMA、Blackwell、Rust，指向高吞吐低延迟实现"
+      ],
+      "why": "训练与推理常被存储 IO 卡住；理解存储引擎与 GPU 的配合是推理服务和训练基建岗位的加分项",
+      "difficulty": "medium",
+      "tags": ["storage-engine", "llm-serving", "rdma", "checkpointing", "rust"],
+      "entities": ["OpenLake", "openlake-project", "RDMA", "Rust", "Blackwell"],
+      "diagram": {
+        "kind": "architecture",
+        "title": "存储到 GPU 的数据通路",
+        "caption": "存储引擎的任务是提高有效带宽并把加载与计算重叠，别让 GPU 空转",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='OpenLake 存储引擎连接存储介质与 GPU 的数据通路架构'>\n<rect x='56' y='16' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='40' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>样本与检查点</text>\n<text x='408' y='40' font-size='13' text-anchor='end' fill='currentColor'>本地/远端存储</text>\n<line x1='240' y1='54' x2='240' y2='62' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,70 236,62 244,62' fill='var(--line-1)'/>\n<rect x='56' y='70' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='94' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>OpenLake 引擎</text>\n<text x='408' y='94' font-size='13' text-anchor='end' fill='currentColor'>高吞吐读取</text>\n<line x1='240' y1='108' x2='240' y2='116' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,124 236,116 244,116' fill='var(--line-1)'/>\n<rect x='56' y='124' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='148' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>RDMA 链路</text>\n<text x='408' y='148' font-size='13' text-anchor='end' fill='currentColor'>低延迟搬运</text>\n<line x1='240' y1='162' x2='240' y2='170' stroke='var(--line-1)' stroke-width='1.6'/>\n<polygon points='240,178 236,170 244,170' fill='var(--line-1)'/>\n<rect x='56' y='178' width='368' height='38' rx='8' fill='none' stroke='var(--line-1)' stroke-width='1.4'/>\n<text x='72' y='202' font-size='14' text-anchor='start' fill='currentColor' font-weight='bold'>GPU 训练/推理</text>\n<text x='408' y='202' font-size='13' text-anchor='end' fill='currentColor'>减少空转等待</text>\n</svg>",
+        "alt": "架构图：样本与检查点先进入 OpenLake 存储引擎，再经 RDMA 链路低延迟搬运到 GPU，供训练与推理使用，目标是让 GPU 少空转"
+      },
+      "concepts": [
+        {
+          "name": "Storage Engine for LLM Serving（面向 LLM 服务的存储引擎）",
+          "readable": "专门为「把模型权重、KV 缓存或请求数据快速送进 GPU」这件事设计的存储层。它不只管放得下，还要管读得足够快、延迟足够稳，因为 GPU 一旦等数据就是在烧钱。",
+          "analogy": "像给高速运转的工厂配一条专用传送带：仓库再大也没用，关键是物料能按节拍准时到工位，卡一下就全线停摆。",
+          "analogyBreaksDown": "传送带是机械结构、带宽固定；存储引擎面对的是多层缓存、网络协议与周期性写入峰值（如检查点），有效带宽随访问模式剧烈变化，不存在一个恒定的「传送速度」。",
+          "mechanism": "关键设计是减少数据搬运层级并提高顺序性：把权重与检查点按大块布局、用缓存与预取掩盖延迟、靠 RDMA 绕过内核拷贝。这样做的直接收益是有效带宽上升，GPU 等待时间下降。",
+          "visual": "画一条从磁盘到 GPU 的横向通路，中间标出各级缓存与网络；用粗细表示带宽、用堆叠的小方块表示排队延迟，展示瓶颈段在哪里。",
+          "prerequisites": ["GPU 训练/推理的基本数据流", "存储层级与缓存、预取", "网络传输基础（RDMA/内核旁路）"],
+          "selfTest": ["为什么存储会成为 LLM 系统的瓶颈？", "有效带宽与峰值带宽差在哪里？", "检查点写入为什么是周期性峰值？"],
+          "formula": "t_{\\mathrm{load}}\\ge S/\\mathrm{BW}_{\\mathrm{eff}}"
+        },
+        {
+          "name": "IO–Compute Overlap（IO 与计算重叠）",
+          "readable": "提前把下一批数据读进来，让传输和 GPU 计算同时进行。这样单步耗时由两者中较慢的那个决定，而不是两者相加。它不能提高带宽，只能隐藏等待。",
+          "analogy": "像厨房里的备菜：切菜时让助手把下一道菜的食材先洗好摆上，厨师的等待就被藏起来了；但如果食材根本送不到，再好的分工也没用。",
+          "analogyBreaksDown": "备菜与烹饪用的是不同人手，可以真正并行；IO 与计算共享内存带宽与 PCIe/NVLink 通路，预取过多反而会挤占计算所需带宽，重叠并不总是免费的。",
+          "mechanism": "用双缓冲或多级流水把加载放到后台，计算在前台消费上一批数据；只要加载时间不超过计算时间，GPU 就不会空转，因此工程目标是让有效带宽与批大小匹配计算耗时。",
+          "visual": "画两条时间轴，上轴是计算块、下轴是加载块；无重叠时两轴交替拼接，有重叠时加载块完全藏在计算块下方，总长度由较长的块决定。",
+          "prerequisites": ["流水线与双缓冲", "CUDA stream 与异步拷贝", "批大小对计算耗时的影响"],
+          "selfTest": ["重叠能把单步时间降到多少？", "为什么重叠不能突破带宽瓶颈？", "预取过深有什么副作用？"],
+          "formula": "t_{\\mathrm{step}}\\ge\\max(t_{\\mathrm{compute}},t_{\\mathrm{load}})"
+        }
+      ],
+      "formulas": [
+        {
+          "id": "f-openlake-storage-bandwidth-bound",
+          "name": "数据加载下界与 IO/计算重叠（Storage Bandwidth Bound）",
+          "category": "engineering",
+          "latex": "t_{\\mathrm{load}}\\ge\\frac{S}{\\mathrm{BW}_{\\mathrm{eff}}},\\qquad t_{\\mathrm{step}}\\ge\\max\\!\\big(t_{\\mathrm{compute}},\\ t_{\\mathrm{load}}\\big)",
+          "symbols": [
+            ["S", "单步训练或单次推理需读取的数据量（字节）"],
+            ["\\mathrm{BW}_{\\mathrm{eff}}", "端到端有效带宽，含网络、协议与缓存命中影响"],
+            ["t_{\\mathrm{load}}", "数据到达 GPU 所需时间"],
+            ["t_{\\mathrm{compute}}", "GPU 实际计算时间"],
+            ["t_{\\mathrm{step}}", "重叠后单步墙钟时间的下界"]
+          ],
+          "derivation": [
+            "动机：GPU 算力增长远快于存储与网络带宽，数据供不上时再多的卡也在空转，所以先算加载时间下界。",
+            "把需要搬运的数据量 S 除以端到端有效带宽得到纯传输时间下界，实际还要叠加协议与排队延迟。",
+            "若用双缓冲或预取把加载与计算重叠，单步时间下界由两者中较大者决定，而不是简单相加。",
+            "因此存储引擎的优化方向是提高有效带宽（RDMA、大块顺序读、提高缓存命中）并保证重叠不被打断（待核实）。"
+          ],
+          "analogy": "像餐厅后厨：切菜（计算）再快，也要等食材从仓库送到（加载）。要么把仓库搬近、通道加宽（提高带宽），要么提前备好下一道菜的料（重叠），否则厨师只能干等。",
+          "pitfalls": [
+            "把峰值带宽当有效带宽：协议开销、小块随机读与缓存未命中都会大幅拉低实际值。",
+            "以为重叠能突破瓶颈：重叠只是把求和换成取最大，带宽本身不提升时依然受限。",
+            "只算平均读带宽：训练侧的存储压力常表现为检查点写入的周期峰值。"
+          ],
+          "code": "def step_time(compute_s, size_bytes, bw_gbps, overlap=True):\n    bw_bytes = bw_gbps * 1e9 / 8        # Gb/s -> byte/s\n    load_s = size_bytes / bw_bytes\n    if overlap:\n        return max(compute_s, load_s), load_s   # IO 与计算重叠\n    return compute_s + load_s, load_s\n\ncompute = 0.020              # 20 ms 计算\nsize = 2 * 2**30             # 2 GiB 分片\nfor bw in (25, 100, 400):    # 25 / 100 / 400 Gb/s\n    t, load = step_time(compute, size, bw)\n    print(f\"BW={bw:>3} Gb/s load={load * 1e3:7.1f} ms step={t * 1e3:7.1f} ms\")\n",
+          "sources": [
+            {"title": "openlake-project/openlake", "url": "https://github.com/openlake-project/openlake"}
+          ]
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "仓库自述为面向高效 LLM 推理与 GPU 训练的高性能存储引擎。",
+          "GitHub 标签包含 rdma、blackwell、gpu、llm、llm-training、model-serving 与 Rust。",
+          "采集元数据显示约 2.6k stars、422 forks，标记为附带开源实现。"
+        ],
+        "uncertain": [
+          "摘要只有一句项目简介，未给架构、支持的存储后端与性能数据；带宽/重叠公式是通用工程形式，不代表本仓库实测（待核实）。",
+          "「高性能」的具体指标（吞吐、延迟）与基准环境未提供。",
+          "是否同时包含训练数据加载与推理 KV/权重缓存两条路径，简介未区分。"
+        ]
+      },
+      "teaching": {
+        "progressive": [
+          {"level": "一句话", "text": "它是一条更快的「传送带」，专门把数据和模型喂给 GPU，让卡少等。"},
+          {"level": "入门", "text": "LLM 训练和推理都要不停从存储读数据：训练读样本与权重，推理读模型与缓存。GPU 算得越快，等数据的时间占比越高，于是存储变成了瓶颈。OpenLake 把自己定位成这一层的高性能存储引擎，标签显示走 RDMA、Rust 与新款 GPU 硬件路线，目标是在高吞吐下把数据稳定送进 GPU。"},
+          {"level": "进阶", "text": "判断这类系统的第一步是算下界：加载时间不小于数据量除以有效带宽，而有效带宽远低于标称峰值，受协议、访问粒度与缓存命中率影响。第二步是看重叠：用双缓冲把加载藏到计算背后，单步时间由 max(计算, 加载) 决定，所以存储侧的优化目标是提高有效带宽并保持流水不中断。训练与推理的负载特征不同——训练有周期性检查点写入峰值，推理则更在意首 token 延迟与缓存命中——因此一个引擎要同时服务两者，必须在调度与缓存策略上兼顾。"},
+          {"level": "专家", "text": "这类存储引擎的技术分水岭在「减少拷贝与提高顺序性」：内核旁路与零拷贝降低每字节开销，大块顺序读提高带宽利用率，多级缓存与预取掩盖远端延迟，而 Rust 这类系统语言用于控制尾延迟与内存安全。与通用分布式文件系统相比，它的优势来自针对 LLM 访问模式的专门化（权重分片、检查点、KV 复用）；代价是通用性下降、运维与格式绑定更强。评估时应看它在真实负载下的有效带宽与 P99 延迟，而不是标称峰值，因为 GPU 空转对尾延迟极其敏感。摘要信息极少，具体实现需读源码。"}
+        ],
+        "socratic": [
+          {"q": "为什么存储会成为 LLM 系统的瓶颈？", "a": "算力增长快于 IO 带宽，数据供不上时 GPU 只能空转；模型越大、卡越多，单位时间需要搬运的数据越多。"},
+          {"q": "把 IO 与计算重叠后，单步时间能降到多少？", "a": "下界是 max(计算时间, 加载时间)。重叠只隐藏等待，不提高带宽，若加载本身更慢则仍然是瓶颈。"},
+          {"q": "为什么不能只看平均带宽？", "a": "GPU 对尾延迟敏感，偶发的慢读取会让整条流水停顿；检查点写入还会造成周期性带宽竞争，平均值会掩盖峰值压力。"}
+        ],
+        "mechanism": "大模型系统的有效算力取决于数据供给能否跟上，所以存储层的设计目标不是「容量大」而是「有效带宽高且延迟稳」。这要求三件事同时成立：减少每字节的搬运开销（零拷贝/内核旁路）、提高访问的顺序性与块大小、用缓存和预取把远端延迟藏到计算背后。把加载与计算重叠之后，单步时间由两者较大者决定，于是瓶颈位置变得可计算——这正是评估这类引擎时先算带宽下界、再看流水编排的原因。",
+        "boundary": "不适用于数据量小、模型可完全驻留显存或内存的场景：此时瓶颈在算力或网络通信（如张量并行 all-reduce），存储优化收益有限。若访问模式是小块随机读，大带宽设计也发挥不出来。多租户共享存储时，优先级与隔离不足会让尾延迟恶化，再高的峰值带宽也救不了 GPU 空转。摘要没有给出适用规模与部署形态，需以文档为准。",
+        "analogyBoundary": "传送带类比假设带宽恒定且与计算互不抢占；实际上 IO 与计算共享内存与互连带宽，预取会挤占计算资源，且远端存储的延迟抖动会让「准时到达」这一前提失效。",
+        "misconceptions": [
+          "以为存储引擎只影响训练：推理的权重加载与 KV 复用同样受它影响。",
+          "把峰值带宽当实际性能：有效带宽受协议、块大小与缓存命中影响。",
+          "以为重叠能消除瓶颈：它只是把求和变成取最大，带宽不足时依旧受限。"
+        ],
+        "ownAnalysis": "（推断）从标签（rdma、blackwell、model-serving、llm-training、Rust）看，这个项目瞄准的是「GPU 集群旁的专用数据平面」，而不是通用对象存储：RDMA 指向内核旁路与远端内存直取，Rust 指向尾延迟与内存安全，Blackwell 指向新硬件的互连特性。它与 GPU 直连存储、KV 缓存分层等方向高度相关，价值取决于能否在真实训练/推理负载下把有效带宽做高、把 P99 延迟压稳。可疑处在于简介极短且没有基准数据，（待核实）需要看仓库是否有可复现的性能报告，否则「高性能」只是定位声明。",
+        "officialNotes": [
+          {"position": "仓库自述：OpenLake 是面向高效 LLM 推理与 GPU 训练的高性能存储引擎。", "source": "https://github.com/openlake-project/openlake"}
+        ],
+        "interviewAnswer": "我会把 OpenLake 放在「GPU 数据平面」这一类来看：LLM 训练和推理都是数据密集型，GPU 算力涨得比 IO 快，所以瓶颈常落在存储与网络。评估这类引擎我第一步算下界——加载时间不小于数据量除以有效带宽，而有效带宽受协议、块大小和缓存命中影响，通常远低于标称峰值；第二步看重叠，用双缓冲把加载藏到计算后面后，单步时间由 max(计算, 加载) 决定。仓库标签里的 RDMA、Rust 和新款 GPU 说明它走低开销、低尾延迟路线，但简介太短，具体架构和性能数据要读源码才能确认。",
+        "studyPath": {
+          "prerequisites": ["GPU 训练/推理的数据流与瓶颈分析", "存储层级、缓存与预取", "网络基础：RDMA 与内核旁路"],
+          "nextSteps": ["用公式估算不同带宽下权重加载与单步时间", "读一个开源推理/训练框架的 IO 路径", "对比通用文件系统与专用存储引擎在 LLM 负载下的差异"]
         }
       }
     }

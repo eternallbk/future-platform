@@ -1,0 +1,161 @@
+{
+  "batchId": "prob-cur-07",
+  "entries": [
+    {
+      "id": "dpo-loss",
+      "itemId": "dpo-loss",
+      "tldr": "先算 completion 段对数概率之和，再取四项 log-ratio 的 -logsigmoid；reference 只当常量、不反传。",
+      "restated": "输入：同一 batch 的 4 组「token 级对数概率」（policy/ref × chosen/rejected），或更底层地给 policy/ref 的 logits 与 completion mask；自由生成的回答长度不同，必须用 mask 把 padding 与 prompt 排除。中间量：每样本 completion 对数概率之和（标量），再取四项 log-ratio。输出：标量 DPO 损失（对 batch 取 mean），并可监控偏好 margin 与偏好准确率。约束：reference 冻结，梯度只经 policy 回传。",
+      "approach": [
+        {
+          "step": "朴素写法：直接对整条序列求和（或逐 token 写 python 循环）",
+          "detail": "三个具体后果：① 把 prompt 与 padding 一起算进去，DPO 的两项 log-ratio 本意是「整条回答的偏好」，而 prompt 在 chosen/rejected 里完全相同、会被差分消掉一部分，padding 的 logprob 更完全是噪声，序列长度一变 loss 尺度就漂；② 逐 token python 循环做 log_softmax/gather，B×S 次 kernel 启动，结构上慢一个数量级；③ 直接对 logits 取 exp 再取 log（而不是 F.log_softmax 的 log-sum-exp），V=15 万时 logits 稍大就下溢成 -inf。所以要的是「一次性、向量化、带 mask 的部分和」。"
+        },
+        {
+          "step": "关键设计一：F.log_softmax + gather(x, labels) 得到每个位置的 log p(token)",
+          "detail": "logp = F.log_softmax(logits, dim=-1) 给出 [B,S,V] 的归一化对数概率（内部走 log-sum-exp，数值稳定）；再用 logp.gather(-1, labels.unsqueeze(-1)).squeeze(-1) 只把「实际 token 那一列」抽出来得到 [B,S]。如果目标 token 全在词表内，这一步等价于 logits.gather - logsumexp(logits)，但少一次中间张量、也不手写减法。注意标签对齐约定：HF 因果 LM 常用 shift_logits = logits[:, :-1] 配 shift_labels = labels[:, 1:]，即位置 t 的 logits 预测位置 t+1 的 token；本文按人工参考实现固定为「labels 已经对齐」，对齐约定写进 selfCheck.uncertain。"
+        },
+        {
+          "step": "关键设计二：用 completion mask 做部分和 —— 为什么必须只累加 completion",
+          "detail": "序列对数概率 log π(y|x) = Σ_{t∈completion} log π(y_t | x, y_<t)。只算 completion 有两个理由：其一，DPO 的偏好信号应该来自「模型自己生成的回答」，prompt 位置在 chosen/rejected 里逐 token 相同，算进去等于给两项加同一个常数，还会让 loss 尺度随 prompt 长度漂移；其二，padding 位置的 logprob 没有语义，算了就是纯噪声。实现上一行 (tok * mask).sum(dim=-1) 即可，mask 为 1/0 的 [B,S]。如果给的是三值 completion_mask（0=非 completion、1=completion、2=chosen 的 padding），先归一成 0/1 再乘，避免 pad 位置的 -100 之类的哨兵值被当成权重（会倒扣 logprob）。"
+        },
+        {
+          "step": "关键设计三：四项 log-ratio 与 -logsigmoid 的写法",
+          "detail": "z = β·[(log π_θ(y_w) − log π_ref(y_w)) − (log π_θ(y_l) − log π_ref(y_l))]，L = −log σ(z)。括号里的 (policy − ref) 是「隐式 reward」，它的差就是 margin；用 F.logsigmoid(z) 而不是 log(sigmoid(z)) 是因为 z 很负时 sigmoid 直接下溢成 0、log 给 -inf，logsigmoid 走 log1p(exp(-|z|)) 的稳定分支。β 必须乘在 sigmoid 里面：它是 KL 约束的强度，等价于「奖励尺度/温度」，β→0 时偏好信号被压平、梯度消失；β 大则对参考模型的偏离惩罚更用力。最后 .mean() 对 batch 取平均（不是求和），否则 loss 尺度跟着 batch size 变。"
+        },
+        {
+          "step": "关键设计四：reference 冻结与「只反传 policy」",
+          "detail": "DPO 的解析解里 π_ref 是固定的先验，它出现在 loss 里只是一个常数偏置：∂L/∂log π_ref(y) = ∓β·σ(−z)，把梯度传回参考模型没有任何意义，还会让参考模型被悄悄拖走、破坏「离参考模型不要太远」这个约束的前提。落地做法是参考模型整份 eval() 且 requires_grad=False，前向放在 torch.no_grad() 或用 .detach() 取序列对数概率；本文的 dpo_loss 假设传入的 policy_w/ref_w 已经是 [B] 标量，因此 detach 的责任在前向取样阶段（题面也要求说明这一点）。另外监控量（margin、pref_acc）要在 no_grad() 下算，避免把统计量带进计算图。"
+        }
+      ],
+      "complexity": {
+        "time": "前向 O(B·S·V)（log_softmax 占绝对主导），gather/掩码求和/四项差分都是 O(B·S)，反向仅 policy 侧；reference 侧若也走同一套前向，则前向总代价再翻一倍。",
+        "space": "O(B·S·V) 存 logp（4 组张量共 4·B·S·V）；反向激活只有 policy 侧保留，reference 在 no_grad 下不存图。",
+        "why": "代价全部来自词表维的 log-sum-exp：B·S 个位置、每个要在 V 维上做一次 softmax 归一化；DPO 本身（差、logsigmoid、mean）都是 O(B) 的标量级别运算。显存同理，logp 的张量形状决定了峰值。"
+      },
+      "code": {
+        "language": "python",
+        "source": "\"\"\"手写 DPO 损失（含 completion 对数概率）—— 与人工题库 referenceSolution 的算法逐项一致。\n\n形状约定（本文按这种写法实现，见 selfCheck.uncertain）\n    未 shift 约定：labels[:, t] 就是 logits[:, t] 要预测的那个 token；\n                   labels 里非 completion 的位置已置为 -100，log_softmax 沿 V 维不受影响。\n    已 shift 约定：logits 已切成 [:, :-1]、labels 已切成 [:, 1:]，标签全部合法，\n                   对未 completion 位置只依赖 mask=0。\n    logits: [B, S, V]   labels: [B, S]   completion_mask: [B, S]（1=参与，0=prompt/padding）\n    policy_w / ref_w / policy_l / ref_l: 均为 [B]，由 sequence_logprob 得到。\n\n依赖：只用到 torch（import torch, torch.nn.functional as F），CPU float32 即可运行。\n\"\"\"\nimport torch\nimport torch.nn.functional as F\n\nIGNORE_INDEX = -100\n\n\ndef sequence_logprob(logits, labels, mask):\n    \"\"\"每个样本 completion 部分的对数概率之和，返回 [B]。\n\n    关键：先 log_softmax 再 gather 取出「实际 token」那一列的 log p，\n    然后只在与 mask=1 的 completion 位置相乘求和；prompt 与 padding 不参与，\n    因为 DPO 的偏好信号只应来自模型自己生成的回答。\n    \"\"\"\n    if logits.dim() != 3:\n        raise ValueError(\"logits 应为 [B, S, V]，实际 shape=%r\" % (tuple(logits.shape),))\n    B, S, V = logits.shape\n    if tuple(labels.shape) != (B, S) or tuple(mask.shape) != (B, S):\n        raise ValueError(\"labels/mask 应为 [B, S] = %r\" % ((B, S),))\n\n    ignore = labels == IGNORE_INDEX                                 # 必须在替换成 0 之前算好\n    safe_labels = labels.masked_fill(ignore, 0)                     # gather 不接受负索引\n    logp = F.log_softmax(logits, dim=-1)                            # [B, S, V]\n    tok = logp.gather(-1, safe_labels.unsqueeze(-1)).squeeze(-1)    # [B, S] 每个位置的 log p(token)\n    tok = tok.masked_fill(ignore, 0.0)                              # 忽略位清零，避免把噪声加进去\n    return (tok * mask.to(tok.dtype)).sum(dim=-1)                   # [B]\n\n\ndef dpo_loss(policy_w, ref_w, policy_l, ref_l, beta=0.1):\n    \"\"\"policy_* / ref_* 均为 sequence_logprob 的输出（[B]）。\n\n    L = -log sigmoid( beta * [ (log pi_w - log ref_w) - (log pi_l - log ref_l) ] )\n    用 F.logsigmoid 而不是 log(sigmoid(z))：z 很负时后者会 log(0) = -inf。\n    \"\"\"\n    shapes = {tuple(t.shape) for t in (policy_w, ref_w, policy_l, ref_l)}\n    if len(shapes) != 1 or len(next(iter(shapes))) != 1:\n        raise ValueError(\"四个入参都应是同形状的 [B]，实际 %r\" % (shapes,))\n    if beta <= 0:\n        raise ValueError(\"beta 必须为正（等价于奖励尺度/温度），实际 %r\" % (beta,))\n\n    logits = beta * ((policy_w - ref_w) - (policy_l - ref_l))        # [B] 带 β 的偏好 margin\n    loss = -F.logsigmoid(logits).mean()                             # 标量\n\n    # 便于监控：隐式 reward margin 与偏好准确率（不参与反传）\n    with torch.no_grad():\n        margin = logits / beta                                      # 去掉 β 的纯 margin\n        acc = (margin > 0).float().mean()                           # margin>0 即偏好 chosen 判断正确\n    return loss, {\"margin\": margin.mean().item(), \"pref_acc\": acc.item()}\n\n\ndef make_completion_mask(prompt_len, completion_len, pad_len=0, device=None):\n    \"\"\"左 padding 的因果 LM 里 completion 的 logprob 位置 = [prompt_len-1, prompt_len+completion_len-1)；\n    这里演示最常用的非 shift 写法：直接给出「哪些位置是 completion」的 0/1 mask。\"\"\"\n    S = prompt_len + completion_len + pad_len\n    mask = torch.zeros(1, S, device=device)\n    mask[0, prompt_len:prompt_len + completion_len] = 1.0\n    return mask\n\n\ndef _demo():\n    \"\"\"端到端自测：验证四项 log-ratio 的数学、mask 语义、padding 不影响结果、只有 policy 拿到梯度。\"\"\"\n    torch.manual_seed(0)\n    B, S, V = 2, 5, 7\n    logits = torch.randn(B, S, V)\n    labels = torch.randint(0, V, (B, S))\n    mask = make_completion_mask(prompt_len=2, completion_len=2, pad_len=1).expand(B, S).clone()\n\n    # 1) 张量级实现 == 逐 token 标量参考实现（同一份 logits 下逐个位置算 log p(token)）\n    got = sequence_logprob(logits, labels, mask)\n    ref = []\n    for b in range(B):\n        s = 0.0\n        for t in range(S):\n            if mask[b, t] > 0:\n                s += float(F.log_softmax(logits[b, t], dim=-1)[labels[b, t]])\n        ref.append(s)\n    diff = (got - torch.tensor(ref)).abs().max().item()\n    assert diff < 1e-5, diff\n\n    # 2) prompt/padding 不计入：把非 completion 位置的 label 改成任意值，结果不变\n    labels2 = labels.clone()\n    ro_mask = make_completion_mask(prompt_len=2, completion_len=2, pad_len=1).expand(B, S)  # 只读，勿原地改\n    labels2[ro_mask == 0] = (labels2[ro_mask == 0] + 1) % V\n    assert torch.allclose(got, sequence_logprob(logits, labels2, ro_mask), atol=1e-5)\n\n    # 3) IGNORE_INDEX（-100）位置的 -inf 不会被累加：显式标成忽略并从 mask 剔除后，结果不变\n    labels3 = labels.clone()\n    labels3[0, 3] = IGNORE_INDEX                 # 位置 3 属于 completion，显式标成忽略\n    m3 = make_completion_mask(prompt_len=2, completion_len=2, pad_len=1).expand(B, S).clone()\n    m3[0, 3] = 0.0\n    got3 = sequence_logprob(logits, labels3, m3)\n    assert torch.isfinite(got3).all(), got3            # -100 没有被当成索引或 -inf 参与求和\n    # 对照：同样剔掉位置 3、但 labels 保持正常值 —— 两者必须逐位相同，\n    # 才能证明差异只来自「该位置被忽略」，而不是来自 mask 本身被改了。\n    ref3 = sequence_logprob(logits, labels, m3)\n    assert torch.allclose(ref3, got3, atol=1e-5), (ref3 - got3).abs().max().item()\n    # 反向对照：位置 3 真的在贡献 logprob（它是 completion），不能两边都剔掉还自称验证过\n    m_all = make_completion_mask(prompt_len=2, completion_len=2, pad_len=1).expand(B, S).clone()\n    assert not torch.allclose(sequence_logprob(logits, labels, m_all), got3, atol=1e-5)\n\n    # 4) DPO 损失与「手工四项 log-ratio」逐位一致；margin 很大时梯度自动变小\n    pw, rw, pl, rl = (torch.tensor([-1.0, -2.0]), torch.tensor([-1.2, -2.4]),\n                      torch.tensor([-3.0, -2.5]), torch.tensor([-2.7, -2.2]))\n    loss, info = dpo_loss(pw, rw, pl, rl, beta=0.1)\n    z = 0.1 * ((pw - rw) - (pl - rl))\n    manual = -F.logsigmoid(z).mean()\n    assert torch.allclose(loss, manual, atol=1e-6)\n    assert set(info) == {\"margin\", \"pref_acc\"}\n\n    # 5) 只有 policy 一路反传：reference 侧 requires_grad=False + no_grad 下不建图\n    lin = torch.nn.Linear(V, V)\n    pol_logits = lin(logits)\n    with torch.no_grad():\n        ref_logits2 = lin(logits).detach()\n    p_w = sequence_logprob(pol_logits, labels, mask)\n    r_w = sequence_logprob(ref_logits2, labels, mask)\n    p_l = sequence_logprob(pol_logits, (labels + 1) % V, mask)\n    r_l = sequence_logprob(ref_logits2, (labels + 1) % V, mask)\n    l2, _ = dpo_loss(p_w, r_w, p_l, r_l)\n    l2.backward()\n    assert lin.weight.grad is not None\n    assert not ref_logits2.requires_grad\n\n    print(\"sequence_logprob =\", [round(x, 4) for x in got.tolist()])\n    print(\"dpo loss = %.4f  info = %s\" % (loss.item(), info))\n    print(\"all checks passed\")\n\n\nif __name__ == \"__main__\":\n    _demo()\n",
+        "walkthrough": [
+          {
+            "note": "先看顶部注释里的两条对齐约定。题面只说「给定 token 级 logprob」，但真实实现里 labels[:, t] 到底对不对得上 logits[:, t]，取决于调用方有没有做过 shift（HF 因果 LM 是 logits[:, :-1] 配 labels[:, 1:]）。本文把两种都写清楚并选择「labels 已对齐、非 completion 位置为 -100」这一支，所以 gather 之前先把 -100 换成 0（gather 不接受负索引）。这里有一个我自己写挂过、值得单独说的细节：ignore = labels == IGNORE_INDEX 必须在 masked_fill 之前算出来（或直接对原始 labels 再判一次），因为 -100 被替换成 0 之后，safe_labels 里再也找不到 -100，后面那句「把忽略位清零」就会永远不生效——我第一版就是这么写的，结果 -100 位置保留了 log p(token 0) 的数值被算进 logprob，自测里那个位置贡献 2.83，直接暴露出来（assertion 3 报 diff=2.8277）。"
+          },
+          {
+            "note": "sequence_logprob 是本题真正的考点。它做三件事：F.log_softmax(logits, dim=-1) 把 [B,S,V] 归一化成对数概率（内部 log-sum-exp，稳定，避免手写 log(exp()) 下溢）；gather(-1, labels.unsqueeze(-1)).squeeze(-1) 只抽出「实际出现的那个 token」的 log p，得到 [B,S]，其他 V-1 列直接丢掉；最后 (tok * mask).sum(dim=-1) 在 completion 位置求和，得到每个样本一个标量 [B]。sum 而不是 mean 很关键：DPO 的 log-ratio 要求的是整条序列的对数概率之和（长度不同是长度偏置的来源，不是 bug）。"
+          },
+          {
+            "note": "为什么参考模型的 log-prob 也必须只累加 completion：这是题面的第二个问题。log π(y|x) 的定义就是在给定 prompt x 的条件下生成回答 y 的对数概率，prompt 本身不是「被生成的」；而且 chosen/rejected 共享同一个 prompt，把 prompt 位置算进去等于给两项加同一个常数，会被差分抵消却仍让 loss 的尺度随 prompt 长度漂移（pitfall 第 1 条）。padding 位置的 logprob 更是纯噪声。实现层面这两类位置在 mask 里都是 0，policy 与 reference 走同一个 sequence_logprob、同一份 mask，切分口径完全一致——口径不一致（例如 policy 算到 pad、reference 不算）会直接让 log-ratio 变成无意义的数。"
+          },
+          {
+            "note": "dpo_loss 只有四行核心，但每行都有讲究。logits = β·[(pw − rw) − (pl − rl)]：两个括号是人话里的「隐式 reward」，差就是偏好 margin，β 是 KL 约束强度（奖励尺度），必须乘在 sigmoid 里面。loss = −F.logsigmoid(logits).mean()：用 logsigmoid 而不是 log(sigmoid(z))，因为 margin 很负时 sigmoid 下溢成 0、log 给 -inf；.mean() 而不是 .sum()，避免 loss 尺度随 batch 变。返回值里额外给 margin 与 pref_acc：margin 是把 β 除掉之后的纯 log-ratio 差（监控「偏好强度」），pref_acc 是 margin>0 的比例（训练是否真的在学会偏好），两者都在 no_grad() 下算，不污染计算图。"
+          },
+          {
+            "note": "make_completion_mask 与 _demo 是给读者自查用的，不属于人工参考实现的算法。mask 的构造用左 padding 场景举例：completion 占据 [prompt_len, prompt_len+completion_len)，其余位置（prompt 与右侧 padding）为 0。如果换成 HF 的 shift 写法，completion 位置要整体左移一位（位置 t 的 logits 预测 t+1），这一点在代码里刻意没有混进 sequence_logprob，而是留在调用方决定，避免「mask 到底 shift 没 shift」变成隐藏 bug。"
+          },
+          {
+            "note": "_demo 的五条断言就是本题的自测清单：① 向量化实现与逐 token 标量实现差 < 1e-5（证明 gather 与 mask 求和的语义对）；② 改动非 completion 位置的 label，输出不变（证明 prompt/padding 真的没被计分）；③ 某个 completion 位置标成 -100 并把 mask 置 0 后，结果与「label 正常、同一 mask」逐位相同，同时与「该位置仍参与」的结果不同（证明 IGNORE_INDEX 不会被偷偷累加，也没有把该位置误剔）；④ dpo_loss 与手工写的四项 log-ratio 逐位一致（证明公式与参考实现同源）；⑤ 反向之后 policy 的 Linear 有权重梯度，而 reference 侧张量 requires_grad 恒为 False（证明只有 policy 反传）。写这段自测时我踩了两个坑，都很典型：第一版 sequence_logprob 把「忽略位清零」写成对已经替换过 -100 的 safe_labels 再判一次 == -100，于是那句话永远不生效、-100 位置带着 log p(token 0) 混进了 logprob（差 2.83）；第二版又用 mask[b, t] > 0 去构造参考值，而 mask 是 make_completion_mask(...).expand(B,S).clone()，clone 把 expand 出来的视图压成了一行，mask[0,3]=0 顺手把第 1 行也改了，对照实验因此失去意义。教训是：mask 这类会被反复复用的张量在自测里要每次重新构造（或用只读视图），不要在原地改共享张量。"
+          }
+        ]
+      },
+      "edgeCases": [
+        "全部 completion 位置都是 padding（mask 全 0）：sequence_logprob 返回 0.0，四项差分退化成 log-ratio 全 0、loss 恒等于 log 2 ≈ 0.693——不报错但也没有梯度，数据集里出现这种样本要在 collate 阶段过滤。",
+        "chosen 与 rejected 长度差很大：这是长度偏置的来源。DPO 原论文用「长度归一化（按 token 数取平均）」或「长度惩罚」来消偏；本文按人工 referenceSolution 保持 sum（不归一），因为归一化会改变 log-ratio 的定义、需要与训练目标一并说明。",
+        "labels 里出现 -100（IGNORE_INDEX）：不能直接 gather，必须先 masked_fill 成 0 再抽、抽完把该位置清零，否则要么索引为负报错，要么把某个真实 token 的 logprob 误算进去。",
+        "logits 是 fp16/bf16：log_softmax 在 bf16 下精度较低，长序列求和误差会累积；常见做法是 sequence_logprob 内部转 float32 计算后再转回，本文示例统一 float32。",
+        "mask 与 labels 的对齐方式（是否 shift）：shift 与非 shift 两种约定差一位，混用会让 logprob 静默偏一位。本文选非 shift 约定并把这一点写进 selfCheck.uncertain。",
+        "beta 取 0 或写成 0.1 之外的量纲：beta=0 时 z 恒为 0、梯度为 0（等于没训练）；beta 必须是正数，代码里直接 raise。",
+        "β 很大且 margin 已经很大：logsigmoid(z) → -z，loss 近似线性增长、梯度 σ(-z) → 0，样本自然「毕业」不再贡献梯度，这是希望的行为，但会让 loss 曲线看起来在涨，需要看 margin 而不是只看 loss。",
+        "batch 只有 1 条样本：.mean() 等价于该样本本身，统计量 margin/pref_acc 是单点估计、噪声大；小 batch 下建议累积多步再记录。",
+        "四个入参形状不一致（例如 chosen 与 rejected 长度不同导致 logprob 张量被拼成 [B,2]）：代码里显式检查四个入参形状相同，提前报错而不是让广播静默给出错误结果。",
+        "参考模型与策略模型 tokenizer/模板不一致：同一个 label 在两侧切出的 positions 不同，mask 就不可共用——必须用同一 tokenizer 与同一 chat template 构造两份前向的输入。"
+      ],
+      "pitfalls": [
+        "把 prompt token 也算进 logprob，导致 loss 尺度错误：prompt 在 chosen/rejected 里相同、会被差分部分抵消，但 loss 尺度会随 prompt 长度漂移，掩盖真实偏好信号。",
+        "对 reference 也反传，或忘记 detach：reference 应当是常量先验，梯度走进去会破坏「不要离参考模型太远」这个约束的前提；正确做法是参考模型 eval() + requires_grad=False，前向放 no_grad() 或 .detach()。",
+        "忽略长度偏置（长回答 logprob 更负）导致偏好被长度主导：logprob 之和天然偏向短回答，chosen 比 rejected 长时可能被压过；需要长度归一化或长度惩罚时要显式说明。",
+        "用 log(sigmoid(z)) 代替 F.logsigmoid(z)：z 很负时 sigmoid 下溢成 0、log 得到 -inf，loss 变 nan，反向传播时整批梯度报废。",
+        "把 β 乘在 sigmoid 外面（写成 β·(-logsigmoid(z))）：等价于只改学习率、不改偏好尺度，DPO 与参考模型的 KL 约束强度就失控了；β 必须在 sigmoid 里面。",
+        "忘记把 labels==-100 的位置从 mask 里剔除，或先 gather 再想把负索引当成「忽略」：gather 不接受 -100，要么报错要么取到别的 token 的 logprob。",
+        "sequence_logprob 里用 .mean(dim=-1) 而不是 .sum(dim=-1)：长度不同的样本被拉到同一尺度，DPO 的 log-ratio 定义被悄悄改掉（这实际上就是长度归一化，但若没意识到就是错的）。",
+        "mask 的 dtype 不是浮点：整数 mask 与浮点 tok 相乘在部分 torch 版本上会类型报错或走整数运算，必须 mask.to(tok.dtype)。",
+        "统计量 margin/pref_acc 在计算图里算：会把不需要的中间量留在反向图里（额外显存），而且 .item() 之后的张量若仍挂在图上容易误用。",
+        "把 chosen/rejected 的拼接顺序写反（policy_w 与 policy_l 对调）：margin 符号翻转，loss 会朝「偏好 rejected」的方向训练，且因为 logsigmoid 对称、loss 数值量级看起来正常，非常隐蔽。",
+        "在 shift 与非 shift 两种对齐约定之间混用：同一个 batch 里 policy 走了 shift、reference 没走，log-ratio 会稳定偏一位，训练能跑但学不到偏好。",
+        "监控指标用 loss 判断训练好坏：margin 已经很大的样本 loss 依旧很大（近似线性），此时 loss 下降与偏好准确率上升并不同步，应同时看 pref_acc。"
+      ],
+      "followUps": [
+        "推一下 dpo_loss 对 policy 对数概率的梯度：∂L/∂log π_θ(y_w) = −β·σ(−z)，∂L/∂log π_θ(y_l) = +β·σ(−z)。这说明 DPO 的「奖励」就是 β·log(π_θ/π_ref)，且 margin 越大、梯度系数 σ(−z) 越小——它在做自动的难例挖掘。",
+        "DPO 和 RLHF（PPO）的关系是什么？DPO 是对「带 KL 约束的奖励最大化」这个目标做变量替换后的闭式解：最优策略满足 π*(y|x) ∝ π_ref(y|x)·exp(r(y,x)/β)，把它代回 Bradley-Terry 偏好模型，reward 被消掉，只剩下对数比——所以 DPO 不需要 reward model，也不需要在线采样。",
+        "β 怎么选？β 越小对参考模型的偏离容忍度越大（KL 惩罚越弱）、过拟合偏好数据风险越高；β 越大越保守、容易学不动。实践上 0.1 是常见起点，用偏好准确率与生成质量共同挑。",
+        "为什么要把 log_softmax 和 gather 放一起而不是先算 cross_entropy？cross_entropy 返回的是 batch 平均的负对数似然，会丢掉「逐样本」的粒度，而 DPO 需要每个样本一个序列 logprob 再两两配对求差；用 nll_loss(reduction='none') 也能做，但要自己处理权重。",
+        "reference 模型能不能换成「策略模型的 EMA」或「初始 checkpoint」？DPO 的推导只要求 π_ref 是固定先验，EMA 版本（如 TR-DPO、sDPO）是工程变体，理论最优解形式不变但训练动态更稳。",
+        "如果要在线迭代（iterative/online DPO）：每轮用当前策略重新采样 chosen/rejected，reference 是否同步更新是个设计选择（固定 reference 会限制探索上限，同步更新会引入非平稳性），这是 Online DPO / SPIN 之类方法的差别所在。",
+        "内存不够怎么省？reference 前向用 no_grad 且不存图已经省一半；进一步可以把 reference 换成量化（int8/4bit）推理，或者用只缓存 completion 位置的 logprob 而不是整份 [B,S,V]。",
+        "多轮对话里怎么定义 completion 的边界？把 assistant 的每一段都算作 completion、user 段排除，mask 按 role 切分；这在 chat template 里用 token 的 role id 实现，是工程上的常见追问。",
+        "如果偏好数据带 tie（两个回答一样好）或者有评分而不是成对比较？Bradley-Terry 假设就破了，需要改成 KTO/ORPO 这类支持非成对信号的损失。"
+      ],
+      "variations": [
+        "手写 IPO 损失：把 −log σ(β·margin) 换成 (margin − 1/(2β))²，解释它为什么能缓解 DPO 的过拟合。",
+        "手写 cDPO / conservative DPO：给标签加噪声（把 y 以概率 ε 翻转），损失变成加权形式。",
+        "手写 KTO 损失：只有单个回答加「好/坏」标签、不需要成对，用 logistic 效用函数分别处理正负样本。",
+        "手写 ORPO：把 SFT 的 NLL 与 odds-ratio 偏好项合并成一个损失，去掉 reference 模型。",
+        "手写 SimPO：把 log-ratio 里的 reference 项去掉、换成按长度平均的对数似然，并加 margin 项 γ。",
+        "把 sequence_logprob 用在别的地方：算 perplexity、算 pass@k 的对数概率、做 beam search 的打分函数（同一套 gather+mask 逻辑）。",
+        "实现带 KL 惩罚的 PPO 版本作为对照：显式训练 reward model + advantage 估计 + clip 目标，体会 DPO 省掉了什么。",
+        "手写 GRPO 的组内相对优势与 clip 目标函数（同源变形：都是 post-training 的目标函数手撕题）。",
+        "把 DPO 损失改成 token 级加权（按 token 的 KL 或熵加权），考察对「哪些 token 真正在贡献偏好」的理解。",
+        "给 sequence_logprob 加 fp16 数值稳定性处理（内部升 fp32 计算再降回），并测长序列下的误差累积。"
+      ],
+      "diagram": {
+        "kind": "flow",
+        "title": "DPO 损失的四项对数比",
+        "caption": "记住两件事：每个序列的 logprob 只在 completion 位置累加（prompt/padding 被 mask 掉），四项 log-ratio 合成一个 margin 后再过 logsigmoid —— reference 那两项是常量、梯度只走 policy。",
+        "svg": "<svg viewBox='0 0 480 240' xmlns='http://www.w3.org/2000/svg' font-size='13'><text x='14' y='21' font-size='15' fill='currentColor'>DPO：logprob 口径与四项对数比</text><line x1='14' y1='30' x2='466' y2='30' stroke='var(--line-1)' stroke-width='1'/><text x='14' y='46' font-size='13' fill='var(--fg-1)'>序列：( prompt 片段 | completion 片段 | padding )</text><rect x='14' y='54' width='150' height='20' rx='3' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='52' y='68' font-size='13' fill='var(--fg-1)'>prompt mask=0</text><rect x='164' y='51' width='300' height='26' rx='3' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='268' y='68' font-size='13' fill='currentColor'>completion mask=1</text><text x='14' y='92' font-size='13' fill='currentColor'>logits [B,S,V]</text><path d='M96 94 L70 118' stroke='currentColor' stroke-width='1'/><path d='M62 112 L66 122 L74 116 Z' fill='currentColor'/><text x='96' y='98' font-size='13' fill='var(--fg-1)'>log_softmax 然后 gather</text><rect x='24' y='124' width='150' height='26' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='31' y='141' font-size='13' fill='currentColor'>乘 mask 后求和</text><text x='186' y='141' font-size='13' fill='var(--fg-1)'>&#8594; 每个序列一个标量 [B]</text><text x='240' y='34' font-size='13' fill='var(--fg-1)'>reference 同口径但冻结</text><text x='14' y='172' font-size='13' fill='var(--fg-1)'>z = &#946; &#215; [ ( log&#960;_w &#8722; logref_w ) &#8722; ( log&#960;_l &#8722; logref_l ) ]</text><rect x='14' y='182' width='150' height='24' rx='4' fill='none' stroke='var(--accent)' stroke-width='1'/><text x='22' y='199' font-size='13' fill='currentColor'>隐式奖励 x2 求差</text><path d='M168 194 L192 194' stroke='currentColor' stroke-width='1'/><path d='M192 190 L199 194 L192 198 Z' fill='currentColor'/><rect x='202' y='182' width='110' height='24' rx='4' fill='none' stroke='var(--line-1)' stroke-width='1'/><text x='210' y='199' font-size='13' fill='currentColor'>过 sigmoid 取负</text><text x='322' y='199' font-size='13' fill='currentColor'>L = &#8722;log&#963;(z).mean()</text><text x='14' y='226' font-size='13' fill='var(--fg-1)'>梯度系数 &#8722;&#946;&#963;(&#8722;z)：margin 越大，该样本的梯度越小</text><text x='318' y='226' font-size='13' fill='var(--fg-1)'>reference 不反传</text></svg>",
+        "alt": "流程图：一条序列被切成 prompt、completion、padding 三段，mask 只在 completion 上取 1；logits [B,S,V] 经 log_softmax 后 gather 出实际 token 的对数概率 [B,S]，乘 mask 求和得到每个序列一个标量 [B]。四个这样的标量（policy/ref 各对 chosen/rejected）组成 z = beta 乘 [(logpi_w 减 logref_w) 减 (logpi_l 减 logref_l)]，即两个隐式奖励之差，再过 sigmoid 取负对数得到损失 L = -logsigmoid(z).mean()；梯度只经 policy 回传，系数为 -beta 乘 sigmoid(-z)。",
+        "spec": null
+      },
+      "selfTest": [
+        "把 prompt 位置也计入 logprob 会发生什么？为什么 chosen 与 rejected 共享 prompt 时这个错误特别隐蔽？",
+        "为什么用 F.logsigmoid(z) 而不是 torch.log(torch.sigmoid(z))？请给出 z = −50 时两者的数值结果。",
+        "四项里 reference 的两项如果忘记 detach，会对训练产生什么影响？为什么这违反 DPO 的推导前提？",
+        "β 从 0.1 改成 0.5，同一个 margin 下损失和梯度各变大还是变小？训练会更保守还是更激进？"
+      ],
+      "keyPoints": [
+        "先算序列对数概率：对 completion 位置做 log_softmax gather 后求和，prompt 与 padding 不能算进去。",
+        "L = -log sigmoid( beta * [ (log pi_w - log ref_w) - (log pi_l - log ref_l) ] )。",
+        "梯度系数为 -beta*sigma(-z)：margin 已经很大时样本梯度自然变小。",
+        "只有 policy 反传，reference 冻结。",
+        "只累加 completion 是 DPO 的定义要求：prompt 在两项中相同会被差分抵消，padding 是纯噪声。"
+      ],
+      "sources": [
+        {
+          "title": "人工题库 research/jobs_kb.json（dpo-loss）",
+          "url": ""
+        }
+      ],
+      "selfCheck": {
+        "claims": [
+          "人工题面原文：实现 DPO 损失：给定 policy/reference 对 chosen 与 rejected 的 token 级 logprob，计算 log-ratio、margin 与损失；说明为什么参考模型的 log-prob 必须只累加 completion 部分。",
+          "人工 keyPoints 原文：先算序列对数概率（对 completion 位置做 log_softmax gather 后求和，prompt 与 padding 不能算进去）；L = -log sigmoid( beta * [ (log pi_w - log ref_w) - (log pi_l - log ref_l) ] )；梯度系数为 -beta*sigma(-z)；只有 policy 反传，reference 冻结。",
+          "人工 pitfalls 原文：把 prompt token 也算进 logprob 会导致 loss 尺度错误；对 reference 也反传或忘记 detach；忽略长度偏置（长回答 logprob 更负）导致偏好被长度主导。",
+          "人工 referenceSolution 的算法：sequence_logprob = (F.log_softmax(logits,-1).gather(-1, labels.unsqueeze(-1)).squeeze(-1) * mask).sum(-1)；dpo_loss 用 logits = beta*((policy_w-ref_w)-(policy_l-ref_l)) 与 loss = -F.logsigmoid(logits).mean()，并在 no_grad 下额外返回 margin=logits/beta 与 pref_acc=(margin>0).mean()；本文实现与该算法逐项一致。",
+          "数学事实：log σ(z) = −log(1+exp(−z))，用 F.logsigmoid 计算在 z 很负时仍稳定，而 log(sigmoid(z)) 会因 sigmoid 下溢到 0 得到 −inf。",
+          "数学事实：∂L/∂log π_θ(y_w) = −β·σ(−z)，∂L/∂log π_θ(y_l) = +β·σ(−z)，其中 z 是带 β 的 margin；因此 policy 对数概率梯度的大小随 margin 增大而衰减。",
+          "数学事实：(tok * mask).sum(dim=-1) 在 mask∈{0,1} 时等价于只对 completion 位置求和；mask 全 0 时返回 0.0，对应 loss 退化为 log 2。",
+          "一致性：policy 与 reference 必须用同一个 sequence_logprob 和同一份 mask，否则 log-ratio 的两侧口径不同，差分失去意义。",
+          "本文代码只依赖 torch（import torch 与 torch.nn.functional），CPU float32 可运行；_demo 断言了向量化实现与逐 token 标量实现之差 < 1e-5、改动非 completion 位置 label 结果不变、-100 位置被正确忽略、dpo_loss 与手工四项 log-ratio 一致、反向只给 policy 侧 Linear 留下梯度。"
+        ],
+        "uncertain": [
+          "人工题干未给具体输入形状（B/S/V）、dtype 与对数概率的数值精度，本文按通用约定取 [B,S,V] 与 float32 示例，实际评测可能用 bf16 或更长的序列。",
+          "人工 referenceSolution 的 sequence_logprob 未说明 labels 是否已做 causal shift（HF 惯用 logits[:, :-1] 配 labels[:, 1:]）；本文选择「labels 与 logits 已对齐、非 completion 位置为 -100」这一约定，并在代码里显式处理 -100，另一种 shift 约定需要在调用方把 mask 左移一位。",
+          "人工 referenceSolution 里 mask 被直接当作 1/0 使用；若上游给的是三值 completion_mask（例如 0=非 completion、1=completion、2=padding），必须先归一成 0/1，否则 padding 位置会以权重 2 被计入。这一点题面未明确。",
+          "「length bias」在本题的处置方式未指定：本文严格沿用人工实现的对数概率之和（不归一化），长度归一化/长度惩罚只在 edgeCases 与 followUps 里作为可选方案讨论，不代表评测要求。",
+          "β 的取值（本文默认 0.1）与参考模型的具体来源（SFT checkpoint 还是初始模型）题面均未给出，属通用默认。",
+          "本文 dpo_loss 假设传入的已是四个 [B] 标量、detach 的责任在前向阶段；若评测期望 dpo_loss 内部接受 logits 并自行处理 shift/mask，需要改签名而非改算法。",
+          "监控量的口径：本文的 margin=logits/beta 是「纯 log-ratio 差」，pref_acc=(margin>0) 是逐样本判断；若上游把 margin 定义为隐式 reward 之差（等于同一量）或带 β（等于 logits），数值会差一个 β 因子，题面未指定。",
+          "padding 的训练效率问题：本文只说明 padding 不参与 loss，未讨论 packing/变长注意力等工程实现，这部分与题目无关但真实训练中影响吞吐。"
+        ]
+      }
+    }
+  ]
+}
